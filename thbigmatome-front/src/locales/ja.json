@@ -1,0 +1,298 @@
+{
+  "topMenu": {
+    "welcome": {
+      "title": "ようこそ！",
+      "subtitle": "東方BIG野球まとめツールへ",
+      "message": "左側のナビゲーションメニューから各機能をご利用ください。"
+    }
+  },
+  "loginForm": {
+    "title": "ログイン",
+    "loginId": "ログインID",
+    "loginIdPlaceholder": "ログイン名を入力",
+    "password": "パスワード",
+    "passwordPlaceholder": "パスワードを入力",
+    "login": "ログイン",
+    "loggingIn": "ログイン中...",
+    "loginFailed": "ログインに失敗しました"
+  },
+  "layout": {
+    "appTitle": "東方BIG野球まとめツール",
+    "logout": "ログアウト"
+  },
+  "navigation": {
+    "dashboard": "トップページ",
+    "managers": "監督一覧",
+    "teams": "チーム一覧",
+    "settings": "各種設定",
+    "collapse": "メニューを縮小",
+    "expand": "メニューを展開"
+  },
+  "teamList": {
+    "title": "チーム一覧",
+    "addTeam": "チーム追加",
+    "noData": "データがありません",
+    "headers": {
+      "id": "ID",
+      "name": "名前",
+      "shortName": "短縮名",
+      "managerName": "監督名",
+      "isActive": "稼働中",
+      "actions": "操作"
+    },
+    "deleteConfirmTitle": "チームの削除",
+    "deleteConfirmMessage": "このチームを削除してもよろしいですか？",
+    "fetchFailed": "チーム一覧の取得に失敗しました。",
+    "deleteSuccess": "チームを削除しました。",
+    "deleteFailed": "チームの削除に失敗しました。"
+  },
+  "managerList": {
+    "title": "監督一覧",
+    "addManager": "監督追加",
+    "noData": "データがありません",
+    "headers": {
+      "id": "ID",
+      "name": "名前",
+      "shortName": "短縮名",
+      "ircName": "IRCネーム",
+      "userId": "ユーザーID",
+      "actions": "操作"
+    },
+    "expanded": {
+      "title": "担当チーム",
+      "addTeam": "チーム追加",
+      "active": "稼働中",
+      "inactive": "停止中",
+      "noTeams": "担当チームはありません。"
+    },
+    "deleteConfirmTitle": "監督の削除",
+    "deleteConfirmMessage": "本当にこの監督を削除しますか？\n関連するチームも削除されます。",
+    "fetchFailed": "監督一覧の取得に失敗しました。",
+    "deleteSuccess": "監督を削除しました。",
+    "deleteFailed": "監督の削除に失敗しました。"
+  },
+  "managerDialog": {
+    "title": {
+      "add": "監督追加",
+      "edit": "監督情報編集"
+    },
+    "form": {
+      "name": "名前",
+      "shortName": "短縮名",
+      "ircName": "IRCネーム",
+      "userId": "ユーザーID (任意)"
+    },
+    "actions": {
+      "cancel": "キャンセル",
+      "save": "保存"
+    },
+    "validation": {
+      "required": "必須項目です。"
+    },
+    "notifications": {
+      "addSuccess": "監督を追加しました。",
+      "updateSuccess": "監督情報を更新しました。",
+      "saveFailedWithErrors": "保存に失敗しました:\n{errors}",
+      "saveFailed": "監督情報の保存に失敗しました。"
+    }
+  },
+  "teamDialog": {
+    "title": {
+      "add": "チーム追加",
+      "edit": "チーム編集"
+    },
+    "form": {
+      "name": "名前",
+      "shortName": "短縮名",
+      "manager": "監督",
+      "isActive": "稼働中"
+    },
+    "actions": {
+      "cancel": "キャンセル",
+      "save": "保存"
+    },
+    "validation": {
+      "required": "必須項目です。"
+    },
+    "notifications": {
+      "fetchManagersFailed": "監督一覧の取得に失敗しました。",
+      "addSuccess": "チームを追加しました。",
+      "updateSuccess": "チーム情報を更新しました。",
+      "saveFailedWithErrors": "保存に失敗しました:\n{errors}",
+      "saveFailed": "チーム情報の保存に失敗しました。"
+    }
+  },
+  "confirmDialog": {
+    "ok": "OK",
+    "cancel": "キャンセル"
+  },
+  "settings": {
+    "pitchingStyle": {
+      "title": "投手特徴",
+      "add": "特徴を追加",
+      "headers": {
+        "name": "名前",
+        "description": "説明",
+        "actions": "操作"
+      },
+      "dialog": {
+        "title": {
+          "add": "投手特徴の追加",
+          "edit": "投手特徴の編集"
+        },
+        "form": {
+          "name": "名前",
+          "description": "説明"
+        }
+      },
+      "deleteConfirmTitle": "投手特徴の削除",
+      "deleteConfirmMessage": "この投手特徴を削除してもよろしいですか？",
+      "notifications": {
+        "fetchFailed": "投手特徴一覧の取得に失敗しました。",
+        "addSuccess": "投手特徴を追加しました。",
+        "updateSuccess": "投手特徴を更新しました。",
+        "deleteSuccess": "投手特徴を削除しました。",
+        "saveFailed": "投手特徴の保存に失敗しました。",
+        "saveFailedWithErrors": "保存に失敗しました:\n{errors}",
+        "deleteFailed": "投手特徴の削除に失敗しました。"
+      }
+    },
+    "battingStyle": {
+      "title": "打者特徴",
+      "add": "特徴を追加",
+      "headers": {
+        "name": "名前",
+        "description": "説明",
+        "actions": "操作"
+      },
+      "dialog": {
+        "title": {
+          "add": "打者特徴の追加",
+          "edit": "打者特徴の編集"
+        },
+        "form": {
+          "name": "名前",
+          "description": "説明"
+        }
+      },
+      "deleteConfirmTitle": "打者特徴の削除",
+      "deleteConfirmMessage": "この打者特徴を削除してもよろしいですか？",
+      "notifications": {
+        "fetchFailed": "打者特徴一覧の取得に失敗しました。",
+        "addSuccess": "打者特徴を追加しました。",
+        "updateSuccess": "打者特徴を更新しました。",
+        "deleteSuccess": "打者特徴を削除しました。",
+        "saveFailed": "打者特徴の保存に失敗しました。",
+        "saveFailedWithErrors": "保存に失敗しました:\n{errors}",
+        "deleteFailed": "打者特徴の削除に失敗しました。"
+      }
+    },
+    "pitchingSkill": {
+      "title": "投手特殊能力",
+      "add": "特殊能力を追加",
+      "headers": {
+        "name": "名前",
+        "description": "説明",
+        "actions": "操作"
+      },
+      "dialog": {
+        "title": {
+          "add": "特殊能力の追加",
+          "edit": "特殊能力の編集"
+        },
+        "form": {
+          "name": "名前",
+          "skill_type": "種類",
+          "description": "説明"
+        }
+      },
+      "notifications": {
+        "noData": "特殊能力が登録されていません。",
+        "fetchFailed": "特殊能力の取得に失敗しました。",
+        "addSuccess": "特殊能力を追加しました。",
+        "updateSuccess": "特殊能力を更新しました。",
+        "deleteSuccess": "特殊能力を削除しました。",
+        "saveFailed": "特殊能力の保存に失敗しました。",
+        "saveFailedWithErrors": "特殊能力の保存に失敗しました:\n{errors}",
+        "deleteFailed": "特殊能力の削除に失敗しました。"
+      },
+      "deleteConfirmTitle": "特殊能力の削除",
+      "deleteConfirmMessage": "本当にこの特殊能力を削除しますか？",
+      "skillTypes": {
+        "positive": "ポジティブ",
+        "negative": "ネガティブ",
+        "neutral": "ニュートラル"
+      }
+    },
+    "battingSkill": {
+      "title": "打者特殊能力",
+      "add": "特殊能力を追加",
+      "headers": {
+        "name": "名前",
+        "description": "説明",
+        "actions": "操作"
+      },
+      "dialog": {
+        "title": {
+          "add": "特殊能力の追加",
+          "edit": "特殊能力の編集"
+        },
+        "form": {
+          "name": "名前",
+          "skill_type": "種類",
+          "description": "説明"
+        }
+      },
+      "notifications": {
+        "noData": "特殊能力が登録されていません。",
+        "fetchFailed": "特殊能力の取得に失敗しました。",
+        "addSuccess": "特殊能力を追加しました。",
+        "updateSuccess": "特殊能力を更新しました。",
+        "deleteSuccess": "特殊能力を削除しました。",
+        "saveFailed": "特殊能力の保存に失敗しました。",
+        "saveFailedWithErrors": "保存に失敗しました:\n{errors}",
+        "deleteFailed": "特殊能力の削除に失敗しました。"
+      },
+      "deleteConfirmTitle": "特殊能力の削除",
+      "deleteConfirmMessage": "本当にこの特殊能力を削除しますか？",
+      "skillTypes": {
+        "positive": "ポジティブ",
+        "negative": "ネガティブ",
+        "neutral": "ニュートラル"
+      }
+    },
+    "biorhythm": {
+      "title": "バイオリズム",
+      "add": "バイオリズムを追加",
+      "headers": {
+        "name": "名前",
+        "start_date": "開始日",
+        "end_date": "終了日",
+        "actions": "操作"
+      },
+      "dialog": {
+        "title": {
+          "add": "バイオリズムの追加",
+          "edit": "バイオリズムの編集"
+        },
+        "form": {
+          "name": "名前",
+          "start_date": "開始日",
+          "end_date": "終了日"
+        }
+      },
+      "notifications": {
+        "noData": "バイオリズムが登録されていません。",
+        "fetchFailed": "バイオリズムの取得に失敗しました。",
+        "addSuccess": "バイオリズムを追加しました。",
+        "updateSuccess": "バイオリズムを更新しました。",
+        "deleteSuccess": "バイオリズムを削除しました。",
+        "saveFailed": "バイオリズムの保存に失敗しました。",
+        "saveFailedWithErrors": "保存に失敗しました:\n{errors}",
+        "deleteFailed": "バイオリズムの削除に失敗しました。"
+      },
+      "deleteConfirmTitle": "バイオリズムの削除",
+      "deleteConfirmMessage": "本当にこのバイオリズムを削除しますか？"
+    }
+  }
+}

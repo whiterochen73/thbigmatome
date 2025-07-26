@@ -30,10 +30,10 @@
       <v-card-actions>
         <v-spacer></v-spacer>
         <v-btn color="blue-darken-1" variant="text" @click="closeDialog">
-          {{ t('teamDialog.actions.cancel') }}
+          {{ t('actions.cancel') }}
         </v-btn>
         <v-btn color="blue-darken-1" variant="text" @click="saveItem" :disabled="!isFormValid">
-          {{ t('teamDialog.actions.save') }}
+          {{ t('actions.save') }}
         </v-btn>
       </v-card-actions>
     </v-card>
@@ -73,7 +73,7 @@ watch(() => props.item, (newItem) => {
 const title = computed(() => props.item ? t('settings.pitchingStyle.dialog.title.edit') : t('settings.pitchingStyle.dialog.title.add'))
 
 const rules = {
-  required: (value: string) => !!value || t('managerDialog.validation.required'),
+  required: (value: string) => !!value || t('validation.required'),
 }
 
 const isFormValid = computed(() => !!editableItem.value.name)

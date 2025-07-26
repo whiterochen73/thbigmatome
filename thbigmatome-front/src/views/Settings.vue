@@ -11,6 +11,8 @@
         <PitchingStyleSettings />
         <div class="mt-6"></div>
         <PitchingSkillSettings />
+        <div class="mt-6"></div>
+        <PlayerTypeSettings />
       </v-col>
       <v-col cols="12" md="8" lg="6">
         <BattingStyleSettings />
@@ -28,5 +30,6 @@ import PitchingStyleSettings from '@/components/settings/PitchingStyleSettings.v
 import PitchingSkillSettings from '@/components/settings/PitchingSkillSettings.vue';
 import BattingStyleSettings from '@/components/settings/BattingStyleSettings.vue';
 import BattingSkillSettings from '@/components/settings/BattingSkillSettings.vue';
+import PlayerTypeSettings from '@/components/settings/PlayerTypeSettings.vue';
 import BiorhythmSettings from '@/components/settings/BiorhythmSettings.vue';
 </script>

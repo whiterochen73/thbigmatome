@@ -94,3 +94,18 @@ puts 'Seeding Biorhythms...'
   biorhythm.update!(biorhythm_attrs)
 end
 puts 'Biorhythms seeded.'
+
+puts 'Seeding Player Types...'
+[
+  { name: '東方', description: '東方キャラ。このゲームの中心となる選手。' },
+  { name: 'ハチナイ', description: 'ハチナイコラボで使用可能になった選手' },
+  { name: '球詠', description: '球詠コラボで使用可能になった選手' },
+  { name: 'ＰＭ', description: 'プレイングマネージャー。IRCである程度遊ぶと作成されることがある' },
+  { name: 'ＡＰ', description: '毎年エイプリルフールに作成されることがあるネタカード。公式化されることもある' },
+  { name: 'オリジナル', description: 'ペナントを１シーズン完了させた記念に作成されたカード' },
+  { name: '横綱', description: '伝説の戦犯として、ファンサービスを兼ねて作成された記念カード（公式戦使用不可）' }
+].each do |style_attrs|
+  style = PlayerType.find_or_initialize_by(name: style_attrs[:name])
+  style.update!(description: style_attrs[:description])
+end
+puts 'Player Types seeded.'

@@ -23,6 +23,7 @@ Rails.application.routes.draw do
       resources :teams, only: [:index, :show, :update, :create, :destroy]
 
       # 各種設定マスタ
+      resources :player_types, path: 'player-types', only: [:index, :create, :update, :destroy]
       resources :pitching_styles, path: 'pitching-styles', only: [:index, :create, :update, :destroy]
       resources :pitching_skills, path: 'pitching-skills', only: [:index, :create, :update, :destroy]
       resources :batting_styles, path: 'batting-styles', only: [:index, :create, :update, :destroy]

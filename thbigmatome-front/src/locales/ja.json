@@ -6,6 +6,15 @@
       "message": "左側のナビゲーションメニューから各機能をご利用ください。"
     }
   },
+  "actions": {
+    "save": "保存",
+    "cancel": "キャンセル",
+    "ok": "OK"
+  },
+  "validation": {
+    "required": "必須項目です。",
+    "dateFormat": "YYYY-MM-DD形式で入力してください"
+  },
   "loginForm": {
     "title": "ログイン",
     "loginId": "ログインID",
@@ -82,13 +91,6 @@
       "ircName": "IRCネーム",
       "userId": "ユーザーID (任意)"
     },
-    "actions": {
-      "cancel": "キャンセル",
-      "save": "保存"
-    },
-    "validation": {
-      "required": "必須項目です。"
-    },
     "notifications": {
       "addSuccess": "監督を追加しました。",
       "updateSuccess": "監督情報を更新しました。",
@@ -107,13 +109,6 @@
       "manager": "監督",
       "isActive": "稼働中"
     },
-    "actions": {
-      "cancel": "キャンセル",
-      "save": "保存"
-    },
-    "validation": {
-      "required": "必須項目です。"
-    },
     "notifications": {
       "fetchManagersFailed": "監督一覧の取得に失敗しました。",
       "addSuccess": "チームを追加しました。",
@@ -123,8 +118,6 @@
     }
   },
   "confirmDialog": {
-    "ok": "OK",
-    "cancel": "キャンセル"
   },
   "settings": {
     "pitchingStyle": {
@@ -293,6 +286,37 @@
       },
       "deleteConfirmTitle": "バイオリズムの削除",
       "deleteConfirmMessage": "本当にこのバイオリズムを削除しますか？"
+    },
+    "playerType": {
+      "title": "選手タイプ設定",
+      "add": "選手タイプを追加",
+      "headers": {
+        "name": "名前",
+        "description": "説明",
+        "actions": "操作"
+      },
+      "dialog": {
+        "title": {
+          "add": "選手タイプを新規追加",
+          "edit": "選手タイプを編集"
+        },
+        "form": {
+          "name": "名前",
+          "description": "説明"
+        }
+      },
+      "notifications": {
+        "noData": "選手タイプが登録されていません。",
+        "fetchFailed": "選手タイプの取得に失敗しました。",
+        "addSuccess": "選手タイプを登録しました。",
+        "updateSuccess": "選手タイプを更新しました。",
+        "deleteSuccess": "選手タイプを削除しました。",
+        "saveFailed": "選手タイプの保存に失敗しました。",
+        "saveFailedWithErrors": "選手タイプの保存に失敗しました:\n{errors}",
+        "deleteFailed": "選手タイプの削除に失敗しました。"
+      },
+      "deleteConfirmTitle": "選手タイプの削除",
+      "deleteConfirmMessage": "この選手タイプを本当に削除しますか？"
     }
   }
 }

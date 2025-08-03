@@ -6,10 +6,10 @@
       <v-card-actions>
         <v-spacer></v-spacer>
         <v-btn variant="text" @click="cancel">
-          {{ t('confirmDialog.cancel') }}
+          {{ t('actions.cancel') }}
         </v-btn>
         <v-btn :color="color" variant="flat" @click="confirm">
-          {{ t('confirmDialog.ok') }}
+          {{ t('actions.ok') }}
         </v-btn>
       </v-card-actions>
     </v-card>

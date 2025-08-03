@@ -15,12 +15,15 @@ Rails.application.routes.draw do
       post 'auth/logout', to: 'auth#logout'
       get 'auth/current_user', to: 'auth#show_current_user'
 
+      # 監督一覧
       resources :managers do
-        # 特定のManagerに紐づくTeamの一覧表示と作成
         resources :teams, only: [:index, :create]
       end
-      # Team個別の詳細、更新、削除
+      # チーム一覧
       resources :teams, only: [:index, :show, :update, :create, :destroy]
+
+      # 選手一覧
+      resources :players, only: [:index, :show, :create, :update, :destroy]
 
       # 各種設定マスタ
       resources :player_types, path: 'player-types', only: [:index, :create, :update, :destroy]

@@ -6,6 +6,8 @@ import DefaultLayout from '@/layouts/DefaultLayout.vue'
 import TopMenu from '@/views/TopMenu.vue'
 import ManagerList from '@/views/ManagerList.vue'
 import TeamList from '@/views/TeamList.vue'
+import Players from '@/views/Players.vue'
+
 import Settings from '@/views/Settings.vue'
 
 const routes: RouteRecordRaw[] = [
@@ -41,6 +43,12 @@ const routes: RouteRecordRaw[] = [
         name: 'チーム一覧',
         component: TeamList,
         meta: { title: 'チーム一覧' }
+      },
+      {
+        path: '/players',
+        name: 'Players',
+        component: Players,
+        meta: { requiresAuth: true, title: '選手一覧' }
       },
       {
         path: 'settings',

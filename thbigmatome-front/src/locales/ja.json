@@ -13,7 +13,8 @@
   },
   "validation": {
     "required": "必須項目です。",
-    "dateFormat": "YYYY-MM-DD形式で入力してください"
+    "dateFormat": "YYYY-MM-DD形式で入力してください",
+    "defenseFormat": "0A～5Eの形式で入力してください"
   },
   "loginForm": {
     "title": "ログイン",
@@ -33,6 +34,7 @@
     "dashboard": "トップページ",
     "managers": "監督一覧",
     "teams": "チーム一覧",
+    "players": "選手一覧",
     "settings": "各種設定",
     "collapse": "メニューを縮小",
     "expand": "メニューを展開"
@@ -317,6 +319,104 @@
       },
       "deleteConfirmTitle": "選手タイプの削除",
       "deleteConfirmMessage": "この選手タイプを本当に削除しますか？"
+    }
+  },
+  "playerList": {
+    "title": "選手一覧",
+    "addPlayer": "選手追加",
+    "noData": "選手が登録されていません。",
+    "headers": {
+      "id": "ID",
+      "number": "背番号",
+      "name": "名前",
+      "short_name": "短縮名",
+      "position": "ポジション",
+      "actions": "操作"
+    },
+    "deleteConfirmTitle": "選手の削除",
+    "deleteConfirmMessage": "この選手を本当に削除しますか？",
+    "fetchFailed": "選手一覧の取得に失敗しました。",
+    "deleteSuccess": "選手を削除しました。",
+    "deleteFailed": "選手の削除に失敗しました。"
+  },
+  "playerDialog": {
+    "title": {
+      "add": "選手追加",
+      "edit": "選手情報編集"
+    },
+    "form": {
+      "name": "名前",
+      "number": "背番号",
+      "short_name": "短縮名",
+      "position": "ポジション",
+      "throwing_hand": "投",
+      "batting_hand": "打",
+      "bunt": "バント",
+      "steal_start": "盗塁ST",
+      "steal_end": "盗塁ED",
+      "speed": "走力",
+      "defenseSectionTitle": "守備・送球",
+      "injury_rate": "怪我特徴",
+      "batting_style": "打者特徴",
+      "batting_style_description" : "打者特徴補足",
+      "batting_skills": "打者特殊能力",
+      "player_types": "選手タイプ",
+      "biorhythms": "バイオリズム",
+      "throwing": "送球",
+      "setIndividualOutfielders": "外野手のポジションごとに設定する",
+      "is_pitcher": "投手として登板可（投手能力設定を表示）",
+      "starter_stamina": "先発疲労P",
+      "relief_stamina": "中継疲労P",
+      "is_relief_only": "リリーフ専任",
+      "pitching_style": "投手特徴",
+      "pitching_style_description" : "投手特徴補足",
+      "pinch_pitching_style": "有走者時投手特徴",
+      "pitching_skills": "投手特殊能力",
+      "hasPartnerCatchers": "専属捕手",
+      "catchers": "専属捕手",
+      "catcher_pitching_style": "専属捕手時特徴",
+      "hasPartnerPitchers": "専属捕手",
+      "partner_pitchers": "パートナー投手"
+    },
+    "notifications": {
+      "addSuccess": "選手を追加しました。",
+      "updateSuccess": "選手情報を更新しました。",
+      "saveFailedWithErrors": "保存に失敗しました:\n{errors}",
+      "saveFailed": "選手情報の保存に失敗しました。",
+      "fetchBattingStylesFailed": "打者特徴一覧の取得に失敗しました。",
+      "fetchBattingSkillsFailed": "打者特殊能力一覧の取得に失敗しました。",
+      "fetchPitchingStylesFailed": "投手特徴一覧の取得に失敗しました。",
+      "fetchPitchingSkillsFailed": "投手特殊能力一覧の取得に失敗しました。",
+      "fetchPlayerTypesFailed": "選手タイプ一覧の取得に失敗しました。",
+      "fetchBiorhythmsFailed": "バイオリズム一覧の取得に失敗しました。"
+    },
+    "positions": {
+      "pitcher": "投手",
+      "catcher": "捕手",
+      "infielder": "内野手",
+      "outfielder": "外野手"
+    },
+    "throwing_hands": {
+      "right_throw": "右",
+      "left_throw": "左"
+    },
+    "batting_hands": {
+      "right_bat": "右",
+      "left_bat": "左",
+      "switch_hitter": "両"
+    },
+    "defensePositions": {
+      "p": "投",
+      "c": "捕",
+      "1b": "一",
+      "2b": "二",
+      "3b": "三",
+      "ss": "遊",
+      "of": "外",
+
+      "lf": "左",
+      "cf": "中",
+      "rf": "右"
     }
   }
 }

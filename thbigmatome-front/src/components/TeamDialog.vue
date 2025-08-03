@@ -45,10 +45,10 @@
       <v-card-actions>
         <v-spacer></v-spacer>
         <v-btn color="blue-darken-1" variant="text" @click="close">
-          {{ t('teamDialog.actions.cancel') }}
+          {{ t('actions.cancel') }}
         </v-btn>
         <v-btn color="blue-darken-1" variant="text" @click="save" :disabled="!isFormValid">
-          {{ t('teamDialog.actions.save') }}
+          {{ t('actions.save') }}
         </v-btn>
       </v-card-actions>
     </v-card>

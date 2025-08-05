@@ -12,6 +12,8 @@ class Player < ApplicationRecord
   has_many :player_player_types, dependent: :destroy
   has_many :player_types, through: :player_player_types
   has_many :player_biorhythms, dependent: :destroy
+  has_many :cost_players, dependent: :destroy
+
   has_many :biorhythms, through: :player_biorhythms
 
   has_many :catchers_players, dependent: :destroy
@@ -88,6 +90,30 @@ class Player < ApplicationRecord
   validates :bunt, presence: true, numericality: { only_integer: true, message: 'は整数で入力してください' }, inclusion: { in: 1..10, message: 'は1～10の範囲で入力してください' }
   validates :steal_start, presence: true, numericality: { only_integer: true, message: 'は整数で入力してください' }, inclusion: { in: 1..22, message: 'は1～22の範囲で入力してください' }
   validates :steal_end, presence: true, numericality: { only_integer: true, message: 'は整数で入力してください' }, inclusion: { in: 1..22, message: 'は1～22の範囲で入力してください' }
+
+  def batting_skill_ids
+    player_batting_skills.map(&:batting_skill_id)
+  end
+
+  def player_type_ids
+    player_player_types.map(&:player_type_id)
+  end
+
+  def biorhythm_ids
+    player_biorhythms.map(&:biorhythm_id)
+  end
+
+  def pitching_skill_ids
+    player_pitching_skills.map(&:pitching_skill_id)
+  end
+
+  def catcher_ids
+    catchers_players.map(&:catcher_id)
+  end
+
+  def partner_pitcher_ids
+    partner_pitchers_players.map(&:player_id)
+  end
 
   # 怪我特徴
   validates :injury_rate, presence: true, numericality: { only_integer: true, message: 'は整数で入力してください' }, inclusion: { in: 1..7, message: 'は1～6の範囲で入力してください' }

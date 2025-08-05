@@ -4,7 +4,7 @@ module Api
       before_action :set_player, only: %i[show update destroy]
 
       def index
-        @players = Player.all.order(:id)
+        @players = Player.includes(:player_batting_skills, :player_player_types, :player_biorhythms, :player_pitching_skills, :catchers_players, :partner_pitchers_players).all.order(:id)
         render json: @players.as_json(methods: [:batting_skill_ids, :player_type_ids, :biorhythm_ids, :pitching_skill_ids, :catcher_ids, :partner_pitcher_ids])
       end
 

@@ -106,13 +106,13 @@
 </template>
 
 <script setup lang="ts">
-import type { PlayerPayload } from '@/types/playerPayload';
 import { onMounted, ref, useTemplateRef, watch } from 'vue';
 import axios from '@/plugins/axios'
 import { useSnackbar } from '@/composables/useSnackbar'
 import type { PitchingStyle } from '@/types/pitchingStyle'
 import type { PitchingSkill } from '@/types/pitchingSkill'
 import { useI18n } from 'vue-i18n';
+import type { Player, PlayerPayload } from '@/types/player';
 import PlayerSelect from '@/components/shared/PlayerSelect.vue';
 
 const editableItem = defineModel<PlayerPayload>({
@@ -124,7 +124,7 @@ const { showSnackbar } = useSnackbar()
 
 const pitchingStyles = ref<PitchingStyle[]>([])
 const pitchingSkills = ref<PitchingSkill[]>([])
-const catchers = ref<PlayerPayload[]>([])
+const catchers = ref<Player[]>([])
 
 const showPartnerCatchers = ref(false)
 
@@ -148,7 +148,7 @@ const fetchPitchingSkills = async () => {
 
 const fetchCatchers = async () => {
   try {
-    const response = await axios.get<PlayerPayload[]>('/players')
+    const response = await axios.get<Player[]>('/players')
     catchers.value = response.data
   } catch (error) {
     showSnackbar(t('playerDialog.notifications.fetchCatchersFailed'), 'error')

@@ -98,7 +98,7 @@ const managers = ref<Manager[]>([]);
 const isNew = computed(() => !props.team);
 
 const rules = {
-  required: (value: string) => !!value || t('teamDialog.validation.required'),
+  required: (value: string) => !!value || t('validation.required'),
 };
 
 const isFormValid = computed(() => !!editedTeam.value.name);
@@ -126,6 +126,12 @@ watch(() => props.isVisible, (newVal) => {
     }
   }
 });
+
+watch(() => props.defaultManagerId, (newManagerId) => {
+  if (newManagerId && !props.team) {
+    editedTeam.value.manager_id = newManagerId;
+  }
+}, { immediate: true });
 
 const close = () => {
   internalIsVisible.value = false;

@@ -32,7 +32,10 @@ Rails.application.routes.draw do
       resources :batting_styles, path: 'batting-styles', only: [:index, :create, :update, :destroy]
       resources :batting_skills, path: 'batting-skills', only: [:index, :create, :update, :destroy]
       resources :biorhythms, only: [:index, :create, :update, :destroy]
+      resources :costs, only: [:index, :show, :create, :update, :destroy]
 
+      # コストアサインメント
+      resources :cost_assignments, only: [:index, :create]
 
       # ユーザー登録
       post 'users', to: 'users#create'

@@ -50,22 +50,16 @@ import { useI18n } from 'vue-i18n'
 import axios from '@/plugins/axios'
 import { isAxiosError } from 'axios'
 import { useSnackbar } from '@/composables/useSnackbar'
-import type { PlayerPayload } from '@/types/playerPayload'
+import type { Player } from '@/types/player'
+import type { PlayerPayload } from '@/types/player'
 import PlayerIdentityForm from './PlayerIdentityForm.vue'
 import PitchingAbilityForm from './PitchingAbilityForm.vue'
 import FielderAbilityForm from './FielderAbilityForm.vue'
 import DefenseAbilityForm from './DefenseAbilityForm.vue'
 
-interface Player extends PlayerPayload {
-  id: number;
-  batting_skill_ids: number[];
-  player_type_ids: number[];
-  biorhythm_ids: number[];
-}
-
 const props = defineProps<{
   modelValue: boolean;
-  item: Player | null | undefined;
+  item: Player | null;
 }>()
 
 const emit = defineEmits<{
@@ -93,8 +87,10 @@ const defaultItem: PlayerPayload = {
 const editableItem = ref<PlayerPayload>({ ...defaultItem })
 
 watch(() => props.modelValue, (isOpen) => {
-  if (isOpen && props.item?.id) {
-    editableItem.value = { ...props.item }
+  if (isOpen && props.item) {
+    const { id, partner_pitcher_ids, ...rest } = props.item
+    const partnerPitcherIds = partner_pitcher_ids?.map(p => p.id) ?? []
+    editableItem.value = { ...rest, partner_pitcher_ids: partnerPitcherIds }
   } else {
     editableItem.value = { ...defaultItem }
   }

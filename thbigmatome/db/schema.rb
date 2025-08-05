@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_08_02_102059) do
+ActiveRecord::Schema[8.0].define(version: 2025_08_03_074320) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -45,6 +45,29 @@ ActiveRecord::Schema[8.0].define(version: 2025_08_02_102059) do
     t.index ["catcher_id"], name: "index_catchers_players_on_catcher_id"
     t.index ["player_id", "catcher_id"], name: "index_catchers_players_on_player_id_and_catcher_id", unique: true
     t.index ["player_id"], name: "index_catchers_players_on_player_id"
+  end
+
+  create_table "cost_players", force: :cascade do |t|
+    t.bigint "cost_id", null: false
+    t.bigint "player_id", null: false
+    t.integer "normal_cost"
+    t.integer "relief_only_cost"
+    t.integer "pitcher_only_cost"
+    t.integer "fielder_only_cost"
+    t.integer "two_way_cost"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["cost_id", "player_id"], name: "index_cost_players_on_cost_id_and_player_id"
+    t.index ["cost_id"], name: "index_cost_players_on_cost_id"
+    t.index ["player_id"], name: "index_cost_players_on_player_id"
+  end
+
+  create_table "costs", force: :cascade do |t|
+    t.string "name"
+    t.date "start_date"
+    t.date "end_date"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
   end
 
   create_table "managers", force: :cascade do |t|
@@ -187,6 +210,8 @@ ActiveRecord::Schema[8.0].define(version: 2025_08_02_102059) do
 
   add_foreign_key "catchers_players", "players"
   add_foreign_key "catchers_players", "players", column: "catcher_id"
+  add_foreign_key "cost_players", "costs"
+  add_foreign_key "cost_players", "players"
   add_foreign_key "player_batting_skills", "batting_skills"
   add_foreign_key "player_batting_skills", "players"
   add_foreign_key "player_biorhythms", "biorhythms"

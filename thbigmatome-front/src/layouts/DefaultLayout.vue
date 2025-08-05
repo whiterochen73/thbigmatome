@@ -95,6 +95,7 @@ const menuItems = computed(() => [
   { title: t('navigation.managers'), icon: 'mdi-account-supervisor', value: 'managers', to: '/managers' },
   { title: t('navigation.teams'), icon: 'mdi-account-group', value: 'teams', to: '/teams' },
   { title: t('navigation.players'), icon: 'mdi-account-multiple', value: 'players', to: '/players' },
+  { title: t('navigation.costAssignment'), icon: 'mdi-currency-usd', value: 'costAssignment', to: '/cost_assignment' },
   { title: t('navigation.settings'), icon: 'mdi-cog', value: 'settings', to: '/settings' },
 ]);
 

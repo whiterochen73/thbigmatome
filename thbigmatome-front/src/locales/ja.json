@@ -4,6 +4,13 @@
       "title": "ようこそ！",
       "subtitle": "東方BIG野球まとめツールへ",
       "message": "左側のナビゲーションメニューから各機能をご利用ください。"
+    },
+    "teamSelection": {
+      "title": "チーム選択",
+      "managerName": "監督: {name}",
+      "selectLabel": "操作するチームを選択してください",
+      "noTeams": "担当するチームが登録されていません。",
+      "addTeam": "チームを新規作成する"
     }
   },
   "actions": {
@@ -35,6 +42,7 @@
     "managers": "監督一覧",
     "teams": "チーム一覧",
     "players": "選手一覧",
+    "costAssignment": "コスト登録",
     "settings": "各種設定",
     "collapse": "メニューを縮小",
     "expand": "メニューを展開"
@@ -56,6 +64,16 @@
     "fetchFailed": "チーム一覧の取得に失敗しました。",
     "deleteSuccess": "チームを削除しました。",
     "deleteFailed": "チームの削除に失敗しました。"
+  },
+  "position": {
+    "pitcher": "投手",
+    "catcher": "捕手",
+    "infielder": "内野手",
+    "first_baseman": "一塁手",
+    "second_baseman": "二塁手",
+    "third_baseman": "三塁手",
+    "shortstop": "遊撃手",
+    "outfielder": "外野手"
   },
   "managerList": {
     "title": "監督一覧",
@@ -111,6 +129,9 @@
       "manager": "監督",
       "isActive": "稼働中"
     },
+    "validation": {
+      "required": "必須項目です。"
+    },
     "notifications": {
       "fetchManagersFailed": "監督一覧の取得に失敗しました。",
       "addSuccess": "チームを追加しました。",
@@ -122,6 +143,18 @@
   "confirmDialog": {
   },
   "settings": {
+    "title": "設定",
+    "description": "この画面では、アプリケーション全体で利用される細かいマスターデータの設定を行います。",
+    "tabs": {
+      "player": "選手設定",
+      "squad": "その他"
+    },
+    "player": {
+      "description": "選手に関する設定を行います。"
+    },
+    "squad": {
+      "description": "登録に関する設定を行います。"
+    },
     "pitchingStyle": {
       "title": "投手特徴",
       "add": "特徴を追加",
@@ -289,6 +322,39 @@
       "deleteConfirmTitle": "バイオリズムの削除",
       "deleteConfirmMessage": "本当にこのバイオリズムを削除しますか？"
     },
+    "cost": {
+      "title": "コスト一覧表",
+      "add": "コスト一覧表を追加",
+      "headers": {
+        "name": "名前",
+        "start_date": "開始日",
+        "end_date": "終了日",
+        "actions": "操作"
+      },
+      "dialog": {
+        "title": {
+          "add": "コスト一覧の追加",
+          "edit": "コスト一覧の編集"
+        },
+        "form": {
+          "name": "名前",
+          "start_date": "適用開始日",
+          "end_date": "適用終了日"
+        }
+      },
+      "notifications": {
+        "noData": "コスト一覧表が登録されていません。",
+        "fetchFailed": "コスト一覧表の取得に失敗しました。",
+        "addSuccess": "コスト一覧表を追加しました。",
+        "updateSuccess": "コスト一覧表を更新しました。",
+        "deleteSuccess": "コスト一覧表を削除しました。",
+        "saveFailed": "コスト一覧表の保存に失敗しました。",
+        "saveFailedWithErrors": "保存に失敗しました:\n{errors}",
+        "deleteFailed": "コスト一覧表の削除に失敗しました。"
+      },
+      "deleteConfirmTitle": "コスト一覧表の削除",
+      "deleteConfirmMessage": "本当にこのコスト一覧表を削除しますか？"
+    },
     "playerType": {
       "title": "選手タイプ設定",
       "add": "選手タイプを追加",
@@ -319,6 +385,21 @@
       },
       "deleteConfirmTitle": "選手タイプの削除",
       "deleteConfirmMessage": "この選手タイプを本当に削除しますか？"
+    }
+  },
+  "costAssignment": {
+    "title": "コスト登録",
+    "costList": "コスト一覧",
+    "save": "保存",
+    "headers": {
+      "number": "背番号",
+      "name": "選手名",
+      "player_types": "選手タイプ",
+      "cost": "コスト",
+      "relief_only_cost": "中継ぎ契約コスト",
+      "pitcher_only_cost": "投手専念コスト",
+      "fielder_only_cost": "野手専念コスト",
+      "two_way_cost": "二刀流コスト"
     }
   },
   "playerList": {

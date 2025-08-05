@@ -246,12 +246,12 @@
 </template>
 
 <script setup lang="ts">
-import type { PlayerPayload } from '@/types/playerPayload';
 import { onMounted, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useSnackbar } from '@/composables/useSnackbar'
 import PlayerSelect from '@/components/shared/PlayerSelect.vue';
 import axios from 'axios';
+import type { Player, PlayerPayload } from '@/types/player';
 
 const editableItem = defineModel<PlayerPayload>({
   type: Object,
@@ -273,7 +273,7 @@ const outfielderThrowingOptions = ['S', 'A', 'B', 'C'];
 
 watch(() => editableItem, (newItem) => {
   if (newItem) {
-    showPartnerPitchers.value = !!newItem.value.partner_pitcher_ids.length;
+    showPartnerPitchers.value = !!newItem.value.partner_pitcher_ids?.length;
     showIndividualOutfielders.value = !!(editableItem.value.defense_lf || editableItem.value.defense_cf || editableItem.value.defense_rf);
   } else {
     showIndividualOutfielders.value = false;
@@ -292,10 +292,10 @@ watch(showIndividualOutfielders, (isIndividual) => {
   }
 });
 
-const pitchers = ref<PlayerPayload[]>([]);
+const pitchers = ref<Player[]>([]);
 const fetchPitchers = async () => {
   try {
-    const response = await axios.get<PlayerPayload[]>('/players')
+    const response = await axios.get<Player[]>('/players')
     pitchers.value = response.data
   } catch (error) {
     showSnackbar(t('playerDialog.notifications.fetchCatchersFailed'), 'error')

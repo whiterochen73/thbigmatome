@@ -104,7 +104,6 @@
 </template>
 
 <script setup lang="ts">
-import type { PlayerPayload } from '@/types/playerPayload';
 import { ref, computed, onMounted } from 'vue';
 import axios from '@/plugins/axios'
 import { useSnackbar } from '@/composables/useSnackbar'
@@ -112,6 +111,7 @@ import type { BattingStyle } from '@/types/battingStyle'
 import type { BattingSkill } from '@/types/battingSkill'
 import type { Biorhythm } from '@/types/biorhythm'
 import { useI18n } from 'vue-i18n';
+import type { PlayerPayload } from '@/types/player';
 
 const editableItem = defineModel<PlayerPayload>({
   type: Object,

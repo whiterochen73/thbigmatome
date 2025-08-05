@@ -104,7 +104,7 @@ import { useI18n } from 'vue-i18n';
 import axios from '@/plugins/axios'
 import { useSnackbar } from '@/composables/useSnackbar'
 import type { PlayerType } from '@/types/playerType';
-import type { PlayerPayload } from '@/types/playerPayload';
+import type { PlayerPayload } from '@/types/player';
 const { showSnackbar } = useSnackbar()
 
 const { t } = useI18n();

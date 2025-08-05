@@ -9,12 +9,8 @@
     </v-card-title>
     <v-data-table :headers="headers" :items="costs" class="elevation-1">
       <template v-slot:item.actions="{ item }">
-        <v-icon size="small" class="mr-2" @click="openDialog(item)">
-          mdi-pencil
-        </v-icon>
-        <v-icon size="small" @click="deleteItem(item)">
-          mdi-delete
-        </v-icon>
+        <v-icon size="small" class="mr-2" @click="openDialog(item)" icon="mdi-pencil"></v-icon>
+        <v-icon size="small" @click="deleteItem(item)" icon="mdi-delete"></v-icon>
       </template>
     </v-data-table>
 

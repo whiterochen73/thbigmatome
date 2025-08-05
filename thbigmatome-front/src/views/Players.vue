@@ -22,8 +22,8 @@
             {{ t('position.' + item.position) }}
           </template>
           <template v-slot:item.actions="{ item }">
-            <v-icon small class="me-2" @click="openDialog(item)">mdi-pencil</v-icon>
-            <v-icon small @click="deletePlayer(item.id)">mdi-delete</v-icon>
+            <v-icon size="small" class="me-2" @click="openDialog(item)" icon="mdi-pencil"></v-icon>
+            <v-icon size="small" @click="deletePlayer(item.id)" icon="mdi-delete"></v-icon>
           </template>
         </v-data-table>
       </v-card-text>
@@ -48,10 +48,6 @@ import PlayerDialog from '@/components/players/PlayerDialog.vue'
 import { useDisplay } from 'vuetify'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
 import type { Player } from '@/types/player'
-
-interface PlayerForView extends Player {
-  // Add any view-specific properties here
-}
 
 const { t } = useI18n()
 const { showSnackbar } = useSnackbar()

@@ -50,8 +50,7 @@ import { useI18n } from 'vue-i18n'
 import axios from '@/plugins/axios'
 import { isAxiosError } from 'axios'
 import { useSnackbar } from '@/composables/useSnackbar'
-import type { Player } from '@/types/player'
-import type { PlayerPayload } from '@/types/player'
+import type { PlayerDetail } from '@/types/playerDetail'
 import PlayerIdentityForm from './PlayerIdentityForm.vue'
 import PitchingAbilityForm from './PitchingAbilityForm.vue'
 import FielderAbilityForm from './FielderAbilityForm.vue'
@@ -59,7 +58,7 @@ import DefenseAbilityForm from './DefenseAbilityForm.vue'
 
 const props = defineProps<{
   modelValue: boolean;
-  item: Player | null;
+  item: PlayerDetail | null;
 }>()
 
 const emit = defineEmits<{
@@ -70,27 +69,28 @@ const emit = defineEmits<{
 const { t } = useI18n()
 const { showSnackbar } = useSnackbar()
 
-const defaultItem: PlayerPayload = {
-  name: '', number: null, short_name: null, position: null, throwing_hand: null,
-  batting_style_id: null, batting_skill_ids: [], player_type_ids: [], biorhythm_ids: [],
+const defaultItem: PlayerDetail = {
+  id: null, name: '', number: null, short_name: null, position: null, throwing_hand: null,
+  batting_style_id: null, batting_style_description: null,
+  batting_skill_ids: [], player_type_ids: [], biorhythm_ids: [],
   batting_hand: null, bunt: 1, steal_start: 1, steal_end: 1, speed: 1, injury_rate: 1,
   defense_p: null, defense_c: null, throwing_c: null, defense_1b: null,
   defense_2b: null, defense_3b: null, defense_ss: null, defense_of: null,
   throwing_of: null, defense_lf: null, throwing_lf: null, defense_cf: null,
   throwing_cf: null, defense_rf: null, throwing_rf: null, is_pitcher: false,
   is_relief_only: false, starter_stamina: null, relief_stamina: null,
-  pitching_style_id: null, pinch_pitching_style_id: null, pitching_skill_ids: [],
-  catcher_ids: [], partner_pitcher_ids: [],
+  pitching_style_id: null, pitching_style_description: null,
+  pinch_pitching_style_id: null, pitching_skill_ids: [],
+  catcher_ids: [], catcher_pitching_style_id: null,
+  partner_pitcher_ids: [],
   special_defense_c: null, special_throwing_c: null,
 }
 
-const editableItem = ref<PlayerPayload>({ ...defaultItem })
+const editableItem = ref<PlayerDetail>({ ...defaultItem })
 
 watch(() => props.modelValue, (isOpen) => {
   if (isOpen && props.item) {
-    const { id, partner_pitcher_ids, ...rest } = props.item
-    const partnerPitcherIds = partner_pitcher_ids?.map(p => p.id) ?? []
-    editableItem.value = { ...rest, partner_pitcher_ids: partnerPitcherIds }
+    editableItem.value = props.item
   } else {
     editableItem.value = { ...defaultItem }
   }

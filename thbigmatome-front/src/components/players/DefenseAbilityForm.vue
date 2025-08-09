@@ -54,11 +54,11 @@
     <template v-if="showPartnerPitchers">
       <v-row dense>
         <v-col cols="12" sm="6">
-          <PlayerSelect
+          <PlayerDetailSelect
             v-model="editableItem.partner_pitcher_ids"
             v-model:players="pitchers"
             :label="t('playerDialog.form.partner_pitchers')"
-          ></PlayerSelect>
+          ></PlayerDetailSelect>
         </v-col>
       <v-col cols="6" sm="2">
         <v-text-field
@@ -249,11 +249,11 @@
 import { onMounted, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useSnackbar } from '@/composables/useSnackbar'
-import PlayerSelect from '@/components/shared/PlayerSelect.vue';
+import PlayerDetailSelect from '@/components/shared/PlayerDetailSelect.vue';
 import axios from 'axios';
-import type { Player, PlayerPayload } from '@/types/player';
+import type { PlayerDetail } from '@/types/playerDetail';
 
-const editableItem = defineModel<PlayerPayload>({
+const editableItem = defineModel<PlayerDetail>({
   type: Object,
   required: true,
 });
@@ -292,10 +292,10 @@ watch(showIndividualOutfielders, (isIndividual) => {
   }
 });
 
-const pitchers = ref<Player[]>([]);
+const pitchers = ref<PlayerDetail[]>([]);
 const fetchPitchers = async () => {
   try {
-    const response = await axios.get<Player[]>('/players')
+    const response = await axios.get<PlayerDetail[]>('/players')
     pitchers.value = response.data
   } catch (error) {
     showSnackbar(t('playerDialog.notifications.fetchCatchersFailed'), 'error')

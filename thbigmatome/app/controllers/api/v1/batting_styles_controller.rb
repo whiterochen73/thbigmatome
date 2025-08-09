@@ -6,7 +6,7 @@ module Api
       # GET /api/v1/batting-styles
       def index
         @batting_styles = BattingStyle.all.order(:id)
-        render json: @batting_styles
+        render json: @batting_styles.to_json
       end
 
       # POST /api/v1/batting-styles

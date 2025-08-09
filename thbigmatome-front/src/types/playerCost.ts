@@ -1,8 +1,7 @@
-export interface Cost {
+export interface PlayerCost {
   id: number;
-  name: string;
-  start_date: string;
-  end_date: string;
+  cost_id: number;
+  player_id: number;
   normal_cost: number | null;
   relief_only_cost: number | null;
   pitcher_only_cost: number | null;

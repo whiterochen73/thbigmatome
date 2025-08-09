@@ -23,19 +23,14 @@ import { ref, computed, onMounted } from 'vue';
 import { useI18n } from 'vue-i18n';
 import axios from '@/plugins/axios';
 import CostDialog from '@/components/settings/CostDialog.vue';
+import type { CostList } from '@/types/costList';
 
 const { t } = useI18n();
 
-interface Cost {
-  id: number;
-  name: string;
-  start_date: string | null;
-  end_date: string | null;
-}
 
-const costs = ref<Cost[]>([]);
+const costs = ref<CostList[]>([]);
 const dialogOpen = ref(false);
-const selectedCost = ref<Cost | null>(null);
+const selectedCost = ref<CostList | null>(null);
 
 const headers = computed(() => [
   { title: t('settings.cost.headers.name'), key: 'name' },
@@ -45,11 +40,11 @@ const headers = computed(() => [
 ]);
 
 const fetchCosts = async () => {
-  const response = await axios.get<Cost[]>('/costs');
+  const response = await axios.get<CostList[]>('/costs');
   costs.value = response.data;
 };
 
-const openDialog = (cost: Cost | null) => {
+const openDialog = (cost: CostList | null) => {
   selectedCost.value = cost ? { ...cost } : null;
   dialogOpen.value = true;
 };
@@ -66,7 +61,7 @@ const saveCost = async (costData: { name: string; start_date: string | null; end
   dialogOpen.value = false;
 };
 
-const deleteItem = async (cost: Cost) => {
+const deleteItem = async (cost: CostList) => {
   if (confirm(t('settings.cost.confirmDelete'))) {
     await axios.delete(`/costs/${cost.id}`);
     fetchCosts();

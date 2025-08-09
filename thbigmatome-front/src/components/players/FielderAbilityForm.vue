@@ -111,9 +111,9 @@ import type { BattingStyle } from '@/types/battingStyle'
 import type { BattingSkill } from '@/types/battingSkill'
 import type { Biorhythm } from '@/types/biorhythm'
 import { useI18n } from 'vue-i18n';
-import type { PlayerPayload } from '@/types/player';
+import type { PlayerDetail } from '@/types/playerDetail'
 
-const editableItem = defineModel<PlayerPayload>({
+const editableItem = defineModel<PlayerDetail>({
   type: Object,
   required: true,
 });
@@ -125,8 +125,8 @@ const battingSkills = ref<BattingSkill[]>([])
 const biorhythms = ref<Biorhythm[]>([])
 
 const isBiorhythmEnabled = computed(() => {
-  return editableItem.value.batting_skill_ids.includes(3) ||
-         editableItem.value.pitching_skill_ids.includes(10);
+  return editableItem.value.batting_skill_ids?.includes(3) ||
+         editableItem.value.pitching_skill_ids?.includes(10);
 });
 
 const rules = {

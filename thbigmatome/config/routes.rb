@@ -20,10 +20,13 @@ Rails.application.routes.draw do
         resources :teams, only: [:index, :create]
       end
       # チーム一覧
-      resources :teams, only: [:index, :show, :update, :create, :destroy]
+      resources :teams, only: [:index, :show, :update, :create, :destroy] do
+        resources :team_players, only: [:index, :create]
+      end
 
       # 選手一覧
       resources :players, only: [:index, :show, :create, :update, :destroy]
+      resources :team_registration_players, only: [:index]
 
       # 各種設定マスタ
       resources :player_types, path: 'player-types', only: [:index, :create, :update, :destroy]
@@ -33,6 +36,15 @@ Rails.application.routes.draw do
       resources :batting_skills, path: 'batting-skills', only: [:index, :create, :update, :destroy]
       resources :biorhythms, only: [:index, :create, :update, :destroy]
       resources :costs, only: [:index, :show, :create, :update, :destroy]
+
+      # 日程表マスタ
+      resources :schedules, only: [:index, :create, :update, :destroy] do
+        resources :schedule_details, only: [:index] do
+          collection do
+            post :upsert_all
+          end
+        end
+      end
 
       # コストアサインメント
       resources :cost_assignments, only: [:index, :create]

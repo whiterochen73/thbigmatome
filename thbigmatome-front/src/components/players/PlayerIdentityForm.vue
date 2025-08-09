@@ -104,12 +104,12 @@ import { useI18n } from 'vue-i18n';
 import axios from '@/plugins/axios'
 import { useSnackbar } from '@/composables/useSnackbar'
 import type { PlayerType } from '@/types/playerType';
-import type { PlayerPayload } from '@/types/player';
+import type { PlayerDetail } from '@/types/playerDetail';
 const { showSnackbar } = useSnackbar()
 
 const { t } = useI18n();
 
-const editableItem = defineModel<PlayerPayload>({
+const editableItem = defineModel<PlayerDetail>({
   type: Object,
   required: true,
 });

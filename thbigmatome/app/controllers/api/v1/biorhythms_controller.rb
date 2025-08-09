@@ -6,7 +6,7 @@ module Api
       # GET /api/v1/biorhythms
       def index
         @biorhythms = Biorhythm.all.order(:start_date, :name)
-        render json: @biorhythms
+        render json: @biorhythms.to_json
       end
 
       # POST /api/v1/biorhythms

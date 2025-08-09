@@ -8,6 +8,8 @@ const i18n = createI18n({
   messages: {
     ja,
   },
+  missingWarn: false,
+  fallbackWarn: false,
 })
 
 export default i18n

@@ -18,12 +18,12 @@
           item-value="id"
           class="elevation-1"
         >
-          <template v-slot:item.position="{ item }">
-            {{ t('position.' + item.position) }}
+          <template #item.position="{ item }">
+            {{ t(`baseball.positions.${item.position}`) }}
           </template>
-          <template v-slot:item.actions="{ item }">
+          <template #item.actions="{ item }">
             <v-icon size="small" class="me-2" @click="openDialog(item)" icon="mdi-pencil"></v-icon>
-            <v-icon size="small" @click="deletePlayer(item.id)" icon="mdi-delete"></v-icon>
+            <v-icon size="small" @click="deletePlayer(item.id!)" icon="mdi-delete"></v-icon>
           </template>
         </v-data-table>
       </v-card-text>
@@ -47,17 +47,17 @@ import { useSnackbar } from '@/composables/useSnackbar'
 import PlayerDialog from '@/components/players/PlayerDialog.vue'
 import { useDisplay } from 'vuetify'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
-import type { Player } from '@/types/player'
+import type { PlayerDetail } from '@/types/playerDetail'
 
 const { t } = useI18n()
 const { showSnackbar } = useSnackbar()
 const { displayClasses } = useDisplay()
 
-const players = ref<Player[]>([])
+const players = ref<PlayerDetail[]>([])
 const loading = ref(true)
 const dialog = ref(false)
 const confirmDialog = ref<InstanceType<typeof ConfirmDialog> | null>(null);
-const editedItem = ref<Player | null>(null)
+const editedItem = ref<PlayerDetail | null>(null)
 
 const headers = computed(() => [
   { title: t('playerList.headers.number'), key: 'number', width: '15%' },
@@ -70,7 +70,7 @@ const headers = computed(() => [
 const fetchPlayers = async () => {
   loading.value = true
   try {
-    const response = await axios.get<Player[]>('/players')
+    const response = await axios.get<PlayerDetail[]>('/players')
     players.value = response.data
   } catch (error) {
     showSnackbar(t('playerList.fetchFailed'), 'error')
@@ -81,7 +81,7 @@ const fetchPlayers = async () => {
 
 onMounted(fetchPlayers)
 
-const openDialog = (player: Player | null = null) => {
+const openDialog = (player: PlayerDetail | null = null) => {
   editedItem.value = player ? { ...player } : null; // 参照渡しを防ぐためスプレッド構文でコピー
   dialog.value = true;
 };

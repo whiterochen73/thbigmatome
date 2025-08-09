@@ -30,6 +30,9 @@
                 :label="t('topMenu.teamSelection.selectLabel')"
                 return-object
               ></v-select>
+              <v-btn v-if="selectedTeam" color="primary" @click="goToTeamMembers" class="mt-4">
+                {{ t('topMenu.teamSelection.registerMembers') }}
+              </v-btn>
             </div>
             <div v-else>
               <p>{{ t('topMenu.teamSelection.noTeams') }}</p>
@@ -55,9 +58,11 @@ import axios from 'axios';
 import type { Manager } from '@/types/manager';
 import type { Team } from '@/types/team';
 import TeamDialog from '@/components/TeamDialog.vue';
+import { useRouter } from 'vue-router';
 
 const { t } = useI18n();
 const { user } = useAuth();
+const router = useRouter();
 
 const managers = ref<Manager[]>([]);
 const teams = ref<Team[]>([]);
@@ -73,6 +78,12 @@ const selectTeam = (team: Team) => {
   selectedTeam.value = team;
   // ここで選択されたチームに関するロジックを追加できます
   console.log('Selected team:', team);
+};
+
+const goToTeamMembers = () => {
+  if (selectedTeam.value) {
+    router.push({ name: 'TeamMembers', params: { teamId: selectedTeam.value.id } });
+  }
 };
 
 const fetchManagers = async () => {

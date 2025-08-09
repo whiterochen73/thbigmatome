@@ -6,7 +6,7 @@ module Api
       # GET /api/v1/pitching-skills
       def index
         @pitching_skills = PitchingSkill.all.order(:id)
-        render json: @pitching_skills
+        render json: @pitching_skills.to_json
       end
 
       # POST /api/v1/pitching-skills

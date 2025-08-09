@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_08_03_074320) do
+ActiveRecord::Schema[8.0].define(version: 2025_08_08_163220) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -190,6 +190,38 @@ ActiveRecord::Schema[8.0].define(version: 2025_08_03_074320) do
     t.index ["pitching_style_id"], name: "index_players_on_pitching_style_id"
   end
 
+  create_table "schedule_details", force: :cascade do |t|
+    t.bigint "schedule_id", null: false
+    t.date "date"
+    t.string "date_type"
+    t.integer "priority"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["schedule_id", "date"], name: "index_schedule_details_on_schedule_id_and_date", unique: true
+    t.index ["schedule_id"], name: "index_schedule_details_on_schedule_id"
+  end
+
+  create_table "schedules", force: :cascade do |t|
+    t.string "name"
+    t.date "start_date"
+    t.date "end_date"
+    t.date "effective_date"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+  end
+
+  create_table "team_memberships", force: :cascade do |t|
+    t.bigint "team_id", null: false
+    t.bigint "player_id", null: false
+    t.string "squad", default: "second", null: false
+    t.string "selected_cost_type", default: "normal_cost", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["player_id"], name: "index_team_memberships_on_player_id"
+    t.index ["team_id", "player_id"], name: "index_team_memberships_on_team_id_and_player_id", unique: true
+    t.index ["team_id"], name: "index_team_memberships_on_team_id"
+  end
+
   create_table "teams", force: :cascade do |t|
     t.string "name"
     t.string "short_name"
@@ -224,5 +256,8 @@ ActiveRecord::Schema[8.0].define(version: 2025_08_03_074320) do
   add_foreign_key "players", "pitching_styles"
   add_foreign_key "players", "pitching_styles", column: "catcher_pitching_style_id"
   add_foreign_key "players", "pitching_styles", column: "pinch_pitching_style_id"
+  add_foreign_key "schedule_details", "schedules"
+  add_foreign_key "team_memberships", "players"
+  add_foreign_key "team_memberships", "teams"
   add_foreign_key "teams", "managers"
 end

@@ -8,7 +8,7 @@ module Api
       # GET /api/v1/pitching-styles
       def index
         @pitching_styles = PitchingStyle.all.order(:id)
-        render json: @pitching_styles
+        render json: @pitching_styles.to_json
       end
 
       # POST /api/v1/pitching-styles

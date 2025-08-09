@@ -83,7 +83,7 @@
     </v-row>
     <v-row dense v-show="showPartnerCatchers">
       <v-col cols="12" sm="6">
-        <PlayerSelect
+        <PlayerDetailSelect
           v-model="editableItem.catcher_ids"
           :players="catchers"
           :label="t('playerDialog.form.catchers')"
@@ -112,10 +112,10 @@ import { useSnackbar } from '@/composables/useSnackbar'
 import type { PitchingStyle } from '@/types/pitchingStyle'
 import type { PitchingSkill } from '@/types/pitchingSkill'
 import { useI18n } from 'vue-i18n';
-import type { Player, PlayerPayload } from '@/types/player';
-import PlayerSelect from '@/components/shared/PlayerSelect.vue';
+import type { PlayerDetail } from '@/types/playerDetail'
+import PlayerDetailSelect from '@/components/shared/PlayerDetailSelect.vue'
 
-const editableItem = defineModel<PlayerPayload>({
+const editableItem = defineModel<PlayerDetail>({
   type: Object,
   required: true,
 });
@@ -124,7 +124,7 @@ const { showSnackbar } = useSnackbar()
 
 const pitchingStyles = ref<PitchingStyle[]>([])
 const pitchingSkills = ref<PitchingSkill[]>([])
-const catchers = ref<Player[]>([])
+const catchers = ref<PlayerDetail[]>([])
 
 const showPartnerCatchers = ref(false)
 
@@ -148,7 +148,7 @@ const fetchPitchingSkills = async () => {
 
 const fetchCatchers = async () => {
   try {
-    const response = await axios.get<Player[]>('/players')
+    const response = await axios.get<PlayerDetail[]>('/players')
     catchers.value = response.data
   } catch (error) {
     showSnackbar(t('playerDialog.notifications.fetchCatchersFailed'), 'error')

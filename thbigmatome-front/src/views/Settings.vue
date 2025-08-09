@@ -40,10 +40,11 @@
             </v-tabs-window-item>
             <v-tabs-window-item value="squad">
               <v-row>
-                <v-col cols="12">
-                  <p>{{ $t('settings.squad.description') }}</p>
-                  <!-- 他の設定コンポーネントをここに追加 -->
+                <v-col cols="6">
                   <CostSettings />
+                </v-col>
+                <v-col cols="6">
+                  <ScheduleSettings />
                 </v-col>
               </v-row>
             </v-tabs-window-item>
@@ -64,6 +65,7 @@ import BattingSkillSettings from '@/components/settings/BattingSkillSettings.vue
 import PlayerTypeSettings from '@/components/settings/PlayerTypeSettings.vue';
 import BiorhythmSettings from '@/components/settings/BiorhythmSettings.vue';
 import CostSettings from '@/components/settings/CostSettings.vue';
+import ScheduleSettings from '@/components/settings/ScheduleSettings.vue';
 
 const { t } = useI18n();
 const selectedTab = ref('player');

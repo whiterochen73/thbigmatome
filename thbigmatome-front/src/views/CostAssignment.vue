@@ -5,13 +5,10 @@
         {{ t('costAssignment.title') }}
       </v-card-title>
       <v-card-text>
-        <v-select
-          v-model="selectedCostId"
-          :items="costs"
-          item-title="name"
-          item-value="id"
+        <CostListSelect
+          v-model="selectedCost"
           :label="t('costAssignment.costList')"
-        ></v-select>
+        />
         <v-data-table
           :headers="headers"
           :items="players"
@@ -53,19 +50,22 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, watch } from 'vue';
+import { ref, onMounted, watch, computed } from 'vue';
 import axios from '@/plugins/axios';
 import { useSnackbar } from '@/composables/useSnackbar';
 import { useI18n } from 'vue-i18n';
+import type { CostList } from '@/types/costList';
 import type { Cost } from '@/types/cost';
 import type { CostPlayer } from '@/types/costPlayer';
+import CostListSelect from '@/components/shared/CostListSelect.vue'
 
 const { t } = useI18n();
 const { showSnackbar } = useSnackbar();
 
 const players = ref<CostPlayer[]>([]);
-const costs = ref<Cost[]>([])
-const selectedCostId = ref<number | null>(null);
+const costs = ref<CostList[]>([])
+const selectedCost = ref<CostList | null>(null)
+const selectedCostId = computed<number | null>(() => selectedCost.value ? selectedCost.value.id : null);
 const loading = ref(false);
 
 const costDefinitions = [

@@ -1,6 +1,9 @@
 class Player < ApplicationRecord
   has_one :player_pitching, dependent: :destroy
 
+  has_many :team_memberships, dependent: :destroy
+  has_many :teams, through: :team_memberships
+
   belongs_to :batting_style, optional: true
   has_many :player_batting_skills, dependent: :destroy
   has_many :batting_skills, through: :player_batting_skills

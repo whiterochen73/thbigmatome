@@ -8,6 +8,8 @@ import ManagerList from '@/views/ManagerList.vue'
 import TeamList from '@/views/TeamList.vue'
 import Players from '@/views/Players.vue'
 import CostAssignment from '@/views/CostAssignment.vue'
+import TeamMembers from '@/views/TeamMembers.vue'
+
 
 import Settings from '@/views/Settings.vue'
 
@@ -40,10 +42,16 @@ const routes: RouteRecordRaw[] = [
         meta: { title: '監督一覧' }
       },
       {
-        path: 'teams',
-        name: 'チーム一覧',
-        component: TeamList,
-        meta: { title: 'チーム一覧' }
+        path: '/teams',
+        name: 'TeamList',
+        component: () => import('@/views/TeamList.vue'),
+        meta: { requiresAuth: true },
+      },
+      {
+        path: '/teams/:teamId/members',
+        name: 'TeamMembers',
+        component: () => import('@/views/TeamMembers.vue'),
+        meta: { requiresAuth: true },
       },
       {
         path: '/players',
@@ -62,6 +70,12 @@ const routes: RouteRecordRaw[] = [
         name: '各種設定',
         component: Settings,
         meta: { title: '各種設定' }
+      },
+      {
+        path: '/teams/:teamId/members',
+        name: 'TeamMembers',
+        component: TeamMembers,
+        meta: { requiresAuth: true, title: 'チームメンバー登録' }
       }
     ]
   },

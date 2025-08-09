@@ -6,7 +6,7 @@ module Api
       # GET /api/v1/player-types
       def index
         @player_types = PlayerType.all.order(:id)
-        render json: @player_types
+        render json: @player_types.to_json
       end
 
       # POST /api/v1/player-types

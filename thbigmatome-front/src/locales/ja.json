@@ -10,7 +10,8 @@
       "managerName": "監督: {name}",
       "selectLabel": "操作するチームを選択してください",
       "noTeams": "担当するチームが登録されていません。",
-      "addTeam": "チームを新規作成する"
+      "addTeam": "チームを新規作成する",
+      "registerMembers": "チームメンバーを登録する"
     }
   },
   "actions": {
@@ -385,6 +386,94 @@
       },
       "deleteConfirmTitle": "選手タイプの削除",
       "deleteConfirmMessage": "この選手タイプを本当に削除しますか？"
+    },
+    "schedule": {
+      "title": "日程表",
+      "add": "日程表を追加",
+      "confirmDelete": "この日程表を削除してもよろしいですか？",
+      "headers": {
+        "name": "名前",
+        "start_date": "開始日",
+        "end_date": "終了日",
+        "effective_date": "適用日",
+        "actions": "操作"
+      },
+      "dialog": {
+        "title": {
+          "add": "日程表の追加",
+          "edit": "日程表の編集"
+        },
+        "form": {
+          "name": "名前",
+          "start_date": "開始日",
+          "end_date": "終了日",
+          "effective_date": "適用日"
+        }
+      },
+      "detail": {
+        "title": "日程詳細の設定",
+        "datePickerTitle": "日付を選択",
+        "selectDate": "日付を選択してください",
+        "form": {
+          "name": "名前",
+          "start_date": "開始日",
+          "end_date": "終了日",
+          "effective_date": "適用日"
+        }
+      },
+      "notifications": {
+        "fetchFailed": "スケジュール一覧の取得に失敗しました。",
+        "addSuccess": "スケジュールを追加しました。",
+        "updateSuccess": "スケジュールを更新しました。",
+        "deleteSuccess": "スケジュールを削除しました。",
+        "saveFailed": "スケジュールの保存に失敗しました。",
+        "saveFailedWithErrors": "保存に失敗しました:\n{errors}",
+        "deleteFailed": "スケジュールの削除に失敗しました。"
+      },
+      "dateTypes": {
+        "game_day": "試合日",
+        "interleague_game_day": "交流戦試合日",
+        "playoff_day": "プレーオフ日",
+        "travel_day": "移動日",
+        "reserve_day": "予備日",
+        "interleague_reserve_day": "交流戦予備日",
+        "no_game_day": "試合不可日"
+      }
+    }
+  },
+  "teamMembers": {
+    "title": "チーム「{teamName}」の選手登録",
+    "selectCostList": "コスト一覧表を選択",
+    "selectPlayer": "選手を選択して追加",
+    "addPlayer": "追加",
+    "noData": "選手が登録されていません。",
+    "headers": {
+      "number": "背番号",
+      "name": "名前",
+      "position": "ポジション",
+      "cost": "コスト",
+      "actions": "操作"
+    },
+    "teamMembersTitle": "チームメンバー",
+    "totalCount": "合計人数: {count} / {max}人",
+    "totalCost": "合計コスト: {cost} / {max}",
+    "costTypes": {
+      "normal_cost": "通常",
+      "relief_only_cost": "リリーフ契約",
+      "pitcher_only_cost": "投手専念",
+      "fielder_only_cost": "野手専念",
+      "two_way_cost": "二刀流"
+    },
+    "notifications": {
+      "fetchTeamFailed": "チーム情報の取得に失敗しました。",
+      "fetchPlayersFailed": "選手一覧の取得に失敗しました。",
+      "fetchTeamPlayersFailed": "チームの選手一覧の取得に失敗しました。",
+      "playerAlreadyAdded": "この選手は既に追加されています。",
+      "maxPlayersExceeded": "登録人数が上限（{max}人）を超えています。",
+      "totalCostExceeded": "合計コストが上限（{max}）を超えています。",
+      "selectCostList": "コスト一覧表を選択してください。",
+      "saveSuccess": "選手情報を保存しました。",
+      "saveFailed": "選手情報の保存に失敗しました。"
     }
   },
   "costAssignment": {
@@ -487,6 +576,43 @@
       "switch_hitter": "両"
     },
     "defensePositions": {
+      "p": "投",
+      "c": "捕",
+      "1b": "一",
+      "2b": "二",
+      "3b": "三",
+      "ss": "遊",
+      "of": "外",
+
+      "lf": "左",
+      "cf": "中",
+      "rf": "右"
+    }
+  },
+  "baseball": {
+    "positions": {
+      "pitcher": "投手",
+      "catcher": "捕手",
+      "infielder": "内野手",
+      "first_baseman": "一塁手",
+      "second_baseman": "二塁手",
+      "third_baseman": "三塁手",
+      "shortstop": "遊撃手",
+      "outfielder": "外野手",
+      "left_fielder": "左翼手",
+      "center_fielder": "中堅手",
+      "right_fielder": "右翼手"
+    },
+    "throwingHands": {
+      "right_throw": "右",
+      "left_throw": "左"
+    },
+    "battingHands": {
+      "right_bat": "右",
+      "left_bat": "左",
+      "switch_hitter": "両"
+    },
+    "shortPositions": {
       "p": "投",
       "c": "捕",
       "1b": "一",

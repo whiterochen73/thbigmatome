@@ -44,13 +44,36 @@
               <span>{{ t('teamMembers.totalCost', { cost: totalTeamCost, max: TOTAL_TEAM_MAX_COST }) }}</span>
             </div>
           </v-card-title>
+          <v-card-text>
+            <v-chip-group column>
+              <v-chip v-for="(count, position) in positionCounts" :key="position" class="mr-2">
+                {{ t(`baseball.positions.${position}`) }}: {{ count }}
+              </v-chip>
+            </v-chip-group>
+          </v-card-text>
           <v-data-table
             :headers="headers"
             :items="teamPlayers"
             :no-data-text="t('teamMembers.noData')"
+            density="compact"
+            items-per-page="-1"
+            :disable-sort="false"
           >
+            <template #item.player_type_ids="{ item }">
+              <v-chip-group column>
+                <v-chip v-for="typeId in item.player_type_ids" :key="typeId">
+                  {{ playerTypes.find(pt => pt.id === typeId)?.name || t('teamMembers.unknownType') }}
+                </v-chip>
+              </v-chip-group>
+            </template>
             <template #item.position="{ item }">
               {{ t(`baseball.positions.${item.position}`) }}
+            </template>
+            <template #item.throws="{ item }">
+              {{ t(`baseball.throwingHands.${item.throwing_hand}`) }}
+            </template>
+            <template #item.bats="{ item }">
+              {{ t(`baseball.battingHands.${item.batting_hand}`) }}
             </template>
             <template #item.cost="{ item }">
               <div class="d-flex align-center">
@@ -59,7 +82,7 @@
                   :items="getAvailableCostTypes(item)"
                   item-title="text"
                   item-value="value"
-                  dense
+                  density="compact"
                   hide-details
                   @update:modelValue="updatePlayerCost(item)"
                 ></v-select>
@@ -93,6 +116,7 @@ import type { Player } from '@/types/player';
 import type { Team } from '@/types/team';
 import type { CostList } from '@/types/costList'
 import CostListSelect from '@/components/shared/CostListSelect.vue'
+import type { PlayerType } from '@/types/playerType';
 
 type CostType = 'normal_cost' | 'relief_only_cost' | 'pitcher_only_cost' | 'fielder_only_cost' | 'two_way_cost';
 
@@ -112,6 +136,7 @@ const teamPlayers = ref<TeamPlayer[]>([]);
 const selectedCost = ref<CostList | null>(null)
 const selectedCostListId = computed(() => selectedCost.value ? selectedCost.value.id : null);
 const selectedPlayer = ref<Player | null>(null);
+const playerTypes = ref<PlayerType[]>([]);
 
 const teamId = computed(() => Number(route.params.teamId));
 
@@ -120,11 +145,14 @@ const MAX_PLAYERS = 50;
 const TOTAL_TEAM_MAX_COST = 200;
 
 const headers = computed(() => [
-  { title: t('teamMembers.headers.number'), value: 'number' },
-  { title: t('teamMembers.headers.name'), value: 'name' },
-  { title: t('teamMembers.headers.position'), value: 'position' },
+  { title: t('teamMembers.headers.number'), key: 'number' },
+  { title: t('teamMembers.headers.name'), key: 'name' },
+  { title: t('teamMembers.headers.player_types'), key: 'player_type_ids' },
+  { title: t('teamMembers.headers.position'), key: 'position' },
+  { title: t('teamMembers.headers.throws'), key: 'throws' },
+  { title: t('teamMembers.headers.bats'), key: 'bats' },
   { title: t('teamMembers.headers.cost'), value: 'cost' },
-  { title: t('teamMembers.headers.actions'), value: 'actions', sortable: false, width: '100px' },
+  { title: t('teamMembers.headers.actions'), key: 'actions', sortable: false, width: '100px' },
 ]);
 
 // --- Computed properties ---
@@ -143,6 +171,21 @@ const availablePlayers = computed(() => {
     const costPlayer = p.cost_players.find(cp => cp.cost_id === selectedCostListId.value);
     return costPlayer && costPlayer.normal_cost !== null && !teamPlayers.value.some(tp => tp.id === p.id);
   });
+});
+
+const positionCounts = computed(() => {
+  const counts: Record<string, number> = {
+    pitcher: 0,
+    catcher: 0,
+    infielder: 0,
+    outfielder: 0,
+  };
+  for (const player of teamPlayers.value) {
+    if (player.position in counts) {
+      counts[player.position]++;
+    }
+  }
+  return counts;
 });
 
 // --- API Calls ---
@@ -215,7 +258,18 @@ const fetchTeamPlayers = async () => {
 watch(selectedCost, async () => {
   await fetchAllPlayers();
   await fetchTeamPlayers();
+  await fetchPlayerTypes();
 });
+
+const fetchPlayerTypes = async () => {
+  try {
+    const response = await axios.get<PlayerType[]>('/player-types');
+    playerTypes.value = response.data;
+  } catch (error) {
+    showSnackbar(t('teamMembers.notifications.fetchPlayerTypesFailed'), 'error');
+    console.error('Failed to fetch player types:', error);
+  }
+};
 
 // --- Player & Cost Management ---
 

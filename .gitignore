@@ -1,3 +1,5 @@
 # Ignore editor-specific files.
 /.vscode/
 /.gemini/
+/**/.serena/
+/**/.vscode/

@@ -6,5 +6,6 @@ export interface Team {
   short_name: string;
   is_active: boolean;
   manager_id: number;
+  has_season: boolean;
   manager?: Manager;
 }

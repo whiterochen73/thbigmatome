@@ -1,14 +1,14 @@
 <template>
   <v-autocomplete
-    v-model="selectedPlayers"
+    v-model="selectedValue"
     :search="search"
     :items="players"
     :label="label"
     item-title="name"
     item-value="id"
     :custom-filter="filter"
-    multiple
-    chips
+    :multiple="multiple"
+    :chips="multiple"
     clearable
     density="compact"
   ></v-autocomplete>
@@ -20,8 +20,8 @@ import type { Player } from '@/types/player'
 
 const props = defineProps({
   modelValue: {
-    type: Array<number>,
-    default: () => [],
+    type: [Number, Array] as any,
+    default: null,
   },
   players: {
     type: Array as () => Player[],
@@ -31,23 +31,27 @@ const props = defineProps({
     type: String,
     required: true,
   },
+  multiple: {
+    type: Boolean,
+    default: false,
+  },
 });
 
 const emit = defineEmits(['update:modelValue']);
 
 const search = ref('');
 
-const selectedPlayers = ref<number[]>(props.modelValue);
+const selectedValue = ref(props.modelValue);
 
 watch(
   () => props.modelValue,
   (newValue) => {
-    selectedPlayers.value = newValue;
+    selectedValue.value = newValue;
   }
 );
 
 watch(
-  () => selectedPlayers.value,
+  () => selectedValue.value,
   (newValue) => {
     emit('update:modelValue', newValue);
   }

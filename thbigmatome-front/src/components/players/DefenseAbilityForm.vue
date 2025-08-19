@@ -11,7 +11,7 @@
       <v-col cols="6" sm="2">
         <v-text-field
           v-model="editableItem.defense_p"
-          :label="t('playerDialog.defensePositions.p')"
+          :label="t('baseball.shortPositions.p')"
           :rules="[rules.defenseFormat]"
           maxlength="2"
 
@@ -23,7 +23,7 @@
       <v-col cols="6" sm="2">
         <v-text-field
           v-model="editableItem.defense_c"
-          :label="t('playerDialog.defensePositions.c')"
+          :label="t('baseball.shortPositions.c')"
           :rules="[rules.defenseFormat]"
           maxlength="2"
           counter
@@ -35,7 +35,7 @@
       <v-col cols="6" sm="2">
         <v-text-field
           v-model.number="editableItem.throwing_c"
-          :label="`${t('playerDialog.defensePositions.c')} ${t('playerDialog.form.throwing')}`"
+          :label="`${t('baseball.shortPositions.c')} ${t('playerDialog.form.throwing')}`"
           type="number"
           :disabled="!editableItem.defense_c"
           clearable
@@ -63,7 +63,7 @@
       <v-col cols="6" sm="2">
         <v-text-field
           v-model="editableItem.special_defense_c"
-          :label="t('playerDialog.defensePositions.c')"
+          :label="t('baseball.shortPositions.c')"
           :rules="[rules.defenseFormat]"
           maxlength="2"
           counter
@@ -75,7 +75,7 @@
       <v-col cols="6" sm="2">
         <v-text-field
           v-model.number="editableItem.special_throwing_c"
-          :label="`${t('playerDialog.defensePositions.c')} ${t('playerDialog.form.throwing')}`"
+          :label="`${t('baseball.shortPositions.c')} ${t('playerDialog.form.throwing')}`"
           type="number"
           :disabled="!editableItem.special_defense_c"
           clearable
@@ -90,7 +90,7 @@
       <v-col cols="6" sm="2">
         <v-text-field
           v-model="editableItem.defense_1b"
-          :label="t('playerDialog.defensePositions.1b')"
+          :label="t('baseball.shortPositions.1b')"
           :rules="[rules.defenseFormat]"
           maxlength="2"
           counter
@@ -102,7 +102,7 @@
       <v-col cols="6" sm="2">
         <v-text-field
           v-model="editableItem.defense_2b"
-          :label="t('playerDialog.defensePositions.2b')"
+          :label="t('baseball.shortPositions.2b')"
           :rules="[rules.defenseFormat]"
           maxlength="2"
           counter
@@ -114,7 +114,7 @@
       <v-col cols="6" sm="2">
         <v-text-field
           v-model="editableItem.defense_3b"
-          :label="t('playerDialog.defensePositions.3b')"
+          :label="t('baseball.shortPositions.3b')"
           :rules="[rules.defenseFormat]"
           maxlength="2"
           counter
@@ -126,7 +126,7 @@
       <v-col cols="6" sm="2">
         <v-text-field
           v-model="editableItem.defense_ss"
-          :label="t('playerDialog.defensePositions.ss')"
+          :label="t('baseball.shortPositions.ss')"
           :rules="[rules.defenseFormat]"
           maxlength="2"
           counter
@@ -140,7 +140,7 @@
         <v-col cols="6" sm="2">
           <v-text-field
             v-model="editableItem.defense_of"
-            :label="t('playerDialog.defensePositions.of')"
+            :label="t('baseball.shortPositions.of')"
             :rules="[rules.defenseFormat]"
             maxlength="2"
             counter
@@ -153,7 +153,7 @@
           <v-select
             v-model="editableItem.throwing_of"
             :items="outfielderThrowingOptions"
-            :label="`${t('playerDialog.defensePositions.of')} ${t('playerDialog.form.throwing')}`"
+            :label="`${t('baseball.shortPositions.of')} ${t('playerDialog.form.throwing')}`"
             :disabled="!editableItem.defense_of"
             clearable
             density="compact"
@@ -177,7 +177,7 @@
         <v-col cols="12" sm="2">
           <v-text-field
             v-model="editableItem.defense_lf"
-            :label="t('playerDialog.defensePositions.lf')"
+            :label="t('baseball.shortPositions.lf')"
             :rules="[rules.defenseFormat]"
             maxlength="2"
             counter
@@ -190,7 +190,7 @@
           <v-select
             v-model="editableItem.throwing_lf"
             :items="outfielderThrowingOptions"
-            :label="`${t('playerDialog.defensePositions.lf')} ${t('playerDialog.form.throwing')}`"
+            :label="`${t('baseball.shortPositions.lf')} ${t('playerDialog.form.throwing')}`"
             :disabled="!editableItem.defense_lf"
             clearable
             density="compact"
@@ -199,7 +199,7 @@
         <v-col cols="12" sm="2">
           <v-text-field
             v-model="editableItem.defense_cf"
-            :label="t('playerDialog.defensePositions.cf')"
+            :label="t('baseball.shortPositions.cf')"
             :rules="[rules.defenseFormat]"
             maxlength="2"
             counter
@@ -212,7 +212,7 @@
           <v-select
             v-model="editableItem.throwing_cf"
             :items="outfielderThrowingOptions"
-            :label="`${t('playerDialog.defensePositions.cf')} ${t('playerDialog.form.throwing')}`"
+            :label="`${t('baseball.shortPositions.cf')} ${t('playerDialog.form.throwing')}`"
             :disabled="!editableItem.defense_cf"
             clearable
             density="compact"
@@ -221,7 +221,7 @@
         <v-col cols="12" sm="2">
           <v-text-field
             v-model="editableItem.defense_rf"
-            :label="t('playerDialog.defensePositions.rf')"
+            :label="t('baseball.shortPositions.rf')"
             :rules="[rules.defenseFormat]"
             maxlength="2"
             counter
@@ -234,7 +234,7 @@
           <v-select
             v-model="editableItem.throwing_rf"
             :items="outfielderThrowingOptions"
-            :label="`${t('playerDialog.defensePositions.rf')} ${t('playerDialog.form.throwing')}`"
+            :label="`${t('baseball.shortPositions.rf')} ${t('playerDialog.form.throwing')}`"
             :disabled="!editableItem.defense_rf"
             clearable
             density="compact"

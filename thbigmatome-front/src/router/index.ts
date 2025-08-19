@@ -51,7 +51,7 @@ const routes: RouteRecordRaw[] = [
         path: '/teams/:teamId/members',
         name: 'TeamMembers',
         component: () => import('@/views/TeamMembers.vue'),
-        meta: { requiresAuth: true },
+        meta: { requiresAuth: true, title: 'チームメンバー登録' },
       },
       {
         path: '/players',
@@ -72,10 +72,22 @@ const routes: RouteRecordRaw[] = [
         meta: { title: '各種設定' }
       },
       {
-        path: '/teams/:teamId/members',
-        name: 'TeamMembers',
-        component: TeamMembers,
-        meta: { requiresAuth: true, title: 'チームメンバー登録' }
+        path: '/teams/:teamId/season',
+        name: 'SeasonPortal',
+        component: () => import('@/views/SeasonPortal.vue'),
+        meta: { requiresAuth: true, title: 'シーズンポータル' }
+      },
+      {
+        path: '/teams/:teamId/roster',
+        name: 'SeasonRoster',
+        component: () => import('@/views/ActiveRoster.vue'),
+        meta: { requiresAuth: true, title: '出場選手登録' }
+      },
+      {
+        path: '/teams/:teamId/season/games/:scheduleId',
+        name: 'GameResult',
+        component: () => import('@/views/GameResult.vue'),
+        meta: { requiresAuth: true, title: '試合結果入力' }
       }
     ]
   },

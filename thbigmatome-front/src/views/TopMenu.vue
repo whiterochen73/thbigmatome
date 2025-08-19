@@ -30,9 +30,17 @@
                 :label="t('topMenu.teamSelection.selectLabel')"
                 return-object
               ></v-select>
-              <v-btn v-if="selectedTeam" color="primary" @click="goToTeamMembers" class="mt-4">
-                {{ t('topMenu.teamSelection.registerMembers') }}
-              </v-btn>
+              <div class="mt-4" v-if="selectedTeam">
+                <v-btn color="primary" @click="goToTeamMembers" class="me-4">
+                  {{ t('topMenu.teamSelection.registerMembers') }}
+                </v-btn>
+                <v-btn color="primary" @click="seasonInitializationDialog = true" v-if="!selectedTeam.has_season">
+                  {{ t('topMenu.seasonInitialization.title') }}
+                </v-btn>
+                <v-btn color="secondary" @click="goToSeasonPortal" v-if="selectedTeam.has_season">
+                  {{ t('topMenu.seasonPortal.title') }}
+                </v-btn>
+              </div>
             </div>
             <div v-else>
               <p>{{ t('topMenu.teamSelection.noTeams') }}</p>
@@ -46,18 +54,27 @@
       v-model:isVisible="teamDialog"
       :team="null"
       :default-manager-id="manager?.id"
-      @save="handleSave" />
+      @save="handleSave"
+    />
+    <SeasonInitializationDialog
+      v-model:isVisible="seasonInitializationDialog"
+      :schedules="schedules"
+      :selected-team="selectedTeam"
+      @save="handleSeasonSave"
+    />
   </v-container>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue';
+import { ref, onMounted } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useAuth } from '@/composables/useAuth';
 import axios from 'axios';
 import type { Manager } from '@/types/manager';
 import type { Team } from '@/types/team';
+import type { ScheduleList } from '@/types/scheduleList';
 import TeamDialog from '@/components/TeamDialog.vue';
+import SeasonInitializationDialog from '@/components/SeasonInitializationDialog.vue';
 import { useRouter } from 'vue-router';
 
 const { t } = useI18n();
@@ -69,20 +86,22 @@ const teams = ref<Team[]>([]);
 const selectedTeam = ref<Team | null>(null);
 const manager = ref<Manager | null>(null);
 const teamDialog = ref(false);
+const seasonInitializationDialog = ref(false);
+const schedules = ref<ScheduleList[]>([]);
 
 const addTeam = () => {
   teamDialog.value = true;
 };
 
-const selectTeam = (team: Team) => {
-  selectedTeam.value = team;
-  // ここで選択されたチームに関するロジックを追加できます
-  console.log('Selected team:', team);
-};
-
 const goToTeamMembers = () => {
   if (selectedTeam.value) {
     router.push({ name: 'TeamMembers', params: { teamId: selectedTeam.value.id } });
+  }
+};
+
+const goToSeasonPortal = () => {
+  if (selectedTeam.value) {
+    router.push({ name: 'SeasonPortal', params: { teamId: selectedTeam.value.id } });
   }
 };
 
@@ -110,6 +129,15 @@ const fetchTeams = async (managerId: number) => {
   }
 };
 
+const fetchSchedules = async () => {
+  try {
+    const response = await axios.get('/schedules');
+    schedules.value = response.data;
+  } catch (error) {
+    console.error('Failed to fetch schedules:', error);
+  }
+};
+
 const handleSave = () => {
   if (manager.value) {
     fetchTeams(manager.value.id);
@@ -117,7 +145,15 @@ const handleSave = () => {
   teamDialog.value = false;
 };
 
+const handleSeasonSave = () => {
+  seasonInitializationDialog.value = false;
+  if (manager.value) {
+    fetchTeams(manager.value.id);
+  }
+};
+
 onMounted(() => {
   fetchManagers();
+  fetchSchedules();
 });
 </script>

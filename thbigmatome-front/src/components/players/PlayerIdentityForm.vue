@@ -115,21 +115,21 @@ const editableItem = defineModel<PlayerDetail>({
 });
 
 const positionOptions = computed(() => [
-  { value: 'pitcher', title: 'pitcher', japanese: t('playerDialog.positions.pitcher') },
-  { value: 'catcher', title: 'catcher', japanese: t('playerDialog.positions.catcher') },
-  { value: 'infielder', title: 'infielder', japanese: t('playerDialog.positions.infielder') },
-  { value: 'outfielder', title: 'outfielder', japanese: t('playerDialog.positions.outfielder') },
+  { value: 'pitcher', title: 'pitcher', japanese: t('baseball.positions.pitcher') },
+  { value: 'catcher', title: 'catcher', japanese: t('baseball.positions.catcher') },
+  { value: 'infielder', title: 'infielder', japanese: t('baseball.positions.infielder') },
+  { value: 'outfielder', title: 'outfielder', japanese: t('baseball.positions.outfielder') },
 ]);
 
 const throwingHandOptions = computed(() => [
-  { value: 'right_throw', title: 'right_throw', japanese: t('playerDialog.throwing_hands.right_throw') },
-  { value: 'left_throw', title: 'left_throw', japanese: t('playerDialog.throwing_hands.left_throw') },
+  { value: 'right_throw', title: 'right_throw', japanese: t('baseball.throwingHands.right_throw') },
+  { value: 'left_throw', title: 'left_throw', japanese: t('baseball.throwingHands.left_throw') },
 ]);
 
 const battingHandOptions = computed(() => [
-  { value: 'right_bat', title: 'right_bat', japanese: t('playerDialog.batting_hands.right_bat') },
-  { value: 'left_bat', title: 'left_bat', japanese: t('playerDialog.batting_hands.left_bat') },
-  { value: 'switch_hitter', title: 'switch_hitter', japanese: t('playerDialog.batting_hands.switch_hitter') },
+  { value: 'right_bat', title: 'right_bat', japanese: t('baseball.battingHands.right_bat') },
+  { value: 'left_bat', title: 'left_bat', japanese: t('baseball.battingHands.left_bat') },
+  { value: 'switch_hitter', title: 'switch_hitter', japanese: t('baseball.battingHands.switch_hitter') },
 ]);
 
 const playerTypes = ref<PlayerType[]>([])

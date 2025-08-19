@@ -9,7 +9,7 @@ module Api
         if @manager # Managerに紐づくTeamを取得
           @teams = @manager.teams
         else # 全てのTeamを取得 (必要であれば)
-          @teams = Team.all
+          @teams = Team.preload(:manager, :season).all
         end
         render json: @teams
       end

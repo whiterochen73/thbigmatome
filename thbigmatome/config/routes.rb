@@ -21,8 +21,16 @@ Rails.application.routes.draw do
       end
       # チーム一覧
       resources :teams, only: [:index, :show, :update, :create, :destroy] do
+        resource :season, only: [:show, :update], controller: 'team_seasons' do
+          patch 'season_schedules/:id', to: 'team_seasons#update_season_schedule'
+        end
+        resource :roster, only: [:show, :create], controller: 'team_rosters'
+        resource :key_player, only: [:create], controller: 'team_key_players'
         resources :team_players, only: [:index, :create]
+        resources :team_memberships, only: [:index]
       end
+
+      resources :game, only: [:show, :update]
 
       # 選手一覧
       resources :players, only: [:index, :show, :create, :update, :destroy]
@@ -36,6 +44,7 @@ Rails.application.routes.draw do
       resources :batting_skills, path: 'batting-skills', only: [:index, :create, :update, :destroy]
       resources :biorhythms, only: [:index, :create, :update, :destroy]
       resources :costs, only: [:index, :show, :create, :update, :destroy]
+      resources :seasons, only: [:create]
 
       # 日程表マスタ
       resources :schedules, only: [:index, :create, :update, :destroy] do

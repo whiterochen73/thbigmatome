@@ -29,3 +29,8 @@
 
 en:
   hello: "Hello world"
+  seasonPortal:
+    gameResult:
+      win: "Win"
+      lose: "Loss"
+      draw: "Draw"

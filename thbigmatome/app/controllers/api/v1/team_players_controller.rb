@@ -9,19 +9,21 @@ class Api::V1::TeamPlayersController < ApplicationController
 
   def create
     player_params = params.require(:players)
+    incoming_player_ids = player_params.map { |p| p[:player_id] }
 
     ActiveRecord::Base.transaction do
-      @team.team_memberships.destroy_all
+      # Delete memberships for players who are no longer in the team
+      @team.team_memberships.where.not(player_id: incoming_player_ids).destroy_all
+
+      # Upsert memberships for incoming players
       player_params.each do |p|
-        @team.team_memberships.create!(
-          player_id: p[:player_id],
-          selected_cost_type: p[:selected_cost_type]
-        )
+        membership = @team.team_memberships.find_or_initialize_by(player_id: p[:player_id])
+        membership.update!(selected_cost_type: p[:selected_cost_type])
       end
     end
 
     render json: { message: 'Team members updated successfully' }, status: :ok
-  rescue => e
+  rescue ActiveRecord::RecordInvalid => e
     render json: { error: e.message }, status: :unprocessable_entity
   end
 

@@ -1,0 +1,19 @@
+# Read about fixtures at https://api.rubyonrails.org/classes/ActiveRecord/FixtureSet.html
+
+one:
+  team_membership: one
+  season: one
+  absence_type: 1
+  reason: MyText
+  start_date: 2025-08-21
+  duration: 1
+  duration_unit: MyString
+
+two:
+  team_membership: two
+  season: two
+  absence_type: 1
+  reason: MyText
+  start_date: 2025-08-21
+  duration: 1
+  duration_unit: MyString

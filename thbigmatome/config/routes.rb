@@ -44,7 +44,10 @@ Rails.application.routes.draw do
       resources :batting_skills, path: 'batting-skills', only: [:index, :create, :update, :destroy]
       resources :biorhythms, only: [:index, :create, :update, :destroy]
       resources :costs, only: [:index, :show, :create, :update, :destroy]
-      resources :seasons, only: [:create]
+
+      # シーズンマスタ
+      resources :seasons, only: [:create]      
+      resources :player_absences, only: [:index, :create, :update, :destroy]
 
       # 日程表マスタ
       resources :schedules, only: [:index, :create, :update, :destroy] do

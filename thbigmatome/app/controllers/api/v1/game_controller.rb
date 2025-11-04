@@ -48,6 +48,8 @@ class Api::V1::GameController < ApplicationController
       losing_pitcher_id: season_schedule.losing_pitcher&.id,
       save_pitcher_id: season_schedule.save_pitcher&.id,
       scoreboard: season_schedule.scoreboard,
+      starting_lineup: season_schedule.starting_lineup,
+      opponent_starting_lineup: season_schedule.opponent_starting_lineup,
       game_result: game_result
     }, status: :ok
   rescue ActiveRecord::RecordNotFound
@@ -84,7 +86,9 @@ class Api::V1::GameController < ApplicationController
       :winning_pitcher_id,
       :losing_pitcher_id,
       :save_pitcher_id,
-      scoreboard: { home: [], away: [] }
+      scoreboard: { home: [], away: [] },
+      starting_lineup: [ :player_id, :position, :order ],
+      opponent_starting_lineup: [ :player_id, :position, :order ]
     )
 
     permitted_params[:oppnent_score] = permitted_params.delete(:opponent_score) if permitted_params.key?(:opponent_score)

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_08_11_085445) do
+ActiveRecord::Schema[8.0].define(version: 2025_09_01_145219) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -93,6 +93,20 @@ ActiveRecord::Schema[8.0].define(version: 2025_08_11_085445) do
     t.string "description"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+  end
+
+  create_table "player_absences", force: :cascade do |t|
+    t.bigint "team_membership_id", null: false
+    t.bigint "season_id", null: false
+    t.integer "absence_type", null: false
+    t.text "reason"
+    t.date "start_date", null: false
+    t.integer "duration", null: false
+    t.string "duration_unit", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["season_id"], name: "index_player_absences_on_season_id"
+    t.index ["team_membership_id"], name: "index_player_absences_on_team_membership_id"
   end
 
   create_table "player_batting_skills", force: :cascade do |t|
@@ -239,6 +253,8 @@ ActiveRecord::Schema[8.0].define(version: 2025_08_11_085445) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.jsonb "scoreboard"
+    t.jsonb "starting_lineup"
+    t.jsonb "opponent_starting_lineup"
     t.index ["announced_starter_id"], name: "index_season_schedules_on_announced_starter_id"
     t.index ["losing_pitcher_id"], name: "index_season_schedules_on_losing_pitcher_id"
     t.index ["oppnent_team_id"], name: "index_season_schedules_on_oppnent_team_id"
@@ -293,6 +309,8 @@ ActiveRecord::Schema[8.0].define(version: 2025_08_11_085445) do
   add_foreign_key "catchers_players", "players", column: "catcher_id"
   add_foreign_key "cost_players", "costs"
   add_foreign_key "cost_players", "players"
+  add_foreign_key "player_absences", "seasons"
+  add_foreign_key "player_absences", "team_memberships"
   add_foreign_key "player_batting_skills", "batting_skills"
   add_foreign_key "player_batting_skills", "players"
   add_foreign_key "player_biorhythms", "biorhythms"

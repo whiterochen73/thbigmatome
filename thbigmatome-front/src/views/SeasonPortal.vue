@@ -23,6 +23,21 @@
       >
         {{ t('activeRoster.title') }}
       </v-btn>
+      <v-btn
+        class="mx-2"
+        color="red"
+        variant="flat"
+        @click="isDialogOpen = true">
+        {{ t('seasonPortal.registerAbsence') }}
+      </v-btn>
+      <v-btn
+        class="mx-2"
+        color="red-darken-4"
+        variant="flat"
+        :to="playerAbsenceRoute"
+      >
+        {{ t('playerAbsenceHistory.title') }}
+      </v-btn>
       <template #append>
         <v-btn
           icon
@@ -44,8 +59,15 @@
       </template>
     </v-toolbar>
 
-    <v-row class="mt-4">
-      <v-col>
+    <v-row class="mt-2">
+        <v-col>
+          <AbsenceInfo
+            :season-id="season?.id || null"
+            :current-date="formattedCurrentDate"
+            ref="absenceInfo"
+            class="mb-4"
+          />
+
         <div class="d-flex justify-space-between align-center mb-4">
           <v-btn icon @click="prevMonth">
             <v-icon>mdi-chevron-left</v-icon>
@@ -127,22 +149,35 @@
       </v-col>
     </v-row>
   </v-container>
+
+  <PlayerAbsenceFormDialog
+    v-model="isDialogOpen"
+    :team-id="teamId || 0"
+    :season-id="season?.id || 0"
+    :initial-start-date="formattedCurrentDate"
+    @saved="handleAbsenceSaved"
+  />
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue';
+import { ref, onMounted, computed, useTemplateRef } from 'vue';
 import { useRoute } from 'vue-router';
 import axios from 'axios';
 import { useI18n } from 'vue-i18n';
 import type { SeasonDetail } from '@/types/seasonDetail';
 import type { SeasonSchedule } from '@/types/seasonSchedule';
+import AbsenceInfo from '@/components/AbsenceInfo.vue';
+import PlayerAbsenceFormDialog from '@/components/PlayerAbsenceFormDialog.vue';
 
 const { t } = useI18n();
 const route = useRoute();
 const season = ref<SeasonDetail | null>(null);
 const currentDate = ref(new Date());
+const formattedCurrentDate = computed(() => currentDate.value.toISOString().split('T')[0]);
+const absenceInfo = useTemplateRef('absenceInfo')
+const isDialogOpen = ref(false);
 
-const teamId = route.params.teamId;
+const teamId = parseInt(<string>route.params.teamId, 10);
 
 const fetchSeason = async () => {
   try {
@@ -166,6 +201,10 @@ const updateSeasonCurrentDate = async (date: Date) => {
     console.error('Failed to update season current date:', error);
   }
 };
+
+const handleAbsenceSaved = () => {
+  absenceInfo.value?.fetchPlayerAbsences();
+}
 
 const currentDateStr = computed(() => {
   return currentDate.value.toLocaleDateString('ja-JP', { month: 'long', day: 'numeric' });
@@ -350,6 +389,15 @@ const gameResultRoute = computed(() => {
   };
 });
 
+const playerAbsenceRoute = computed(() => {
+  return {
+    name: 'PlayerAbsenceHistory',
+    params: {
+      teamId: teamId
+    }
+  };
+});
+
 const getResultColor = (result: string) => {
   switch (result) {
     case 'win':
@@ -376,7 +424,9 @@ const getResultIcon = (result: string) => {
   }
 };
 
-onMounted(fetchSeason);
+onMounted(async () => {
+  await fetchSeason();
+});
 </script>
 
 <style scoped>

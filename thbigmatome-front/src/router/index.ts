@@ -88,6 +88,18 @@ const routes: RouteRecordRaw[] = [
         name: 'GameResult',
         component: () => import('@/views/GameResult.vue'),
         meta: { requiresAuth: true, title: '試合結果入力' }
+      },
+      {
+        path: '/teams/:teamId/season/games/:scheduleId/scoresheet',
+        name: 'ScoreSheet',
+        component: () => import('@/views/ScoreSheet.vue'),
+        meta: { requiresAuth: true, title: 'スコアシート' }
+      },
+      {
+        path: '/teams/:teamId/season/player_absences',
+        name: 'PlayerAbsenceHistory',
+        component: () => import('@/views/PlayerAbsenceHistory.vue'),
+        meta: { requiresAuth: true, title: '離脱者履歴' }
       }
     ]
   },

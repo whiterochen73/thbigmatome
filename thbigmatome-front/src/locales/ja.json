@@ -29,6 +29,7 @@
     "close": "閉じる"
   },
   "seasonPortal": {
+    "title": "シーズン画面",
     "currentDate": "現在の日付",
     "gameResultInput": "試合結果入力",
     "announcedPitcher": "先発予定",
@@ -37,6 +38,49 @@
       "win": "勝",
       "lose": "敗",
       "draw": "分"
+    },
+    "registerAbsence": "離脱者登録",
+    "absenceInfo": "離脱者情報",
+    "noAbsenceInfo": "離脱者情報はありません。"
+  },
+  "playerAbsenceHistory": {
+    "title": "離脱者履歴",
+    "addAbsence": "新規離脱者登録",
+    "tableHeaders": {
+      "playerName": "選手名",
+      "absenceType": "離脱種別",
+      "reason": "理由",
+      "startDate": "開始日",
+      "duration": "期間",
+      "durationUnit": "期間単位",
+      "actions": "操作"
+    },
+    "confirmDelete": "{playerName}の離脱情報を削除してもよろしいですか？"
+  },
+  "playerAbsenceDialog": {
+    "title": {
+      "add": "新規離脱情報登録",
+      "edit": "離脱情報編集"
+    },
+    "form": {
+      "playerName": "選手名",
+      "selectPlayerName": "選手名を選択してください",
+      "absenceType": "種類",
+      "selectAbsenceType": "種類を選択してください",
+      "reason": "理由",
+      "enterReason": "理由を入力してください",
+      "startDate": "開始日",
+      "selectStartDate": "開始日を選択してください",
+      "duration": "期間",
+      "enterDuration": "期間を入力してください",
+      "durationMin": "期間は1以上である必要があります",
+      "durationUnit": "期間単位",
+      "selectDurationUnit": "期間単位を選択してください"
+    },
+    "notifications": {
+      "saveSuccess": "離脱情報を保存しました。",
+      "updateSuccess": "離脱情報を更新しました。",
+      "saveFailed": "離脱情報の保存に失敗しました。"
     }
   },
   "activeRoster": {
@@ -48,6 +92,9 @@
     "selectKeyPlayer": "特例選手を選択",
     "saveKeyPlayer": "特例選手を保存",
     "keyPlayerRestriction": "特例選手はシーズン開始日にのみ設定可能です。",
+    "cooldownInfo": "昇格クールダウン情報",
+    "noCooldownInfo": "現在、昇格クールダウン中の選手はいません。",
+    "cooldownUntil": "{date}まで昇格不可",
     "firstSquad": "1軍",
     "secondSquad": "2軍",
     "saveRoster": "選手登録を保存",
@@ -108,6 +155,17 @@
     "win": "勝ち",
     "lose": "負け",
     "draw": "引き分け"
+  },
+  "startingMemberDialog": {
+    "title": "スタメン登録",
+    "tableHeaders": {
+      "battingOrder": "打順",
+      "position": "ポジション",
+      "player": "選手",
+      "defenseRating": "守備力"
+    },
+    "homeTeamLineup": "自チームスタメン",
+    "opponentTeamLineup": "相手チームスタメン"
   },
   "actions": {
     "save": "保存",
@@ -663,7 +721,8 @@
       "outfielder": "外野手",
       "left_fielder": "左翼手",
       "center_fielder": "中堅手",
-      "right_fielder": "右翼手"
+      "right_fielder": "右翼手",
+      "dh": "DH"
     },
     "throwingHands": {
       "right_throw": "右",
@@ -685,6 +744,7 @@
       "lf": "左",
       "cf": "中",
       "rf": "右",
+      "dh": "指",
       "pitcher": "投",
       "catcher": "捕",
       "infielder": "内",
@@ -704,5 +764,29 @@
       "fielder_only_cost": "野手",
       "two_way_cost": "２Ｗ"
     }
+  },
+  "enums": {
+    "player_absence": {
+      "absence_type": {
+        "injury": "負傷",
+        "suspension": "出場停止",
+        "reconditioning": "再調整"
+      },
+      "duration_unit": {
+        "days": "日間",
+        "games": "試合"
+      }
+    }
+  },
+  "scoreSheet": {
+    "order": "打順",
+    "player": "選手",
+    "position": "守備",
+    "hits": "安打",
+    "rbi": "打点"
+  },
+  "messages": {
+    "startingMembersSaved": "スターティングメンバーを保存しました。",
+    "failedToSaveStartingMembers": "スターティングメンバーの保存に失敗しました。"
   }
 }

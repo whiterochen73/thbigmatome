@@ -4,16 +4,37 @@
     <v-toolbar
       color="orange-lighten-3"
     >
-      <router-link :to="`/teams/${gameData.team_id}/season`">
-        <v-btn prepend-icon="mdi-arrow-left">カレンダー画面へ</v-btn>
-      </router-link>
       <template #prepend>
         <span class="text-h5 mx-4">{{ gameData.team_name }}</span>
         <span class="text-h6 mx-4">{{ t('gameResult.game') }}: {{ gameData.game_number }}</span>
         <span class="text-h6 mx-4">{{ formattedGameDate }}</span>
       </template>
-      <v-spacer></v-spacer>
-      <v-btn @click="saveGame" color="primary" size="large" variant="tonal" prepend-icon="mdi-content-save-outline">{{ t('gameResult.save') }}</v-btn>
+      <v-btn
+        class="mx-2"
+        color="light"
+        variant="flat"
+        :to="seasonPortalRoute"
+      >
+        {{ t('seasonPortal.title') }}
+      </v-btn>
+      <v-btn
+        :to="scoreSheetRoute"
+        color="info"
+        variant="flat"
+        class="mr-4"
+      >
+        スコアシート
+      </v-btn>
+      <template #append>
+        <v-btn
+          @click="saveGame"
+          color="primary"
+          variant="flat"
+          prepend-icon="mdi-content-save-outline"
+        >
+          {{ t('gameResult.save') }}
+        </v-btn>
+      </template>
     </v-toolbar>
 
     <v-row>
@@ -146,6 +167,25 @@ const defaultGameData: GameData = {
     away: Array(9).fill(null),
   }
 }
+
+const seasonPortalRoute = computed(() => {
+  return {
+    name: 'SeasonPortal',
+    params: {
+      teamId: teamId
+    }
+  };
+});
+
+const scoreSheetRoute = computed(() => {
+  return {
+    name: 'ScoreSheet',
+    params: {
+      teamId: teamId,
+      scheduleId: scheduleId
+    }
+  };
+});
 
 const gameData = ref<GameData>(defaultGameData)
 const allPlayers = ref<Player[]>([]);

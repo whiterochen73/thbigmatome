@@ -1,18 +1,41 @@
 <template>
   <v-container>
-    <v-row>
-      <v-col>
+    <v-toolbar
+      color="orange-lighten-3"
+    >
+      <template #prepend>
         <h1 class="text-h4">{{ t('activeRoster.title') }}</h1>
-        <p>{{ t('activeRoster.currentDate') }}: {{ formattedCurrentDate }}</p>
-        <p>{{ t('activeRoster.firstSquadCount') }}: {{ firstSquadPlayers.length }} / 29</p>
-        <p>{{ t('activeRoster.firstSquadCost') }}: {{ firstSquadTotalCost }} / 120</p>
-      </v-col>
-    </v-row>
-
-    <v-row class="mt-4">
+      </template>
+      <v-btn
+        class="mx-2"
+        color="light"
+        variant="flat"
+        :to="seasonPortalRoute"
+      >
+        {{ t('seasonPortal.title') }}
+      </v-btn>
+      <v-btn
+        class="mx-2"
+        color="red-darken-4"
+        variant="flat"
+        :to="playerAbsenceRoute"
+      >
+        {{ t('playerAbsenceHistory.title') }}
+      </v-btn>
+      <template #append>
+        <p class="text-h5">{{ t('seasonPortal.currentDate') }}: {{ currentDateStr }}</p>
+      </template>
+    </v-toolbar>
+    <v-row class="mt-2">
       <v-col cols="12">
         <v-card>
-          <v-card-title>{{ t('activeRoster.keyPlayerSelection') }}</v-card-title>
+          <v-card-title class="d-flex">
+            {{ t('activeRoster.keyPlayerSelection') }}
+            <v-spacer></v-spacer>
+            <v-btn color="primary" @click="saveKeyPlayer" :disabled="!isSeasonStartDate">
+              {{ t('activeRoster.saveKeyPlayer') }}
+            </v-btn>
+          </v-card-title>
           <v-card-text>
             <v-select
               v-model="selectedKeyPlayerId"
@@ -20,24 +43,37 @@
               item-title="player_name"
               item-value="team_membership_id"
               :label="t('activeRoster.selectKeyPlayer')"
+              :hint="t('activeRoster.selectKeyPlayerHint')"
               :disabled="!isSeasonStartDate"
               clearable
             ></v-select>
-            <v-btn color="primary" @click="saveKeyPlayer" :disabled="!isSeasonStartDate">
-              {{ t('activeRoster.saveKeyPlayer') }}
-            </v-btn>
-            <p v-if="!isSeasonStartDate" class="text-caption mt-2">
-              {{ t('activeRoster.keyPlayerRestriction') }}
-            </p>
           </v-card-text>
         </v-card>
       </v-col>
     </v-row>
 
+    <AbsenceInfo
+      :season-id="seasonId"
+      :current-date="currentDateFormatted"
+      ref="absenceInfo"
+      class="mt-2"
+    />
+
+    <PromotionCooldownInfo
+      :cooldown-players="cooldownPlayers"
+      :current-date="currentDateFormatted"
+      class="mt-2"
+    />
+
     <v-row class="mt-4">
       <v-col cols="6">
         <v-card>
-          <v-card-title>{{ t('activeRoster.firstSquad') }}</v-card-title>
+          <v-card-title class="d-flex">
+            <h2 class="text-h5">{{ t('activeRoster.firstSquad') }}</h2>
+            <v-spacer></v-spacer>
+            <span class="text-h6 mx-4">{{ t('activeRoster.firstSquadCount') }}: {{ firstSquadPlayers.length }} / 29</span>
+            <span class="text-h6">{{ t('activeRoster.firstSquadCost') }}: {{ firstSquadTotalCost }} / 120</span>
+          </v-card-title>
           <v-card-text>
             <v-data-table
               density="compact"
@@ -74,7 +110,9 @@
       </v-col>
       <v-col cols="6">
         <v-card>
-          <v-card-title>{{ t('activeRoster.secondSquad') }}</v-card-title>
+          <v-card-title>
+            <h2 class="text-h5">{{ t('activeRoster.secondSquad') }}</h2>
+          </v-card-title>
           <v-card-text>
             <v-data-table
               density="compact"
@@ -124,13 +162,40 @@ import { ref, onMounted, computed } from 'vue';
 import { useRoute } from 'vue-router';
 import axios from 'axios';
 import { useI18n } from 'vue-i18n';
+import AbsenceInfo from '@/components/AbsenceInfo.vue';
+import PromotionCooldownInfo from '@/components/PromotionCooldownInfo.vue';
 import type { RosterPlayer } from '@/types/rosterPlayer';
 
 const { t } = useI18n();
 const route = useRoute();
 const teamId = route.params.teamId;
+const seasonId = ref<number | null>(null);
 const rosterPlayers = ref<RosterPlayer[]>([]);
 const currentDate = ref(new Date());
+const currentDateStr = computed(() => {
+  return currentDate.value.toLocaleDateString('ja-JP', { month: 'long', day: 'numeric' });
+});
+
+const currentDateFormatted = computed(() => currentDate.value.toISOString().split('T')[0]);
+
+const seasonPortalRoute = computed(() => {
+  return {
+    name: 'SeasonPortal',
+    params: {
+      teamId: teamId
+    }
+  };
+});
+
+const playerAbsenceRoute = computed(() => {
+  return {
+    name: 'PlayerAbsenceHistory',
+    params: {
+      teamId: teamId
+    }
+  };
+});
+
 const seasonStartDate = ref<Date | null>(null);
 const selectedKeyPlayerId = ref<number | null>(null);
 
@@ -159,6 +224,7 @@ const fetchRoster = async () => {
     const response = await axios.get(`/teams/${teamId}/roster`);
     rosterPlayers.value = response.data.roster;
     console.log('Fetched roster:', rosterPlayers.value)
+    seasonId.value = response.data.season_id;
     if (response.data.current_date) {
       currentDate.value = new Date(response.data.current_date);
     }
@@ -173,19 +239,23 @@ const fetchRoster = async () => {
   }
 };
 
-const formattedCurrentDate = computed(() => {
-  const date = currentDate.value;
-  const month = date.getMonth() + 1;
-  const day = date.getDate();
-  return `${month}月${day}日`;
-});
-
 const firstSquadPlayers = computed(() => {
   return rosterPlayers.value.filter(p => p.squad === 'first');
 });
 
 const secondSquadPlayers = computed(() => {
   return rosterPlayers.value.filter(p => p.squad === 'second');
+});
+
+const cooldownPlayers = computed(() => {
+  const now = currentDate.value;
+  return rosterPlayers.value.filter(p => {
+    if (p.cooldown_until) {
+      const cooldownDate = new Date(p.cooldown_until);
+      return now < cooldownDate;
+    }
+    return false;
+  });
 });
 
 const firstSquadTotalCost = computed(() => {

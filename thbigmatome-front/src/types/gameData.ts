@@ -1,5 +1,11 @@
 import type { Scoreboard } from './scoreboard';
 
+export interface LineupItem {
+  player_id: number;
+  position: string;
+  order: number;
+}
+
 export interface GameData {
   team_id: number;
   team_name: string;
@@ -18,4 +24,5 @@ export interface GameData {
   losing_pitcher_id: number | null;
   save_pitcher_id: number | null;
   scoreboard: Scoreboard | null;
+  starting_lineup: LineupItem[] | null;
 }

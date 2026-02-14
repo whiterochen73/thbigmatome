@@ -10,6 +10,7 @@
     <v-data-table :headers="headers" :items="costs" class="elevation-1">
       <template v-slot:item.actions="{ item }">
         <v-icon size="small" class="mr-2" @click="openDialog(item)" icon="mdi-pencil"></v-icon>
+        <v-icon size="small" class="mr-2" @click="confirmDuplicate(item)" icon="mdi-content-copy"></v-icon>
         <v-icon size="small" @click="deleteItem(item)" icon="mdi-delete"></v-icon>
       </template>
     </v-data-table>
@@ -65,6 +66,21 @@ const deleteItem = async (cost: CostList) => {
   if (confirm(t('settings.cost.confirmDelete'))) {
     await axios.delete(`/costs/${cost.id}`);
     fetchCosts();
+  }
+};
+
+const confirmDuplicate = (cost: CostList) => {
+  if (confirm(`${cost.name} を複製しますか？`)) {
+    duplicateCost(cost);
+  }
+};
+
+const duplicateCost = async (cost: CostList) => {
+  try {
+    await axios.post(`/costs/${cost.id}/duplicate`);
+    fetchCosts();
+  } catch (error) {
+    console.error('Failed to duplicate cost:', error);
   }
 };
 

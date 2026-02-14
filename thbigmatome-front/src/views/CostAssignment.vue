@@ -50,7 +50,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, watch, computed } from 'vue';
+import { ref, watch, computed } from 'vue';
 import axios from '@/plugins/axios';
 import { useSnackbar } from '@/composables/useSnackbar';
 import { useI18n } from 'vue-i18n';
@@ -63,9 +63,7 @@ const { t } = useI18n();
 const { showSnackbar } = useSnackbar();
 
 const players = ref<CostPlayer[]>([]);
-const costs = ref<CostList[]>([])
 const selectedCost = ref<CostList | null>(null)
-const selectedCostId = computed<number | null>(() => selectedCost.value ? selectedCost.value.id : null);
 const loading = ref(false);
 
 const costDefinitions = [
@@ -96,27 +94,19 @@ const rules = {
   },
 };
 
-const fetchCosts = async () => {
-  try {
-    const response = await axios.get('/costs');
-    costs.value = response.data;
-  } catch (error) {
-    showSnackbar('コスト一覧の取得に失敗しました', 'error');
-  }
-};
-
-watch(selectedCostId, (newValue) => {
-  if (newValue) {
+watch(selectedCost, (newValue) => {
+  if (newValue && newValue.id) {
     fetchPlayers();
   } else {
     players.value = [];
   }
-})
+}, { immediate: true });
 
 const fetchPlayers = async () => {
+  if (!selectedCost.value) return;
   loading.value = true;
   try {
-    const response = await axios.get<CostPlayer[]>(`/cost_assignments?cost_id=${selectedCostId.value}`);
+    const response = await axios.get<CostPlayer[]>(`/cost_assignments?cost_id=${selectedCost.value.id}`);
     console.log('Fetched players:', response.data);
     players.value = response.data.map(player => ({
       ...player,
@@ -134,11 +124,15 @@ const fetchPlayers = async () => {
 };
 
 const saveAssignments = async () => {
+  if (!selectedCost.value) {
+    showSnackbar('コスト一覧が選択されていません。', 'warning');
+    return;
+  }
   loading.value = true;
   try {
     // APIに保存する処理を実装
     const assignments = {
-      cost_id: selectedCostId.value,
+      cost_id: selectedCost.value.id,
       players:
         players.value.map(player => ({
           player_id: player.id,
@@ -161,6 +155,4 @@ const saveAssignments = async () => {
     loading.value = false;
   }
 };
-
-onMounted(fetchCosts);
 </script>

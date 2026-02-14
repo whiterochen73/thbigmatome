@@ -2,46 +2,37 @@ module Api
   module V1
     class TeamsController < ApplicationController
       before_action :set_team, only: [:show, :update, :destroy]
-      before_action :set_manager_for_nested, only: [:index, :create] # ネストされたルーティング用
 
-      # GET /api/v1/teams または /api/v1/managers/:manager_id/teams
+      # GET /api/v1/teams
       def index
-        if @manager # Managerに紐づくTeamを取得
-          @teams = @manager.teams
-        else # 全てのTeamを取得 (必要であれば)
-          @teams = Team.preload(:manager, :season).all
-        end
-        render json: @teams
+        @teams = Team.preload(:director, :coaches).all
+        render json: @teams, each_serializer: TeamSerializer
       end
 
       # GET /api/v1/teams/:id
       def show
-        render json: @team
+        render json: @team, serializer: TeamSerializer
       end
 
-      # POST /api/v1/teams または /api/v1/managers/:manager_id/teams
+      # POST /api/v1/teams
       def create
-        # Managerが指定されていれば、そのManagerに紐づける
-        team_params_with_manager = team_params
-        if @manager
-          team_params_with_manager[:manager_id] = @manager.id
-        end
-
-        @team = Team.new(team_params_with_manager)
+        @team = Team.new(team_params.except(:director_id, :coach_ids))
 
         if @team.save
-          render json: @team, status: :created
+          update_managers(@team, team_params[:director_id], team_params[:coach_ids])
+          render json: @team, status: :created, serializer: TeamSerializer
         else
-          render json: @team.errors, status: :unprocessable_entity
+          render json: { errors: @team.errors.full_messages }, status: :unprocessable_entity
         end
       end
 
       # PATCH/PUT /api/v1/teams/:id
       def update
-        if @team.update(team_params)
-          render json: @team
+        if @team.update(team_params.except(:director_id, :coach_ids))
+          update_managers(@team, team_params[:director_id], team_params[:coach_ids])
+          render json: @team, serializer: TeamSerializer
         else
-          render json: @team.errors, status: :unprocessable_entity
+          render json: { errors: @team.errors.full_messages }, status: :unprocessable_entity
         end
       end
 
@@ -54,22 +45,29 @@ module Api
       private
 
       def set_team
-        @team = Team.find(params[:id])
+        @team = Team.includes(:director, :coaches).find(params[:id])
       rescue ActiveRecord::RecordNotFound
         render json: { error: 'Team not found' }, status: :not_found
       end
 
-      def set_manager_for_nested
-        # params[:manager_id] があればManagerをセット
-        if params[:manager_id].present?
-          @manager = Manager.find(params[:manager_id])
-        end
-      rescue ActiveRecord::RecordNotFound
-        render json: { error: 'Manager not found' }, status: :not_found
+      def team_params
+        params.require(:team).permit(:name, :short_name, :is_active, :director_id, coach_ids: [])
       end
 
-      def team_params
-        params.require(:team).permit(:name, :short_name, :is_active, :manager_id)
+      def update_managers(team, director_id, coach_ids)
+        team.transaction do
+          team.director = director_id.present? ? Manager.find_by(id: director_id) : nil
+
+          team.coach_team_managers.destroy_all
+          if coach_ids.present?
+            coach_ids.uniq.each do |id|
+              team.coach_team_managers.create!(manager_id: id)
+            end
+end
+        end
+      rescue ActiveRecord::RecordInvalid => e
+        team.errors.add(:base, e.message)
+        raise ActiveRecord::Rollback
       end
     end
   end

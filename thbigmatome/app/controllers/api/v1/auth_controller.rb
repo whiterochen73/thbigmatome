@@ -26,7 +26,7 @@ class Api::V1::AuthController < ApplicationController
   # メソッド名を変更して競合を回避
   def show_current_user
     if current_user
-      render json: { user: current_user.slice(:id, :name) }
+      render json: { user: current_user.slice(:id, :name, :role) }
     else
       render json: { error: 'ログインしていません' }, status: :unauthorized
     end

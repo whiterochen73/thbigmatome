@@ -68,11 +68,21 @@
     <v-row class="mt-4">
       <v-col cols="6">
         <v-card>
-          <v-card-title class="d-flex">
-            <h2 class="text-h5">{{ t('activeRoster.firstSquad') }}</h2>
-            <v-spacer></v-spacer>
-            <span class="text-h6 mx-4">{{ t('activeRoster.firstSquadCount') }}: {{ firstSquadPlayers.length }} / 29</span>
-            <span class="text-h6">{{ t('activeRoster.firstSquadCost') }}: {{ firstSquadTotalCost }} / 120</span>
+          <v-card-title>
+            <div class="d-flex justify-space-between align-center">
+              <h2 class="text-h5">{{ t('activeRoster.firstSquad') }}</h2>
+              <div class="text-right">
+                <div>
+                  <span class="text-h6 mx-4">{{ t('activeRoster.firstSquadCount') }}: {{ firstSquadPlayers.length }} / 29</span>
+                  <span class="text-h6">{{ t('activeRoster.firstSquadCost') }}: {{ firstSquadTotalCost }} / 120</span>
+                </div>
+                <div>
+                  <span v-for="(count, type) in firstSquadPlayerTypeCounts" :key="type" class="text-body-2 mx-2">
+                    {{ type }}: {{ count }}
+                  </span>
+                </div>
+              </div>
+            </div>
           </v-card-title>
           <v-card-text>
             <v-data-table
@@ -260,6 +270,16 @@ const cooldownPlayers = computed(() => {
 
 const firstSquadTotalCost = computed(() => {
   return firstSquadPlayers.value.reduce((sum, player) => sum + player.cost, 0);
+});
+
+const firstSquadPlayerTypeCounts = computed(() => {
+  const counts: { [key: string]: number } = {};
+  firstSquadPlayers.value.forEach(player => {
+    player.player_types.forEach(type => {
+      counts[type] = (counts[type] || 0) + 1;
+    });
+  });
+  return counts;
 });
 
 const isSeasonStartDate = computed(() => {

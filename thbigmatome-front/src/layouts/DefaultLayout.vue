@@ -86,18 +86,26 @@ import { useI18n } from 'vue-i18n'
 import { ref, computed } from 'vue';
 
 const router = useRouter()
-const { user, logout } = useAuth()
+const { user, logout, isCommissioner } = useAuth()
 const { t } = useI18n()
 const { isVisible: isSnackbarVisible, message: snackbarMessage, color: snackbarColor, timeout: snackbarTimeout } = useSnackbar()
 
-const menuItems = computed(() => [
-  { title: t('navigation.dashboard'), icon: 'mdi-view-dashboard', value: 'dashboard', to: '/menu' },
-  { title: t('navigation.managers'), icon: 'mdi-account-supervisor', value: 'managers', to: '/managers' },
-  { title: t('navigation.teams'), icon: 'mdi-account-group', value: 'teams', to: '/teams' },
-  { title: t('navigation.players'), icon: 'mdi-account-multiple', value: 'players', to: '/players' },
-  { title: t('navigation.costAssignment'), icon: 'mdi-currency-usd', value: 'costAssignment', to: '/cost_assignment' },
-  { title: t('navigation.settings'), icon: 'mdi-cog', value: 'settings', to: '/settings' },
-]);
+const menuItems = computed(() => {
+  const items = [
+    { title: t('navigation.dashboard'), icon: 'mdi-view-dashboard', value: 'dashboard', to: '/menu' },
+    { title: t('navigation.managers'), icon: 'mdi-account-supervisor', value: 'managers', to: '/managers' },
+    { title: t('navigation.teams'), icon: 'mdi-account-group', value: 'teams', to: '/teams' },
+    { title: t('navigation.players'), icon: 'mdi-account-multiple', value: 'players', to: '/players' },
+    { title: t('navigation.costAssignment'), icon: 'mdi-currency-usd', value: 'costAssignment', to: '/cost_assignment' },
+    { title: t('navigation.settings'), icon: 'mdi-cog', value: 'settings', to: '/settings' },
+  ];
+
+  if (isCommissioner.value) {
+    items.push({ title: 'リーグ管理', icon: 'mdi-trophy', value: 'leagues', to: '/commissioner/leagues' });
+  }
+
+  return items;
+});
 
 const handleLogout = async () => {
   await logout()

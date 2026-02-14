@@ -3,7 +3,7 @@
       v-model="costList"
       :items="costLists"
       item-title="name"
-      item-value="id"
+      :return-object="true"
     ></v-select>
 </template>
 

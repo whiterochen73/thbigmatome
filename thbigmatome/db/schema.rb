@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_09_01_145219) do
+ActiveRecord::Schema[8.0].define(version: 2025_11_06_120004) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -70,6 +70,58 @@ ActiveRecord::Schema[8.0].define(version: 2025_09_01_145219) do
     t.datetime "updated_at", null: false
   end
 
+  create_table "league_games", force: :cascade do |t|
+    t.bigint "league_season_id", null: false
+    t.bigint "home_team_id", null: false
+    t.bigint "away_team_id", null: false
+    t.date "game_date", null: false
+    t.integer "game_number", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["away_team_id"], name: "index_league_games_on_away_team_id"
+    t.index ["home_team_id"], name: "index_league_games_on_home_team_id"
+    t.index ["league_season_id"], name: "index_league_games_on_league_season_id"
+  end
+
+  create_table "league_memberships", force: :cascade do |t|
+    t.bigint "league_id", null: false
+    t.bigint "team_id", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["league_id", "team_id"], name: "index_league_memberships_on_league_id_and_team_id", unique: true
+    t.index ["league_id"], name: "index_league_memberships_on_league_id"
+    t.index ["team_id"], name: "index_league_memberships_on_team_id"
+  end
+
+  create_table "league_pool_players", force: :cascade do |t|
+    t.bigint "league_season_id", null: false
+    t.bigint "player_id", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["league_season_id"], name: "index_league_pool_players_on_league_season_id"
+    t.index ["player_id"], name: "index_league_pool_players_on_player_id"
+  end
+
+  create_table "league_seasons", force: :cascade do |t|
+    t.bigint "league_id", null: false
+    t.string "name", null: false
+    t.date "start_date", null: false
+    t.date "end_date", null: false
+    t.integer "status", default: 0, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["league_id"], name: "index_league_seasons_on_league_id"
+  end
+
+  create_table "leagues", force: :cascade do |t|
+    t.string "name", null: false
+    t.integer "num_teams", default: 6, null: false
+    t.integer "num_games", default: 30, null: false
+    t.boolean "active", default: false, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+  end
+
   create_table "managers", force: :cascade do |t|
     t.string "name"
     t.string "short_name"
@@ -77,6 +129,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_09_01_145219) do
     t.string "user_id"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.integer "role", default: 0, null: false
   end
 
   create_table "pitching_skills", force: :cascade do |t|
@@ -275,6 +328,16 @@ ActiveRecord::Schema[8.0].define(version: 2025_09_01_145219) do
     t.index ["team_id"], name: "index_seasons_on_team_id"
   end
 
+  create_table "team_managers", force: :cascade do |t|
+    t.bigint "team_id", null: false
+    t.bigint "manager_id", null: false
+    t.integer "role", default: 0, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["manager_id"], name: "index_team_managers_on_manager_id"
+    t.index ["team_id"], name: "index_team_managers_on_team_id"
+  end
+
   create_table "team_memberships", force: :cascade do |t|
     t.bigint "team_id", null: false
     t.bigint "player_id", null: false
@@ -303,12 +366,21 @@ ActiveRecord::Schema[8.0].define(version: 2025_09_01_145219) do
     t.string "password_digest"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.integer "role", default: 0, null: false
   end
 
   add_foreign_key "catchers_players", "players"
   add_foreign_key "catchers_players", "players", column: "catcher_id"
   add_foreign_key "cost_players", "costs"
   add_foreign_key "cost_players", "players"
+  add_foreign_key "league_games", "league_seasons"
+  add_foreign_key "league_games", "teams", column: "away_team_id"
+  add_foreign_key "league_games", "teams", column: "home_team_id"
+  add_foreign_key "league_memberships", "leagues"
+  add_foreign_key "league_memberships", "teams"
+  add_foreign_key "league_pool_players", "league_seasons"
+  add_foreign_key "league_pool_players", "players"
+  add_foreign_key "league_seasons", "leagues"
   add_foreign_key "player_absences", "seasons"
   add_foreign_key "player_absences", "team_memberships"
   add_foreign_key "player_batting_skills", "batting_skills"
@@ -334,6 +406,8 @@ ActiveRecord::Schema[8.0].define(version: 2025_09_01_145219) do
   add_foreign_key "season_schedules", "teams", column: "oppnent_team_id"
   add_foreign_key "seasons", "team_memberships", column: "key_player_id"
   add_foreign_key "seasons", "teams"
+  add_foreign_key "team_managers", "managers"
+  add_foreign_key "team_managers", "teams"
   add_foreign_key "team_memberships", "players"
   add_foreign_key "team_memberships", "teams"
   add_foreign_key "teams", "managers"

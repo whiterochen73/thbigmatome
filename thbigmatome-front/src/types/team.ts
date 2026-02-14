@@ -5,7 +5,7 @@ export interface Team {
   name: string;
   short_name: string;
   is_active: boolean;
-  manager_id: number;
   has_season: boolean;
-  manager?: Manager;
+  director?: Manager;
+  coaches?: Manager[];
 }

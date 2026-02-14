@@ -72,6 +72,12 @@ const routes: RouteRecordRaw[] = [
         meta: { title: '各種設定' }
       },
       {
+        path: 'commissioner/leagues',
+        name: 'Leagues',
+        component: () => import('@/views/commissioner/LeaguesView.vue'),
+        meta: { requiresAuth: true, requiresCommissioner: true, title: 'リーグ管理' }
+      },
+      {
         path: '/teams/:teamId/season',
         name: 'SeasonPortal',
         component: () => import('@/views/SeasonPortal.vue'),

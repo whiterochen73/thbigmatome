@@ -144,6 +144,11 @@
     "promoteButton": "昇格",
     "demoteButton": "降格",
     "reconditioningBlocked": "再調整中のため1軍登録不可",
+    "chip": {
+      "reconditioning": "再調整中",
+      "cooldown": "昇格待ち",
+      "special": "特例"
+    },
     "legend": {
       "cooldown": "昇格待ち",
       "absenceDays": "離脱中(日数)",

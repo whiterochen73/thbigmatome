@@ -159,15 +159,46 @@
               :row-props="getFirstSquadRowProps"
             >
               <template #item.actions="{ item }">
+                <!-- 特例選手: v-chip -->
                 <v-tooltip
                   v-if="isKeyPlayer(item)"
                   :text="t('activeRoster.keyPlayerLocked')"
                   location="top"
                 >
                   <template #activator="{ props }">
-                    <v-icon v-bind="props" color="amber-darken-2" size="small">mdi-lock</v-icon>
+                    <v-chip
+                      v-bind="props"
+                      size="small"
+                      color="amber-darken-2"
+                      variant="tonal"
+                      prepend-icon="mdi-lock"
+                    >
+                      {{ t('activeRoster.chip.special') }}
+                    </v-chip>
                   </template>
                 </v-tooltip>
+                <!-- 離脱中(負傷/出場停止): 降格ボタン有効+ツールチップ -->
+                <v-tooltip
+                  v-else-if="item.is_absent && item.absence_info"
+                  :text="getAbsenceDetailTooltip(item)"
+                  location="top"
+                >
+                  <template #activator="{ props }">
+                    <v-btn
+                      v-bind="props"
+                      size="small"
+                      color="blue-grey"
+                      variant="elevated"
+                      rounded
+                      class="demote-btn"
+                      @click="movePlayer(item, 'second')"
+                    >
+                      <v-icon start>mdi-arrow-down</v-icon>
+                      {{ t('activeRoster.demoteButton') }}
+                    </v-btn>
+                  </template>
+                </v-tooltip>
+                <!-- 通常: 降格ボタン -->
                 <v-btn
                   v-else
                   size="small"
@@ -176,7 +207,6 @@
                   rounded
                   class="demote-btn"
                   @click="movePlayer(item, 'second')"
-                  :disabled="isPlayerOnCooldown(item)"
                 >
                   <v-icon start>mdi-arrow-down</v-icon>
                   {{ t('activeRoster.demoteButton') }}
@@ -187,22 +217,6 @@
                 <v-icon v-if="isKeyPlayer(item)" color="amber-darken-2" size="small" class="ml-1"
                   >mdi-star</v-icon
                 >
-                <v-tooltip
-                  v-if="item.is_absent && item.absence_info"
-                  :text="getAbsenceTooltip(item)"
-                  location="top"
-                >
-                  <template #activator="{ props }">
-                    <v-icon
-                      v-bind="props"
-                      :color="getAbsenceTypeColor(item.absence_info.absence_type)"
-                      size="small"
-                      class="ml-1"
-                    >
-                      {{ getAbsenceTypeIcon(item.absence_info.absence_type) }}
-                    </v-icon>
-                  </template>
-                </v-tooltip>
               </template>
               <template #item.player_types="{ item }">
                 <v-chip
@@ -265,26 +279,50 @@
               :row-props="getSecondSquadRowProps"
             >
               <template #item.actions="{ item }">
-                <!-- 離脱中: 離脱種別アイコン（入れ替えボタンの代わり） -->
+                <!-- 再調整中: v-chip (1軍昇格不可) -->
                 <v-tooltip
-                  v-if="item.is_absent && item.absence_info"
-                  :text="getAbsenceDetailTooltip(item)"
+                  v-if="
+                    item.is_absent &&
+                    item.absence_info &&
+                    item.absence_info.absence_type === 'reconditioning'
+                  "
+                  :text="t('activeRoster.reconditioningBlocked')"
                   location="top"
                 >
                   <template #activator="{ props }">
-                    <v-icon
+                    <v-chip
                       v-bind="props"
-                      :color="getAbsenceTypeColor(item.absence_info.absence_type)"
                       size="small"
+                      color="blue-grey"
+                      variant="tonal"
+                      prepend-icon="mdi-wrench"
                     >
-                      {{ getAbsenceTypeIcon(item.absence_info.absence_type) }}
-                    </v-icon>
+                      {{ t('activeRoster.chip.reconditioning') }}
+                    </v-chip>
                   </template>
                 </v-tooltip>
-                <!-- クールダウン中: disabled昇格ボタン -->
+                <!-- 昇格クールダウン中: v-chip -->
                 <v-tooltip
                   v-else-if="isPlayerOnCooldown(item)"
                   :text="getCooldownTooltip(item)"
+                  location="top"
+                >
+                  <template #activator="{ props }">
+                    <v-chip
+                      v-bind="props"
+                      size="small"
+                      color="amber"
+                      variant="tonal"
+                      prepend-icon="mdi-timer-sand"
+                    >
+                      {{ t('activeRoster.chip.cooldown') }}
+                    </v-chip>
+                  </template>
+                </v-tooltip>
+                <!-- 離脱中(負傷/出場停止): 昇格ボタン有効+ツールチップ -->
+                <v-tooltip
+                  v-else-if="item.is_absent && item.absence_info"
+                  :text="getAbsenceDetailTooltip(item)"
                   location="top"
                 >
                   <template #activator="{ props }">
@@ -295,7 +333,7 @@
                       variant="elevated"
                       rounded
                       class="promote-btn"
-                      disabled
+                      @click="handlePromotePlayer(item)"
                     >
                       <v-icon start>mdi-arrow-up</v-icon>
                       {{ t('activeRoster.promoteButton') }}
@@ -317,17 +355,6 @@
                 </v-btn>
               </template>
               <template #item.player_name="{ item }">
-                <v-tooltip
-                  v-if="isPlayerOnCooldown(item)"
-                  :text="getCooldownTooltip(item)"
-                  location="top"
-                >
-                  <template #activator="{ props }">
-                    <v-icon v-bind="props" color="amber-darken-2" size="small" class="mr-1"
-                      >mdi-timer-sand</v-icon
-                    >
-                  </template>
-                </v-tooltip>
                 <span>{{ item.player_name }}</span>
               </template>
               <template #item.player_types="{ item }">
@@ -568,35 +595,7 @@ const getCooldownTooltip = (player: RosterPlayer): string => {
   return t('activeRoster.cooldownTooltip', { date: formattedDate })
 }
 
-// 離脱種別ごとのアイコン
-const getAbsenceTypeIcon = (absenceType: string): string => {
-  switch (absenceType) {
-    case 'injury':
-      return 'mdi-hospital-box'
-    case 'suspension':
-      return 'mdi-gavel'
-    case 'reconditioning':
-      return 'mdi-wrench'
-    default:
-      return 'mdi-alert'
-  }
-}
-
-// 離脱種別ごとの色
-const getAbsenceTypeColor = (absenceType: string): string => {
-  switch (absenceType) {
-    case 'injury':
-      return 'red'
-    case 'suspension':
-      return 'orange'
-    case 'reconditioning':
-      return 'blue-grey'
-    default:
-      return 'grey'
-  }
-}
-
-// 離脱の詳細ツールチップ（2軍テーブル用）
+// 離脱の詳細ツールチップ
 const getAbsenceDetailTooltip = (player: RosterPlayer): string => {
   if (!player.absence_info) return ''
   const absenceType = t(`enums.player_absence.absence_type.${player.absence_info.absence_type}`)
@@ -626,17 +625,6 @@ const nearEndAbsencePlayers = computed(() => {
     return remaining !== null && remaining > 0 && remaining <= 3
   })
 })
-
-// 離脱中選手のツールチップ
-const getAbsenceTooltip = (player: RosterPlayer): string => {
-  if (!player.absence_info) return ''
-  const absenceType = t(`enums.player_absence.absence_type.${player.absence_info.absence_type}`)
-  const reason = player.absence_info.reason || ''
-  if (player.absence_info.remaining_days != null) {
-    return `${absenceType}: ${reason} (${t('activeRoster.remainingDays', { days: player.absence_info.remaining_days })})`
-  }
-  return `${absenceType}: ${reason}`
-}
 
 // 離脱中選手の昇格確認ダイアログ
 const absenceConfirmDialog = ref(false)

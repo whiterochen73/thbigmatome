@@ -27,6 +27,8 @@ module Api
 
           squad_status = latest_roster_entry ? latest_roster_entry.squad : tm.squad # Fallback to default squad from team_membership
 
+          cooldown_info = calculate_cooldown_info(tm, target_date)
+
           {
             team_membership_id: tm.id,
             player_id: tm.player.id,
@@ -40,7 +42,8 @@ module Api
             selected_cost_type: tm.selected_cost_type, # Add selected cost type
             cost: tm.player.cost_players.find { |pc| pc.cost_id == current_cost_list.id }.send(tm.selected_cost_type), # Assuming player has cost methods
             # Add cooldown information if applicable
-            cooldown_until: calculate_cooldown(tm, target_date)
+            cooldown_until: cooldown_info[:cooldown_until],
+            same_day_exempt: cooldown_info[:same_day_exempt]
           }
         end
 
@@ -88,9 +91,10 @@ module Api
               )
             elsif team_membership.squad == "second" && new_squad == "first"
               # Check cooldown (per-player constraint, unaffected by batch order)
-              cooldown_until = calculate_cooldown(team_membership, target_date)
-              if cooldown_until && target_date < cooldown_until
-                raise "Player #{team_membership.player.name} is on cooldown until #{cooldown_until}"
+              # Same-day promotion+demotion is exempt from cooldown
+              cooldown_info = calculate_cooldown_info(team_membership, target_date)
+              if cooldown_info[:cooldown_until] && !cooldown_info[:same_day_exempt]
+                raise "Player #{team_membership.player.name} is on cooldown until #{cooldown_info[:cooldown_until]}"
               end
 
               team_membership.update!(squad: new_squad)
@@ -132,25 +136,33 @@ module Api
         end.compact
       end
 
-      # Rule 3: Cooldown calculation
-      def calculate_cooldown(team_membership, current_date)
-        last_moved_from_first_to_second = team_membership.season_rosters
-                                            .where(squad: "second") # Moved to second
-                                            .order(registered_on: :desc, created_at: :desc)
-                                            .first
+      # Rule 3: Cooldown calculation with same-day exemption info
+      # Returns { cooldown_until: Date|nil, same_day_exempt: boolean }
+      def calculate_cooldown_info(team_membership, current_date)
+        last_demotion = team_membership.season_rosters
+                          .where(squad: "second")
+                          .order(registered_on: :desc, created_at: :desc)
+                          .first
 
-        if last_moved_from_first_to_second
-          # Check if the player was previously in first squad before moving to second
-          previous_entry = team_membership.season_rosters
-                                .where("registered_on < ?", last_moved_from_first_to_second.registered_on)
-                                .order(registered_on: :desc, created_at: :desc)
-                                .first
-          if previous_entry && previous_entry.squad == "first"
-            cooldown_end_date = last_moved_from_first_to_second.registered_on + 10.days
-            return cooldown_end_date if current_date < cooldown_end_date
-          end
-        end
-        nil
+        return { cooldown_until: nil, same_day_exempt: false } unless last_demotion
+
+        # Find the most recent promotion before this demotion (including same-day entries)
+        previous_promotion = team_membership.season_rosters
+                               .where(squad: "first")
+                               .where(
+                                 "registered_on < :date OR (registered_on = :date AND created_at < :cat)",
+                                 date: last_demotion.registered_on, cat: last_demotion.created_at
+                               )
+                               .order(registered_on: :desc, created_at: :desc)
+                               .first
+
+        return { cooldown_until: nil, same_day_exempt: false } unless previous_promotion
+
+        cooldown_end_date = last_demotion.registered_on + 10.days
+        return { cooldown_until: nil, same_day_exempt: false } unless current_date < cooldown_end_date
+
+        same_day = previous_promotion.registered_on == last_demotion.registered_on
+        { cooldown_until: cooldown_end_date, same_day_exempt: same_day }
       end
 
       # Rule 4 & 5: Validate 1st team constraints

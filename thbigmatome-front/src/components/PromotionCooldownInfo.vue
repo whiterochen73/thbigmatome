@@ -30,25 +30,31 @@
 </template>
 
 <script setup lang="ts">
-import { computed, defineProps } from 'vue';
-import { useI18n } from 'vue-i18n';
-import type { RosterPlayer } from '@/types/rosterPlayer';
+import { computed, defineProps } from 'vue'
+import { useI18n } from 'vue-i18n'
+import type { RosterPlayer } from '@/types/rosterPlayer'
 
-const { t } = useI18n();
+const { t } = useI18n()
 
 const props = defineProps<{
-    cooldownPlayers: RosterPlayer[];
-    currentDate: string;
-}>();
+  cooldownPlayers: RosterPlayer[]
+  currentDate: string
+}>()
 
 const currentDateStr = computed(() => {
-  return new Date(props.currentDate).toLocaleDateString('ja-JP', { month: 'long', day: 'numeric' });
-});
+  return new Date(props.currentDate).toLocaleDateString('ja-JP', { month: 'long', day: 'numeric' })
+})
 
 const getCooldownDisplayText = (player: RosterPlayer) => {
-  if (!player.cooldown_until) return '';
-  const cooldownDate = new Date(player.cooldown_until);
-  const formattedCooldownDate = cooldownDate.toLocaleDateString('ja-JP', { month: 'long', day: 'numeric' });
-  return `${player.player_name}: ${t('activeRoster.cooldownUntil', { date: formattedCooldownDate })}`;
-};
+  if (!player.cooldown_until) return ''
+  const cooldownDate = new Date(player.cooldown_until)
+  const formattedCooldownDate = cooldownDate.toLocaleDateString('ja-JP', {
+    month: 'long',
+    day: 'numeric',
+  })
+  if (player.same_day_exempt) {
+    return `${player.player_name}: ${t('activeRoster.cooldownSameDayExempt', { date: formattedCooldownDate })}`
+  }
+  return `${player.player_name}: ${t('activeRoster.cooldownUntil', { date: formattedCooldownDate })}`
+}
 </script>

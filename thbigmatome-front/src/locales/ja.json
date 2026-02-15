@@ -95,6 +95,7 @@
     "cooldownInfo": "昇格クールダウン情報",
     "noCooldownInfo": "現在、昇格クールダウン中の選手はいません。",
     "cooldownUntil": "{date}まで昇格不可",
+    "cooldownSameDayExempt": "{date}まで昇格不可（即日抹消のため免除）",
     "firstSquad": "1軍",
     "secondSquad": "2軍",
     "saveRoster": "選手登録を保存",

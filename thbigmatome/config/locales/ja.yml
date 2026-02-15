@@ -4,7 +4,6 @@ ja:
       models:
         team:
           cost_limit:
-            below_minimum_players: "登録人数（%{count}人）が最低人数（%{minimum}人）未満です。%{minimum}人以上登録してください。"
             cost_exceeds_limit: "合計コスト（%{cost}）がコスト上限（%{limit}）を超えています。"
         player_biorhythm:
           attributes:

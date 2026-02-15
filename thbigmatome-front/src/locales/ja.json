@@ -606,7 +606,6 @@
     "teamMembersTitle": "チームメンバー",
     "totalCount": "合計人数: {count} / {max}人",
     "totalCost": "合計コスト: {cost} / {max}",
-    "totalCostBelowMinimum": "合計コスト: {cost} (人数不足)",
     "costTypes": {
       "normal_cost": "通常",
       "relief_only_cost": "リリーフ契約",
@@ -620,7 +619,6 @@
       "fetchTeamPlayersFailed": "チームの選手一覧の取得に失敗しました。",
       "playerAlreadyAdded": "この選手は既に追加されています。",
       "maxPlayersExceeded": "登録人数が上限（{max}人）を超えています。",
-      "belowMinimumPlayers": "登録人数（{count}人）が最低人数（{minimum}人）未満です。{minimum}人以上登録してください。",
       "costLimitExceeded": "合計コスト（{cost}）がコスト上限（{limit}）を超えています。",
       "totalCostExceeded": "合計コストが上限（{max}）を超えています。",
       "selectCostList": "コスト一覧表を選択してください。",

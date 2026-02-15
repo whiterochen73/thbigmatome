@@ -1,9 +1,15 @@
-# チーム登録人数に応じたコスト上限テーブル
-# 登録人数は excluded_from_team_total=false の選手のみカウント
+# コスト上限設定
 #
-# tiers: min_players降順で定義。最初にマッチした行（count >= min_players）が適用される
-# minimum_players: この人数未満の場合、チーム登録不可
-tiers:
+# team_total_max_cost: チーム全体のコスト上限（固定値）
+#   - 対象: excluded_from_team_total=false の選手のみ
+#
+# first_squad_tiers: 1軍登録人数に応じたコスト上限テーブル
+#   - 対象: 1軍メンバー全員（excluded_from_team_total の値に関係なく含める）
+#   - min_players降順で定義。最初にマッチした行（count >= min_players）が適用される
+#
+# first_squad_minimum_players: 1軍でこの人数未満の場合、登録禁止
+team_total_max_cost: 200
+first_squad_tiers:
   - min_players: 28
     max_cost: 120
   - min_players: 27
@@ -12,4 +18,4 @@ tiers:
     max_cost: 117
   - min_players: 25
     max_cost: 114
-minimum_players: 25
+first_squad_minimum_players: 25

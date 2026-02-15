@@ -50,28 +50,17 @@
                 }}
                 /
               </span>
-              <span v-if="applicableCostLimit !== null">{{
-                t('teamMembers.totalCost', { cost: totalTeamCost, max: applicableCostLimit })
-              }}</span>
-              <span v-else-if="includedTeamPlayers.length > 0" class="text-warning">{{
-                t('teamMembers.totalCostBelowMinimum', { cost: totalTeamCost })
+              <span>{{
+                t('teamMembers.totalCost', { cost: totalTeamCost, max: TEAM_TOTAL_MAX_COST })
               }}</span>
             </div>
           </v-card-title>
           <v-card-text>
-            <v-alert v-if="isBelowMinimumPlayers" type="warning" density="compact" class="mb-2">
-              {{
-                t('teamMembers.notifications.belowMinimumPlayers', {
-                  count: includedTeamPlayers.length,
-                  minimum: MINIMUM_PLAYERS_FOR_COST,
-                })
-              }}
-            </v-alert>
             <v-alert v-if="isCostOverLimit" type="warning" density="compact" class="mb-2">
               {{
                 t('teamMembers.notifications.costLimitExceeded', {
                   cost: totalTeamCost,
-                  limit: applicableCostLimit,
+                  limit: TEAM_TOTAL_MAX_COST,
                 })
               }}
             </v-alert>
@@ -184,15 +173,7 @@ const teamId = computed(() => Number(route.params.teamId))
 
 // Squad limits
 const MAX_PLAYERS = 50
-
-// コスト上限テーブル（config/cost_limits.yml と同期）
-const COST_LIMIT_TIERS = [
-  { minPlayers: 28, maxCost: 120 },
-  { minPlayers: 27, maxCost: 119 },
-  { minPlayers: 26, maxCost: 117 },
-  { minPlayers: 25, maxCost: 114 },
-] as const
-const MINIMUM_PLAYERS_FOR_COST = 25
+const TEAM_TOTAL_MAX_COST = 200
 
 const headers = computed(() => [
   { title: t('teamMembers.headers.number'), key: 'number' },
@@ -228,23 +209,9 @@ const totalTeamCost = computed(() => {
   }, 0)
 })
 
-// 登録人数に応じたコスト上限（人数不足の場合はnull）
-const applicableCostLimit = computed(() => {
-  const count = includedTeamPlayers.value.length
-  const tier = COST_LIMIT_TIERS.find((t) => count >= t.minPlayers)
-  return tier ? tier.maxCost : null
-})
-
-// 最低人数未満の警告（0人は除く）
-const isBelowMinimumPlayers = computed(() => {
-  const count = includedTeamPlayers.value.length
-  return count > 0 && count < MINIMUM_PLAYERS_FOR_COST
-})
-
-// コスト上限超過の警告
+// コスト上限超過の警告（チーム全体: 200固定）
 const isCostOverLimit = computed(() => {
-  if (applicableCostLimit.value === null) return false
-  return totalTeamCost.value > applicableCostLimit.value
+  return totalTeamCost.value > TEAM_TOTAL_MAX_COST
 })
 
 const availablePlayers = computed(() => {
@@ -435,11 +402,11 @@ const addPlayer = () => {
   if (includedTeamPlayers.value.length > MAX_PLAYERS) {
     showSnackbar(t('teamMembers.notifications.maxPlayersExceeded', { max: MAX_PLAYERS }), 'warning')
   }
-  if (applicableCostLimit.value !== null && totalTeamCost.value > applicableCostLimit.value) {
+  if (totalTeamCost.value > TEAM_TOTAL_MAX_COST) {
     showSnackbar(
       t('teamMembers.notifications.costLimitExceeded', {
         cost: totalTeamCost.value,
-        limit: applicableCostLimit.value,
+        limit: TEAM_TOTAL_MAX_COST,
       }),
       'warning',
     )

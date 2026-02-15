@@ -1,5 +1,6 @@
 class Team < ApplicationRecord
   COST_LIMIT_CONFIG = YAML.load_file(Rails.root.join("config", "cost_limits.yml")).freeze
+  TEAM_TOTAL_MAX_COST = COST_LIMIT_CONFIG["team_total_max_cost"]
 
   has_one :season, dependent: :restrict_with_error
   has_many :team_memberships, dependent: :destroy
@@ -16,44 +17,21 @@ class Team < ApplicationRecord
 
   validates :name, presence: true
 
-  # 除外フラグOFFの選手数（コスト上限テーブル参照用）
-  def eligible_player_count
-    team_memberships.included_in_team_total.count
-  end
-
-  # 登録人数に対応するコスト上限を返す。人数不足の場合はnil
-  def self.cost_limit_for_count(count)
-    tier = COST_LIMIT_CONFIG["tiers"].find { |t| count >= t["min_players"] }
+  # 1軍登録人数に対応するコスト上限を返す。人数不足の場合はnil
+  def self.first_squad_cost_limit_for_count(count)
+    tier = COST_LIMIT_CONFIG["first_squad_tiers"].find { |t| count >= t["min_players"] }
     tier ? tier["max_cost"] : nil
   end
 
-  def self.minimum_players
-    COST_LIMIT_CONFIG["minimum_players"]
+  def self.first_squad_minimum_players
+    COST_LIMIT_CONFIG["first_squad_minimum_players"]
   end
 
-  # 対象人数が最低人数未満ならエラーを追加
-  def validate_minimum_players
-    count = eligible_player_count
-    return true if count == 0 # 空チームは許可
-
-    minimum = self.class.minimum_players
-    if count < minimum
-      errors.add(:base, I18n.t("activerecord.errors.models.team.cost_limit.below_minimum_players", count: count, minimum: minimum))
-      false
-    else
-      true
-    end
-  end
-
-  # チーム全体コスト（除外選手を除く）が上限以下かチェック
-  def validate_cost_within_limit(cost_list_id)
-    count = eligible_player_count
-    limit = self.class.cost_limit_for_count(count)
-    return true unless limit # minimum_players バリデーションで処理
-
+  # チーム全体コスト（除外選手を除く）が上限（200固定）以下かチェック
+  def validate_team_total_cost(cost_list_id)
     total_cost = calculate_included_team_cost(cost_list_id)
-    if total_cost > limit
-      errors.add(:base, I18n.t("activerecord.errors.models.team.cost_limit.cost_exceeds_limit", cost: total_cost, limit: limit))
+    if total_cost > TEAM_TOTAL_MAX_COST
+      errors.add(:base, I18n.t("activerecord.errors.models.team.cost_limit.cost_exceeds_limit", cost: total_cost, limit: TEAM_TOTAL_MAX_COST))
       false
     else
       true

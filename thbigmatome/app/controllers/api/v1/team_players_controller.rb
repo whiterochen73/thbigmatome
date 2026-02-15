@@ -25,14 +25,10 @@ class Api::V1::TeamPlayersController < ApplicationController
         )
       end
 
-      # Validate cost limits after all memberships are updated
+      # Validate team total cost limit (200 fixed) after all memberships are updated
       @team.team_memberships.reload
-      unless @team.validate_minimum_players
-        raise ActiveRecord::RecordInvalid.new(@team)
-      end
-
       if cost_list_id
-        unless @team.validate_cost_within_limit(cost_list_id)
+        unless @team.validate_team_total_cost(cost_list_id)
           raise ActiveRecord::RecordInvalid.new(@team)
         end
       end

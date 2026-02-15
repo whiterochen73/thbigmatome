@@ -156,10 +156,10 @@ module Api
       # Rule 4 & 5: Validate 1st team constraints
       def validate_first_squad_constraints(first_squad_memberships, target_date, season, season_start_date)
         player_count = first_squad_memberships.count
-        total_cost = first_squad_memberships.sum { |tm| tm.player.cost_players.find { |pc| pc.cost_id == @current_cost_list.id }.send(tm.selected_cost_type) } # Assuming player has cost methods
+        total_cost = first_squad_memberships.sum { |tm| tm.player.cost_players.find { |pc| pc.cost_id == @current_cost_list.id }.send(tm.selected_cost_type) }
 
         max_players = 29
-        max_cost = 120
+        minimum_players = Team.first_squad_minimum_players
 
         # Check if target_date is a game day
         is_game_day = season.season_schedules.exists?(date: target_date, date_type: "game_day")
@@ -168,23 +168,10 @@ module Api
         is_first_game_day_of_season = is_game_day && (target_date == season_start_date)
 
         if is_game_day
-          # Special rules for game day
-          Rails.logger.debug(player_count)
-          # If it's the first game day of the season, and we are in the process of initial registration (player_count < 25),
-          # we should allow it to proceed until max_players (29) is reached.
-          # This assumes that the user is trying to register a full squad on the first game day.
-          if is_first_game_day_of_season && player_count < 25
+          if is_first_game_day_of_season && player_count < minimum_players
             # Do not raise error for minimum player count on the first game day during initial setup
-            # We will still enforce max_players and max_cost
-          elsif player_count < 25
-            raise "試合日には1軍に最低25人を登録する必要があります。"
-          end
-
-          max_cost = case player_count
-          when 25 then 114
-          when 26 then 117
-          when 27 then 119
-          else         120 # For 28, 29 players
+          elsif player_count < minimum_players
+            raise "試合日には1軍に最低#{minimum_players}人を登録する必要があります。"
           end
         end
 
@@ -192,7 +179,9 @@ module Api
           raise "1軍に登録できる選手の最大数（#{max_players}人）を超えています。"
         end
 
-        if total_cost > max_cost
+        # 1軍コスト上限: 人数別段階制（config/cost_limits.yml）
+        max_cost = Team.first_squad_cost_limit_for_count(player_count)
+        if max_cost && total_cost > max_cost
           raise "1軍に登録されている選手の合計コストが上限（#{max_cost}）を超えています。"
         end
       end

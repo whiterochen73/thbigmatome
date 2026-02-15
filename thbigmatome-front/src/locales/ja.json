@@ -653,6 +653,10 @@
       "position": "ポジション",
       "actions": "操作"
     },
+    "filters": {
+      "searchPlaceholder": "選手名で検索",
+      "position": "ポジション"
+    },
     "deleteConfirmTitle": "選手の削除",
     "deleteConfirmMessage": "この選手を本当に削除しますか？",
     "fetchFailed": "選手一覧の取得に失敗しました。",

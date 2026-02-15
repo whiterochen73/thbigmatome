@@ -1,3 +1,4 @@
+<!-- eslint-disable vue/multi-word-component-names, vue/valid-v-slot -->
 <template>
   <v-container fluid>
     <v-card>
@@ -9,9 +10,33 @@
         </v-btn>
       </v-card-title>
       <v-card-text>
+        <!-- フィルターUI -->
+        <v-row dense class="mb-4">
+          <v-col cols="12" sm="6" md="4">
+            <v-text-field
+              v-model="searchText"
+              :label="t('playerList.filters.searchPlaceholder')"
+              prepend-inner-icon="mdi-magnify"
+              clearable
+              dense
+              hide-details
+            ></v-text-field>
+          </v-col>
+          <v-col cols="12" sm="6" md="3">
+            <v-select
+              v-model="selectedPosition"
+              :items="positionFilterOptions"
+              :label="t('playerList.filters.position')"
+              clearable
+              dense
+              hide-details
+            ></v-select>
+          </v-col>
+        </v-row>
+
         <v-data-table
           :headers="headers"
-          :items="players"
+          :items="filteredPlayers"
           :loading="loading"
           :no-data-text="t('playerList.noData')"
           :class="displayClasses"
@@ -29,11 +54,7 @@
       </v-card-text>
     </v-card>
 
-    <PlayerDialog
-      v-model="dialog"
-      :item="editedItem"
-      @save="onSave"
-    />
+    <PlayerDialog v-model="dialog" :item="editedItem" @save="onSave" />
 
     <ConfirmDialog ref="confirmDialog" />
   </v-container>
@@ -56,8 +77,12 @@ const { displayClasses } = useDisplay()
 const players = ref<PlayerDetail[]>([])
 const loading = ref(true)
 const dialog = ref(false)
-const confirmDialog = ref<InstanceType<typeof ConfirmDialog> | null>(null);
+const confirmDialog = ref<InstanceType<typeof ConfirmDialog> | null>(null)
 const editedItem = ref<PlayerDetail | null>(null)
+
+// フィルター用のstate
+const searchText = ref('')
+const selectedPosition = ref<string | null>(null)
 
 const headers = computed(() => [
   { title: t('playerList.headers.number'), key: 'number', width: '15%' },
@@ -67,12 +92,42 @@ const headers = computed(() => [
   { title: t('playerList.headers.actions'), key: 'actions', sortable: false, width: '10%' },
 ])
 
+// ポジションフィルターのオプション
+const positionFilterOptions = computed(() => [
+  { value: 'pitcher', title: t('baseball.positions.pitcher') },
+  { value: 'catcher', title: t('baseball.positions.catcher') },
+  { value: 'infielder', title: t('baseball.positions.infielder') },
+  { value: 'outfielder', title: t('baseball.positions.outfielder') },
+])
+
+// フィルター適用後の選手リスト
+const filteredPlayers = computed(() => {
+  let result = players.value
+
+  // 名前検索フィルター（name または short_name に部分一致）
+  if (searchText.value) {
+    const search = searchText.value.toLowerCase()
+    result = result.filter(
+      (player) =>
+        player.name.toLowerCase().includes(search) ||
+        (player.short_name && player.short_name.toLowerCase().includes(search)),
+    )
+  }
+
+  // ポジションフィルター
+  if (selectedPosition.value) {
+    result = result.filter((player) => player.position === selectedPosition.value)
+  }
+
+  return result
+})
+
 const fetchPlayers = async () => {
   loading.value = true
   try {
     const response = await axios.get<PlayerDetail[]>('/players')
     players.value = response.data
-  } catch (error) {
+  } catch {
     showSnackbar(t('playerList.fetchFailed'), 'error')
   } finally {
     loading.value = false
@@ -82,29 +137,29 @@ const fetchPlayers = async () => {
 onMounted(fetchPlayers)
 
 const openDialog = (player: PlayerDetail | null = null) => {
-  editedItem.value = player ? { ...player } : null; // 参照渡しを防ぐためスプレッド構文でコピー
-  dialog.value = true;
-};
+  editedItem.value = player ? { ...player } : null // 参照渡しを防ぐためスプレッド構文でコピー
+  dialog.value = true
+}
 
 const deletePlayer = async (id: number) => {
-  if (!confirmDialog.value) return;
+  if (!confirmDialog.value) return
   const result = await confirmDialog.value.open(
     t('playerList.deleteConfirmTitle'),
     t('playerList.deleteConfirmMessage'),
-    { color: 'error' }
-  );
+    { color: 'error' },
+  )
   if (!result) {
-    return;
+    return
   }
   try {
-    await axios.delete(`/players/${id}`);
-    showSnackbar(t('playerList.deleteSuccess'), 'success');
-    fetchPlayers(); // 削除後、一覧を再取得
+    await axios.delete(`/players/${id}`)
+    showSnackbar(t('playerList.deleteSuccess'), 'success')
+    fetchPlayers() // 削除後、一覧を再取得
   } catch (error) {
-    console.error('Error deleting player:', error);
-    showSnackbar(t('playerList.deleteFailed'), 'error');
+    console.error('Error deleting player:', error)
+    showSnackbar(t('playerList.deleteFailed'), 'error')
   }
-};
+}
 
 const onSave = () => {
   fetchPlayers()

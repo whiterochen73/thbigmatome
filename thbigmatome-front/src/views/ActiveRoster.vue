@@ -249,22 +249,22 @@
           <v-card-title>
             <h2 class="text-h5">{{ t('activeRoster.secondSquad') }}</h2>
           </v-card-title>
-          <!-- 凡例 -->
-          <div class="d-flex flex-wrap ga-2 px-4 pb-2">
-            <v-chip size="small" variant="tonal" color="amber" prepend-icon="mdi-timer-sand">
-              {{ t('activeRoster.legend.cooldown') }}
-            </v-chip>
-            <v-chip size="small" variant="tonal" color="red" prepend-icon="mdi-hospital-box">
-              {{ t('activeRoster.legend.injury') }}
-            </v-chip>
-            <v-chip size="small" variant="tonal" color="orange" prepend-icon="mdi-gavel">
-              {{ t('activeRoster.legend.suspension') }}
-            </v-chip>
-            <v-chip size="small" variant="tonal" color="blue-grey" prepend-icon="mdi-wrench">
-              {{ t('activeRoster.legend.reconditioning') }}
-            </v-chip>
-          </div>
           <v-card-text>
+            <!-- 凡例 -->
+            <div class="d-flex flex-wrap ga-2 mb-2">
+              <v-chip size="small" variant="tonal" color="amber" prepend-icon="mdi-timer-sand">
+                {{ t('activeRoster.legend.cooldown') }}
+              </v-chip>
+              <v-chip size="small" variant="tonal" color="red" prepend-icon="mdi-hospital-box">
+                {{ t('activeRoster.legend.injury') }}
+              </v-chip>
+              <v-chip size="small" variant="tonal" color="orange" prepend-icon="mdi-gavel">
+                {{ t('activeRoster.legend.suspension') }}
+              </v-chip>
+              <v-chip size="small" variant="tonal" color="blue-grey" prepend-icon="mdi-wrench">
+                {{ t('activeRoster.legend.reconditioning') }}
+              </v-chip>
+            </div>
             <v-data-table
               density="compact"
               :headers="secondHeaders"

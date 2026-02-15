@@ -71,54 +71,59 @@
                 {{ t(`baseball.positions.${position}`) }}: {{ count }}
               </v-chip>
             </v-chip-group>
-          </v-card-text>
-          <!-- eslint-disable vue/valid-v-slot -->
-          <v-data-table
-            :headers="headers"
-            :items="teamPlayers"
-            :no-data-text="t('teamMembers.noData')"
-            density="compact"
-            items-per-page="-1"
-            :disable-sort="false"
-          >
-            <template #item.player_type_ids="{ item }">
-              <v-chip-group column>
-                <v-chip v-for="typeId in item.player_type_ids" :key="typeId">
-                  {{
-                    playerTypes.find((pt) => pt.id === typeId)?.name || t('teamMembers.unknownType')
-                  }}
-                </v-chip>
-              </v-chip-group>
-            </template>
-            <template #item.position="{ item }">
-              {{ t(`baseball.positions.${item.position}`) }}
-            </template>
-            <template #item.throws="{ item }">
-              {{ t(`baseball.throwingHands.${item.throwing_hand}`) }}
-            </template>
-            <template #item.bats="{ item }">
-              {{ t(`baseball.battingHands.${item.batting_hand}`) }}
-            </template>
-            <template #item.cost="{ item }">
-              <div class="d-flex align-center">
-                <v-select
-                  v-model="item.selected_cost_type"
-                  :items="getAvailableCostTypes(item)"
-                  item-title="text"
-                  item-value="value"
-                  density="compact"
+            <!-- eslint-disable vue/valid-v-slot -->
+            <v-data-table
+              :headers="headers"
+              :items="teamPlayers"
+              :no-data-text="t('teamMembers.noData')"
+              density="compact"
+              items-per-page="-1"
+              :disable-sort="false"
+            >
+              <template #item.player_type_ids="{ item }">
+                <v-chip-group column>
+                  <v-chip v-for="typeId in item.player_type_ids" :key="typeId">
+                    {{
+                      playerTypes.find((pt) => pt.id === typeId)?.name ||
+                      t('teamMembers.unknownType')
+                    }}
+                  </v-chip>
+                </v-chip-group>
+              </template>
+              <template #item.position="{ item }">
+                {{ t(`baseball.positions.${item.position}`) }}
+              </template>
+              <template #item.throws="{ item }">
+                {{ t(`baseball.throwingHands.${item.throwing_hand}`) }}
+              </template>
+              <template #item.bats="{ item }">
+                {{ t(`baseball.battingHands.${item.batting_hand}`) }}
+              </template>
+              <template #item.cost="{ item }">
+                <div class="d-flex align-center">
+                  <v-select
+                    v-model="item.selected_cost_type"
+                    :items="getAvailableCostTypes(item)"
+                    item-title="text"
+                    item-value="value"
+                    density="compact"
+                    hide-details
+                    @update:modelValue="updatePlayerCost(item)"
+                  ></v-select>
+                </div>
+              </template>
+              <template #item.excluded_from_team_total="{ item }">
+                <v-checkbox
+                  v-model="item.excluded_from_team_total"
                   hide-details
-                  @update:modelValue="updatePlayerCost(item)"
-                ></v-select>
-              </div>
-            </template>
-            <template #item.excluded_from_team_total="{ item }">
-              <v-checkbox v-model="item.excluded_from_team_total" hide-details density="compact" />
-            </template>
-            <template #item.actions="{ item }">
-              <v-btn icon="mdi-delete" size="small" variant="text" @click="removePlayer(item)" />
-            </template>
-          </v-data-table>
+                  density="compact"
+                />
+              </template>
+              <template #item.actions="{ item }">
+                <v-btn icon="mdi-delete" size="small" variant="text" @click="removePlayer(item)" />
+              </template>
+            </v-data-table>
+          </v-card-text>
         </v-card>
       </v-col>
     </v-row>

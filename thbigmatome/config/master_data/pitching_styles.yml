@@ -1,0 +1,32 @@
+---
+pitching_styles:
+- key: ＷＰ
+  name: ＷＰ
+  description: 暴投。各ランナーは１進塁
+- key: ＤＢ
+  name: ＤＢ
+  description: 死球
+- key: ボーク
+  name: ボーク
+  description: ボーク
+- key: ホームラン
+  name: ホームラン
+  description: ホームランを打たれる
+- key: けが
+  name: けが
+  description: 負傷チェックを行う。日数が指定されている場合はその日数負傷する。
+- key: 対右
+  name: 対右
+  description: 右打者に対しては投球ナンバー５、左打者に対しては投球ナンバー１として打ち直し
+- key: 対左
+  name: 対左
+  description: 右打者に対しては投球ナンバー１、左打者に対しては投球ナンバー５として打ち直し
+- key: 三振
+  name: 三振
+  description: 三振を取る
+- key: １Ｐ５
+  name: １Ｐ５
+  description: 走者がいない場合は投球ナンバー１、いる場合は投球ナンバー５として振り直し
+- key: 三振振り逃げ
+  name: 三振振り逃げ
+  description: 三振を取るが、打者は暴投で出塁する

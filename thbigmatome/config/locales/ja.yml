@@ -1,4 +1,6 @@
 ja:
+  master_data:
+    managed_by_config_file: "このマスタデータは設定ファイルで管理されています"
   activerecord:
     errors:
       models:

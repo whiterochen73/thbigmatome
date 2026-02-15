@@ -1046,3 +1046,52 @@ export interface Biorhythm {
 ### 7.7 SkillType型の重複定義
 
 `SkillType` 型（`'positive' | 'negative' | 'neutral'`）が `battingSkill.ts` と `pitchingSkill.ts` の2箇所で個別に定義されている。共通の型定義ファイルに統合されていない。
+
+---
+
+## 8. マスタデータ管理方針の変更（2026-02-15）
+
+### 8.1 YAML設定ファイル管理への移行
+
+対象5種（打撃特徴、投球特徴、打撃特殊能力、投球特殊能力、選手タイプ）はYAML設定ファイルでの管理に移行中。バイオリズムはDB管理のまま維持（将来的に日程表との連動予定）。
+
+#### 8.1.1 移行方針（案A: DBシード方式）
+
+- **既存テーブルと関連は維持**: `batting_skills`, `batting_styles`, `pitching_skills`, `pitching_styles`, `player_types` テーブルおよび中間テーブルはそのまま残す
+- **YAML設定ファイル**: `config/master_data/*.yml` に各マスタデータを配置
+- **Rakeタスクによる同期**:
+  - `rake master_data:sync`: YAML → DB 同期（YAML を正とし、DB に反映）
+  - `rake master_data:export`: DB → YAML 出力（現在のDBデータをYAMLに書き出し）
+
+この方式により、既存の選手データとの関連やAPIエンドポイントの動作を維持したまま、マスタデータの管理を YAML ファイルで一元化できる。
+
+#### 8.1.2 Settings画面の変更
+
+フロントエンドのSettings画面は**読み取り専用**に変更された:
+
+- **追加ボタン**: 非表示
+- **編集ボタン（mdi-pencil）**: 非表示
+- **削除ボタン（mdi-delete）**: 非表示
+- **操作カラム**: テーブルから除外
+- **案内表示**: 「この設定は設定ファイルで管理されているため、ここでは閲覧のみ可能です。」（v-alert）
+
+**変更対象コンポーネント**:
+
+| コンポーネント | 変更内容 |
+|--------------|---------|
+| `GenericMasterSettings.vue` | `readonly` prop を追加（default: false）。readonly=true でCRUD UI非表示、案内表示 |
+| `PitchingStyleSettings.vue` | `:readonly="true"` を指定 |
+| `BattingStyleSettings.vue` | `:readonly="true"` を指定 |
+| `PitchingSkillSettings.vue` | `:readonly="true"` を指定 |
+| `BattingSkillSettings.vue` | `:readonly="true"` を指定 |
+| `PlayerTypeSettings.vue` | `:readonly="true"` を指定 |
+
+**国際化対応**:
+
+- `src/locales/ja.json` の `settings` セクションに `managedByConfigFile` キーを追加
+
+#### 8.1.3 今後の方針
+
+段階的にDB依存を削減し、最終的には**案B（DB完全廃止、YAML単独管理）**への移行を検討。ただし、選手データとの関連（外部キー、中間テーブル）や既存機能への影響を考慮し、慎重に進める。
+
+当面は案Aで運用し、YAML設定ファイルの管理運用が安定した段階で、データベーステーブルの廃止を検討する。

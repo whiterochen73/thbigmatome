@@ -5,6 +5,7 @@
     i18n-key="settings.playerType"
     :dialog-component="PlayerTypeDialog"
     description-max-width="500px"
+    :readonly="true"
   />
 </template>
 

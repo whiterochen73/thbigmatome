@@ -8,68 +8,35 @@
 #     MovieGenre.find_or_create_by!(name: genre_name)
 #   end
 
-puts 'Seeding Pitching Styles...'
-[
-  { name: 'ＷＰ', description: '暴投。各ランナーは１進塁' },
-  { name: 'ＤＢ', description: '死球' },
-  { name: 'ボーク', description: 'ボーク' },
-  { name: 'ホームラン', description: 'ホームランを打たれる' },
-  { name: 'けが', description: '負傷チェックを行う。日数が指定されている場合はその日数負傷する。' },
-  { name: '対右', description: '右打者に対しては投球ナンバー５、左打者に対しては投球ナンバー１として打ち直し' },
-  { name: '対左', description: '右打者に対しては投球ナンバー１、左打者に対しては投球ナンバー５として打ち直し' }
-].each do |style_attrs|
-  style = PitchingStyle.find_or_initialize_by(name: style_attrs[:name])
-  style.update!(description: style_attrs[:description])
-end
-puts 'Pitching Styles seeded.'
+# Sync master data from YAML config files (5 types)
+master_data_dir = Rails.root.join("config", "master_data")
+master_data_models = {
+  batting_styles: { model: BattingStyle, fields: %i[name description] },
+  pitching_styles: { model: PitchingStyle, fields: %i[name description] },
+  batting_skills: { model: BattingSkill, fields: %i[name description skill_type] },
+  pitching_skills: { model: PitchingSkill, fields: %i[name description skill_type] },
+  player_types: { model: PlayerType, fields: %i[name description] }
+}
 
-puts 'Seeding Batting Styles...'
-[
-  { name: 'ＤＢ', description: '死球' },
-  { name: 'けが', description: '負傷チェックを行う。日数が指定されている場合はその日数負傷する。' },
-  { name: '１Ｃ５', description: '走者がいる場合は投球ナンバー５、いる場合は投球ナンバー１として打ち直し' },
-  { name: 'チャンス', description: '走者がいる場合は投球ナンバー１、いる場合は投球ナンバー５として打ち直し' },
-  { name: '内野安打', description: '内野安打を打つ。ただし、１塁走者がいれば２塁フォースアウト、前進守備なら３塁走者がタッチアウトになる。' },
-  { name: '対左', description: '右投手に対しては投球ナンバー５、左投手に対しては投球ナンバー１として打ち直し' },
-  { name: '対右', description: '右投手に対しては投球ナンバー１、左投手に対しては投球ナンバー５として打ち直し' }
-].each do |style_attrs|
-  style = BattingStyle.find_or_initialize_by(name: style_attrs[:name])
-  style.update!(description: style_attrs[:description])
-end
-puts 'Batting Styles seeded.'
+master_data_models.each do |key, config|
+  puts "Seeding #{key} from YAML..."
+  file_path = master_data_dir.join("#{key}.yml")
+  unless File.exist?(file_path)
+    puts "  SKIP: #{file_path} not found"
+    next
+  end
 
-puts 'Seeding Pitching Skills...'
-[
-  { name: 'ＷＰしない', description: 'あらゆる暴投を防ぐ。捕逸は防げない', skill_type: 'positive' },
-  { name: 'ボークしない', description: 'ボークを防ぐ。', skill_type: 'positive' },
-  { name: '精神疲労', description: '失点すると疲労状態になる。', skill_type: 'negative' },
-  { name: 'クイック○', description: '登板中に盗塁されたとき、盗塁のst値が+2され、捕手のT値が+2される。', skill_type: 'positive' },
-  { name: 'クイック×', description: '登板中に盗塁されたとき、盗塁のst値が-2され、捕手のT値が-2される。', skill_type: 'negative' },
-  { name: '牽制○', description: '盗塁スタート時に出目20が出たとき、その走者を確定でアウトにする。', skill_type: 'positive' },
-  { name: '暴投追加', description: '２死以外で投球ナンバー５、打撃出目１９で三振になったとき、暴投として走者が１進塁する。', skill_type: 'negative' },
-  { name: '代打可', description: '通常投手は代打起用できないが、代打可の選手は代打で出場できる。', skill_type: 'neutral' },
-  { name: 'オープナー', description: 'オープナーとして起用できる。', skill_type: 'neutral' },
-].each do |skill_attrs|
-  skill = PitchingSkill.find_or_initialize_by(name: skill_attrs[:name])
-  skill.update!(
-    description: skill_attrs[:description],
-    skill_type: skill_attrs[:skill_type]
-  )
+  data = YAML.load_file(file_path)
+  entries = data[key.to_s] || []
+  entries.each do |entry|
+    record = config[:model].find_or_initialize_by(name: entry["name"])
+    attrs = config[:fields].each_with_object({}) do |field, hash|
+      hash[field] = entry[field.to_s] if entry.key?(field.to_s)
+    end
+    record.update!(attrs)
+  end
+  puts "  #{entries.size} #{key} seeded."
 end
-puts 'Pitching Skills seeded.'
-
-puts 'Seeding Batting Skills...'
-[
-  { name: '風神少女', description: '走塁表の出目を-2する。', skill_type: 'positive' },
-  { name: '代打○', description: '代打で出場した打席で打者特徴が出た場合、本来の特徴を無視して投球ナンバー１で打ち直す', skill_type: 'positive' },
-].each do |skill_attrs|
-  skill = BattingSkill.find_or_initialize_by(name: skill_attrs[:name])
-  skill.update!(
-    description: skill_attrs[:description],
-    skill_type: skill_attrs[:skill_type]
-  )
-end
-puts 'Batting Skills seeded.'
 
 puts 'Seeding Biorhythms...'
 [
@@ -94,21 +61,6 @@ puts 'Seeding Biorhythms...'
   biorhythm.update!(biorhythm_attrs)
 end
 puts 'Biorhythms seeded.'
-
-puts 'Seeding Player Types...'
-[
-  { name: '東方', description: '東方キャラ。このゲームの中心となる選手。' },
-  { name: 'ハチナイ', description: 'ハチナイコラボで使用可能になった選手' },
-  { name: '球詠', description: '球詠コラボで使用可能になった選手' },
-  { name: 'ＰＭ', description: 'プレイングマネージャー。IRCである程度遊ぶと作成されることがある' },
-  { name: 'ＡＰ', description: '毎年エイプリルフールに作成されることがあるネタカード。公式化されることもある' },
-  { name: 'オリジナル', description: 'ペナントを１シーズン完了させた記念に作成されたカード' },
-  { name: '横綱', description: '伝説の戦犯として、ファンサービスを兼ねて作成された記念カード（公式戦使用不可）' }
-].each do |style_attrs|
-  style = PlayerType.find_or_initialize_by(name: style_attrs[:name])
-  style.update!(description: style_attrs[:description])
-end
-puts 'Player Types seeded.'
 
 
 puts 'Seeding Schedules...'

@@ -5,6 +5,7 @@
     i18n-key="settings.battingSkill"
     :dialog-component="BattingSkillDialog"
     description-max-width="400px"
+    :readonly="true"
   >
     <!-- eslint-disable-next-line vue/valid-v-slot -->
     <template #item.name="{ item }">

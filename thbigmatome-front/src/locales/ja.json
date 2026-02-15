@@ -141,10 +141,16 @@
     "cooldownTooltip": "{date}まで昇格不可",
     "absenceDaysTooltip": "離脱中（{type}: {reason}残り{days}日）",
     "absenceGamesTooltip": "離脱中（{type}: {reason}残り{days}日相当）",
+    "promoteButton": "昇格",
+    "demoteButton": "降格",
+    "reconditioningBlocked": "再調整中のため1軍登録不可",
     "legend": {
       "cooldown": "昇格待ち",
       "absenceDays": "離脱中(日数)",
-      "absenceGames": "離脱中(試合)"
+      "absenceGames": "離脱中(試合)",
+      "injury": "負傷離脱",
+      "suspension": "出場停止",
+      "reconditioning": "再調整"
     }
   },
   "gameResult": {

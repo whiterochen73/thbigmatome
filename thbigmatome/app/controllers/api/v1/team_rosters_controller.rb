@@ -92,6 +92,12 @@ module Api
                 registered_on: target_date
               )
             elsif team_membership.squad == "second" && new_squad == "first"
+              # Check reconditioning: block promotion for reconditioning players
+              absence = absence_info_for(team_membership, target_date)
+              if absence[:is_absent] && absence[:absence_info][:absence_type] == "reconditioning"
+                raise "#{team_membership.player.name}は再調整中のため1軍登録できません。"
+              end
+
               # Check cooldown (per-player constraint, unaffected by batch order)
               # Same-day promotion+demotion is exempt from cooldown
               cooldown_info = calculate_cooldown_info(team_membership, target_date)

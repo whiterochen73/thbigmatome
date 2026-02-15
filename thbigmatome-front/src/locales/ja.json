@@ -608,6 +608,7 @@
     "teamMembersTitle": "チームメンバー",
     "totalCount": "合計人数: {count} / {max}人",
     "totalCost": "合計コスト: {cost} / {max}",
+    "outsideWorldCount": "外の世界枠: {count} / {max}人",
     "costTypes": {
       "normal_cost": "通常",
       "relief_only_cost": "リリーフ契約",
@@ -622,6 +623,7 @@
       "playerAlreadyAdded": "この選手は既に追加されています。",
       "maxPlayersExceeded": "登録人数が上限（{max}人）を超えています。",
       "costLimitExceeded": "合計コスト（{cost}）がコスト上限（{limit}）を超えています。",
+      "outsideWorldLimitExceeded": "外の世界枠の選手が上限（{limit}人）を超えています（現在{count}人）。",
       "totalCostExceeded": "合計コストが上限（{max}）を超えています。",
       "selectCostList": "コスト一覧表を選択してください。",
       "saveSuccess": "選手情報を保存しました。",

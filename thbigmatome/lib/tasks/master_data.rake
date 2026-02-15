@@ -9,7 +9,7 @@ namespace :master_data do
       pitching_styles: { model: PitchingStyle, order: :id, fields: %i[name description] },
       batting_skills: { model: BattingSkill, order: :id, fields: %i[name description skill_type] },
       pitching_skills: { model: PitchingSkill, order: :id, fields: %i[name description skill_type] },
-      player_types: { model: PlayerType, order: :id, fields: %i[name description] }
+      player_types: { model: PlayerType, order: :id, fields: %i[name description category] }
     }
   end
 

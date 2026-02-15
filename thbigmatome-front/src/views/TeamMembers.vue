@@ -53,6 +53,17 @@
               <span>{{
                 t('teamMembers.totalCost', { cost: totalTeamCost, max: TEAM_TOTAL_MAX_COST })
               }}</span>
+              <span class="ml-2">
+                /
+                <span :class="{ 'text-error': outsideWorldCount > OUTSIDE_WORLD_LIMIT }">
+                  {{
+                    t('teamMembers.outsideWorldCount', {
+                      count: outsideWorldCount,
+                      max: OUTSIDE_WORLD_LIMIT,
+                    })
+                  }}
+                </span>
+              </span>
             </div>
           </v-card-title>
           <v-card-text>
@@ -61,6 +72,19 @@
                 t('teamMembers.notifications.costLimitExceeded', {
                   cost: totalTeamCost,
                   limit: TEAM_TOTAL_MAX_COST,
+                })
+              }}
+            </v-alert>
+            <v-alert
+              v-if="outsideWorldCount > OUTSIDE_WORLD_LIMIT"
+              type="warning"
+              density="compact"
+              class="mb-2"
+            >
+              {{
+                t('teamMembers.notifications.outsideWorldLimitExceeded', {
+                  count: outsideWorldCount,
+                  limit: OUTSIDE_WORLD_LIMIT,
                 })
               }}
             </v-alert>
@@ -174,6 +198,7 @@ const teamId = computed(() => Number(route.params.teamId))
 // Squad limits
 const MAX_PLAYERS = 50
 const TEAM_TOTAL_MAX_COST = 200
+const OUTSIDE_WORLD_LIMIT = 4
 
 const headers = computed(() => [
   { title: t('teamMembers.headers.number'), key: 'number' },
@@ -212,6 +237,17 @@ const totalTeamCost = computed(() => {
 // コスト上限超過の警告（チーム全体: 200固定）
 const isCostOverLimit = computed(() => {
   return totalTeamCost.value > TEAM_TOTAL_MAX_COST
+})
+
+// 外の世界枠カウント（チーム全体のoutside_worldカテゴリ選手数）
+const outsideWorldTypeIds = computed(() => {
+  return playerTypes.value.filter((pt) => pt.category === 'outside_world').map((pt) => pt.id)
+})
+
+const outsideWorldCount = computed(() => {
+  return teamPlayers.value.filter((p) =>
+    p.player_type_ids?.some((id) => outsideWorldTypeIds.value.includes(id)),
+  ).length
 })
 
 const availablePlayers = computed(() => {
@@ -407,6 +443,15 @@ const addPlayer = () => {
       t('teamMembers.notifications.costLimitExceeded', {
         cost: totalTeamCost.value,
         limit: TEAM_TOTAL_MAX_COST,
+      }),
+      'warning',
+    )
+  }
+  if (outsideWorldCount.value > OUTSIDE_WORLD_LIMIT) {
+    showSnackbar(
+      t('teamMembers.notifications.outsideWorldLimitExceeded', {
+        count: outsideWorldCount.value,
+        limit: OUTSIDE_WORLD_LIMIT,
       }),
       'warning',
     )

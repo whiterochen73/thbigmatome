@@ -7,6 +7,9 @@ ja:
         team:
           cost_limit:
             cost_exceeds_limit: "合計コスト（%{cost}）がコスト上限（%{limit}）を超えています。"
+          outside_world:
+            limit_exceeded: "外の世界枠の選手が上限（%{limit}人）を超えています（現在%{count}人）。"
+            balance_required: "外の世界枠が4人の場合、投手と野手を最低1人ずつ含める必要があります。"
         player_biorhythm:
           attributes:
             biorhythm_id:

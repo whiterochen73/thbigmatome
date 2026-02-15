@@ -1,13 +1,11 @@
 <!-- eslint-disable vue/valid-v-slot -->
 <template>
   <v-container>
+    <TeamNavigation :team-id="teamId" />
     <v-toolbar color="orange-lighten-3">
       <template #prepend>
         <h1 class="text-h4">{{ t('activeRoster.title') }}</h1>
       </template>
-      <v-btn class="mx-2" color="light" variant="flat" :to="seasonPortalRoute">
-        {{ t('seasonPortal.title') }}
-      </v-btn>
       <v-btn class="mx-2" color="red-darken-4" variant="flat" :to="playerAbsenceRoute">
         {{ t('playerAbsenceHistory.title') }}
       </v-btn>
@@ -315,6 +313,7 @@ import axios from 'axios'
 import { useI18n } from 'vue-i18n'
 import AbsenceInfo from '@/components/AbsenceInfo.vue'
 import PromotionCooldownInfo from '@/components/PromotionCooldownInfo.vue'
+import TeamNavigation from '@/components/TeamNavigation.vue'
 import type { RosterPlayer } from '@/types/rosterPlayer'
 
 const { t } = useI18n()
@@ -339,15 +338,6 @@ const currentDateStr = computed(() => {
 })
 
 const currentDateFormatted = computed(() => currentDate.value.toISOString().split('T')[0])
-
-const seasonPortalRoute = computed(() => {
-  return {
-    name: 'SeasonPortal',
-    params: {
-      teamId: teamId,
-    },
-  }
-})
 
 const playerAbsenceRoute = computed(() => {
   return {

@@ -1,5 +1,6 @@
 <template>
   <v-container>
+    <TeamNavigation :team-id="teamId" />
     <v-toolbar color="orange-lighten-3">
       <template #prepend>
         <h1 class="text-h4 mx-4">{{ season?.name }}</h1>
@@ -13,17 +14,11 @@
       >
         {{ t('seasonPortal.goToGameResult') }}
       </v-btn>
-      <v-btn class="mx-2" color="secondary" variant="flat" :to="playerRegistrationRoute">
-        {{ t('activeRoster.title') }}
-      </v-btn>
       <v-btn class="mx-2" color="red" variant="flat" @click="isDialogOpen = true">
         {{ t('seasonPortal.registerAbsence') }}
       </v-btn>
       <v-btn class="mx-2" color="red-darken-4" variant="flat" :to="playerAbsenceRoute">
         {{ t('playerAbsenceHistory.title') }}
-      </v-btn>
-      <v-btn class="mx-2" color="teal" variant="flat" :to="teamMembersRoute">
-        {{ t('seasonPortal.teamMembers') }}
       </v-btn>
       <template #append>
         <v-btn icon variant="text" @click="prevDay" :disabled="isPrevDayDisabled">
@@ -169,6 +164,7 @@ import type { SeasonDetail } from '@/types/seasonDetail'
 import type { SeasonSchedule } from '@/types/seasonSchedule'
 import AbsenceInfo from '@/components/AbsenceInfo.vue'
 import PlayerAbsenceFormDialog from '@/components/PlayerAbsenceFormDialog.vue'
+import TeamNavigation from '@/components/TeamNavigation.vue'
 
 const { t } = useI18n()
 const route = useRoute()
@@ -376,10 +372,6 @@ const updateSchedule = async (schedule: SeasonSchedule, newDateType: string) => 
   }
 }
 
-const playerRegistrationRoute = computed(() => {
-  return `/teams/${teamId}/roster`
-})
-
 const currentDaySchedule = computed(() => {
   if (!season.value) return null
   const current = new Date(currentDate.value)
@@ -412,15 +404,6 @@ const gameResultRoute = computed(() => {
 const playerAbsenceRoute = computed(() => {
   return {
     name: 'PlayerAbsenceHistory',
-    params: {
-      teamId: teamId,
-    },
-  }
-})
-
-const teamMembersRoute = computed(() => {
-  return {
-    name: 'TeamMembers',
     params: {
       teamId: teamId,
     },

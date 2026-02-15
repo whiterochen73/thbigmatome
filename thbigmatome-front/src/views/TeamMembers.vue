@@ -1,5 +1,6 @@
 <template>
   <v-container>
+    <TeamNavigation :team-id="teamId" />
     <v-row>
       <v-col>
         <h1 class="text-h4">{{ t('teamMembers.title', { teamName: team.name }) }}</h1>
@@ -141,6 +142,7 @@ import type { Player } from '@/types/player'
 import type { Team } from '@/types/team'
 import type { CostList } from '@/types/costList'
 import CostListSelect from '@/components/shared/CostListSelect.vue'
+import TeamNavigation from '@/components/TeamNavigation.vue'
 import type { PlayerType } from '@/types/playerType'
 
 type CostType =

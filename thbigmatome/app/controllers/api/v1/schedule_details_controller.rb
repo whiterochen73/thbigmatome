@@ -1,4 +1,4 @@
-class Api::V1::ScheduleDetailsController < ApplicationController
+class Api::V1::ScheduleDetailsController < Api::V1::BaseController
   before_action :set_schedule
 
   def index
@@ -11,7 +11,7 @@ class Api::V1::ScheduleDetailsController < ApplicationController
       p.permit(:id, :date, :date_type, :schedule_id, :priority)
     end
 
-    ScheduleDetail.upsert_all(schedule_details_params, unique_by: [:schedule_id, :date])
+    ScheduleDetail.upsert_all(schedule_details_params, unique_by: [ :schedule_id, :date ])
 
     head :ok
   end

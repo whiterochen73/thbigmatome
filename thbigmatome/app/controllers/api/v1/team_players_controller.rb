@@ -1,4 +1,4 @@
-class Api::V1::TeamPlayersController < ApplicationController
+class Api::V1::TeamPlayersController < Api::V1::BaseController
   before_action :set_team
 
   def index

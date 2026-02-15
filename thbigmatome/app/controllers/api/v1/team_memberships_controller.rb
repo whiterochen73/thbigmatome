@@ -1,6 +1,6 @@
 module Api
   module V1
-    class TeamMembershipsController < ApplicationController
+    class TeamMembershipsController < Api::V1::BaseController
       def index
         team = Team.find(params[:team_id])
         team_memberships = team.team_memberships.preload(:player)
@@ -26,7 +26,7 @@ module Api
               throwing_of: player.throwing_of,
               throwing_lf: player.throwing_lf,
               throwing_cf: player.throwing_cf,
-              throwing_rf: player.throwing_rf,
+              throwing_rf: player.throwing_rf
             }
           end
 

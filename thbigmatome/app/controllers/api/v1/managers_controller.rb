@@ -1,6 +1,6 @@
 module Api
   module V1
-    class ManagersController < ApplicationController
+    class ManagersController < Api::V1::BaseController
       before_action :set_manager, only: [ :show, :update, :destroy ]
 
       # GET /api/v1/managers

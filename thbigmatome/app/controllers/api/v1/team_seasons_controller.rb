@@ -1,13 +1,13 @@
 module Api
   module V1
-    class TeamSeasonsController < ApplicationController
+    class TeamSeasonsController < Api::V1::BaseController
       def show
         team = Team.find(params[:team_id])
         season = team.season
         if season
           render json: season, serializer: SeasonDetailSerializer
         else
-          render json: { error: 'Season not found for this team' }, status: :not_found
+          render json: { error: "Season not found for this team" }, status: :not_found
         end
       end
 

@@ -1,6 +1,6 @@
-class Api::V1::Commissioner::TeamManagersController < ApplicationController
+class Api::V1::Commissioner::TeamManagersController < Api::V1::Commissioner::BaseController
   before_action :set_team
-  before_action :set_team_manager, only: [:show, :update, :destroy]
+  before_action :set_team_manager, only: [ :show, :update, :destroy ]
 
   def index
     @team_managers = @team.team_managers.includes(:manager)

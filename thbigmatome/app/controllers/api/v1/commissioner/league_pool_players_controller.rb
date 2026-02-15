@@ -1,6 +1,6 @@
-class Api::V1::Commissioner::LeaguePoolPlayersController < ApplicationController
+class Api::V1::Commissioner::LeaguePoolPlayersController < Api::V1::Commissioner::BaseController
   before_action :set_league_season
-  before_action :set_league_pool_player, only: [:destroy]
+  before_action :set_league_pool_player, only: [ :destroy ]
 
   def index
     @pool_players = @league_season.pool_players
@@ -44,12 +44,12 @@ class Api::V1::Commissioner::LeaguePoolPlayersController < ApplicationController
 
   def filter_by_cost_rank(players, cost_rank)
     case cost_rank.upcase
-    when 'A'
-      players.joins(cost_players: :cost).where('costs.normal_cost >= ?', 8)
-    when 'B'
-      players.joins(cost_players: :cost).where('costs.normal_cost BETWEEN ? AND ?', 5, 7)
-    when 'C'
-      players.joins(cost_players: :cost).where('costs.normal_cost <= ?', 4)
+    when "A"
+      players.joins(cost_players: :cost).where("costs.normal_cost >= ?", 8)
+    when "B"
+      players.joins(cost_players: :cost).where("costs.normal_cost BETWEEN ? AND ?", 5, 7)
+    when "C"
+      players.joins(cost_players: :cost).where("costs.normal_cost <= ?", 4)
     else
       players # 不明なランクの場合はフィルタリングしない
     end

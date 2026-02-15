@@ -1,4 +1,4 @@
-class Api::V1::GameController < ApplicationController
+class Api::V1::GameController < Api::V1::BaseController
   def show
     season_schedule = SeasonSchedule.find(params[:id])
 

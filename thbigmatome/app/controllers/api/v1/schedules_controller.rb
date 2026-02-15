@@ -1,5 +1,5 @@
-class Api::V1::SchedulesController < ApplicationController
-  before_action :set_schedule, only: [:update, :destroy]
+class Api::V1::SchedulesController < Api::V1::BaseController
+  before_action :set_schedule, only: [ :update, :destroy ]
 
   def index
     schedules = Schedule.all

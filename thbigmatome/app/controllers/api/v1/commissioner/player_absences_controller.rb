@@ -1,6 +1,6 @@
-class Api::V1::Commissioner::PlayerAbsencesController < ApplicationController
+class Api::V1::Commissioner::PlayerAbsencesController < Api::V1::Commissioner::BaseController
   before_action :set_team_membership
-  before_action :set_player_absence, only: [:show, :update, :destroy]
+  before_action :set_player_absence, only: [ :show, :update, :destroy ]
 
   def index
     @player_absences = @team_membership.player_absences

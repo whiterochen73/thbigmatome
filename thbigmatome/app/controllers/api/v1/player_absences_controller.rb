@@ -1,12 +1,12 @@
 module Api
   module V1
-    class PlayerAbsencesController < ApplicationController
-      before_action :set_player_absence, only: [:update, :destroy]
+    class PlayerAbsencesController < Api::V1::BaseController
+      before_action :set_player_absence, only: [ :update, :destroy ]
 
       # GET /api/v1/player_absences
       def index
         if params[:season_id].blank?
-          render json: { error: 'season_id is required' }, status: :bad_request
+          render json: { error: "season_id is required" }, status: :bad_request
           return
         end
 

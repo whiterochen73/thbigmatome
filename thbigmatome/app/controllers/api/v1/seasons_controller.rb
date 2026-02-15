@@ -1,6 +1,6 @@
 module Api
   module V1
-    class SeasonsController < ApplicationController
+    class SeasonsController < Api::V1::BaseController
       def create
         ActiveRecord::Base.transaction do
           team = Team.find(params[:team_id])

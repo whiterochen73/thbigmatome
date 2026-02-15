@@ -1,4 +1,4 @@
-class Api::V1::PlayersController < ApplicationController
+class Api::V1::PlayersController < Api::V1::BaseController
   def index
     players = Player.eager_load(:player_batting_skills, :player_player_types, :player_biorhythms, :player_pitching_skills, :catchers_players, :partner_pitchers_players).all.order(:id)
     render json: players, each_serializer: PlayerDetailSerializer

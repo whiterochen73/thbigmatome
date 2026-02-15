@@ -1,6 +1,6 @@
-class Api::V1::Commissioner::TeamMembershipsController < ApplicationController
+class Api::V1::Commissioner::TeamMembershipsController < Api::V1::Commissioner::BaseController
   before_action :set_team
-  before_action :set_team_membership, only: [:show, :update, :destroy]
+  before_action :set_team_membership, only: [ :show, :update, :destroy ]
 
   def index
     @team_memberships = @team.team_memberships.includes(:player)

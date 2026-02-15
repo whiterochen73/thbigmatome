@@ -1,5 +1,5 @@
-class Api::V1::CostsController < ApplicationController
-  before_action :set_cost, only: [:update, :duplicate, :destroy]
+class Api::V1::CostsController < Api::V1::BaseController
+  before_action :set_cost, only: [ :update, :duplicate, :destroy ]
 
   def index
     costs = Cost.all

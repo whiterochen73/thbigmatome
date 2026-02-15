@@ -1,8 +1,6 @@
 module Api
   module V1
-    class PlayerTypesController < ApplicationController
-      before_action :authenticate_user!
-
+    class PlayerTypesController < Api::V1::BaseController
       # GET /api/v1/player-types
       def index
         @player_types = PlayerType.all.order(:id)

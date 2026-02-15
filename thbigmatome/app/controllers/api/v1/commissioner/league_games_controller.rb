@@ -1,6 +1,6 @@
-class Api::V1::Commissioner::LeagueGamesController < ApplicationController
+class Api::V1::Commissioner::LeagueGamesController < Api::V1::Commissioner::BaseController
   before_action :set_league_season
-  before_action :set_league_game, only: [:show]
+  before_action :set_league_game, only: [ :show ]
 
   def index
     @league_games = @league_season.league_games

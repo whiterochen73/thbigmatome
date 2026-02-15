@@ -1,6 +1,6 @@
 module Api
   module V1
-    class CostAssignmentsController < ApplicationController
+    class CostAssignmentsController < Api::V1::BaseController
       def index
         @cost_id = params[:cost_id]
         @players = Player.order(:id).includes(:player_types).preload(:cost_players)

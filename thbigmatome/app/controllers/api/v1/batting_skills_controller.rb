@@ -1,8 +1,6 @@
 module Api
   module V1
-    class BattingSkillsController < ApplicationController
-      before_action :authenticate_user!
-
+    class BattingSkillsController < Api::V1::BaseController
       # GET /api/v1/batting-skills
       def index
         @batting_skills = BattingSkill.all.order(:id)

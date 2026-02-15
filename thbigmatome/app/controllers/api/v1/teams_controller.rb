@@ -1,7 +1,7 @@
 module Api
   module V1
-    class TeamsController < ApplicationController
-      before_action :set_team, only: [:show, :update, :destroy]
+    class TeamsController < Api::V1::BaseController
+      before_action :set_team, only: [ :show, :update, :destroy ]
 
       # GET /api/v1/teams
       def index
@@ -47,7 +47,7 @@ module Api
       def set_team
         @team = Team.includes(:director, :coaches).find(params[:id])
       rescue ActiveRecord::RecordNotFound
-        render json: { error: 'Team not found' }, status: :not_found
+        render json: { error: "Team not found" }, status: :not_found
       end
 
       def team_params
@@ -63,7 +63,7 @@ module Api
             coach_ids.uniq.each do |id|
               team.coach_team_managers.create!(manager_id: id)
             end
-end
+          end
         end
       rescue ActiveRecord::RecordInvalid => e
         team.errors.add(:base, e.message)

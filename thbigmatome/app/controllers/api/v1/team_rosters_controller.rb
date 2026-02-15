@@ -1,6 +1,6 @@
 module Api
   module V1
-    class TeamRostersController < ApplicationController
+    class TeamRostersController < Api::V1::BaseController
       def show
         team = Team.find(params[:team_id])
         season = team.season

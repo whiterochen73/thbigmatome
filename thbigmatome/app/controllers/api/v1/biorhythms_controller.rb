@@ -1,7 +1,6 @@
 module Api
   module V1
-    class BiorhythmsController < ApplicationController
-      before_action :authenticate_user!
+    class BiorhythmsController < Api::V1::BaseController
       before_action :set_biorhythm, only: [ :update, :destroy ]
 
       # GET /api/v1/biorhythms

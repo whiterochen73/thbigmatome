@@ -30,8 +30,8 @@
 | DESIGN-005 | player.rb (投球スタイル) | medium | `pitching_style_id`, `pinch_pitching_style_id`, `catcher_pitching_style_id` の3種類があるが、優先順位や適用条件のドキュメントが不足 → 仕様通り（投手特徴: 通常/走者あり時/専属捕手時の3種） | 04_player_management.md |
 | DESIGN-006 | app/models/team_manager.rb | medium | リーグ内兼任制約チェックで `team.leagues.first` を使用 → チームが複数リーグに所属している場合、最初のリーグのみで兼任チェックが行われる → 保留（仕様未確定、現状実害なし） | 02_manager_management.md |
 | DESIGN-007 | routes.rb (managers/:manager_id/teams) | medium | ✅ 修正済み (cmd_143) ネストされたルート `/api/v1/managers/:manager_id/teams` が定義されているが TeamsController で実装されていない → ルーティングの複雑性が増している | 02_manager_management.md |
-| DESIGN-008 | game_controller.rb / season_schedule_serializer.rb | medium | `game_number` の重複実装: コントローラー内で動的計算 (`season_schedule.game_number || 計算ロジック`) → DB保存値と計算値の整合性管理が曖昧 | 10_game_management.md |
-| DESIGN-009 | game_controller.rb / season_schedule_serializer.rb | medium | `game_result` の重複実装: `GameController#show` と `SeasonScheduleSerializer#game_result` で同じロジック → 略称 (`short_name`) の使用がシリアライザーのみ | 10_game_management.md |
+| DESIGN-008 | game_controller.rb / season_schedule_serializer.rb | medium | ✅ 修正済み (cmd_148) `game_number` の重複実装: コントローラー内で動的計算 (`season_schedule.game_number || 計算ロジック`) → DB保存値と計算値の整合性管理が曖昧 | 10_game_management.md |
+| DESIGN-009 | game_controller.rb / season_schedule_serializer.rb | medium | ✅ 修正済み (cmd_148) `game_result` の重複実装: `GameController#show` と `SeasonScheduleSerializer#game_result` で同じロジック → 略称 (`short_name`) の使用がシリアライザーのみ | 10_game_management.md |
 | DESIGN-010 | db/schema.rb (batting_styles, pitching_styles) | medium | ✅ 修正済み (cmd_143) DB上の NOT NULL 制約・UNIQUE INDEX がなく、モデルバリデーションに完全に依存 → データ整合性の観点ではDB制約の追加が望ましい | 05_master_data.md |
 | DESIGN-011 | app/models/pitching_skill.rb | medium | ✅ 修正済み (cmd_143) `has_many :player_pitching_skills` / `has_many :players, through:` の定義がない → 削除時は `dependent: :restrict_with_error` ではなくDB外部キー制約のみで制限され、エラーメッセージ形式が異なる | 05_master_data.md |
 | DESIGN-012 | app/models/batting_style.rb | medium | ✅ 修正済み (cmd_143) `has_many :players` の定義がない → `BattingStyle.find(1).players` のような逆引きクエリが使用できない (PitchingStyle も同様) | 05_master_data.md |

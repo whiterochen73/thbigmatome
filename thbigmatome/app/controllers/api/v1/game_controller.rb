@@ -9,33 +9,12 @@ class Api::V1::GameController < ApplicationController
       return
     end
 
-    game_result = nil
-    if season_schedule.date < Date.today && season_schedule.score.present? && season_schedule.opponent_score.present?
-      result = if season_schedule.score > season_schedule.opponent_score
-                 "win"
-      elsif season_schedule.score < season_schedule.opponent_score
-                 "lose"
-      else
-                 "draw"
-      end
-      game_result = {
-        opponent_short_name: season_schedule.opponent_team&.name, # Using full name for now
-        score: "#{season_schedule.score}-#{season_schedule.opponent_score}",
-        result: result
-      }
-    end
-
     render json: {
       team_id: team.id,
       team_name: team.name,
       season_id: season.id,
       game_date: season_schedule.date,
-      game_number:
-      season_schedule.game_number ||
-        season.season_schedules
-        .where(date_type: [ "game_day", "interleague_game_day" ])
-        .where([ "date < :date", { date: season_schedule.date } ])
-        .count + 1,
+      game_number: season_schedule.calculated_game_number,
       announced_starter_id: season_schedule.announced_starter&.id,
       stadium: season_schedule.stadium,
       home_away: season_schedule.home_away,
@@ -50,7 +29,7 @@ class Api::V1::GameController < ApplicationController
       scoreboard: season_schedule.scoreboard,
       starting_lineup: season_schedule.starting_lineup,
       opponent_starting_lineup: season_schedule.opponent_starting_lineup,
-      game_result: game_result
+      game_result: season_schedule.date < Date.today ? season_schedule.game_result_hash : nil
     }, status: :ok
   rescue ActiveRecord::RecordNotFound
     render json: { error: "Team or Season not found" }, status: :not_found

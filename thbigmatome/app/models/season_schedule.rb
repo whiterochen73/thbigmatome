@@ -7,4 +7,26 @@ class SeasonSchedule < ApplicationRecord
   belongs_to :save_pitcher, class_name: "Player", optional: true
 
   validates :home_away, inclusion: { in: [ "home", "visitor" ] }, allow_blank: true
+
+  def calculated_game_number
+    game_number || season.season_schedules
+      .where(date_type: [ "game_day", "interleague_game_day" ])
+      .where("date < ?", date)
+      .count + 1
+  end
+
+  def game_result_hash
+    return nil if score.blank? || opponent_score.blank?
+
+    result = if score > opponent_score then "win"
+    elsif score < opponent_score then "lose"
+    else "draw"
+    end
+
+    {
+      opponent_short_name: opponent_team&.short_name,
+      score: "#{score} - #{opponent_score}",
+      result: result
+    }
+  end
 end

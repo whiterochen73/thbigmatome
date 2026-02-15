@@ -12,20 +12,6 @@ class SeasonScheduleSerializer < ActiveModel::Serializer
   end
 
   def game_result
-    return nil if object.score.blank? || object.opponent_score.blank?
-
-    result = if object.score > object.opponent_score
-               "win"
-    elsif object.score < object.opponent_score
-               "lose"
-    else
-               "draw"
-    end
-
-    {
-      opponent_short_name: object.opponent_team&.short_name,
-      score: "#{object.score} - #{object.opponent_score}",
-      result: result
-    }
+    object.game_result_hash
   end
 end

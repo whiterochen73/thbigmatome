@@ -21,7 +21,11 @@
               :loading="loading"
               class="elevation-1"
             >
-              <template v-slot:item.actions="{ item }">
+              <template v-slot:[`item.actions`]="{ item }">
+                <v-icon small class="mr-2" @click="openMembershipDialog(item)"
+                  >mdi-account-group</v-icon
+                >
+                <v-icon small class="mr-2" @click="openLeagueDetail(item)">mdi-cog</v-icon>
                 <v-icon small class="mr-2" @click="editLeague(item)">mdi-pencil</v-icon>
                 <v-icon small @click="deleteLeague(item)">mdi-delete</v-icon>
               </template>
@@ -71,6 +75,86 @@
       </v-card>
     </v-dialog>
 
+    <!-- リーグ詳細パネル -->
+    <v-row v-if="detailLeague">
+      <v-col cols="12">
+        <v-card>
+          <v-card-title class="d-flex align-center">
+            {{ detailLeague.name }} - {{ $t('commissioner.detail.title') }}
+            <v-spacer></v-spacer>
+            <v-btn icon size="small" @click="closeLeagueDetail">
+              <v-icon>mdi-close</v-icon>
+            </v-btn>
+          </v-card-title>
+          <v-card-text>
+            <v-tabs v-model="detailTab">
+              <v-tab value="seasons">{{ $t('commissioner.detail.tabs.seasons') }}</v-tab>
+              <v-tab value="games">{{ $t('commissioner.detail.tabs.games') }}</v-tab>
+              <v-tab value="poolPlayers">{{ $t('commissioner.detail.tabs.poolPlayers') }}</v-tab>
+              <v-tab value="teamStaff">{{ $t('commissioner.detail.tabs.teamStaff') }}</v-tab>
+              <v-tab value="absences">{{ $t('commissioner.detail.tabs.absences') }}</v-tab>
+            </v-tabs>
+
+            <v-tabs-window v-model="detailTab">
+              <!-- シーズン管理 -->
+              <v-tabs-window-item value="seasons">
+                <v-alert type="info" variant="tonal" class="mt-4">
+                  {{ $t('commissioner.detail.comingSoon') }}
+                </v-alert>
+              </v-tabs-window-item>
+
+              <!-- 対戦管理 -->
+              <v-tabs-window-item value="games">
+                <v-alert type="info" variant="tonal" class="mt-4">
+                  {{ $t('commissioner.detail.comingSoon') }}
+                </v-alert>
+              </v-tabs-window-item>
+
+              <!-- 選手プール管理 -->
+              <v-tabs-window-item value="poolPlayers">
+                <v-alert type="info" variant="tonal" class="mt-4">
+                  {{ $t('commissioner.detail.comingSoon') }}
+                </v-alert>
+              </v-tabs-window-item>
+
+              <!-- チームスタッフ管理 -->
+              <v-tabs-window-item value="teamStaff">
+                <div class="mt-4">
+                  <v-select
+                    v-model="selectedStaffTeamId"
+                    :items="detailLeagueTeams"
+                    item-title="team.name"
+                    item-value="team.id"
+                    :label="$t('commissioner.detail.selectTeam')"
+                    clearable
+                    @update:model-value="onStaffTeamSelected"
+                  ></v-select>
+                  <v-data-table
+                    v-if="selectedStaffTeamId"
+                    :headers="teamManagerHeaders"
+                    :items="teamManagers"
+                    :loading="teamManagersLoading"
+                    class="elevation-1"
+                  >
+                    <template v-slot:no-data>
+                      {{ $t('commissioner.detail.teamStaffNoData') }}
+                    </template>
+                  </v-data-table>
+                </div>
+              </v-tabs-window-item>
+
+              <!-- 選手離脱管理 -->
+              <v-tabs-window-item value="absences">
+                <v-alert type="info" variant="tonal" class="mt-4">
+                  {{ $t('commissioner.detail.comingSoon') }}
+                </v-alert>
+              </v-tabs-window-item>
+            </v-tabs-window>
+          </v-card-text>
+        </v-card>
+      </v-col>
+    </v-row>
+
     <!-- チームメンバーシップ管理ダイアログ -->
     <v-dialog v-model="membershipDialog" max-width="800px">
       <v-card>
@@ -89,7 +173,9 @@
                   label="追加するチーム"
                   clearable
                 ></v-select>
-                <v-btn color="primary" @click="addTeamToLeague" :disabled="!selectedTeamIdToAdd">チームを追加</v-btn>
+                <v-btn color="primary" @click="addTeamToLeague" :disabled="!selectedTeamIdToAdd"
+                  >チームを追加</v-btn
+                >
               </v-col>
             </v-row>
             <v-row>
@@ -100,7 +186,7 @@
                   :loading="membershipLoading"
                   class="elevation-1"
                 >
-                  <template v-slot:item.actions="{ item }">
+                  <template v-slot:[`item.actions`]="{ item }">
                     <v-icon small @click="removeTeamFromLeague(item)">mdi-delete</v-icon>
                   </template>
                 </v-data-table>
@@ -114,7 +200,6 @@
         </v-card-actions>
       </v-card>
     </v-dialog>
-
   </v-container>
 </template>
 
@@ -139,6 +224,17 @@ interface Team {
 interface LeagueMembership {
   id: number
   team: Team
+}
+
+interface TeamManager {
+  id: number
+  team_id: number
+  manager_id: number
+  role: string
+  manager: {
+    id: number
+    name: string
+  }
 }
 
 const { showSnackbar } = useSnackbar()
@@ -170,6 +266,20 @@ const headers = [
 const membershipHeaders = [
   { title: 'チーム名', key: 'team.name' },
   { title: '操作', key: 'actions', sortable: false },
+]
+
+// リーグ詳細パネル
+const detailLeague = ref<League | null>(null)
+const detailTab = ref('seasons')
+const detailLeagueTeams = ref<LeagueMembership[]>([])
+
+// チームスタッフ管理
+const selectedStaffTeamId = ref<number | null>(null)
+const teamManagers = ref<TeamManager[]>([])
+const teamManagersLoading = ref(false)
+const teamManagerHeaders = [
+  { title: '監督名', key: 'manager.name' },
+  { title: '役割', key: 'role' },
 ]
 
 const formTitle = computed(() => (editedIndex.value === -1 ? '新規リーグ作成' : 'リーグ編集'))
@@ -207,16 +317,13 @@ async function saveLeague() {
       // 更新
       const response = await axios.put<League>(
         `/commissioner/leagues/${editedLeague.value.id}`,
-        editedLeague.value
+        editedLeague.value,
       )
       Object.assign(leagues.value[editedIndex.value], response.data)
       showSnackbar('リーグを更新しました', 'success')
     } else {
       // 新規作成
-      const response = await axios.post<League>(
-        '/commissioner/leagues',
-        editedLeague.value
-      )
+      const response = await axios.post<League>('/commissioner/leagues', editedLeague.value)
       leagues.value.push(response.data)
       showSnackbar('リーグを作成しました', 'success')
     }
@@ -260,7 +367,7 @@ async function fetchLeagueTeams() {
   membershipLoading.value = true
   try {
     const response = await axios.get<LeagueMembership[]>(
-      `/commissioner/leagues/${selectedLeagueId.value}/league_memberships`
+      `/commissioner/leagues/${selectedLeagueId.value}/league_memberships`,
     )
     currentLeagueTeams.value = response.data
   } catch (error) {
@@ -275,8 +382,8 @@ async function fetchAvailableTeams() {
   try {
     const response = await axios.get<Team[]>('/teams')
     // 既にリーグに所属しているチームを除外
-    const currentTeamIds = new Set(currentLeagueTeams.value.map(lm => lm.team.id));
-    availableTeams.value = response.data.filter(team => !currentTeamIds.has(team.id));
+    const currentTeamIds = new Set(currentLeagueTeams.value.map((lm) => lm.team.id))
+    availableTeams.value = response.data.filter((team) => !currentTeamIds.has(team.id))
   } catch (error) {
     showSnackbar('利用可能なチームの取得に失敗しました', 'error')
     console.error('Error fetching available teams:', error)
@@ -286,10 +393,9 @@ async function fetchAvailableTeams() {
 async function addTeamToLeague() {
   if (!selectedLeagueId.value || !selectedTeamIdToAdd.value) return
   try {
-    await axios.post(
-      `/commissioner/leagues/${selectedLeagueId.value}/league_memberships`,
-      { league_membership: { team_id: selectedTeamIdToAdd.value } }
-    )
+    await axios.post(`/commissioner/leagues/${selectedLeagueId.value}/league_memberships`, {
+      league_membership: { team_id: selectedTeamIdToAdd.value },
+    })
     showSnackbar('チームをリーグに追加しました', 'success')
     selectedTeamIdToAdd.value = null
     await fetchLeagueTeams()
@@ -305,7 +411,7 @@ async function removeTeamFromLeague(item: LeagueMembership) {
   if (confirm(`リーグからチーム「${item.team.name}」を削除してもよろしいですか？`)) {
     try {
       await axios.delete(
-        `/commissioner/leagues/${selectedLeagueId.value}/league_memberships/${item.id}`
+        `/commissioner/leagues/${selectedLeagueId.value}/league_memberships/${item.id}`,
       )
       showSnackbar('チームをリーグから削除しました', 'success')
       await fetchLeagueTeams()
@@ -324,5 +430,53 @@ function closeMembershipDialog() {
   currentLeagueTeams.value = []
   availableTeams.value = []
   selectedTeamIdToAdd.value = null
+}
+
+// リーグ詳細パネル関連
+async function openLeagueDetail(league: League) {
+  detailLeague.value = league
+  detailTab.value = 'seasons'
+  selectedStaffTeamId.value = null
+  teamManagers.value = []
+  await fetchDetailLeagueTeams(league.id!)
+}
+
+function closeLeagueDetail() {
+  detailLeague.value = null
+  detailLeagueTeams.value = []
+  selectedStaffTeamId.value = null
+  teamManagers.value = []
+}
+
+async function fetchDetailLeagueTeams(leagueId: number) {
+  try {
+    const response = await axios.get<LeagueMembership[]>(
+      `/commissioner/leagues/${leagueId}/league_memberships`,
+    )
+    detailLeagueTeams.value = response.data
+  } catch (error) {
+    console.error('Error fetching detail league teams:', error)
+  }
+}
+
+async function onStaffTeamSelected(teamId: number | null) {
+  teamManagers.value = []
+  if (!teamId || !detailLeague.value?.id) return
+  await fetchTeamManagers(detailLeague.value.id, teamId)
+}
+
+async function fetchTeamManagers(leagueId: number, teamId: number) {
+  teamManagersLoading.value = true
+  try {
+    const response = await axios.get<TeamManager[]>(
+      `/commissioner/leagues/${leagueId}/teams/${teamId}/team_managers`,
+    )
+    teamManagers.value = response.data
+  } catch (error) {
+    showSnackbar('チームスタッフの取得に失敗しました', 'error')
+    console.error('Error fetching team managers:', error)
+  } finally {
+    teamManagersLoading.value = false
+  }
 }
 </script>

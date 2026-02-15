@@ -58,7 +58,7 @@
 | UNIMPL-013 | src/components/PlayerAbsenceFormDialog.vue | low | ✅ 実装済み (cmd_164) 保存失敗時のユーザーへの通知が未実装 (TODOコメントあり) → スナックバー等での統一的なエラー表示が望ましい | 11_player_absence.md |
 | UNIMPL-014 | roster / player_absence連携 | low | ✅ 実装済み (cmd_164) 離脱中の選手がロースターに登録できないようにする制約未実装、離脱期間終了時の自動復帰通知未実装 | 11_player_absence.md |
 | UNIMPL-015 | managers_controller.rb | low | 監督一覧のページネーション未実装 → 監督数が数百件以上になった場合、レスポンス時間が長くなりブラウザでのレンダリング負荷が増加 | 02_manager_management.md | ✅ 実装済み (cmd_163) |
-| UNIMPL-016 | LeaguesView.vue (コミッショナー) | low | チーム管理ダイアログを開くボタンが未配置、シーズン管理・対戦管理・選手プール管理・チームスタッフ管理・選手離脱管理の画面が未確認 (APIのみ実装済みと推定) | 12_commissioner.md |
+| UNIMPL-016 | LeaguesView.vue (コミッショナー) | low | ✅ 実装済み (cmd_163) チーム管理ダイアログを開くボタンが未配置、シーズン管理・対戦管理・選手プール管理・チームスタッフ管理・選手離脱管理の画面が未確認 (APIのみ実装済みと推定) | 12_commissioner.md |
 
 ## バリデーション不足・制約
 

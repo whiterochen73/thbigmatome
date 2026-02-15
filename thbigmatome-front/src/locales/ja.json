@@ -835,6 +835,21 @@
     "failedToSaveStartingMembers": "スターティングメンバーの保存に失敗しました。",
     "noMembersToSave": "保存するメンバーがいません"
   },
+  "commissioner": {
+    "detail": {
+      "title": "詳細管理",
+      "tabs": {
+        "seasons": "シーズン管理",
+        "games": "対戦管理",
+        "poolPlayers": "選手プール管理",
+        "teamStaff": "チームスタッフ管理",
+        "absences": "選手離脱管理"
+      },
+      "comingSoon": "この機能は準備中です。",
+      "selectTeam": "チームを選択",
+      "teamStaffNoData": "スタッフが登録されていません。"
+    }
+  },
   "routes": {
     "dashboard": "ダッシュボード",
     "managers": "監督一覧",

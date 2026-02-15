@@ -44,6 +44,7 @@
       "lose": "敗",
       "draw": "分"
     },
+    "teamMembers": "メンバー管理",
     "registerAbsence": "離脱者登録",
     "absenceInfo": "離脱者情報",
     "noAbsenceInfo": "離脱者情報はありません。"

@@ -1,8 +1,6 @@
 <template>
   <v-container>
-    <v-toolbar
-      color="orange-lighten-3"
-    >
+    <v-toolbar color="orange-lighten-3">
       <template #prepend>
         <h1 class="text-h4 mx-4">{{ season?.name }}</h1>
       </template>
@@ -15,58 +13,37 @@
       >
         {{ t('seasonPortal.goToGameResult') }}
       </v-btn>
-      <v-btn
-        class="mx-2"
-        color="secondary"
-        variant="flat"
-        :to="playerRegistrationRoute"
-      >
+      <v-btn class="mx-2" color="secondary" variant="flat" :to="playerRegistrationRoute">
         {{ t('activeRoster.title') }}
       </v-btn>
-      <v-btn
-        class="mx-2"
-        color="red"
-        variant="flat"
-        @click="isDialogOpen = true">
+      <v-btn class="mx-2" color="red" variant="flat" @click="isDialogOpen = true">
         {{ t('seasonPortal.registerAbsence') }}
       </v-btn>
-      <v-btn
-        class="mx-2"
-        color="red-darken-4"
-        variant="flat"
-        :to="playerAbsenceRoute"
-      >
+      <v-btn class="mx-2" color="red-darken-4" variant="flat" :to="playerAbsenceRoute">
         {{ t('playerAbsenceHistory.title') }}
       </v-btn>
+      <v-btn class="mx-2" color="teal" variant="flat" :to="teamMembersRoute">
+        {{ t('seasonPortal.teamMembers') }}
+      </v-btn>
       <template #append>
-        <v-btn
-          icon
-          variant="text"
-          @click="prevDay"
-          :disabled="isPrevDayDisabled"
-        >
+        <v-btn icon variant="text" @click="prevDay" :disabled="isPrevDayDisabled">
           <v-icon>mdi-chevron-left</v-icon>
         </v-btn>
         <p class="text-h5">{{ t('seasonPortal.currentDate') }}: {{ currentDateStr }}</p>
-        <v-btn
-          icon
-          variant="text"
-          @click="nextDay"
-          :disabled="isNextDayDisabled"
-        >
+        <v-btn icon variant="text" @click="nextDay" :disabled="isNextDayDisabled">
           <v-icon>mdi-chevron-right</v-icon>
         </v-btn>
       </template>
     </v-toolbar>
 
     <v-row class="mt-2">
-        <v-col>
-          <AbsenceInfo
-            :season-id="season?.id || null"
-            :current-date="formattedCurrentDate"
-            ref="absenceInfo"
-            class="mb-4"
-          />
+      <v-col>
+        <AbsenceInfo
+          :season-id="season?.id || null"
+          :current-date="formattedCurrentDate"
+          ref="absenceInfo"
+          class="mb-4"
+        />
 
         <div class="d-flex justify-space-between align-center mb-4">
           <v-btn icon @click="prevMonth">
@@ -82,13 +59,19 @@
           <div v-for="day in weekdays" :key="day" class="text-center font-weight-bold">
             {{ day }}
           </div>
-          <div v-for="day in calendarDays" :key="day.date.toISOString()"
-                :class="['day-cell', {
-                  'is-current-day': day.isCurrentDay,
-                  'not-current-month': !day.isCurrentMonth,
-                  'saturday': day.dayOfWeek === 6 && day.isCurrentMonth,
-                  'sunday': day.dayOfWeek === 0 && day.isCurrentMonth
-                }]">
+          <div
+            v-for="day in calendarDays"
+            :key="day.date.toISOString()"
+            :class="[
+              'day-cell',
+              {
+                'is-current-day': day.isCurrentDay,
+                'not-current-month': !day.isCurrentMonth,
+                saturday: day.dayOfWeek === 6 && day.isCurrentMonth,
+                sunday: day.dayOfWeek === 0 && day.isCurrentMonth,
+              },
+            ]"
+          >
             <div class="day-number">{{ day.date.getDate() }}</div>
             <div v-if="day.schedule">
               <v-menu>
@@ -109,7 +92,9 @@
                     :key="dateType"
                     @click="updateSchedule(day.schedule, dateType)"
                   >
-                    <v-list-item-title>{{ t(`settings.schedule.dateTypes.${dateType}`) }}</v-list-item-title>
+                    <v-list-item-title>{{
+                      t(`settings.schedule.dateTypes.${dateType}`)
+                    }}</v-list-item-title>
                   </v-list-item>
                 </v-list>
               </v-menu>
@@ -117,16 +102,28 @@
                 color="primary"
                 block
                 density="compact"
-                v-if="['game_day', 'interleague_game_day', 'playoff_day', 'no_game'].includes(day.schedule.date_type)"
-                :to="{ name: 'GameResult', params: { teamId: teamId, scheduleId: day.schedule.id } }"
+                v-if="
+                  ['game_day', 'interleague_game_day', 'playoff_day', 'no_game'].includes(
+                    day.schedule.date_type,
+                  )
+                "
+                :to="{
+                  name: 'GameResult',
+                  params: { teamId: teamId, scheduleId: day.schedule.id },
+                }"
               >
                 {{ t('seasonPortal.gameResultInput') }}
               </v-btn>
               <div
-                v-if="['game_day', 'interleague_game_day', 'playoff_day'].includes(day.schedule.date_type) && day.schedule.game_result"
+                v-if="
+                  ['game_day', 'interleague_game_day', 'playoff_day'].includes(
+                    day.schedule.date_type,
+                  ) && day.schedule.game_result
+                "
                 class="text-center text-caption mt-1"
               >
-                vs. {{ day.schedule.game_result.opponent_short_name }} {{ day.schedule.game_result.score }}
+                vs. {{ day.schedule.game_result.opponent_short_name }}
+                {{ day.schedule.game_result.score }}
                 <v-chip
                   :color="getResultColor(day.schedule.game_result.result)"
                   size="x-small"
@@ -138,7 +135,11 @@
                 </v-chip>
               </div>
               <div
-                v-else-if="['game_day', 'interleague_game_day', 'playoff_day'].includes(day.schedule.date_type) && day.schedule.announced_starter"
+                v-else-if="
+                  ['game_day', 'interleague_game_day', 'playoff_day'].includes(
+                    day.schedule.date_type,
+                  ) && day.schedule.announced_starter
+                "
                 class="text-center text-caption mt-1"
               >
                 {{ t('seasonPortal.announcedPitcher') }}: {{ day.schedule.announced_starter.name }}
@@ -160,150 +161,167 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, computed, useTemplateRef } from 'vue';
-import { useRoute } from 'vue-router';
-import axios from 'axios';
-import { useI18n } from 'vue-i18n';
-import type { SeasonDetail } from '@/types/seasonDetail';
-import type { SeasonSchedule } from '@/types/seasonSchedule';
-import AbsenceInfo from '@/components/AbsenceInfo.vue';
-import PlayerAbsenceFormDialog from '@/components/PlayerAbsenceFormDialog.vue';
+import { ref, onMounted, computed, useTemplateRef } from 'vue'
+import { useRoute } from 'vue-router'
+import axios from 'axios'
+import { useI18n } from 'vue-i18n'
+import type { SeasonDetail } from '@/types/seasonDetail'
+import type { SeasonSchedule } from '@/types/seasonSchedule'
+import AbsenceInfo from '@/components/AbsenceInfo.vue'
+import PlayerAbsenceFormDialog from '@/components/PlayerAbsenceFormDialog.vue'
 
-const { t } = useI18n();
-const route = useRoute();
-const season = ref<SeasonDetail | null>(null);
-const currentDate = ref(new Date());
-const formattedCurrentDate = computed(() => currentDate.value.toISOString().split('T')[0]);
+const { t } = useI18n()
+const route = useRoute()
+const season = ref<SeasonDetail | null>(null)
+const currentDate = ref(new Date())
+const formattedCurrentDate = computed(() => currentDate.value.toISOString().split('T')[0])
 const absenceInfo = useTemplateRef('absenceInfo')
-const isDialogOpen = ref(false);
+const isDialogOpen = ref(false)
 
-const teamId = parseInt(<string>route.params.teamId, 10);
+const teamId = parseInt(<string>route.params.teamId, 10)
 
 const fetchSeason = async () => {
   try {
-    const response = await axios.get(`/teams/${teamId}/season`);
-    season.value = response.data;
+    const response = await axios.get(`/teams/${teamId}/season`)
+    season.value = response.data
     if (season.value) {
-      currentDate.value = new Date(season.value.current_date);
+      currentDate.value = new Date(season.value.current_date)
     }
   } catch (error) {
-    console.error('Failed to fetch season data:', error);
+    console.error('Failed to fetch season data:', error)
   }
-};
+}
 
 const updateSeasonCurrentDate = async (date: Date) => {
   try {
-    if (!season.value) return;
-    const formattedDate = date.toISOString().split('T')[0]; // YYYY-MM-DD
-    await axios.patch(`/teams/${teamId}/season`, { season: { current_date: formattedDate } });
-    await fetchSeason();
+    if (!season.value) return
+    const formattedDate = date.toISOString().split('T')[0] // YYYY-MM-DD
+    await axios.patch(`/teams/${teamId}/season`, { season: { current_date: formattedDate } })
+    await fetchSeason()
   } catch (error) {
-    console.error('Failed to update season current date:', error);
+    console.error('Failed to update season current date:', error)
   }
-};
+}
 
 const handleAbsenceSaved = () => {
-  absenceInfo.value?.fetchPlayerAbsences();
+  absenceInfo.value?.fetchPlayerAbsences()
 }
 
 const currentDateStr = computed(() => {
-  return currentDate.value.toLocaleDateString('ja-JP', { month: 'long', day: 'numeric' });
-});
+  return currentDate.value.toLocaleDateString('ja-JP', { month: 'long', day: 'numeric' })
+})
 
 const monthStr = computed(() => {
-  return currentDate.value.toLocaleDateString('ja-JP', { month: 'long' });
-});
+  return currentDate.value.toLocaleDateString('ja-JP', { month: 'long' })
+})
 
 const isPrevDayDisabled = computed(() => {
-  if (!season.value || !season.value.start_date) return true;
-  const start = new Date(season.value.start_date);
-  const current = new Date(currentDate.value);
-  return current <= start;
-});
+  if (!season.value || !season.value.start_date) return true
+  const start = new Date(season.value.start_date)
+  const current = new Date(currentDate.value)
+  return current <= start
+})
 
 const isNextDayDisabled = computed(() => {
-  if (!season.value || !season.value.end_date) return true;
-  const end = new Date(season.value.end_date);
-  const current = new Date(currentDate.value);
-  return current >= end;
-});
+  if (!season.value || !season.value.end_date) return true
+  const end = new Date(season.value.end_date)
+  const current = new Date(currentDate.value)
+  return current >= end
+})
 
 const prevDay = () => {
-  const newDate = new Date(currentDate.value);
-  newDate.setDate(newDate.getDate() - 1);
-  currentDate.value = newDate;
-  updateSeasonCurrentDate(newDate);
-};
+  const newDate = new Date(currentDate.value)
+  newDate.setDate(newDate.getDate() - 1)
+  currentDate.value = newDate
+  updateSeasonCurrentDate(newDate)
+}
 
 const nextDay = () => {
-  const newDate = new Date(currentDate.value);
-  newDate.setDate(newDate.getDate() + 1);
-  currentDate.value = newDate;
-  updateSeasonCurrentDate(newDate);
-};
+  const newDate = new Date(currentDate.value)
+  newDate.setDate(newDate.getDate() + 1)
+  currentDate.value = newDate
+  updateSeasonCurrentDate(newDate)
+}
 
 const weekdays = computed(() => {
-  const format = new Intl.DateTimeFormat('ja-JP', { weekday: 'short' });
+  const format = new Intl.DateTimeFormat('ja-JP', { weekday: 'short' })
   // Start from Monday (2021-06-07 was a Monday)
-  return [...Array(7).keys()].map(day => {
-      const date = new Date(Date.UTC(2021, 5, 7)); // A Monday
-      date.setDate(date.getDate() + day);
-      return format.format(date);
-  });
-});
+  return [...Array(7).keys()].map((day) => {
+    const date = new Date(Date.UTC(2021, 5, 7)) // A Monday
+    date.setDate(date.getDate() + day)
+    return format.format(date)
+  })
+})
 
 const calendarDays = computed(() => {
-  if (!season.value) return [];
+  if (!season.value) return []
 
-  const year = currentDate.value.getFullYear();
-  const month = currentDate.value.getMonth();
-  const startDate = new Date(year, month, 1);
-  const endDate = new Date(year, month + 1, 0);
+  const year = currentDate.value.getFullYear()
+  const month = currentDate.value.getMonth()
+  const startDate = new Date(year, month, 1)
+  const endDate = new Date(year, month + 1, 0)
 
-  const days = [];
+  const days = []
   // Adjust startDayOfWeek for Monday start
-  const startDayOfWeek = (startDate.getDay() + 6) % 7; // 0 for Monday, 6 for Sunday
+  const startDayOfWeek = (startDate.getDay() + 6) % 7 // 0 for Monday, 6 for Sunday
 
   for (let i = startDayOfWeek; i > 0; i--) {
-    const date = new Date(startDate);
-    date.setDate(date.getDate() - i);
-    days.push({ date, isCurrentMonth: false, isCurrentDay: false, isWeekend: false, dayOfWeek: date.getDay(), schedule: null });
+    const date = new Date(startDate)
+    date.setDate(date.getDate() - i)
+    days.push({
+      date,
+      isCurrentMonth: false,
+      isCurrentDay: false,
+      isWeekend: false,
+      dayOfWeek: date.getDay(),
+      schedule: null,
+    })
   }
 
   for (let i = 1; i <= endDate.getDate(); i++) {
-    const date = new Date(year, month, i);
-    const isCurrentDay = date.getFullYear() === currentDate.value.getFullYear() &&
-                    date.getMonth() === currentDate.value.getMonth() &&
-                    date.getDate() === currentDate.value.getDate();
-    const dayOfWeek = date.getDay(); // 0 for Sunday, 6 for Saturday
-    const isWeekend = dayOfWeek === 0 || dayOfWeek === 6; // Sunday or Saturday
+    const date = new Date(year, month, i)
+    const isCurrentDay =
+      date.getFullYear() === currentDate.value.getFullYear() &&
+      date.getMonth() === currentDate.value.getMonth() &&
+      date.getDate() === currentDate.value.getDate()
+    const dayOfWeek = date.getDay() // 0 for Sunday, 6 for Saturday
+    const isWeekend = dayOfWeek === 0 || dayOfWeek === 6 // Sunday or Saturday
 
-    const schedule = season.value.season_schedules.find(s => {
-      const scheduleDate = new Date(s.date);
-      return scheduleDate.getFullYear() === date.getFullYear() &&
-             scheduleDate.getMonth() === date.getMonth() &&
-             scheduleDate.getDate() === date.getDate();
-    });
-    days.push({ date, isCurrentMonth: true, isCurrentDay, isWeekend, dayOfWeek, schedule });
+    const schedule = season.value.season_schedules.find((s) => {
+      const scheduleDate = new Date(s.date)
+      return (
+        scheduleDate.getFullYear() === date.getFullYear() &&
+        scheduleDate.getMonth() === date.getMonth() &&
+        scheduleDate.getDate() === date.getDate()
+      )
+    })
+    days.push({ date, isCurrentMonth: true, isCurrentDay, isWeekend, dayOfWeek, schedule })
   }
 
-  const endDayOfWeek = (endDate.getDay() + 6) % 7; // 0 for Monday, 6 for Sunday
+  const endDayOfWeek = (endDate.getDay() + 6) % 7 // 0 for Monday, 6 for Sunday
   for (let i = 1; i < 7 - endDayOfWeek; i++) {
-    const date = new Date(endDate);
-    date.setDate(date.getDate() + i);
-    days.push({ date, isCurrentMonth: false, isCurrentDay: false, isWeekend: false, dayOfWeek: date.getDay(), schedule: null });
+    const date = new Date(endDate)
+    date.setDate(date.getDate() + i)
+    days.push({
+      date,
+      isCurrentMonth: false,
+      isCurrentDay: false,
+      isWeekend: false,
+      dayOfWeek: date.getDay(),
+      schedule: null,
+    })
   }
 
-  return days;
-});
+  return days
+})
 
 const prevMonth = () => {
-  currentDate.value = new Date(currentDate.value.setMonth(currentDate.value.getMonth() - 1));
-};
+  currentDate.value = new Date(currentDate.value.setMonth(currentDate.value.getMonth() - 1))
+}
 
 const nextMonth = () => {
-  currentDate.value = new Date(currentDate.value.setMonth(currentDate.value.getMonth() + 1));
-};
+  currentDate.value = new Date(currentDate.value.setMonth(currentDate.value.getMonth() + 1))
+}
 
 const dateTypes = [
   'game_day',
@@ -315,7 +333,7 @@ const dateTypes = [
   'no_game_day',
   'postponed',
   'no_game',
-];
+]
 
 const getScheduleColor = (dateType: string) => {
   const colors: { [key: string]: string } = {
@@ -328,105 +346,116 @@ const getScheduleColor = (dateType: string) => {
     no_game_day: 'red',
     postponed: 'indigo',
     no_game: 'indigo',
-  };
-  return colors[dateType] || '#FFFFFF';
-};
+  }
+  return colors[dateType] || '#FFFFFF'
+}
 
 const isDateBeforeCurrent = (date: Date) => {
-  if (!season.value || !season.value.current_date) return false;
-  const current = new Date(season.value.current_date);
+  if (!season.value || !season.value.current_date) return false
+  const current = new Date(season.value.current_date)
   // Set hours, minutes, seconds, milliseconds to 0 for accurate date comparison
-  date.setHours(0, 0, 0, 0);
-  current.setHours(0, 0, 0, 0);
-  return date < current;
-};
+  date.setHours(0, 0, 0, 0)
+  current.setHours(0, 0, 0, 0)
+  return date < current
+}
 
 const updateSchedule = async (schedule: SeasonSchedule, newDateType: string) => {
   try {
-    await axios.patch(`/teams/${teamId}/season/season_schedules/${schedule.id}`, { season_schedule: { date_type: newDateType } });
+    await axios.patch(`/teams/${teamId}/season/season_schedules/${schedule.id}`, {
+      season_schedule: { date_type: newDateType },
+    })
     // Update the local schedule object to reflect the change
     if (season.value) {
-      const index = season.value.season_schedules.findIndex(s => s.id === schedule.id);
+      const index = season.value.season_schedules.findIndex((s) => s.id === schedule.id)
       if (index !== -1) {
-        season.value.season_schedules[index].date_type = newDateType;
+        season.value.season_schedules[index].date_type = newDateType
       }
     }
   } catch (error) {
-    console.error('Failed to update schedule:', error);
+    console.error('Failed to update schedule:', error)
   }
-};
+}
 
 const playerRegistrationRoute = computed(() => {
-  return `/teams/${teamId}/roster`;
-});
+  return `/teams/${teamId}/roster`
+})
 
 const currentDaySchedule = computed(() => {
-  if (!season.value) return null;
-  const current = new Date(currentDate.value);
-  current.setHours(0, 0, 0, 0);
+  if (!season.value) return null
+  const current = new Date(currentDate.value)
+  current.setHours(0, 0, 0, 0)
 
-  return season.value.season_schedules.find(s => {
-    const scheduleDate = new Date(s.date);
-    scheduleDate.setHours(0, 0, 0, 0);
-    return scheduleDate.getTime() === current.getTime();
-  });
-});
+  return season.value.season_schedules.find((s) => {
+    const scheduleDate = new Date(s.date)
+    scheduleDate.setHours(0, 0, 0, 0)
+    return scheduleDate.getTime() === current.getTime()
+  })
+})
 
 const isGameDayToday = computed(() => {
-  if (!currentDaySchedule.value) return false;
-  const gameDayTypes = ['game_day', 'interleague_game_day', 'playoff_day', 'no_game'];
-  return gameDayTypes.includes(currentDaySchedule.value.date_type);
-});
+  if (!currentDaySchedule.value) return false
+  const gameDayTypes = ['game_day', 'interleague_game_day', 'playoff_day', 'no_game']
+  return gameDayTypes.includes(currentDaySchedule.value.date_type)
+})
 
 const gameResultRoute = computed(() => {
-  if (!isGameDayToday.value || !currentDaySchedule.value) return '';
+  if (!isGameDayToday.value || !currentDaySchedule.value) return ''
   return {
     name: 'GameResult',
     params: {
       teamId: teamId,
-      scheduleId: currentDaySchedule.value.id
-    }
-  };
-});
+      scheduleId: currentDaySchedule.value.id,
+    },
+  }
+})
 
 const playerAbsenceRoute = computed(() => {
   return {
     name: 'PlayerAbsenceHistory',
     params: {
-      teamId: teamId
-    }
-  };
-});
+      teamId: teamId,
+    },
+  }
+})
+
+const teamMembersRoute = computed(() => {
+  return {
+    name: 'TeamMembers',
+    params: {
+      teamId: teamId,
+    },
+  }
+})
 
 const getResultColor = (result: string) => {
   switch (result) {
     case 'win':
-      return 'success';
+      return 'success'
     case 'lose':
-      return 'error';
+      return 'error'
     case 'draw':
-      return 'grey-darken-1';
+      return 'grey-darken-1'
     default:
-      return 'default';
+      return 'default'
   }
-};
+}
 
 const getResultIcon = (result: string) => {
   switch (result) {
     case 'win':
-      return 'mdi-circle';
+      return 'mdi-circle'
     case 'lose':
-      return 'mdi-close';
+      return 'mdi-close'
     case 'draw':
-      return 'mdi-triangle';
+      return 'mdi-triangle'
     default:
-      return '';
+      return ''
   }
-};
+}
 
 onMounted(async () => {
-  await fetchSeason();
-});
+  await fetchSeason()
+})
 </script>
 
 <style scoped>
@@ -470,7 +499,7 @@ onMounted(async () => {
 }
 
 .is-current-day {
-  background-color: #FFFDE7;
-  border: 2px solid #FFEB3B; /* Blue border for current-day */
+  background-color: #fffde7;
+  border: 2px solid #ffeb3b; /* Blue border for current-day */
 }
 </style>

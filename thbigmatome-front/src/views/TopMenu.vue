@@ -48,21 +48,6 @@
                   {{ team.name }}
                 </v-btn>
               </div>
-              <div class="mt-4" v-if="selectedTeam">
-                <v-btn color="primary" @click="goToTeamMembers" class="me-4">
-                  {{ t('topMenu.teamSelection.registerMembers') }}
-                </v-btn>
-                <v-btn
-                  color="primary"
-                  @click="seasonInitializationDialog = true"
-                  v-if="!selectedTeam.has_season"
-                >
-                  {{ t('topMenu.seasonInitialization.title') }}
-                </v-btn>
-                <v-btn color="secondary" @click="goToSeasonPortal" v-if="selectedTeam.has_season">
-                  {{ t('topMenu.seasonPortal.title') }}
-                </v-btn>
-              </div>
             </div>
             <div v-else>
               <p>{{ t('topMenu.teamSelection.noTeams') }}</p>
@@ -122,6 +107,11 @@ const displayedTeams = computed(() => {
 const selectTeam = (team: Team) => {
   selectedTeam.value = team
   localStorage.setItem('selectedTeamId', String(team.id))
+  if (team.has_season) {
+    router.push({ name: 'SeasonPortal', params: { teamId: team.id } })
+  } else {
+    seasonInitializationDialog.value = true
+  }
 }
 
 const restoreSelectedTeam = () => {
@@ -150,18 +140,6 @@ watch(commissionerMode, async (newVal) => {
 
 const addTeam = () => {
   teamDialog.value = true
-}
-
-const goToTeamMembers = () => {
-  if (selectedTeam.value) {
-    router.push({ name: 'TeamMembers', params: { teamId: selectedTeam.value.id } })
-  }
-}
-
-const goToSeasonPortal = () => {
-  if (selectedTeam.value) {
-    router.push({ name: 'SeasonPortal', params: { teamId: selectedTeam.value.id } })
-  }
 }
 
 const fetchManagers = async () => {
@@ -206,7 +184,9 @@ const handleSave = () => {
 
 const handleSeasonSave = () => {
   seasonInitializationDialog.value = false
-  fetchManagers()
+  if (selectedTeam.value) {
+    router.push({ name: 'SeasonPortal', params: { teamId: selectedTeam.value.id } })
+  }
 }
 
 onMounted(async () => {

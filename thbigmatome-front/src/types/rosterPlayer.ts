@@ -12,4 +12,5 @@ export interface RosterPlayer {
   player_types: string[] // Added player_types (comma-separated string)
   cooldown_until?: string
   same_day_exempt?: boolean
+  is_outside_world?: boolean
 }

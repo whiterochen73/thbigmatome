@@ -43,7 +43,8 @@ module Api
             cost: tm.player.cost_players.find { |pc| pc.cost_id == current_cost_list.id }.send(tm.selected_cost_type), # Assuming player has cost methods
             # Add cooldown information if applicable
             cooldown_until: cooldown_info[:cooldown_until],
-            same_day_exempt: cooldown_info[:same_day_exempt]
+            same_day_exempt: cooldown_info[:same_day_exempt],
+            is_outside_world: tm.player.player_types.any? { |pt| pt.category == "outside_world" }
           }
         end
 
@@ -110,6 +111,17 @@ module Api
           # Phase 2: Validate final state of 1st squad after all changes
           final_first_squad = team.team_memberships.reload.select { |tm| tm.squad == "first" }
           validate_first_squad_constraints(final_first_squad, target_date, season, season_start_date)
+
+          # Phase 3: Validate outside world constraints
+          team.reload
+          team.errors.clear
+          unless team.validate_outside_world_limit
+            raise team.errors.full_messages.first
+          end
+          team.errors.clear
+          unless team.validate_outside_world_balance
+            raise team.errors.full_messages.first
+          end
         end
 
         render json: { message: "Roster updated successfully" }, status: :ok

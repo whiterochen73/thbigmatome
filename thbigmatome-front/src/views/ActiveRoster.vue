@@ -54,6 +54,46 @@
       class="mt-2"
     />
 
+    <!-- 1軍制限サマリー -->
+    <v-row class="mt-2">
+      <v-col cols="12">
+        <v-alert
+          v-if="firstSquadCostLimit !== null && firstSquadTotalCost > firstSquadCostLimit"
+          type="warning"
+          density="compact"
+          class="mb-2"
+        >
+          {{
+            t('activeRoster.costLimitExceeded', {
+              cost: firstSquadTotalCost,
+              limit: firstSquadCostLimit,
+            })
+          }}
+        </v-alert>
+        <v-alert
+          v-if="firstSquadCostLimit === null && firstSquadPlayers.length > 0"
+          type="error"
+          density="compact"
+          class="mb-2"
+        >
+          {{ t('activeRoster.belowMinimumPlayers', { min: FIRST_SQUAD_MIN_PLAYERS }) }}
+        </v-alert>
+        <v-alert
+          v-if="outsideWorldFirstSquadCount > OUTSIDE_WORLD_LIMIT"
+          type="warning"
+          density="compact"
+          class="mb-2"
+        >
+          {{
+            t('activeRoster.outsideWorldLimitExceeded', {
+              count: outsideWorldFirstSquadCount,
+              limit: OUTSIDE_WORLD_LIMIT,
+            })
+          }}
+        </v-alert>
+      </v-col>
+    </v-row>
+
     <v-row class="mt-4">
       <v-col cols="6">
         <v-card>
@@ -64,10 +104,16 @@
                 <div>
                   <span class="text-h6 mx-4"
                     >{{ t('activeRoster.firstSquadCount') }}: {{ firstSquadPlayers.length }} /
-                    29</span
+                    {{ MAX_FIRST_SQUAD_PLAYERS }}</span
                   >
-                  <span class="text-h6"
-                    >{{ t('activeRoster.firstSquadCost') }}: {{ firstSquadTotalCost }} / 120</span
+                  <span
+                    class="text-h6"
+                    :class="{
+                      'text-error':
+                        firstSquadCostLimit !== null && firstSquadTotalCost > firstSquadCostLimit,
+                    }"
+                    >{{ t('activeRoster.firstSquadCost') }}: {{ firstSquadTotalCost }} /
+                    {{ firstSquadCostLimit ?? '-' }}</span
                   >
                 </div>
                 <div>
@@ -77,6 +123,17 @@
                     class="text-body-2 mx-2"
                   >
                     {{ type }}: {{ count }}
+                  </span>
+                  <span
+                    class="text-body-2 mx-2"
+                    :class="{ 'text-error': outsideWorldFirstSquadCount > OUTSIDE_WORLD_LIMIT }"
+                  >
+                    {{
+                      t('activeRoster.outsideWorldCount', {
+                        count: outsideWorldFirstSquadCount,
+                        max: OUTSIDE_WORLD_LIMIT,
+                      })
+                    }}
                   </span>
                 </div>
               </div>
@@ -198,6 +255,17 @@ const { t } = useI18n()
 const route = useRoute()
 const teamId = route.params.teamId
 const seasonId = ref<number | null>(null)
+
+// 1軍制限定数
+const MAX_FIRST_SQUAD_PLAYERS = 29
+const FIRST_SQUAD_MIN_PLAYERS = 25
+const OUTSIDE_WORLD_LIMIT = 4
+const COST_LIMIT_TIERS = [
+  { minPlayers: 28, maxCost: 120 },
+  { minPlayers: 27, maxCost: 119 },
+  { minPlayers: 26, maxCost: 117 },
+  { minPlayers: 25, maxCost: 114 },
+]
 const rosterPlayers = ref<RosterPlayer[]>([])
 const currentDate = ref(new Date())
 const currentDateStr = computed(() => {
@@ -288,6 +356,18 @@ const cooldownPlayers = computed(() => {
 
 const firstSquadTotalCost = computed(() => {
   return firstSquadPlayers.value.reduce((sum, player) => sum + player.cost, 0)
+})
+
+// 1軍人数別コスト上限（人数不足時はnull=登録禁止）
+const firstSquadCostLimit = computed(() => {
+  const count = firstSquadPlayers.value.length
+  const tier = COST_LIMIT_TIERS.find((t) => count >= t.minPlayers)
+  return tier ? tier.maxCost : null
+})
+
+// 1軍の外の世界枠選手数
+const outsideWorldFirstSquadCount = computed(() => {
+  return firstSquadPlayers.value.filter((p) => p.is_outside_world).length
 })
 
 const firstSquadPlayerTypeCounts = computed(() => {

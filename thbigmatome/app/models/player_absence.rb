@@ -7,7 +7,7 @@ class PlayerAbsence < ApplicationRecord
   validates :absence_type, presence: true
   validates :start_date, presence: true
   validates :duration, presence: true, numericality: { only_integer: true, greater_than: 0 }
-  validates :duration_unit, presence: true, inclusion: { in: %w(days games) }
+  validates :duration_unit, presence: true, inclusion: { in: %w[days games] }
 
   # 離脱期間の終了日（排他的: この日には復帰可能）
   # days: start_date + duration日

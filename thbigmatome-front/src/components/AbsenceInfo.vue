@@ -33,7 +33,6 @@
 import { ref, onMounted, computed, defineProps, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import type { PlayerAbsence } from '@/types/playerAbsence'
-import type { SeasonDetail } from '@/types/seasonDetail'
 import axios from 'axios'
 
 const playerAbsences = ref<PlayerAbsence[]>([])

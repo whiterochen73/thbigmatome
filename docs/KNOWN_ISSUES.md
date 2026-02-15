@@ -11,10 +11,10 @@
 | BUG-005 | src/types/playerDetail.ts:46 | high | ✅ 修正済み (cmd_132) `special_throwing_c` が `string \| null` だが `number \| null` であるべき (schema.rb では integer 型) → 整数入力が正しく保存されない可能性 | 04_player_management.md |
 | BUG-006 | src/composables/useAuth.ts:25 | high | ✅ 修正済み (cmd_132) TypeScript 型定義で `role: number` となっていたが、Rails enum は `.slice` 経由のシリアライズ時に文字列 (`"commissioner"`) を返すため `role: string` が正しい。比較ロジック (`=== 'commissioner'`) 自体は正しく、型定義のみ修正 | 01_authentication.md |
 | BUG-007 | src/views/TeamList.vue:27 | high | ✅ 修正済み (cmd_132) `item.manager?.name` を参照しているが、TeamSerializer は `has_one :director` で返却しており `manager` プロパティは存在しない → 監督名が常に `-` と表示される | 03_team_management.md |
-| BUG-008 | app/controllers/api/v1/auth_controller.rb:15 | medium | エラーメッセージが「メールアドレスまたはパスワードが間違っています」となっているが、本システムではログインIDを使用している | 01_authentication.md |
-| BUG-002 | app/models/player.rb:122 | medium | `injury_rate` のメッセージが「1〜6」だがコードは `1..7` → ユーザー混乱 | 04_player_management.md |
-| BUG-009 | db/schema.rb (season_schedules) | medium | カラム名が `oppnent_score`, `oppnent_team_id` (正しくは `opponent_*`) → コントローラーで変換して吸収しているが不整合 | 10_game_management.md |
-| BUG-012 | src/types/playerDetail.ts:45 | high | `special_defense_c` が `number \| null` だが schema.rb では string 型 → BUG-004 と同種の型不一致 | 04_player_management.md (cmd_132 精査) |
+| BUG-008 | app/controllers/api/v1/auth_controller.rb:15 | medium | ✅ 修正済み (cmd_141) エラーメッセージが「メールアドレスまたはパスワードが間違っています」となっているが、本システムではログインIDを使用している | 01_authentication.md |
+| BUG-002 | app/models/player.rb:122 | medium | ✅ 修正済み (cmd_141) `injury_rate` のメッセージが「1〜6」だがコードは `1..7` → ユーザー混乱 | 04_player_management.md |
+| BUG-009 | db/schema.rb (season_schedules) | medium | ✅ 修正済み (cmd_142) カラム名が `oppnent_score`, `oppnent_team_id` (正しくは `opponent_*`) → コントローラーで変換して吸収しているが不整合 | 10_game_management.md |
+| BUG-012 | src/types/playerDetail.ts:45 | high | ✅ 修正済み (cmd_141) `special_defense_c` が `number \| null` だが schema.rb では string 型 → BUG-004 と同種の型不一致 | 04_player_management.md (cmd_132 精査) |
 | BUG-003 | app/serializers/player_detail_serializer.rb:12-13,27-28 | low | `catcher_ids` メソッドが重複定義 → コードが冗長 | 04_player_management.md |
 | BUG-010 | app/serializers/roster_player_serializer.rb:4,12 | low | `number` メソッドが重複定義 | 09_roster_management.md |
 | BUG-011 | app/serializers/roster_player_serializer.rb:8,24 | low | `player_name` メソッドが重複定義 (`short_name` vs `name`) → 現在は後者 (`name`) が有効 | 09_roster_management.md |
@@ -65,7 +65,7 @@
 | ID | ファイル | 深刻度 | 内容 | 発見元 |
 |----|---------|--------|------|--------|
 | VALID-001 | app/models/team_membership.rb | high | ✅ 修正済み (cmd_138) `selected_cost_type` に `presence: true` のみで `inclusion` バリデーションがない → 無効な値 (例: `"invalid_type"`) が保存された場合、`send` メソッドで `NoMethodError` が発生するリスク | 03_team_management.md / 06_cost_management.md |
-| VALID-002 | app/models/season_schedule.rb | medium | バリデーション記述なし → `home_away` の値制約 ('home' / 'visitor' のみ許可) はモデルレベルで未強制 | 10_game_management.md |
+| VALID-002 | app/models/season_schedule.rb | medium | ✅ 修正済み (cmd_141) バリデーション記述なし → `home_away` の値制約 ('home' / 'visitor' のみ許可) はモデルレベルで未強制 | 10_game_management.md |
 | VALID-003 | app/models/team_manager.rb | low | バリデーションメッセージが日本語ハードコーディング → 多言語対応が困難 | 02_manager_management.md |
 | VALID-004 | app/models/biorhythm.rb / src/components/settings/BiorhythmDialog.vue | low | 日付形式の正規表現チェックのみで、論理的な期間バリデーション (`start_date <= end_date`) は未実装 | 05_master_data.md |
 
@@ -76,10 +76,10 @@
 | WARN-001 | app/serializers/roster_player_serializer.rb | high | ✅ 修正済み (cmd_138) `Cost.current_cost` が `nil` を返す場合 (`end_date` が `null` のコスト表が存在しない場合) `NoMethodError` が発生、また選手に `cost_player` レコードが存在しない場合も同様のエラー発生 | 06_cost_management.md |
 | WARN-002 | cost.rb (current_cost) | medium | `end_date` が `null` のレコードが複数存在した場合、`first` により取得されるレコードは不定 → 運用上、`end_date` が `null` のコスト表は1件のみに制限すべき | 06_cost_management.md |
 | WARN-003 | cost_assignments_controller.rb | medium | `create` アクションの一括保存にトランザクション制御がない (`duplicate` アクションにはある) → 途中で `save!` が失敗した場合、それ以前の保存は確定済みとなり部分的な保存状態になる可能性 | 06_cost_management.md |
-| WARN-004 | src/components/shared/CostListSelect.vue | medium | コスト表が0件の場合、`costLists.value[0]` は `undefined` となり、`costList.value` に `undefined` が設定される | 06_cost_management.md |
+| WARN-004 | src/components/shared/CostListSelect.vue | medium | ✅ 修正済み (cmd_141) コスト表が0件の場合、`costLists.value[0]` は `undefined` となり、`costList.value` に `undefined` が設定される | 06_cost_management.md |
 | WARN-005 | app/models/player.rb (N+1クエリ) | medium | `player.teams` など、一部のリレーションで eager_load 未実施 → N+1クエリの残存 | 04_player_management.md |
 | WARN-006 | players (ページネーション) | medium | 選手数が1000人を超えると一覧画面の初期ロードが遅延する可能性 | 04_player_management.md |
-| WARN-007 | costs / cost_players (バリデーション差異) | low | バックエンドではコスト値の最小値は `1` (`greater_than_or_equal_to: 1`) だが、フロントエンドのバリデーションでは `0以上` を許容 → フロントエンドで `0` を入力した場合、バックエンドでバリデーションエラー | 06_cost_management.md |
+| WARN-007 | costs / cost_players (バリデーション差異) | low | ✅ 修正済み (cmd_141) バックエンドではコスト値の最小値は `1` (`greater_than_or_equal_to: 1`) だが、フロントエンドのバリデーションでは `0以上` を許容 → フロントエンドで `0` を入力した場合、バックエンドでバリデーションエラー | 06_cost_management.md |
 | WARN-008 | schedule_details_controller.rb (upsert_all) | low | `upsert_all` 使用時には ActiveRecord のバリデーションおよびコールバックがスキップされる → データ整合性はDBレベルの制約とフロントエンドの入力制御に依存 | 07_schedule_management.md |
 | WARN-009 | app/serializers/ (マスタデータ) | low | マスタデータのAPIレスポンスは `to_json` による直接シリアライズを使用 → `created_at`, `updated_at` がレスポンスに常に含まれる (フロントエンド側では使用していない)、レスポンス形式のカスタマイズができない | 05_master_data.md |
 

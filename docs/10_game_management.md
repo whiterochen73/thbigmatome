@@ -422,14 +422,14 @@ resources :game, only: [:show, :update]
        かつ date < 当該試合日の試合数 + 1 を計算
        ↓
 [4] game_result 生成（過去の試合かつスコア入力済みの場合のみ）:
-     - date < Date.today かつ score/oppnent_score が存在
+     - date < Date.today かつ score/opponent_score が存在
      - result: 'win' / 'lose' / 'draw' を判定
        ↓
 [5] JSON レスポンス返却
 ```
 
 **注意事項:**
-- `oppnent_score` はバックエンドDBのタイポ（正しくは `opponent_score`）。フロントエンドから送信時は `opponent_score` で送り、コントローラー内で `oppnent_score` に変換される。
+- ~~`oppnent_score` はバックエンドDBのタイポ~~ → **修正済み (cmd_142)**: カラム名を `opponent_score`, `opponent_team_id` にリネーム。変換コードも除去済み。
 - `game_result` は試合日が過去かつスコア入力済みの場合のみ生成される。未来の試合や未入力の試合では `null`。
 
 ---
@@ -501,13 +501,13 @@ params.permit(
   "date": "2024-05-15",
   "date_type": "game_day",
   "announced_starter_id": 3,
-  "oppnent_team_id": 2,
+  "opponent_team_id": 2,
   "game_number": 10,
   "stadium": "幻想郷ドーム",
   "home_away": "home",
   "designated_hitter_enabled": true,
   "score": 5,
-  "oppnent_score": 3,
+  "opponent_score": 3,
   "winning_pitcher_id": 8,
   "losing_pitcher_id": 15,
   "save_pitcher_id": null,
@@ -542,8 +542,7 @@ params.permit(
 [1] SeasonSchedule.find(params[:id]) で試合取得
        ↓
 [2] game_params で Strong Parameters 適用
-     - opponent_score → oppnent_score に変換（タイポ対応）
-     - opponent_team_id → oppnent_team_id に変換
+     - opponent_score, opponent_team_id をそのまま使用（タイポ修正済み）
        ↓
 [3] season_schedule.update(game_params) で更新実行
        ↓
@@ -595,13 +594,13 @@ params.permit(
 | `date` | date | NOT NULL | 試合日 |
 | `date_type` | string | NULL | 日付タイプ ('game_day', 'interleague_game_day', 'off_day' 等) |
 | `announced_starter_id` | bigint | NULL | 外部キー → team_memberships.id (先発投手) |
-| `oppnent_team_id` | bigint | NULL | 外部キー → teams.id (対戦相手チーム) ※タイポあり |
+| `opponent_team_id` | bigint | NULL | 外部キー → teams.id (対戦相手チーム) |
 | `game_number` | integer | NULL | 試合番号（シーズン内通算） |
 | `stadium` | string | NULL | 球場名 |
 | `home_away` | string | NULL | 'home' or 'visitor' |
 | `designated_hitter_enabled` | boolean | NULL | DH制有効/無効 |
 | `score` | integer | NULL | 自チームの得点 |
-| `oppnent_score` | integer | NULL | 対戦相手の得点 ※タイポあり |
+| `opponent_score` | integer | NULL | 対戦相手の得点 |
 | `winning_pitcher_id` | bigint | NULL | 外部キー → players.id (勝利投手) |
 | `losing_pitcher_id` | bigint | NULL | 外部キー → players.id (敗戦投手) |
 | `save_pitcher_id` | bigint | NULL | 外部キー → players.id (セーブ投手) |
@@ -614,7 +613,7 @@ params.permit(
 **インデックス:**
 - `index_season_schedules_on_season_id`
 - `index_season_schedules_on_announced_starter_id`
-- `index_season_schedules_on_oppnent_team_id`
+- `index_season_schedules_on_opponent_team_id`
 - `index_season_schedules_on_winning_pitcher_id`
 - `index_season_schedules_on_losing_pitcher_id`
 - `index_season_schedules_on_save_pitcher_id`
@@ -627,7 +626,7 @@ params.permit(
 class SeasonSchedule < ApplicationRecord
   belongs_to :season
   belongs_to :announced_starter, class_name: 'TeamMembership', optional: true
-  belongs_to :opponent_team, class_name: 'Team', foreign_key: 'oppnent_team_id', optional: true
+  belongs_to :opponent_team, class_name: 'Team', foreign_key: 'opponent_team_id', optional: true
   belongs_to :winning_pitcher, class_name: 'Player', optional: true
   belongs_to :losing_pitcher, class_name: 'Player', optional: true
   belongs_to :save_pitcher, class_name: 'Player', optional: true
@@ -792,13 +791,13 @@ else if (gameData.value.home_away === 'home') {
 
 **判定条件:**
 1. 試合日が過去（`season_schedule.date < Date.today`）
-2. スコアが両方入力済み（`score.present? && oppnent_score.present?`）
+2. スコアが両方入力済み（`score.present? && opponent_score.present?`）
 
 **判定ロジック:**
 ```ruby
-result = if season_schedule.score > season_schedule.oppnent_score
+result = if season_schedule.score > season_schedule.opponent_score
            'win'
-         elsif season_schedule.score < season_schedule.oppnent_score
+         elsif season_schedule.score < season_schedule.opponent_score
            'lose'
          else
            'draw'
@@ -1014,9 +1013,7 @@ const handleSaveStartingMembers = async (data: { homeLineup: StartingMember[], o
 
 ## 既知の制約・未実装機能
 
-1. **バックエンドのタイポ:**
-   - DB カラム名: `oppnent_score`, `oppnent_team_id` (正しくは `opponent_*`)
-   - コントローラーで吸収（フロントエンドは `opponent_*` で送信、バックエンドで変換）
+1. ~~**バックエンドのタイポ:**~~ → **修正済み (cmd_142)**: `oppnent_*` カラムを `opponent_*` にリネーム、変換コード除去済み
 
 2. **打撃記録の自動集計未実装 (ScoreSheet.vue):**
    - 打撃記録入力欄は存在するが、「安打」「打点」列の自動計算機能なし

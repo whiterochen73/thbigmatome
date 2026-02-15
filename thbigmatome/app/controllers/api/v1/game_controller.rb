@@ -5,22 +5,22 @@ class Api::V1::GameController < ApplicationController
     season = season_schedule.season
     team = season.team
     if season.nil?
-      render json: { error: 'Season not initialized for this team' }, status: :not_found
+      render json: { error: "Season not initialized for this team" }, status: :not_found
       return
     end
 
     game_result = nil
-    if season_schedule.date < Date.today && season_schedule.score.present? && season_schedule.oppnent_score.present?
-      result = if season_schedule.score > season_schedule.oppnent_score
-                 'win'
-               elsif season_schedule.score < season_schedule.oppnent_score
-                 'lose'
-               else
-                 'draw'
-               end
+    if season_schedule.date < Date.today && season_schedule.score.present? && season_schedule.opponent_score.present?
+      result = if season_schedule.score > season_schedule.opponent_score
+                 "win"
+      elsif season_schedule.score < season_schedule.opponent_score
+                 "lose"
+      else
+                 "draw"
+      end
       game_result = {
         opponent_short_name: season_schedule.opponent_team&.name, # Using full name for now
-        score: "#{season_schedule.score}-#{season_schedule.oppnent_score}",
+        score: "#{season_schedule.score}-#{season_schedule.opponent_score}",
         result: result
       }
     end
@@ -33,15 +33,15 @@ class Api::V1::GameController < ApplicationController
       game_number:
       season_schedule.game_number ||
         season.season_schedules
-        .where(date_type: ['game_day', 'interleague_game_day'])
-        .where(['date < :date', { date: season_schedule.date }])
+        .where(date_type: [ "game_day", "interleague_game_day" ])
+        .where([ "date < :date", { date: season_schedule.date } ])
         .count + 1,
       announced_starter_id: season_schedule.announced_starter&.id,
       stadium: season_schedule.stadium,
       home_away: season_schedule.home_away,
       designated_hitter_enabled: season_schedule.designated_hitter_enabled,
       score: season_schedule.score,
-      opponent_score: season_schedule.oppnent_score,
+      opponent_score: season_schedule.opponent_score,
       opponent_team_id: season_schedule.opponent_team&.id,
       opponent_team: season_schedule.opponent_team&.name,
       winning_pitcher_id: season_schedule.winning_pitcher&.id,
@@ -53,9 +53,9 @@ class Api::V1::GameController < ApplicationController
       game_result: game_result
     }, status: :ok
   rescue ActiveRecord::RecordNotFound
-    render json: { error: 'Team or Season not found' }, status: :not_found
+    render json: { error: "Team or Season not found" }, status: :not_found
   rescue ArgumentError
-    render json: { error: 'Invalid date format' }, status: :bad_request
+    render json: { error: "Invalid date format" }, status: :bad_request
   end
 
   def update
@@ -68,13 +68,13 @@ class Api::V1::GameController < ApplicationController
       render json: { errors: season_schedule.errors.full_messages }, status: :unprocessable_entity
     end
   rescue ActiveRecord::RecordNotFound
-    render json: { error: 'Game not found' }, status: :not_found
+    render json: { error: "Game not found" }, status: :not_found
   end
 
   private
 
   def game_params
-    # フロントエンドから送られてくるパラメータ。typoしている項目(opponent)はここで修正する
+    # フロントエンドから送られてくるパラメータ
     permitted_params = params.permit(
       :announced_starter_id,
       :stadium,
@@ -90,9 +90,6 @@ class Api::V1::GameController < ApplicationController
       starting_lineup: [ :player_id, :position, :order ],
       opponent_starting_lineup: [ :player_id, :position, :order ]
     )
-
-    permitted_params[:oppnent_score] = permitted_params.delete(:opponent_score) if permitted_params.key?(:opponent_score)
-    permitted_params[:oppnent_team_id] = permitted_params.delete(:opponent_team_id) if permitted_params.key?(:opponent_team_id)
 
     permitted_params
   end

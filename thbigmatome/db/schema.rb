@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2026_02_15_024310) do
+ActiveRecord::Schema[8.0].define(version: 2026_02_15_031454) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -24,10 +24,11 @@ ActiveRecord::Schema[8.0].define(version: 2026_02_15_024310) do
   end
 
   create_table "batting_styles", force: :cascade do |t|
-    t.string "name"
+    t.string "name", null: false
     t.string "description"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.index [ "name" ], name: "index_batting_styles_on_name", unique: true
   end
 
   create_table "biorhythms", force: :cascade do |t|
@@ -68,6 +69,7 @@ ActiveRecord::Schema[8.0].define(version: 2026_02_15_024310) do
     t.date "end_date"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.index [ "end_date" ], name: "index_costs_on_active", unique: true, where: "(end_date IS NULL)"
   end
 
   create_table "league_games", force: :cascade do |t|
@@ -142,10 +144,11 @@ ActiveRecord::Schema[8.0].define(version: 2026_02_15_024310) do
   end
 
   create_table "pitching_styles", force: :cascade do |t|
-    t.string "name"
+    t.string "name", null: false
     t.string "description"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.index [ "name" ], name: "index_pitching_styles_on_name", unique: true
   end
 
   create_table "player_absences", force: :cascade do |t|
@@ -293,13 +296,13 @@ ActiveRecord::Schema[8.0].define(version: 2026_02_15_024310) do
     t.date "date", null: false
     t.string "date_type"
     t.bigint "announced_starter_id"
-    t.bigint "oppnent_team_id"
+    t.bigint "opponent_team_id"
     t.integer "game_number"
     t.string "stadium"
     t.string "home_away"
     t.boolean "designated_hitter_enabled"
     t.integer "score"
-    t.integer "oppnent_score"
+    t.integer "opponent_score"
     t.bigint "winning_pitcher_id"
     t.bigint "losing_pitcher_id"
     t.bigint "save_pitcher_id"
@@ -310,7 +313,7 @@ ActiveRecord::Schema[8.0].define(version: 2026_02_15_024310) do
     t.jsonb "opponent_starting_lineup"
     t.index [ "announced_starter_id" ], name: "index_season_schedules_on_announced_starter_id"
     t.index [ "losing_pitcher_id" ], name: "index_season_schedules_on_losing_pitcher_id"
-    t.index [ "oppnent_team_id" ], name: "index_season_schedules_on_oppnent_team_id"
+    t.index [ "opponent_team_id" ], name: "index_season_schedules_on_opponent_team_id"
     t.index [ "save_pitcher_id" ], name: "index_season_schedules_on_save_pitcher_id"
     t.index [ "season_id" ], name: "index_season_schedules_on_season_id"
     t.index [ "winning_pitcher_id" ], name: "index_season_schedules_on_winning_pitcher_id"
@@ -401,7 +404,7 @@ ActiveRecord::Schema[8.0].define(version: 2026_02_15_024310) do
   add_foreign_key "season_schedules", "players", column: "winning_pitcher_id"
   add_foreign_key "season_schedules", "seasons"
   add_foreign_key "season_schedules", "team_memberships", column: "announced_starter_id"
-  add_foreign_key "season_schedules", "teams", column: "oppnent_team_id"
+  add_foreign_key "season_schedules", "teams", column: "opponent_team_id"
   add_foreign_key "seasons", "team_memberships", column: "key_player_id"
   add_foreign_key "seasons", "teams"
   add_foreign_key "team_managers", "managers"

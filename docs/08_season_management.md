@@ -270,13 +270,13 @@ resources :seasons, only: [:create]
 | `date` | date | NO | — | 日付 |
 | `date_type` | string | YES | — | 日程種別（後述） |
 | `announced_starter_id` | bigint | YES | — | 先発予告投手（FK → team_memberships） |
-| `oppnent_team_id` | bigint | YES | — | 対戦相手チーム（FK → teams）※カラム名 typo |
+| `opponent_team_id` | bigint | YES | — | 対戦相手チーム（FK → teams） |
 | `game_number` | integer | YES | — | 試合番号 |
 | `stadium` | string | YES | — | 球場名 |
 | `home_away` | string | YES | — | ホーム/アウェイ |
 | `designated_hitter_enabled` | boolean | YES | — | DH制有無 |
 | `score` | integer | YES | — | 自チームスコア |
-| `oppnent_score` | integer | YES | — | 相手チームスコア ※カラム名 typo |
+| `opponent_score` | integer | YES | — | 相手チームスコア |
 | `winning_pitcher_id` | bigint | YES | — | 勝利投手（FK → players） |
 | `losing_pitcher_id` | bigint | YES | — | 敗戦投手（FK → players） |
 | `save_pitcher_id` | bigint | YES | — | セーブ投手（FK → players） |
@@ -289,7 +289,7 @@ resources :seasons, only: [:create]
 **インデックス**:
 - `index_season_schedules_on_season_id`
 - `index_season_schedules_on_announced_starter_id`
-- `index_season_schedules_on_oppnent_team_id`
+- `index_season_schedules_on_opponent_team_id`
 - `index_season_schedules_on_winning_pitcher_id`
 - `index_season_schedules_on_losing_pitcher_id`
 - `index_season_schedules_on_save_pitcher_id`
@@ -297,7 +297,7 @@ resources :seasons, only: [:create]
 **外部キー制約**:
 - `season_id` → `seasons.id`
 - `announced_starter_id` → `team_memberships.id`
-- `oppnent_team_id` → `teams.id`
+- `opponent_team_id` → `teams.id`
 - `winning_pitcher_id` → `players.id`
 - `losing_pitcher_id` → `players.id`
 - `save_pitcher_id` → `players.id`
@@ -328,7 +328,7 @@ Season
 SeasonSchedule
   belongs_to :season
   belongs_to :announced_starter       # class_name: 'TeamMembership', optional: true
-  belongs_to :opponent_team           # class_name: 'Team', foreign_key: 'oppnent_team_id', optional: true
+  belongs_to :opponent_team           # class_name: 'Team', foreign_key: 'opponent_team_id', optional: true
   belongs_to :winning_pitcher         # class_name: 'Player', optional: true
   belongs_to :losing_pitcher          # class_name: 'Player', optional: true
   belongs_to :save_pitcher            # class_name: 'Player', optional: true
@@ -384,7 +384,7 @@ end
 **計算属性**:
 
 - `announced_starter`: `announced_starter_id` が設定されている場合、関連する `TeamMembership` → `Player` から `{ id, name }` を返す。未設定時は `nil`。
-- `game_result`: `score` と `oppnent_score` が両方存在する場合のみ生成。
+- `game_result`: `score` と `opponent_score` が両方存在する場合のみ生成。
   ```json
   {
     "opponent_short_name": "チームA",
@@ -392,7 +392,7 @@ end
     "result": "win"  // "win" | "lose" | "draw"
   }
   ```
-  - `result` の判定: `score > oppnent_score` → `"win"`, `score < oppnent_score` → `"lose"`, 同点 → `"draw"`
+  - `result` の判定: `score > opponent_score` → `"win"`, `score < opponent_score` → `"lose"`, 同点 → `"draw"`
 
 ## ビジネスロジック
 

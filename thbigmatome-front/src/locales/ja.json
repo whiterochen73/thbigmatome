@@ -23,6 +23,10 @@
       "title": "シーズン画面へ",
       "playerRegistration": "出場選手登録",
       "gameResultInput": "試合結果入力"
+    },
+    "commissionerMode": {
+      "title": "コミッショナーモード",
+      "button": "コミッショナーモードへ"
     }
   },
   "common": {

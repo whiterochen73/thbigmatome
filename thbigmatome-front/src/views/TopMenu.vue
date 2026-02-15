@@ -13,6 +13,23 @@
         </v-card>
       </v-col>
     </v-row>
+    <v-row justify="center" class="mt-4" v-if="isCommissioner">
+      <v-col cols="12" md="8">
+        <v-card color="primary" variant="tonal">
+          <v-card-item>
+            <v-card-title class="d-flex align-center">
+              <v-icon icon="mdi-shield-crown" class="me-2"></v-icon>
+              {{ t('topMenu.commissionerMode.title') }}
+            </v-card-title>
+          </v-card-item>
+          <v-card-text>
+            <v-btn color="primary" size="large" @click="goToCommissioner">
+              {{ t('topMenu.commissionerMode.button') }}
+            </v-btn>
+          </v-card-text>
+        </v-card>
+      </v-col>
+    </v-row>
     <v-row justify="center" class="mt-4">
       <v-col cols="12" md="8">
         <v-card>
@@ -86,7 +103,7 @@ import SeasonInitializationDialog from '@/components/SeasonInitializationDialog.
 import { useRouter } from 'vue-router'
 
 const { t } = useI18n()
-const { user } = useAuth()
+const { user, isCommissioner } = useAuth()
 const router = useRouter()
 
 const managers = ref<Manager[]>([])
@@ -111,6 +128,10 @@ const goToSeasonPortal = () => {
   if (selectedTeam.value) {
     router.push({ name: 'SeasonPortal', params: { teamId: selectedTeam.value.id } })
   }
+}
+
+const goToCommissioner = () => {
+  router.push({ name: 'Leagues' })
 }
 
 const fetchManagers = async () => {

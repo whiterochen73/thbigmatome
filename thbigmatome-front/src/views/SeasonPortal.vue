@@ -8,7 +8,13 @@
       <v-btn class="mx-2" variant="outlined" :to="gameResultRoute" :disabled="!isGameDayToday">
         {{ t('seasonPortal.goToGameResult') }}
       </v-btn>
-      <v-btn class="mx-2" color="red" variant="outlined" @click="isDialogOpen = true">
+      <v-btn
+        class="mx-2"
+        color="teal"
+        variant="outlined"
+        prepend-icon="mdi-hospital-box"
+        @click="isDialogOpen = true"
+      >
         {{ t('seasonPortal.registerAbsence') }}
       </v-btn>
       <template #append>

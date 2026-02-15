@@ -98,6 +98,7 @@
     "selectKeyPlayer": "特例選手を選択",
     "saveKeyPlayer": "特例選手を保存",
     "keyPlayerRestriction": "特例選手はシーズン開始日にのみ設定可能です。",
+    "keyPlayerLocked": "特例選手（抹消不可）",
     "cooldownInfo": "昇格クールダウン情報",
     "noCooldownInfo": "現在、昇格クールダウン中の選手はいません。",
     "cooldownUntil": "{date}まで昇格不可",

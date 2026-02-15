@@ -10,18 +10,13 @@
         <p class="text-h5">{{ t('seasonPortal.currentDate') }}: {{ currentDateStr }}</p>
       </template>
     </v-toolbar>
-    <v-row class="mt-2">
+    <v-row v-if="isSeasonStartDate" class="mt-2">
       <v-col cols="12">
         <v-card variant="outlined">
           <v-card-title class="d-flex">
             {{ t('activeRoster.keyPlayerSelection') }}
             <v-spacer></v-spacer>
-            <v-btn
-              color="primary"
-              variant="outlined"
-              @click="saveKeyPlayer"
-              :disabled="!isSeasonStartDate"
-            >
+            <v-btn color="primary" variant="outlined" @click="saveKeyPlayer">
               {{ t('activeRoster.saveKeyPlayer') }}
             </v-btn>
           </v-card-title>
@@ -33,7 +28,6 @@
               item-value="team_membership_id"
               :label="t('activeRoster.selectKeyPlayer')"
               :hint="t('activeRoster.selectKeyPlayerHint')"
-              :disabled="!isSeasonStartDate"
               clearable
             ></v-select>
           </v-card-text>
@@ -162,9 +156,20 @@
               :items="firstSquadPlayers"
               hide-default-footer
               items-per-page="-1"
+              :row-props="getFirstSquadRowProps"
             >
               <template #item.actions="{ item }">
+                <v-tooltip
+                  v-if="isKeyPlayer(item)"
+                  :text="t('activeRoster.keyPlayerLocked')"
+                  location="top"
+                >
+                  <template #activator="{ props }">
+                    <v-icon v-bind="props" color="amber-darken-2" size="small">mdi-lock</v-icon>
+                  </template>
+                </v-tooltip>
                 <v-btn
+                  v-else
                   icon
                   size="small"
                   @click="movePlayer(item, 'second')"
@@ -174,6 +179,9 @@
                 </v-btn>
               </template>
               <template #item.player_name="{ item }">
+                <v-icon v-if="isKeyPlayer(item)" color="amber-darken-2" size="small" class="mr-1"
+                  >mdi-star</v-icon
+                >
                 <span>{{ item.player_name }}</span>
                 <v-icon
                   v-if="item.is_absent"
@@ -439,6 +447,19 @@ const isSeasonStartDate = computed(() => {
 const availableKeyPlayers = computed(() => {
   return firstSquadPlayers.value // All first squad players are potential key players
 })
+
+const isKeyPlayer = (player: RosterPlayer): boolean => {
+  return (
+    selectedKeyPlayerId.value !== null && player.team_membership_id === selectedKeyPlayerId.value
+  )
+}
+
+const getFirstSquadRowProps = ({ item }: { item: RosterPlayer }) => {
+  if (isKeyPlayer(item)) {
+    return { class: 'bg-amber-lighten-5' }
+  }
+  return {}
+}
 
 // 離脱終了間近（3日以内）の選手
 const nearEndAbsencePlayers = computed(() => {

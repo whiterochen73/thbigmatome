@@ -17,6 +17,11 @@ class Team < ApplicationRecord
 
   validates :name, presence: true
 
+  # シーズンが存在するかどうか（TopMenu等のUI表示で使用）
+  def has_season
+    season.present?
+  end
+
   # 1軍登録人数に対応するコスト上限を返す。人数不足の場合はnil
   def self.first_squad_cost_limit_for_count(count)
     tier = COST_LIMIT_CONFIG["first_squad_tiers"].find { |t| count >= t["min_players"] }

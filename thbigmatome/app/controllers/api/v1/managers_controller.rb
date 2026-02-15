@@ -14,12 +14,12 @@ module Api
 
         offset = (page - 1) * per_page
 
-        @managers = Manager.all.includes(:teams).order(:id).limit(per_page).offset(offset)
+        @managers = Manager.all.includes(teams: :season).order(:id).limit(per_page).offset(offset)
         total_count = Manager.count
         total_pages = (total_count.to_f / per_page).ceil
 
         render json: {
-          data: @managers.as_json(include: :teams),
+          data: @managers.as_json(include: { teams: { methods: [ :has_season ] } }),
           meta: {
             total_count: total_count,
             per_page: per_page,

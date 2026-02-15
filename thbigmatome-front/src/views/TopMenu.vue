@@ -115,8 +115,10 @@ const goToSeasonPortal = () => {
 
 const fetchManagers = async () => {
   try {
-    const response = await axios.get('/managers')
-    managers.value = response.data
+    // NOTE: /managers はページネーション形式 { data: [...], meta: {...} } を返す
+    // このロジックを変更する際はトップ画面のチーム選択表示に影響しないか確認すること
+    const response = await axios.get('/managers', { params: { per_page: 100 } })
+    managers.value = response.data.data
     if (user.value) {
       manager.value = managers.value.find((m) => m.user_id == user.value?.id) || null
       if (manager.value) {

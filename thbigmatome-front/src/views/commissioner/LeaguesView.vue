@@ -98,23 +98,83 @@
             <v-tabs-window v-model="detailTab">
               <!-- シーズン管理 -->
               <v-tabs-window-item value="seasons">
-                <v-alert type="info" variant="tonal" class="mt-4">
-                  {{ $t('commissioner.detail.comingSoon') }}
-                </v-alert>
+                <div class="mt-4">
+                  <v-data-table
+                    :headers="seasonHeaders"
+                    :items="leagueSeasons"
+                    :loading="leagueSeasonsLoading"
+                    class="elevation-1"
+                  >
+                    <template v-slot:[`item.status`]="{ item }">
+                      {{ $t(`commissioner.detail.seasonStatus.${item.status}`) }}
+                    </template>
+                    <template v-slot:[`item.actions`]="{ item }">
+                      <v-btn
+                        size="small"
+                        variant="text"
+                        color="primary"
+                        @click="generateSchedule(item)"
+                      >
+                        {{ $t('commissioner.detail.generateSchedule') }}
+                      </v-btn>
+                    </template>
+                    <template v-slot:no-data>
+                      {{ $t('commissioner.detail.noSeasons') }}
+                    </template>
+                  </v-data-table>
+                </div>
               </v-tabs-window-item>
 
               <!-- 対戦管理 -->
               <v-tabs-window-item value="games">
-                <v-alert type="info" variant="tonal" class="mt-4">
-                  {{ $t('commissioner.detail.comingSoon') }}
-                </v-alert>
+                <div class="mt-4">
+                  <v-select
+                    v-model="selectedGameSeasonId"
+                    :items="leagueSeasons"
+                    item-title="name"
+                    item-value="id"
+                    :label="$t('commissioner.detail.selectSeason')"
+                    clearable
+                    @update:model-value="onGameSeasonSelected"
+                  ></v-select>
+                  <v-data-table
+                    v-if="selectedGameSeasonId"
+                    :headers="gameHeaders"
+                    :items="leagueGames"
+                    :loading="leagueGamesLoading"
+                    class="elevation-1"
+                  >
+                    <template v-slot:no-data>
+                      {{ $t('commissioner.detail.noGames') }}
+                    </template>
+                  </v-data-table>
+                </div>
               </v-tabs-window-item>
 
               <!-- 選手プール管理 -->
               <v-tabs-window-item value="poolPlayers">
-                <v-alert type="info" variant="tonal" class="mt-4">
-                  {{ $t('commissioner.detail.comingSoon') }}
-                </v-alert>
+                <div class="mt-4">
+                  <v-select
+                    v-model="selectedPoolSeasonId"
+                    :items="leagueSeasons"
+                    item-title="name"
+                    item-value="id"
+                    :label="$t('commissioner.detail.selectSeason')"
+                    clearable
+                    @update:model-value="onPoolSeasonSelected"
+                  ></v-select>
+                  <v-data-table
+                    v-if="selectedPoolSeasonId"
+                    :headers="poolPlayerHeaders"
+                    :items="poolPlayers"
+                    :loading="poolPlayersLoading"
+                    class="elevation-1"
+                  >
+                    <template v-slot:no-data>
+                      {{ $t('commissioner.detail.noPoolPlayers') }}
+                    </template>
+                  </v-data-table>
+                </div>
               </v-tabs-window-item>
 
               <!-- チームスタッフ管理 -->
@@ -145,9 +205,11 @@
 
               <!-- 選手離脱管理 -->
               <v-tabs-window-item value="absences">
-                <v-alert type="info" variant="tonal" class="mt-4">
-                  {{ $t('commissioner.detail.comingSoon') }}
-                </v-alert>
+                <div class="mt-4">
+                  <v-alert type="info" variant="tonal">
+                    {{ $t('commissioner.detail.absencesDescription') }}
+                  </v-alert>
+                </div>
               </v-tabs-window-item>
             </v-tabs-window>
           </v-card-text>
@@ -206,7 +268,10 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import axios from 'axios'
+import { useI18n } from 'vue-i18n'
 import { useSnackbar } from '@/composables/useSnackbar'
+
+const { t } = useI18n()
 
 interface League {
   id?: number
@@ -235,6 +300,33 @@ interface TeamManager {
     id: number
     name: string
   }
+}
+
+interface LeagueSeason {
+  id: number
+  league_id: number
+  name: string
+  start_date: string
+  end_date: string
+  status: 'pending' | 'active' | 'completed'
+}
+
+interface LeagueGame {
+  id: number
+  league_season_id: number
+  home_team_id: number
+  away_team_id: number
+  game_date: string
+  game_number: number
+  home_team: Team
+  away_team: Team
+}
+
+interface LeaguePoolPlayer {
+  id: number
+  league_season_id: number
+  player_id: number
+  player: { id: number; name: string }
 }
 
 const { showSnackbar } = useSnackbar()
@@ -281,6 +373,36 @@ const teamManagerHeaders = [
   { title: '監督名', key: 'manager.name' },
   { title: '役割', key: 'role' },
 ]
+
+// シーズン管理
+const leagueSeasons = ref<LeagueSeason[]>([])
+const leagueSeasonsLoading = ref(false)
+const seasonHeaders = computed(() => [
+  { title: t('commissioner.detail.seasonHeaders.name'), key: 'name' },
+  { title: t('commissioner.detail.seasonHeaders.startDate'), key: 'start_date' },
+  { title: t('commissioner.detail.seasonHeaders.endDate'), key: 'end_date' },
+  { title: t('commissioner.detail.seasonHeaders.status'), key: 'status' },
+  { title: t('commissioner.detail.seasonHeaders.actions'), key: 'actions', sortable: false },
+])
+
+// 対戦管理
+const selectedGameSeasonId = ref<number | null>(null)
+const leagueGames = ref<LeagueGame[]>([])
+const leagueGamesLoading = ref(false)
+const gameHeaders = computed(() => [
+  { title: t('commissioner.detail.gameHeaders.gameDate'), key: 'game_date' },
+  { title: t('commissioner.detail.gameHeaders.homeTeam'), key: 'home_team.name' },
+  { title: t('commissioner.detail.gameHeaders.awayTeam'), key: 'away_team.name' },
+  { title: t('commissioner.detail.gameHeaders.gameNumber'), key: 'game_number' },
+])
+
+// 選手プール管理
+const selectedPoolSeasonId = ref<number | null>(null)
+const poolPlayers = ref<LeaguePoolPlayer[]>([])
+const poolPlayersLoading = ref(false)
+const poolPlayerHeaders = computed(() => [
+  { title: t('commissioner.detail.poolPlayerHeaders.playerName'), key: 'player.name' },
+])
 
 const formTitle = computed(() => (editedIndex.value === -1 ? '新規リーグ作成' : 'リーグ編集'))
 
@@ -438,14 +560,23 @@ async function openLeagueDetail(league: League) {
   detailTab.value = 'seasons'
   selectedStaffTeamId.value = null
   teamManagers.value = []
-  await fetchDetailLeagueTeams(league.id!)
+  selectedGameSeasonId.value = null
+  leagueGames.value = []
+  selectedPoolSeasonId.value = null
+  poolPlayers.value = []
+  await Promise.all([fetchDetailLeagueTeams(league.id!), fetchLeagueSeasons(league.id!)])
 }
 
 function closeLeagueDetail() {
   detailLeague.value = null
   detailLeagueTeams.value = []
+  leagueSeasons.value = []
   selectedStaffTeamId.value = null
   teamManagers.value = []
+  selectedGameSeasonId.value = null
+  leagueGames.value = []
+  selectedPoolSeasonId.value = null
+  poolPlayers.value = []
 }
 
 async function fetchDetailLeagueTeams(leagueId: number) {
@@ -477,6 +608,80 @@ async function fetchTeamManagers(leagueId: number, teamId: number) {
     console.error('Error fetching team managers:', error)
   } finally {
     teamManagersLoading.value = false
+  }
+}
+
+// シーズン管理関連
+async function fetchLeagueSeasons(leagueId: number) {
+  leagueSeasonsLoading.value = true
+  try {
+    const response = await axios.get<LeagueSeason[]>(
+      `/commissioner/leagues/${leagueId}/league_seasons`,
+    )
+    leagueSeasons.value = response.data
+  } catch (error) {
+    showSnackbar('シーズンの取得に失敗しました', 'error')
+    console.error('Error fetching league seasons:', error)
+  } finally {
+    leagueSeasonsLoading.value = false
+  }
+}
+
+async function generateSchedule(season: LeagueSeason) {
+  if (!detailLeague.value?.id) return
+  if (!confirm(t('commissioner.detail.generateScheduleConfirm', { name: season.name }))) return
+  try {
+    await axios.post(
+      `/commissioner/leagues/${detailLeague.value.id}/league_seasons/${season.id}/generate_schedule`,
+    )
+    showSnackbar(t('commissioner.detail.scheduleGenerated'), 'success')
+  } catch (error) {
+    showSnackbar(t('commissioner.detail.scheduleGenerateFailed'), 'error')
+    console.error('Error generating schedule:', error)
+  }
+}
+
+// 対戦管理関連
+async function onGameSeasonSelected(seasonId: number | null) {
+  leagueGames.value = []
+  if (!seasonId || !detailLeague.value?.id) return
+  await fetchLeagueGames(detailLeague.value.id, seasonId)
+}
+
+async function fetchLeagueGames(leagueId: number, seasonId: number) {
+  leagueGamesLoading.value = true
+  try {
+    const response = await axios.get<LeagueGame[]>(
+      `/commissioner/leagues/${leagueId}/league_seasons/${seasonId}/league_games`,
+    )
+    leagueGames.value = response.data
+  } catch (error) {
+    showSnackbar('対戦データの取得に失敗しました', 'error')
+    console.error('Error fetching league games:', error)
+  } finally {
+    leagueGamesLoading.value = false
+  }
+}
+
+// 選手プール管理関連
+async function onPoolSeasonSelected(seasonId: number | null) {
+  poolPlayers.value = []
+  if (!seasonId || !detailLeague.value?.id) return
+  await fetchPoolPlayers(detailLeague.value.id, seasonId)
+}
+
+async function fetchPoolPlayers(leagueId: number, seasonId: number) {
+  poolPlayersLoading.value = true
+  try {
+    const response = await axios.get<LeaguePoolPlayer[]>(
+      `/commissioner/leagues/${leagueId}/league_seasons/${seasonId}/league_pool_players`,
+    )
+    poolPlayers.value = response.data
+  } catch (error) {
+    showSnackbar('選手プールの取得に失敗しました', 'error')
+    console.error('Error fetching pool players:', error)
+  } finally {
+    poolPlayersLoading.value = false
   }
 }
 </script>

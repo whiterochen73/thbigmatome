@@ -851,7 +851,38 @@
       },
       "comingSoon": "この機能は準備中です。",
       "selectTeam": "チームを選択",
-      "teamStaffNoData": "スタッフが登録されていません。"
+      "selectSeason": "シーズンを選択",
+      "teamStaffNoData": "スタッフが登録されていません。",
+      "noSeasons": "シーズンが登録されていません。",
+      "noGames": "対戦データがありません。",
+      "noPoolPlayers": "選手プールに選手が登録されていません。",
+      "absencesDescription": "選手の離脱管理は離脱者履歴画面から行えます。",
+      "goToAbsenceHistory": "離脱者履歴画面へ",
+      "generateSchedule": "日程生成",
+      "generateScheduleConfirm": "シーズン「{name}」の日程を生成しますか？",
+      "scheduleGenerated": "日程を生成しました。",
+      "scheduleGenerateFailed": "日程の生成に失敗しました。",
+      "seasonHeaders": {
+        "name": "シーズン名",
+        "startDate": "開始日",
+        "endDate": "終了日",
+        "status": "ステータス",
+        "actions": "操作"
+      },
+      "gameHeaders": {
+        "gameDate": "試合日",
+        "homeTeam": "ホーム",
+        "awayTeam": "アウェイ",
+        "gameNumber": "第N戦"
+      },
+      "poolPlayerHeaders": {
+        "playerName": "選手名"
+      },
+      "seasonStatus": {
+        "pending": "準備中",
+        "active": "進行中",
+        "completed": "完了"
+      }
     }
   },
   "routes": {

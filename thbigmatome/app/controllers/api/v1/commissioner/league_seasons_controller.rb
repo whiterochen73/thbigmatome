@@ -1,8 +1,9 @@
-class Api::V1::LeagueSeasonsController < ApplicationController
-  before_action :set_league_season, only: [:show, :update, :destroy, :generate_schedule]
+class Api::V1::Commissioner::LeagueSeasonsController < Api::V1::Commissioner::BaseController
+  before_action :set_league
+  before_action :set_league_season, only: [ :show, :update, :destroy, :generate_schedule ]
 
   def index
-    @league_seasons = LeagueSeason.all
+    @league_seasons = @league.league_seasons
     render json: @league_seasons
   end
 
@@ -11,7 +12,7 @@ class Api::V1::LeagueSeasonsController < ApplicationController
   end
 
   def create
-    @league_season = LeagueSeason.new(league_season_params)
+    @league_season = @league.league_seasons.build(league_season_params)
 
     if @league_season.save
       render json: @league_season, status: :created
@@ -35,18 +36,22 @@ class Api::V1::LeagueSeasonsController < ApplicationController
 
   def generate_schedule
     @league_season.generate_schedule
-    render json: { message: 'Schedule generated successfully' }, status: :ok
+    render json: { message: "Schedule generated successfully" }, status: :ok
   rescue StandardError => e
     render json: { error: e.message }, status: :unprocessable_entity
   end
 
   private
 
+  def set_league
+    @league = League.find(params[:league_id])
+  end
+
   def set_league_season
-    @league_season = LeagueSeason.find(params[:id])
+    @league_season = @league.league_seasons.find(params[:id])
   end
 
   def league_season_params
-    params.require(:league_season).permit(:league_id, :name, :start_date, :end_date, :status)
+    params.require(:league_season).permit(:name, :start_date, :end_date, :status)
   end
 end

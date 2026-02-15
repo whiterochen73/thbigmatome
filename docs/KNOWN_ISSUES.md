@@ -29,12 +29,12 @@
 | DESIGN-004 | db/schema.rb (外野守備) | medium | `defense_of` (統合) と `defense_lf/cf/rf` (個別) が同時に設定可能だが、どちらが優先されるかのビジネスルールが未定義 | 04_player_management.md |
 | DESIGN-005 | player.rb (投球スタイル) | medium | `pitching_style_id`, `pinch_pitching_style_id`, `catcher_pitching_style_id` の3種類があるが、優先順位や適用条件のドキュメントが不足 | 04_player_management.md |
 | DESIGN-006 | app/models/team_manager.rb | medium | リーグ内兼任制約チェックで `team.leagues.first` を使用 → チームが複数リーグに所属している場合、最初のリーグのみで兼任チェックが行われる | 02_manager_management.md |
-| DESIGN-007 | routes.rb (managers/:manager_id/teams) | medium | ネストされたルート `/api/v1/managers/:manager_id/teams` が定義されているが TeamsController で実装されていない → ルーティングの複雑性が増している | 02_manager_management.md |
+| DESIGN-007 | routes.rb (managers/:manager_id/teams) | medium | ✅ 修正済み (cmd_143) ネストされたルート `/api/v1/managers/:manager_id/teams` が定義されているが TeamsController で実装されていない → ルーティングの複雑性が増している | 02_manager_management.md |
 | DESIGN-008 | game_controller.rb / season_schedule_serializer.rb | medium | `game_number` の重複実装: コントローラー内で動的計算 (`season_schedule.game_number || 計算ロジック`) → DB保存値と計算値の整合性管理が曖昧 | 10_game_management.md |
 | DESIGN-009 | game_controller.rb / season_schedule_serializer.rb | medium | `game_result` の重複実装: `GameController#show` と `SeasonScheduleSerializer#game_result` で同じロジック → 略称 (`short_name`) の使用がシリアライザーのみ | 10_game_management.md |
-| DESIGN-010 | db/schema.rb (batting_styles, pitching_styles) | medium | DB上の NOT NULL 制約・UNIQUE INDEX がなく、モデルバリデーションに完全に依存 → データ整合性の観点ではDB制約の追加が望ましい | 05_master_data.md |
-| DESIGN-011 | app/models/pitching_skill.rb | medium | `has_many :player_pitching_skills` / `has_many :players, through:` の定義がない → 削除時は `dependent: :restrict_with_error` ではなくDB外部キー制約のみで制限され、エラーメッセージ形式が異なる | 05_master_data.md |
-| DESIGN-012 | app/models/batting_style.rb | medium | `has_many :players` の定義がない → `BattingStyle.find(1).players` のような逆引きクエリが使用できない (PitchingStyle も同様) | 05_master_data.md |
+| DESIGN-010 | db/schema.rb (batting_styles, pitching_styles) | medium | ✅ 修正済み (cmd_143) DB上の NOT NULL 制約・UNIQUE INDEX がなく、モデルバリデーションに完全に依存 → データ整合性の観点ではDB制約の追加が望ましい | 05_master_data.md |
+| DESIGN-011 | app/models/pitching_skill.rb | medium | ✅ 修正済み (cmd_143) `has_many :player_pitching_skills` / `has_many :players, through:` の定義がない → 削除時は `dependent: :restrict_with_error` ではなくDB外部キー制約のみで制限され、エラーメッセージ形式が異なる | 05_master_data.md |
+| DESIGN-012 | app/models/batting_style.rb | medium | ✅ 修正済み (cmd_143) `has_many :players` の定義がない → `BattingStyle.find(1).players` のような逆引きクエリが使用できない (PitchingStyle も同様) | 05_master_data.md |
 | DESIGN-013 | app/models/biorhythm.rb | low | `start_date` と `end_date` の存在チェックのみで、`start_date <= end_date` の論理チェック、期間重複チェック、年度範囲チェック等が未実装 | 05_master_data.md |
 | DESIGN-014 | src/types/ (battingSkill.ts, pitchingSkill.ts) | low | `SkillType` 型 (`'positive' \| 'negative' \| 'neutral'`) が2箇所で個別定義 → 共通の型定義ファイルに統合されていない | 05_master_data.md |
 | DESIGN-015 | src/types/costList.ts | low | `effective_date` フィールドが定義されているがバックエンドの `costs` テーブルにこのカラムは存在せず、`CostSerializer` も出力しない → 常に `undefined` となる未使用フィールド | 06_cost_management.md |
@@ -74,8 +74,8 @@
 | ID | ファイル | 深刻度 | 内容 | 発見元 |
 |----|---------|--------|------|--------|
 | WARN-001 | app/serializers/roster_player_serializer.rb | high | ✅ 修正済み (cmd_138) `Cost.current_cost` が `nil` を返す場合 (`end_date` が `null` のコスト表が存在しない場合) `NoMethodError` が発生、また選手に `cost_player` レコードが存在しない場合も同様のエラー発生 | 06_cost_management.md |
-| WARN-002 | cost.rb (current_cost) | medium | `end_date` が `null` のレコードが複数存在した場合、`first` により取得されるレコードは不定 → 運用上、`end_date` が `null` のコスト表は1件のみに制限すべき | 06_cost_management.md |
-| WARN-003 | cost_assignments_controller.rb | medium | `create` アクションの一括保存にトランザクション制御がない (`duplicate` アクションにはある) → 途中で `save!` が失敗した場合、それ以前の保存は確定済みとなり部分的な保存状態になる可能性 | 06_cost_management.md |
+| WARN-002 | cost.rb (current_cost) | medium | ✅ 修正済み (cmd_143) `end_date` が `null` のレコードが複数存在した場合、`first` により取得されるレコードは不定 → 運用上、`end_date` が `null` のコスト表は1件のみに制限すべき | 06_cost_management.md |
+| WARN-003 | cost_assignments_controller.rb | medium | ✅ 修正済み (cmd_143) `create` アクションの一括保存にトランザクション制御がない (`duplicate` アクションにはある) → 途中で `save!` が失敗した場合、それ以前の保存は確定済みとなり部分的な保存状態になる可能性 | 06_cost_management.md |
 | WARN-004 | src/components/shared/CostListSelect.vue | medium | ✅ 修正済み (cmd_141) コスト表が0件の場合、`costLists.value[0]` は `undefined` となり、`costList.value` に `undefined` が設定される | 06_cost_management.md |
 | WARN-005 | app/models/player.rb (N+1クエリ) | medium | `player.teams` など、一部のリレーションで eager_load 未実施 → N+1クエリの残存 | 04_player_management.md |
 | WARN-006 | players (ページネーション) | medium | 選手数が1000人を超えると一覧画面の初期ロードが遅延する可能性 | 04_player_management.md |

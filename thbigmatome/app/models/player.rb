@@ -88,6 +88,9 @@ class Player < ApplicationRecord
     validates throwing_attr, presence: { message: "は対応する守備力が設定されている場合、必須です" }, if: -> { send(defense_attr).present? }
   end
 
+  # 外野守備の排他性バリデーション
+  validate :defense_of_exclusivity
+
   # 走力・バント・盗塁値
   validates :speed, presence: true, numericality: { only_integer: true, message: "は整数で入力してください" }, inclusion: { in: 1..5, message: "は1～5の範囲で入力してください" }
   validates :bunt, presence: true, numericality: { only_integer: true, message: "は整数で入力してください" }, inclusion: { in: 1..10, message: "は1～10の範囲で入力してください" }
@@ -120,4 +123,14 @@ class Player < ApplicationRecord
 
   # 怪我特徴
   validates :injury_rate, presence: true, numericality: { only_integer: true, message: "は整数で入力してください" }, inclusion: { in: 1..7, message: "は1～7の範囲で入力してください" }
+
+  private
+
+  def defense_of_exclusivity
+    has_of = defense_of.present?
+    has_individual = [ defense_lf, defense_cf, defense_rf ].any?(&:present?)
+    if has_of && has_individual
+      errors.add(:base, "外野守備は統合値(OF)と個別値(LF/CF/RF)を同時に設定できません")
+    end
+  end
 end

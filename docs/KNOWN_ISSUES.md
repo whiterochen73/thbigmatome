@@ -26,9 +26,9 @@
 | DESIGN-001 | teams.manager_id | high | ✅ 修正済み (cmd_139) `teams.manager_id` カラム (NOT NULL、外部キー制約あり) が存在するが、現在のコントローラーでは `director_id` / `coach_ids` パラメータで `team_managers` テーブル経由で管理 → チーム作成時に設定されるが監督変更では更新されず実データと乖離 | 03_team_management.md |
 | DESIGN-002 | teams.manager_id | high | ✅ 修正済み (cmd_139) 監督削除時、`TeamManager` レコードは自動削除されるが `teams.manager_id` は自動更新されない → 削除対象の監督が主監督として設定されているチームがある場合エラー発生 | 02_manager_management.md |
 | DESIGN-003 | managers.role | high | `managers.role` カラム (director=0, coach=1) が存在するが ManagersController / ManagerSerializer / フロントエンドで使用されていない → `team_managers.role` との整合性が保証されない | 02_manager_management.md |
-| DESIGN-004 | db/schema.rb (外野守備) | medium | `defense_of` (統合) と `defense_lf/cf/rf` (個別) が同時に設定可能だが、どちらが優先されるかのビジネスルールが未定義 | 04_player_management.md |
-| DESIGN-005 | player.rb (投球スタイル) | medium | `pitching_style_id`, `pinch_pitching_style_id`, `catcher_pitching_style_id` の3種類があるが、優先順位や適用条件のドキュメントが不足 | 04_player_management.md |
-| DESIGN-006 | app/models/team_manager.rb | medium | リーグ内兼任制約チェックで `team.leagues.first` を使用 → チームが複数リーグに所属している場合、最初のリーグのみで兼任チェックが行われる | 02_manager_management.md |
+| DESIGN-004 | db/schema.rb (外野守備) | medium | ✅ 修正済み (cmd_144) `defense_of` (統合) と `defense_lf/cf/rf` (個別) が同時に設定可能だが、どちらが優先されるかのビジネスルールが未定義 | 04_player_management.md |
+| DESIGN-005 | player.rb (投球スタイル) | medium | `pitching_style_id`, `pinch_pitching_style_id`, `catcher_pitching_style_id` の3種類があるが、優先順位や適用条件のドキュメントが不足 → 仕様通り（投手特徴: 通常/走者あり時/専属捕手時の3種） | 04_player_management.md |
+| DESIGN-006 | app/models/team_manager.rb | medium | リーグ内兼任制約チェックで `team.leagues.first` を使用 → チームが複数リーグに所属している場合、最初のリーグのみで兼任チェックが行われる → 保留（仕様未確定、現状実害なし） | 02_manager_management.md |
 | DESIGN-007 | routes.rb (managers/:manager_id/teams) | medium | ✅ 修正済み (cmd_143) ネストされたルート `/api/v1/managers/:manager_id/teams` が定義されているが TeamsController で実装されていない → ルーティングの複雑性が増している | 02_manager_management.md |
 | DESIGN-008 | game_controller.rb / season_schedule_serializer.rb | medium | `game_number` の重複実装: コントローラー内で動的計算 (`season_schedule.game_number || 計算ロジック`) → DB保存値と計算値の整合性管理が曖昧 | 10_game_management.md |
 | DESIGN-009 | game_controller.rb / season_schedule_serializer.rb | medium | `game_result` の重複実装: `GameController#show` と `SeasonScheduleSerializer#game_result` で同じロジック → 略称 (`short_name`) の使用がシリアライザーのみ | 10_game_management.md |

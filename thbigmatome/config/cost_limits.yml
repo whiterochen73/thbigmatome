@@ -1,0 +1,15 @@
+# チーム登録人数に応じたコスト上限テーブル
+# 登録人数は excluded_from_team_total=false の選手のみカウント
+#
+# tiers: min_players降順で定義。最初にマッチした行（count >= min_players）が適用される
+# minimum_players: この人数未満の場合、チーム登録不可
+tiers:
+  - min_players: 28
+    max_cost: 120
+  - min_players: 27
+    max_cost: 119
+  - min_players: 26
+    max_cost: 117
+  - min_players: 25
+    max_cost: 114
+minimum_players: 25

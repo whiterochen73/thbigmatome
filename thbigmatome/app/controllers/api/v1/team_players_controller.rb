@@ -9,6 +9,7 @@ class Api::V1::TeamPlayersController < ApplicationController
 
   def create
     player_params = params.require(:players)
+    cost_list_id = params[:cost_list_id]&.to_i
     incoming_player_ids = player_params.map { |p| p[:player_id] }
 
     ActiveRecord::Base.transaction do
@@ -23,11 +24,23 @@ class Api::V1::TeamPlayersController < ApplicationController
           excluded_from_team_total: p[:excluded_from_team_total] || false
         )
       end
+
+      # Validate cost limits after all memberships are updated
+      @team.team_memberships.reload
+      unless @team.validate_minimum_players
+        raise ActiveRecord::RecordInvalid.new(@team)
+      end
+
+      if cost_list_id
+        unless @team.validate_cost_within_limit(cost_list_id)
+          raise ActiveRecord::RecordInvalid.new(@team)
+        end
+      end
     end
 
     render json: { message: "Team members updated successfully" }, status: :ok
   rescue ActiveRecord::RecordInvalid => e
-    render json: { error: e.message }, status: :unprocessable_entity
+    render json: { error: e.record&.errors&.full_messages&.join(", ") || e.message }, status: :unprocessable_entity
   end
 
   private

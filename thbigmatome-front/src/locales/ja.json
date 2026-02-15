@@ -600,6 +600,7 @@
       "bats": "打",
       "player_types": "選手タイプ",
       "cost": "コスト",
+      "excluded": "除外",
       "actions": "操作"
     },
     "teamMembersTitle": "チームメンバー",

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2026_02_15_031454) do
+ActiveRecord::Schema[8.0].define(version: 2026_02_15_061053) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -348,6 +348,7 @@ ActiveRecord::Schema[8.0].define(version: 2026_02_15_031454) do
     t.string "selected_cost_type", default: "normal_cost", null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.boolean "excluded_from_team_total", default: false, null: false
     t.index [ "player_id" ], name: "index_team_memberships_on_player_id"
     t.index [ "team_id", "player_id" ], name: "index_team_memberships_on_team_id_and_player_id", unique: true
     t.index [ "team_id" ], name: "index_team_memberships_on_team_id"

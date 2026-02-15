@@ -18,11 +18,14 @@ class Api::V1::TeamPlayersController < ApplicationController
       # Upsert memberships for incoming players
       player_params.each do |p|
         membership = @team.team_memberships.find_or_initialize_by(player_id: p[:player_id])
-        membership.update!(selected_cost_type: p[:selected_cost_type])
+        membership.update!(
+          selected_cost_type: p[:selected_cost_type],
+          excluded_from_team_total: p[:excluded_from_team_total] || false
+        )
       end
     end
 
-    render json: { message: 'Team members updated successfully' }, status: :ok
+    render json: { message: "Team members updated successfully" }, status: :ok
   rescue ActiveRecord::RecordInvalid => e
     render json: { error: e.message }, status: :unprocessable_entity
   end

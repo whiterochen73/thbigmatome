@@ -1,11 +1,9 @@
 <template>
   <v-container>
     <TeamNavigation :team-id="teamId" />
-    <v-row>
-      <v-col>
-        <h1 class="text-h4">{{ t('teamMembers.title', { teamName: team.name }) }}</h1>
-      </v-col>
-    </v-row>
+    <v-toolbar color="primary" class="mb-4">
+      <v-toolbar-title>{{ t('teamMembers.title', { teamName: team.name }) }}</v-toolbar-title>
+    </v-toolbar>
 
     <!-- Cost List & Player Selection -->
     <v-row class="mb-4">

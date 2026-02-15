@@ -1,20 +1,17 @@
 <template>
-  <v-tabs
-    :model-value="activeTab"
-    color="primary"
-    density="comfortable"
-    class="team-navigation mb-2"
-  >
-    <v-tab
-      v-for="tab in tabs"
-      :key="tab.routeName"
-      :value="tab.routeName"
-      :to="tab.to"
-      :prepend-icon="tab.icon"
-    >
-      {{ tab.label }}
-    </v-tab>
-  </v-tabs>
+  <v-card variant="outlined" class="mb-2">
+    <v-tabs :model-value="activeTab" color="primary" density="comfortable" class="team-navigation">
+      <v-tab
+        v-for="tab in tabs"
+        :key="tab.routeName"
+        :value="tab.routeName"
+        :to="tab.to"
+        :prepend-icon="tab.icon"
+      >
+        {{ tab.label }}
+      </v-tab>
+    </v-tabs>
+  </v-card>
 </template>
 
 <script setup lang="ts">

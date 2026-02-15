@@ -1,7 +1,7 @@
 <template>
   <v-container>
     <TeamNavigation :team-id="teamId" />
-    <v-toolbar color="orange-lighten-3">
+    <v-toolbar color="primary">
       <template #prepend>
         <h1 class="text-h4 mx-4">{{ season?.name }}</h1>
       </template>

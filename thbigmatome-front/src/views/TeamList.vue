@@ -24,7 +24,7 @@
           </template>
 
           <template v-slot:item.manager_name="{ item }">
-            {{ item.manager?.name || '-' }}
+            {{ item.director?.name || '-' }}
           </template>
 
           <template v-slot:item.actions="{ item }">

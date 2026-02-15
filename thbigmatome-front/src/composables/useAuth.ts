@@ -5,7 +5,7 @@ import router from '@/router' // Vue Routerをインポート
 interface User {
   id: number
   name: string
-  role: number
+  role: string
 }
 
 interface LoginResponse {

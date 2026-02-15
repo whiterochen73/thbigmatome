@@ -16,20 +16,20 @@ export interface PlayerDetail {
   steal_end: number;
   speed: number;
   injury_rate: number;
-  defense_p: number | null;
-  defense_c: number | null;
+  defense_p: string | null;
+  defense_c: string | null;
   throwing_c: number | null;
-  defense_1b: number | null;
-  defense_2b: number | null;
-  defense_3b: number | null;
-  defense_ss: number | null;
-  defense_of: number | null;
+  defense_1b: string | null;
+  defense_2b: string | null;
+  defense_3b: string | null;
+  defense_ss: string | null;
+  defense_of: string | null;
   throwing_of: string | null;
-  defense_lf: number | null;
+  defense_lf: string | null;
   throwing_lf: string | null;
-  defense_cf: number | null;
+  defense_cf: string | null;
   throwing_cf: string | null;
-  defense_rf: number | null;
+  defense_rf: string | null;
   throwing_rf: string | null;
   is_pitcher: boolean;
   is_relief_only: boolean;
@@ -43,5 +43,5 @@ export interface PlayerDetail {
   catcher_pitching_style_id: number | null;
   partner_pitcher_ids: number[];
   special_defense_c: number | null;
-  special_throwing_c: string | null;
+  special_throwing_c: number | null;
 }

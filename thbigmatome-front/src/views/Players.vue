@@ -97,11 +97,11 @@ const deletePlayer = async (id: number) => {
     return;
   }
   try {
-    await axios.delete(`/managers/${id}`);
+    await axios.delete(`/players/${id}`);
     showSnackbar(t('playerList.deleteSuccess'), 'success');
     fetchPlayers(); // 削除後、一覧を再取得
   } catch (error) {
-    console.error('Error deleting manager:', error);
+    console.error('Error deleting player:', error);
     showSnackbar(t('playerList.deleteFailed'), 'error');
   }
 };

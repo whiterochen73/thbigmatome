@@ -5,8 +5,8 @@ class TeamManager < ApplicationRecord
   enum :role, { director: 0, coach: 1 }
 
   validates :role, presence: true
-  validates :team_id, uniqueness: { scope: :role, if: -> { director? }, message: 'には既に監督が設定されています' }
-  validate :manager_cannot_be_assigned_to_multiple_teams_in_same_league, on: [:create, :update]
+  validates :team_id, uniqueness: { scope: :role, if: -> { director? }, message: :director_already_exists }
+  validate :manager_cannot_be_assigned_to_multiple_teams_in_same_league, on: [ :create, :update ]
 
   private
 
@@ -22,7 +22,7 @@ class TeamManager < ApplicationRecord
 
     # 同じマネージャーが他のチームに割り当てられているかチェック
     if TeamManager.where(manager_id: manager_id, team_id: other_teams_in_same_league.select(:id)).exists?
-      errors.add(:manager_id, 'は同一リーグ内の複数のチームに兼任することはできません')
+      errors.add(:manager_id, :cannot_manage_multiple_teams_in_same_league)
     end
   end
 end

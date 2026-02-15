@@ -5,14 +5,6 @@ class RosterPlayerSerializer < ActiveModel::Serializer
     object.player.number
   end
 
-  def player_name
-    object.player.short_name
-  end
-
-  def number
-    object.player.number
-  end
-
   def throwing_hand
     object.player.throwing_hand
   end

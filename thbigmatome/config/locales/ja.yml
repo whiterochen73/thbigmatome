@@ -1,0 +1,104 @@
+ja:
+  activerecord:
+    errors:
+      models:
+        player_biorhythm:
+          attributes:
+            biorhythm_id:
+              already_registered: "は既に登録されています"
+        player_batting_skill:
+          attributes:
+            batting_skill_id:
+              already_registered: "は既に登録されています"
+        player_player_type:
+          attributes:
+            player_type_id:
+              already_registered: "は既に登録されています"
+        player_pitching_skill:
+          attributes:
+            pitching_skill_id:
+              already_registered: "は既に登録されています"
+        league_pool_player:
+          attributes:
+            league_season_id:
+              already_registered_in_pool: "は既に選手プールに登録されています"
+        season:
+          attributes:
+            team_id:
+              season_already_started: "は既にシーズンが開始されています。"
+        team_manager:
+          attributes:
+            team_id:
+              director_already_exists: "には既に監督が設定されています"
+            manager_id:
+              cannot_manage_multiple_teams_in_same_league: "は同一リーグ内の複数のチームに兼任することはできません"
+        biorhythm:
+          attributes:
+            end_date:
+              after_start_date: "は開始日より後の日付にしてください"
+        player:
+          of_and_individual_exclusive: "外野守備は統合値(OF)と個別値(LF/CF/RF)を同時に設定できません"
+          attributes:
+            defense_p:
+              invalid_format: "は0～5の数字とA～Eのアルファベットの組み合わせ2文字で入力してください"
+            defense_c:
+              invalid_format: "は0～5の数字とA～Eのアルファベットの組み合わせ2文字で入力してください"
+            defense_1b:
+              invalid_format: "は0～5の数字とA～Eのアルファベットの組み合わせ2文字で入力してください"
+            defense_2b:
+              invalid_format: "は0～5の数字とA～Eのアルファベットの組み合わせ2文字で入力してください"
+            defense_3b:
+              invalid_format: "は0～5の数字とA～Eのアルファベットの組み合わせ2文字で入力してください"
+            defense_ss:
+              invalid_format: "は0～5の数字とA～Eのアルファベットの組み合わせ2文字で入力してください"
+            defense_of:
+              invalid_format: "は0～5の数字とA～Eのアルファベットの組み合わせ2文字で入力してください"
+            defense_lf:
+              invalid_format: "は0～5の数字とA～Eのアルファベットの組み合わせ2文字で入力してください"
+            defense_cf:
+              invalid_format: "は0～5の数字とA～Eのアルファベットの組み合わせ2文字で入力してください"
+            defense_rf:
+              invalid_format: "は0～5の数字とA～Eのアルファベットの組み合わせ2文字で入力してください"
+            special_defense_c:
+              invalid_format: "は0～5の数字とA～Eのアルファベットの組み合わせ2文字で入力してください"
+            throwing_c:
+              required_when_defense_c_present: "は捕手守備力が設定されている場合、必須です"
+              not_an_integer: "は整数で入力してください"
+              out_of_range: "は-5～5の範囲で入力してください"
+            special_throwing_c:
+              required_when_special_defense_c_present: "は捕手守備力が設定されている場合、必須です"
+              not_an_integer: "は整数で入力してください"
+              out_of_range: "は-5～5の範囲で入力してください"
+            throwing_of:
+              must_be_s_a_b_or_c: "はS, A, B, Cのいずれかで入力してください"
+              required_when_defense_present: "は対応する守備力が設定されている場合、必須です"
+            throwing_lf:
+              must_be_s_a_b_or_c: "はS, A, B, Cのいずれかで入力してください"
+              required_when_defense_present: "は対応する守備力が設定されている場合、必須です"
+            throwing_cf:
+              must_be_s_a_b_or_c: "はS, A, B, Cのいずれかで入力してください"
+              required_when_defense_present: "は対応する守備力が設定されている場合、必須です"
+            throwing_rf:
+              must_be_s_a_b_or_c: "はS, A, B, Cのいずれかで入力してください"
+              required_when_defense_present: "は対応する守備力が設定されている場合、必須です"
+            starter_stamina:
+              not_an_integer: "は整数で入力してください"
+              out_of_range: "は4～9の範囲で入力してください"
+            relief_stamina:
+              not_an_integer: "は整数で入力してください"
+              out_of_range: "は0～3の範囲で入力してください"
+            speed:
+              not_an_integer: "は整数で入力してください"
+              out_of_range: "は1～5の範囲で入力してください"
+            bunt:
+              not_an_integer: "は整数で入力してください"
+              out_of_range: "は1～10の範囲で入力してください"
+            steal_start:
+              not_an_integer: "は整数で入力してください"
+              out_of_range: "は1～22の範囲で入力してください"
+            steal_end:
+              not_an_integer: "は整数で入力してください"
+              out_of_range: "は1～22の範囲で入力してください"
+            injury_rate:
+              not_an_integer: "は整数で入力してください"
+              out_of_range: "は1～7の範囲で入力してください"

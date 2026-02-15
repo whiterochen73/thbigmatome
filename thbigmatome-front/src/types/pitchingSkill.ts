@@ -1,4 +1,4 @@
-export type SkillType = 'positive' | 'negative' | 'neutral'
+import type { SkillType } from './skill'
 
 export interface PitchingSkill {
   id: number

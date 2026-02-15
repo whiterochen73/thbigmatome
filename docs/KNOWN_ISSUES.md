@@ -15,9 +15,9 @@
 | BUG-002 | app/models/player.rb:122 | medium | ✅ 修正済み (cmd_141) `injury_rate` のメッセージが「1〜6」だがコードは `1..7` → ユーザー混乱 | 04_player_management.md |
 | BUG-009 | db/schema.rb (season_schedules) | medium | ✅ 修正済み (cmd_142) カラム名が `oppnent_score`, `oppnent_team_id` (正しくは `opponent_*`) → コントローラーで変換して吸収しているが不整合 | 10_game_management.md |
 | BUG-012 | src/types/playerDetail.ts:45 | high | ✅ 修正済み (cmd_141) `special_defense_c` が `number \| null` だが schema.rb では string 型 → BUG-004 と同種の型不一致 | 04_player_management.md (cmd_132 精査) |
-| BUG-003 | app/serializers/player_detail_serializer.rb:12-13,27-28 | low | `catcher_ids` メソッドが重複定義 → コードが冗長 | 04_player_management.md |
-| BUG-010 | app/serializers/roster_player_serializer.rb:4,12 | low | `number` メソッドが重複定義 | 09_roster_management.md |
-| BUG-011 | app/serializers/roster_player_serializer.rb:8,24 | low | `player_name` メソッドが重複定義 (`short_name` vs `name`) → 現在は後者 (`name`) が有効 | 09_roster_management.md |
+| BUG-003 | app/serializers/player_detail_serializer.rb:12-13,27-28 | low | ✅ 修正済み (cmd_149) `catcher_ids` メソッドが重複定義 → コードが冗長 | 04_player_management.md |
+| BUG-010 | app/serializers/roster_player_serializer.rb:4,12 | low | ✅ 修正済み (cmd_149) `number` メソッドが重複定義 | 09_roster_management.md |
+| BUG-011 | app/serializers/roster_player_serializer.rb:8,24 | low | ✅ 修正済み (cmd_149) `player_name` メソッドが重複定義 (`short_name` vs `name`) → 現在は後者 (`name`) が有効 | 09_roster_management.md |
 
 ## 設計上の問題
 
@@ -35,9 +35,9 @@
 | DESIGN-010 | db/schema.rb (batting_styles, pitching_styles) | medium | ✅ 修正済み (cmd_143) DB上の NOT NULL 制約・UNIQUE INDEX がなく、モデルバリデーションに完全に依存 → データ整合性の観点ではDB制約の追加が望ましい | 05_master_data.md |
 | DESIGN-011 | app/models/pitching_skill.rb | medium | ✅ 修正済み (cmd_143) `has_many :player_pitching_skills` / `has_many :players, through:` の定義がない → 削除時は `dependent: :restrict_with_error` ではなくDB外部キー制約のみで制限され、エラーメッセージ形式が異なる | 05_master_data.md |
 | DESIGN-012 | app/models/batting_style.rb | medium | ✅ 修正済み (cmd_143) `has_many :players` の定義がない → `BattingStyle.find(1).players` のような逆引きクエリが使用できない (PitchingStyle も同様) | 05_master_data.md |
-| DESIGN-013 | app/models/biorhythm.rb | low | `start_date` と `end_date` の存在チェックのみで、`start_date <= end_date` の論理チェック、期間重複チェック、年度範囲チェック等が未実装 | 05_master_data.md |
-| DESIGN-014 | src/types/ (battingSkill.ts, pitchingSkill.ts) | low | `SkillType` 型 (`'positive' \| 'negative' \| 'neutral'`) が2箇所で個別定義 → 共通の型定義ファイルに統合されていない | 05_master_data.md |
-| DESIGN-015 | src/types/costList.ts | low | `effective_date` フィールドが定義されているがバックエンドの `costs` テーブルにこのカラムは存在せず、`CostSerializer` も出力しない → 常に `undefined` となる未使用フィールド | 06_cost_management.md |
+| DESIGN-013 | app/models/biorhythm.rb | low | ✅ 修正済み (cmd_149) `start_date` と `end_date` の存在チェックのみで、`start_date <= end_date` の論理チェック、期間重複チェック、年度範囲チェック等が未実装 | 05_master_data.md |
+| DESIGN-014 | src/types/ (battingSkill.ts, pitchingSkill.ts) | low | ✅ 修正済み (cmd_149) `SkillType` 型 (`'positive' \| 'negative' \| 'neutral'`) が2箇所で個別定義 → 共通の型定義ファイルに統合されていない | 05_master_data.md |
+| DESIGN-015 | src/types/costList.ts | low | ✅ 修正済み (cmd_149) `effective_date` フィールドが定義されているがバックエンドの `costs` テーブルにこのカラムは存在せず、`CostSerializer` も出力しない → 常に `undefined` となる未使用フィールド | 06_cost_management.md |
 
 ## 未実装機能
 
@@ -66,8 +66,8 @@
 |----|---------|--------|------|--------|
 | VALID-001 | app/models/team_membership.rb | high | ✅ 修正済み (cmd_138) `selected_cost_type` に `presence: true` のみで `inclusion` バリデーションがない → 無効な値 (例: `"invalid_type"`) が保存された場合、`send` メソッドで `NoMethodError` が発生するリスク | 03_team_management.md / 06_cost_management.md |
 | VALID-002 | app/models/season_schedule.rb | medium | ✅ 修正済み (cmd_141) バリデーション記述なし → `home_away` の値制約 ('home' / 'visitor' のみ許可) はモデルレベルで未強制 | 10_game_management.md |
-| VALID-003 | app/models/team_manager.rb | low | バリデーションメッセージが日本語ハードコーディング → 多言語対応が困難 | 02_manager_management.md |
-| VALID-004 | app/models/biorhythm.rb / src/components/settings/BiorhythmDialog.vue | low | 日付形式の正規表現チェックのみで、論理的な期間バリデーション (`start_date <= end_date`) は未実装 | 05_master_data.md |
+| VALID-003 | app/models/team_manager.rb | low | ✅ 修正済み (cmd_149) バリデーションメッセージが日本語ハードコーディング → 多言語対応が困難 | 02_manager_management.md |
+| VALID-004 | app/models/biorhythm.rb / src/components/settings/BiorhythmDialog.vue | low | ✅ 修正済み (cmd_149) 日付形式の正規表現チェックのみで、論理的な期間バリデーション (`start_date <= end_date`) は未実装 | 05_master_data.md |
 
 ## 注意事項・リスク
 
@@ -80,8 +80,8 @@
 | WARN-005 | app/models/player.rb (N+1クエリ) | medium | `player.teams` など、一部のリレーションで eager_load 未実施 → N+1クエリの残存 | 04_player_management.md |
 | WARN-006 | players (ページネーション) | medium | 選手数が1000人を超えると一覧画面の初期ロードが遅延する可能性 | 04_player_management.md |
 | WARN-007 | costs / cost_players (バリデーション差異) | low | ✅ 修正済み (cmd_141) バックエンドではコスト値の最小値は `1` (`greater_than_or_equal_to: 1`) だが、フロントエンドのバリデーションでは `0以上` を許容 → フロントエンドで `0` を入力した場合、バックエンドでバリデーションエラー | 06_cost_management.md |
-| WARN-008 | schedule_details_controller.rb (upsert_all) | low | `upsert_all` 使用時には ActiveRecord のバリデーションおよびコールバックがスキップされる → データ整合性はDBレベルの制約とフロントエンドの入力制御に依存 | 07_schedule_management.md |
-| WARN-009 | app/serializers/ (マスタデータ) | low | マスタデータのAPIレスポンスは `to_json` による直接シリアライズを使用 → `created_at`, `updated_at` がレスポンスに常に含まれる (フロントエンド側では使用していない)、レスポンス形式のカスタマイズができない | 05_master_data.md |
+| WARN-008 | schedule_details_controller.rb (upsert_all) | low | `upsert_all` 使用時には ActiveRecord のバリデーションおよびコールバックがスキップされる → データ整合性はDBレベルの制約とフロントエンドの入力制御に依存 → 許容（DB制約でカバー） | 07_schedule_management.md |
+| WARN-009 | app/serializers/ (マスタデータ) | low | マスタデータのAPIレスポンスは `to_json` による直接シリアライズを使用 → `created_at`, `updated_at` がレスポンスに常に含まれる (フロントエンド側では使用していない)、レスポンス形式のカスタマイズができない → 許容（実害なし） | 05_master_data.md |
 
 ---
 

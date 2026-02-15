@@ -9,9 +9,6 @@ class PlayerDetailSerializer < ActiveModel::Serializer
               :special_defense_c, :special_throwing_c, :biorhythm_ids, :batting_skill_ids,
               :pitching_skill_ids, :player_type_ids, :catcher_ids, :partner_pitcher_ids
 
-  def catcher_ids
-    object.catchers_players.pluck(:catcher_id)
-  end
   def pitching_skill_ids
     object.player_pitching_skills.pluck(:pitching_skill_id)
   end

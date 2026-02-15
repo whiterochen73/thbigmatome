@@ -783,10 +783,26 @@
     "player": "選手",
     "position": "守備",
     "hits": "安打",
-    "rbi": "打点"
+    "rbi": "打点",
+    "backToGameResult": "試合結果に戻る",
+    "atBatResults": {
+      "single": "安打",
+      "double": "二塁打",
+      "triple": "三塁打",
+      "homerun": "本塁打",
+      "sacrifice_hit": "犠打",
+      "sacrifice_fly": "犠飛",
+      "walk": "四球",
+      "hit_by_pitch": "死球",
+      "strikeout": "三振",
+      "double_play": "併殺",
+      "ground_out": "ゴロ",
+      "fly_out": "フライ"
+    }
   },
   "messages": {
     "startingMembersSaved": "スターティングメンバーを保存しました。",
-    "failedToSaveStartingMembers": "スターティングメンバーの保存に失敗しました。"
+    "failedToSaveStartingMembers": "スターティングメンバーの保存に失敗しました。",
+    "noMembersToSave": "保存するメンバーがいません"
   }
 }

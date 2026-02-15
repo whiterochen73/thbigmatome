@@ -169,7 +169,7 @@
                     <v-chip
                       v-bind="props"
                       size="small"
-                      color="amber-darken-2"
+                      color="deep-purple"
                       variant="tonal"
                       prepend-icon="mdi-lock"
                     >
@@ -187,7 +187,7 @@
                     <v-btn
                       v-bind="props"
                       size="small"
-                      color="blue-grey"
+                      :color="getAbsenceColor(item)"
                       variant="elevated"
                       rounded
                       class="demote-btn"
@@ -214,7 +214,7 @@
               </template>
               <template #item.player_name="{ item }">
                 <span>{{ item.player_name }}</span>
-                <v-icon v-if="isKeyPlayer(item)" color="amber-darken-2" size="small" class="ml-1"
+                <v-icon v-if="isKeyPlayer(item)" color="deep-purple" size="small" class="ml-1"
                   >mdi-star</v-icon
                 >
               </template>
@@ -251,12 +251,7 @@
           </v-card-title>
           <!-- 凡例 -->
           <div class="d-flex flex-wrap ga-2 px-4 pb-2">
-            <v-chip
-              size="small"
-              variant="tonal"
-              color="amber-darken-2"
-              prepend-icon="mdi-timer-sand"
-            >
+            <v-chip size="small" variant="tonal" color="amber" prepend-icon="mdi-timer-sand">
               {{ t('activeRoster.legend.cooldown') }}
             </v-chip>
             <v-chip size="small" variant="tonal" color="red" prepend-icon="mdi-hospital-box">
@@ -329,7 +324,7 @@
                     <v-btn
                       v-bind="props"
                       size="small"
-                      color="primary"
+                      :color="getAbsenceColor(item)"
                       variant="elevated"
                       rounded
                       class="promote-btn"
@@ -559,9 +554,34 @@ const isKeyPlayer = (player: RosterPlayer): boolean => {
   )
 }
 
+// 離脱種別→色の統一マッピング（1軍/2軍共通ルール）
+const getAbsenceColor = (player: RosterPlayer): string => {
+  if (!player.absence_info) return 'blue-grey'
+  switch (player.absence_info.absence_type) {
+    case 'injury':
+      return 'red'
+    case 'suspension':
+      return 'orange'
+    case 'reconditioning':
+      return 'blue-grey'
+    default:
+      return 'blue-grey'
+  }
+}
+
 const getFirstSquadRowProps = ({ item }: { item: RosterPlayer }) => {
   if (isKeyPlayer(item)) {
-    return { class: 'bg-amber-lighten-5' }
+    return { class: 'bg-deep-purple-lighten-5' }
+  }
+  if (item.is_absent && item.absence_info) {
+    switch (item.absence_info.absence_type) {
+      case 'injury':
+        return { class: 'bg-red-lighten-5' }
+      case 'suspension':
+        return { class: 'bg-orange-lighten-5' }
+      case 'reconditioning':
+        return { class: 'bg-blue-grey-lighten-5' }
+    }
   }
   return {}
 }

@@ -54,9 +54,9 @@
 | UNIMPL-009 | players (検索・フィルター) | medium | ✅ 実装済み (cmd_155) 一覧画面での条件絞り込み（選手名検索・ポジションフィルター）を実装 | 04_player_management.md |
 | UNIMPL-010 | costs_controller.rb | medium | ルーティングに `:show` が含まれるがコントローラーに `show` アクションがない → 呼び出すとエラー | 06_cost_management.md |
 | UNIMPL-011 | src/views/ScoreSheet.vue | medium | 打撃記録の自動集計未実装: 打撃記録入力欄は存在するが「安打」「打点」列の自動計算機能なし → `battingResults` はローカル状態のみで保存機能なし | 10_game_management.md |
-| UNIMPL-012 | src/components/AbsenceInfo.vue | medium | games 単位の離脱期間フィルタリング未実装: `duration_unit === 'games'` の場合フィルタリングされない → シーズンスケジュールと照合して試合数をカウントする必要あり | 11_player_absence.md |
-| UNIMPL-013 | src/components/PlayerAbsenceFormDialog.vue | low | 保存失敗時のユーザーへの通知が未実装 (TODOコメントあり) → スナックバー等での統一的なエラー表示が望ましい | 11_player_absence.md |
-| UNIMPL-014 | roster / player_absence連携 | low | 離脱中の選手がロースターに登録できないようにする制約未実装、離脱期間終了時の自動復帰通知未実装 | 11_player_absence.md |
+| UNIMPL-012 | src/components/AbsenceInfo.vue | medium | ✅ 実装済み (cmd_164) games 単位の離脱期間フィルタリング未実装: `duration_unit === 'games'` の場合フィルタリングされない → シーズンスケジュールと照合して試合数をカウントする必要あり | 11_player_absence.md |
+| UNIMPL-013 | src/components/PlayerAbsenceFormDialog.vue | low | ✅ 実装済み (cmd_164) 保存失敗時のユーザーへの通知が未実装 (TODOコメントあり) → スナックバー等での統一的なエラー表示が望ましい | 11_player_absence.md |
+| UNIMPL-014 | roster / player_absence連携 | low | ✅ 実装済み (cmd_164) 離脱中の選手がロースターに登録できないようにする制約未実装、離脱期間終了時の自動復帰通知未実装 | 11_player_absence.md |
 | UNIMPL-015 | managers_controller.rb | low | 監督一覧のページネーション未実装 → 監督数が数百件以上になった場合、レスポンス時間が長くなりブラウザでのレンダリング負荷が増加 | 02_manager_management.md | ✅ 実装済み (cmd_163) |
 | UNIMPL-016 | LeaguesView.vue (コミッショナー) | low | チーム管理ダイアログを開くボタンが未配置、シーズン管理・対戦管理・選手プール管理・チームスタッフ管理・選手離脱管理の画面が未確認 (APIのみ実装済みと推定) | 12_commissioner.md |
 

@@ -54,6 +54,22 @@
       class="mt-2"
     />
 
+    <!-- 離脱終了間近の選手通知 -->
+    <v-row v-if="nearEndAbsencePlayers.length > 0" class="mt-2">
+      <v-col cols="12">
+        <v-alert type="info" density="compact" elevation="2">
+          <template #title>
+            {{ t('activeRoster.absenceEndingSoon') }}
+          </template>
+          <p v-for="player in nearEndAbsencePlayers" :key="player.team_membership_id" class="mb-0">
+            {{ player.player_name }}:
+            {{ t(`enums.player_absence.absence_type.${player.absence_info!.absence_type}`) }}
+            — {{ t('activeRoster.remainingDays', { days: player.absence_info!.remaining_days }) }}
+          </p>
+        </v-alert>
+      </v-col>
+    </v-row>
+
     <!-- 1軍制限サマリー -->
     <v-row class="mt-2">
       <v-col cols="12">
@@ -157,6 +173,17 @@
                   <v-icon>mdi-arrow-right</v-icon>
                 </v-btn>
               </template>
+              <template #item.player_name="{ item }">
+                <span>{{ item.player_name }}</span>
+                <v-icon
+                  v-if="item.is_absent"
+                  color="red"
+                  size="small"
+                  class="ml-1"
+                  :title="getAbsenceTooltip(item)"
+                  >mdi-hospital-box</v-icon
+                >
+              </template>
               <template #item.player_types="{ item }">
                 <v-chip
                   v-for="player_type in item.player_types"
@@ -200,11 +227,22 @@
                 <v-btn
                   icon
                   size="small"
-                  @click="movePlayer(item, 'first')"
+                  @click="handlePromotePlayer(item)"
                   :disabled="isPlayerOnCooldown(item)"
                 >
                   <v-icon>mdi-arrow-left</v-icon>
                 </v-btn>
+              </template>
+              <template #item.player_name="{ item }">
+                <span>{{ item.player_name }}</span>
+                <v-icon
+                  v-if="item.is_absent"
+                  color="red"
+                  size="small"
+                  class="ml-1"
+                  :title="getAbsenceTooltip(item)"
+                  >mdi-hospital-box</v-icon
+                >
               </template>
               <template #item.player_types="{ item }">
                 <v-chip
@@ -239,6 +277,34 @@
         <v-btn color="primary" @click="saveRoster">{{ t('activeRoster.saveRoster') }}</v-btn>
       </v-col>
     </v-row>
+
+    <!-- 離脱中選手の昇格確認ダイアログ -->
+    <v-dialog v-model="absenceConfirmDialog" max-width="480">
+      <v-card>
+        <v-card-title>{{ t('activeRoster.absenceWarning.title') }}</v-card-title>
+        <v-card-text v-if="absenceConfirmPlayer">
+          {{
+            t('activeRoster.absenceWarning.message', {
+              name: absenceConfirmPlayer.player_name,
+              type: t(
+                `enums.player_absence.absence_type.${absenceConfirmPlayer.absence_info!.absence_type}`,
+              ),
+              remaining:
+                absenceConfirmPlayer.absence_info!.remaining_days != null
+                  ? t('activeRoster.absenceWarning.remaining', {
+                      days: absenceConfirmPlayer.absence_info!.remaining_days,
+                    })
+                  : t('activeRoster.absenceWarning.unknownEnd'),
+            })
+          }}
+        </v-card-text>
+        <v-card-actions>
+          <v-spacer />
+          <v-btn @click="absenceConfirmDialog = false">{{ t('actions.cancel') }}</v-btn>
+          <v-btn color="primary" @click="confirmPromoteAbsentPlayer">{{ t('actions.ok') }}</v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
   </v-container>
 </template>
 
@@ -388,6 +454,47 @@ const isSeasonStartDate = computed(() => {
 const availableKeyPlayers = computed(() => {
   return firstSquadPlayers.value // All first squad players are potential key players
 })
+
+// 離脱終了間近（3日以内）の選手
+const nearEndAbsencePlayers = computed(() => {
+  return rosterPlayers.value.filter((p) => {
+    if (!p.is_absent || !p.absence_info) return false
+    const remaining = p.absence_info.remaining_days
+    return remaining !== null && remaining > 0 && remaining <= 3
+  })
+})
+
+// 離脱中選手のツールチップ
+const getAbsenceTooltip = (player: RosterPlayer): string => {
+  if (!player.absence_info) return ''
+  const absenceType = t(`enums.player_absence.absence_type.${player.absence_info.absence_type}`)
+  const reason = player.absence_info.reason || ''
+  if (player.absence_info.remaining_days != null) {
+    return `${absenceType}: ${reason} (${t('activeRoster.remainingDays', { days: player.absence_info.remaining_days })})`
+  }
+  return `${absenceType}: ${reason}`
+}
+
+// 離脱中選手の昇格確認ダイアログ
+const absenceConfirmDialog = ref(false)
+const absenceConfirmPlayer = ref<RosterPlayer | null>(null)
+
+const handlePromotePlayer = (player: RosterPlayer) => {
+  if (player.is_absent && player.absence_info) {
+    absenceConfirmPlayer.value = player
+    absenceConfirmDialog.value = true
+  } else {
+    movePlayer(player, 'first')
+  }
+}
+
+const confirmPromoteAbsentPlayer = () => {
+  if (absenceConfirmPlayer.value) {
+    movePlayer(absenceConfirmPlayer.value, 'first')
+  }
+  absenceConfirmDialog.value = false
+  absenceConfirmPlayer.value = null
+}
 
 const movePlayer = (player: RosterPlayer, targetSquad: 'first' | 'second') => {
   const index = rosterPlayers.value.findIndex(

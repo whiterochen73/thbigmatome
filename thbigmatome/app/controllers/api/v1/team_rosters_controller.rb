@@ -15,7 +15,7 @@ module Api
         target_date = season.current_date
 
         # Fetch all team memberships for the team
-        team_memberships = team.team_memberships.preload(:season_rosters, player: [ :cost_players, :player_types ])
+        team_memberships = team.team_memberships.preload(:season_rosters, :player_absences, player: [ :cost_players, :player_types ])
         start_date = season.season_schedules.minimum(:date)
 
         # Determine current squad for each player based on the latest SeasonRoster entry
@@ -44,7 +44,8 @@ module Api
             # Add cooldown information if applicable
             cooldown_until: cooldown_info[:cooldown_until],
             same_day_exempt: cooldown_info[:same_day_exempt],
-            is_outside_world: tm.player.player_types.any? { |pt| pt.category == "outside_world" }
+            is_outside_world: tm.player.player_types.any? { |pt| pt.category == "outside_world" },
+            **absence_info_for(tm, target_date)
           }
         end
 
@@ -124,7 +125,10 @@ module Api
           end
         end
 
-        render json: { message: "Roster updated successfully" }, status: :ok
+        # Collect warnings for absent players being promoted
+        warnings = collect_absence_warnings(team, target_date, roster_updates)
+
+        render json: { message: "Roster updated successfully", warnings: warnings }, status: :ok
       rescue ActiveRecord::RecordNotFound => e
         render json: { error: e.message }, status: :not_found
       rescue => e
@@ -175,6 +179,51 @@ module Api
 
         same_day = previous_promotion.registered_on == last_demotion.registered_on
         { cooldown_until: cooldown_end_date, same_day_exempt: same_day }
+      end
+
+      # Check if a team_membership has an active absence at the given date
+      def absence_info_for(team_membership, target_date)
+        active_absence = team_membership.player_absences.find do |pa|
+          end_date = pa.effective_end_date
+          if end_date
+            target_date >= pa.start_date && target_date < end_date
+          else
+            target_date >= pa.start_date
+          end
+        end
+
+        if active_absence
+          {
+            is_absent: true,
+            absence_info: {
+              absence_type: active_absence.absence_type,
+              reason: active_absence.reason,
+              effective_end_date: active_absence.effective_end_date&.to_s,
+              remaining_days: active_absence.effective_end_date ? (active_absence.effective_end_date - target_date).to_i : nil
+            }
+          }
+        else
+          { is_absent: false, absence_info: nil }
+        end
+      end
+
+      # Collect warnings for absent players being promoted to first squad
+      def collect_absence_warnings(team, target_date, roster_updates)
+        warnings = []
+        roster_updates.each do |update|
+          next unless update[:squad] == "first"
+          tm = team.team_memberships.preload(:player_absences).find_by(id: update[:team_membership_id])
+          next unless tm
+          info = absence_info_for(tm, target_date)
+          next unless info[:is_absent]
+          warnings << {
+            type: "player_absent",
+            player_id: tm.player_id,
+            player_name: tm.player.name,
+            message: "#{tm.player.name}は現在離脱中です（#{I18n.t("enums.player_absence.absence_type.#{info[:absence_info][:absence_type]}", default: info[:absence_info][:absence_type])}）"
+          }
+        end
+        warnings
       end
 
       # Rule 4 & 5: Validate 1st team constraints

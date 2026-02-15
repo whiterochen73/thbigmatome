@@ -1,3 +1,10 @@
+export interface AbsenceInfo {
+  absence_type: 'injury' | 'suspension' | 'reconditioning'
+  reason: string | null
+  effective_end_date: string | null
+  remaining_days: number | null
+}
+
 export interface RosterPlayer {
   team_membership_id: number
   player_id: number
@@ -13,4 +20,6 @@ export interface RosterPlayer {
   cooldown_until?: string
   same_day_exempt?: boolean
   is_outside_world?: boolean
+  is_absent?: boolean
+  absence_info?: AbsenceInfo | null
 }

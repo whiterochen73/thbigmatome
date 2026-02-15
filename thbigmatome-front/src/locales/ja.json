@@ -122,6 +122,14 @@
       "cost_type": "契約",
       "cost": "コスト",
       "actions": ""
+    },
+    "absenceEndingSoon": "離脱終了間近の選手",
+    "remainingDays": "残り{days}日",
+    "absenceWarning": {
+      "title": "離脱中選手の昇格確認",
+      "message": "{name}は現在離脱中です（{type}: {remaining}）。1軍に登録しますか？",
+      "remaining": "残り{days}日",
+      "unknownEnd": "終了日未定"
     }
   },
   "gameResult": {
@@ -217,6 +225,11 @@
       "managerName": "監督名",
       "isActive": "稼働中",
       "actions": "操作"
+    },
+    "actions": {
+      "editMembers": "メンバー編集",
+      "editTeam": "チーム編集",
+      "delete": "削除"
     },
     "deleteConfirmTitle": "チームの削除",
     "deleteConfirmMessage": "このチームを削除してもよろしいですか？",
@@ -647,6 +660,9 @@
       "pitcher_only_cost": "投手専念コスト",
       "fielder_only_cost": "野手専念コスト",
       "two_way_cost": "二刀流コスト"
+    },
+    "notifications": {
+      "fetchPlayersFailed": "選手情報の取得に失敗しました。"
     }
   },
   "playerList": {
@@ -818,5 +834,19 @@
     "startingMembersSaved": "スターティングメンバーを保存しました。",
     "failedToSaveStartingMembers": "スターティングメンバーの保存に失敗しました。",
     "noMembersToSave": "保存するメンバーがいません"
+  },
+  "routes": {
+    "dashboard": "ダッシュボード",
+    "managers": "監督一覧",
+    "teamMembers": "チームメンバー登録",
+    "players": "選手一覧",
+    "costAssignment": "コスト登録",
+    "settings": "各種設定",
+    "leagues": "リーグ管理",
+    "seasonPortal": "シーズンポータル",
+    "activeRoster": "出場選手登録",
+    "gameResult": "試合結果入力",
+    "scoreSheet": "スコアシート",
+    "playerAbsenceHistory": "離脱者履歴"
   }
 }

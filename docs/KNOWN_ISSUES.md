@@ -47,7 +47,7 @@
 | UNIMPL-002 | users_controller.rb | medium | ユーザー登録機能: ルーティングに `post 'users', to: 'users#create'` が定義されているがコントローラー実装未確認 → 現時点ではデータベース直接操作またはシードデータでユーザー作成が必要 | 01_authentication.md |
 | UNIMPL-003 | auth (パスワードリセット) | medium | パスワード忘れ時の復旧手段が存在しない → パスワード忘失時はデータベース管理者による手動リセットが必要 | 01_authentication.md |
 | UNIMPL-004 | teams_controller.rb | medium | チーム削除時の `ActiveRecord::DeleteRestrictionError` ハンドリング未実装 → 削除失敗時に 500 Internal Server Error が返却される | 03_team_management.md |
-| UNIMPL-005 | src/views/TeamList.vue | medium | チーム一覧→チームメンバー編集画面 (`/teams/:teamId/members`) へ直接遷移するリンク/ボタンが存在しない | 03_team_management.md |
+| UNIMPL-005 | src/views/TeamList.vue | medium | ✅ 実装済み (cmd_154) チーム一覧→チームメンバー編集画面 (`/teams/:teamId/members`) へ直接遷移するリンク/ボタンが存在しない | 03_team_management.md |
 | UNIMPL-006 | players (一括インポート) | medium | CSV/Excel からの一括登録機能未実装 | 04_player_management.md |
 | UNIMPL-007 | players (画像アップロード) | medium | プロフィール画像の管理未実装 | 04_player_management.md |
 | UNIMPL-008 | players (詳細統計) | medium | 過去の成績データとの連携未実装 | 04_player_management.md |

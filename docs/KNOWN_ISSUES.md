@@ -23,8 +23,8 @@
 
 | ID | ファイル | 深刻度 | 内容 | 発見元 |
 |----|---------|--------|------|--------|
-| DESIGN-001 | teams.manager_id | high | `teams.manager_id` カラム (NOT NULL、外部キー制約あり) が存在するが、現在のコントローラーでは `director_id` / `coach_ids` パラメータで `team_managers` テーブル経由で管理 → チーム作成時に設定されるが監督変更では更新されず実データと乖離 | 03_team_management.md |
-| DESIGN-002 | teams.manager_id | high | 監督削除時、`TeamManager` レコードは自動削除されるが `teams.manager_id` は自動更新されない → 削除対象の監督が主監督として設定されているチームがある場合エラー発生 | 02_manager_management.md |
+| DESIGN-001 | teams.manager_id | high | ✅ 修正済み (cmd_139) `teams.manager_id` カラム (NOT NULL、外部キー制約あり) が存在するが、現在のコントローラーでは `director_id` / `coach_ids` パラメータで `team_managers` テーブル経由で管理 → チーム作成時に設定されるが監督変更では更新されず実データと乖離 | 03_team_management.md |
+| DESIGN-002 | teams.manager_id | high | ✅ 修正済み (cmd_139) 監督削除時、`TeamManager` レコードは自動削除されるが `teams.manager_id` は自動更新されない → 削除対象の監督が主監督として設定されているチームがある場合エラー発生 | 02_manager_management.md |
 | DESIGN-003 | managers.role | high | `managers.role` カラム (director=0, coach=1) が存在するが ManagersController / ManagerSerializer / フロントエンドで使用されていない → `team_managers.role` との整合性が保証されない | 02_manager_management.md |
 | DESIGN-004 | db/schema.rb (外野守備) | medium | `defense_of` (統合) と `defense_lf/cf/rf` (個別) が同時に設定可能だが、どちらが優先されるかのビジネスルールが未定義 | 04_player_management.md |
 | DESIGN-005 | player.rb (投球スタイル) | medium | `pitching_style_id`, `pinch_pitching_style_id`, `catcher_pitching_style_id` の3種類があるが、優先順位や適用条件のドキュメントが不足 | 04_player_management.md |
@@ -43,7 +43,7 @@
 
 | ID | ファイル | 深刻度 | 内容 | 発見元 |
 |----|---------|--------|------|--------|
-| UNIMPL-001 | 全コントローラー (マスタデータ) | high | 6種類のマスタデータコントローラはいずれも認証ガード (`before_action :authenticate_user!` 等) を実装していない → 全マスタデータのCRUD操作は認証なしでアクセス可能 | 05_master_data.md |
+| UNIMPL-001 | 全コントローラー (マスタデータ) | high | ✅ 修正済み (cmd_137) 6種類のマスタデータコントローラはいずれも認証ガード (`before_action :authenticate_user!` 等) を実装していない → 全マスタデータのCRUD操作は認証なしでアクセス可能 | 05_master_data.md |
 | UNIMPL-002 | users_controller.rb | medium | ユーザー登録機能: ルーティングに `post 'users', to: 'users#create'` が定義されているがコントローラー実装未確認 → 現時点ではデータベース直接操作またはシードデータでユーザー作成が必要 | 01_authentication.md |
 | UNIMPL-003 | auth (パスワードリセット) | medium | パスワード忘れ時の復旧手段が存在しない → パスワード忘失時はデータベース管理者による手動リセットが必要 | 01_authentication.md |
 | UNIMPL-004 | teams_controller.rb | medium | チーム削除時の `ActiveRecord::DeleteRestrictionError` ハンドリング未実装 → 削除失敗時に 500 Internal Server Error が返却される | 03_team_management.md |
@@ -64,7 +64,7 @@
 
 | ID | ファイル | 深刻度 | 内容 | 発見元 |
 |----|---------|--------|------|--------|
-| VALID-001 | app/models/team_membership.rb | high | `selected_cost_type` に `presence: true` のみで `inclusion` バリデーションがない → 無効な値 (例: `"invalid_type"`) が保存された場合、`send` メソッドで `NoMethodError` が発生するリスク | 03_team_management.md / 06_cost_management.md |
+| VALID-001 | app/models/team_membership.rb | high | ✅ 修正済み (cmd_138) `selected_cost_type` に `presence: true` のみで `inclusion` バリデーションがない → 無効な値 (例: `"invalid_type"`) が保存された場合、`send` メソッドで `NoMethodError` が発生するリスク | 03_team_management.md / 06_cost_management.md |
 | VALID-002 | app/models/season_schedule.rb | medium | バリデーション記述なし → `home_away` の値制約 ('home' / 'visitor' のみ許可) はモデルレベルで未強制 | 10_game_management.md |
 | VALID-003 | app/models/team_manager.rb | low | バリデーションメッセージが日本語ハードコーディング → 多言語対応が困難 | 02_manager_management.md |
 | VALID-004 | app/models/biorhythm.rb / src/components/settings/BiorhythmDialog.vue | low | 日付形式の正規表現チェックのみで、論理的な期間バリデーション (`start_date <= end_date`) は未実装 | 05_master_data.md |
@@ -73,7 +73,7 @@
 
 | ID | ファイル | 深刻度 | 内容 | 発見元 |
 |----|---------|--------|------|--------|
-| WARN-001 | app/serializers/roster_player_serializer.rb | high | `Cost.current_cost` が `nil` を返す場合 (`end_date` が `null` のコスト表が存在しない場合) `NoMethodError` が発生、また選手に `cost_player` レコードが存在しない場合も同様のエラー発生 | 06_cost_management.md |
+| WARN-001 | app/serializers/roster_player_serializer.rb | high | ✅ 修正済み (cmd_138) `Cost.current_cost` が `nil` を返す場合 (`end_date` が `null` のコスト表が存在しない場合) `NoMethodError` が発生、また選手に `cost_player` レコードが存在しない場合も同様のエラー発生 | 06_cost_management.md |
 | WARN-002 | cost.rb (current_cost) | medium | `end_date` が `null` のレコードが複数存在した場合、`first` により取得されるレコードは不定 → 運用上、`end_date` が `null` のコスト表は1件のみに制限すべき | 06_cost_management.md |
 | WARN-003 | cost_assignments_controller.rb | medium | `create` アクションの一括保存にトランザクション制御がない (`duplicate` アクションにはある) → 途中で `save!` が失敗した場合、それ以前の保存は確定済みとなり部分的な保存状態になる可能性 | 06_cost_management.md |
 | WARN-004 | src/components/shared/CostListSelect.vue | medium | コスト表が0件の場合、`costLists.value[0]` は `undefined` となり、`costList.value` に `undefined` が設定される | 06_cost_management.md |
@@ -88,7 +88,7 @@
 ## カテゴリ別集計
 
 - **バグ (コード不具合)**: 12件 (高: 6件 [うち5件修正済み]、中: 4件、低: 2件)
-- **設計上の問題**: 15件 (高: 3件、中: 9件、低: 3件)
+- **設計上の問題**: 15件 (高: 3件 [うち2件修正済み]、中: 9件、低: 3件)
 - **未実装機能**: 16件 (高: 1件、中: 11件、低: 4件)
 - **バリデーション不足・制約**: 4件 (高: 1件、中: 1件、低: 2件)
 - **注意事項・リスク**: 9件 (高: 1件、中: 5件、低: 3件)

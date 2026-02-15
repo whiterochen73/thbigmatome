@@ -1,7 +1,8 @@
 module Api
   module V1
     class BattingSkillsController < ApplicationController
-      before_action :set_batting_skill, only: [:update, :destroy]
+      before_action :authenticate_user!
+      before_action :set_batting_skill, only: [ :update, :destroy ]
 
       # GET /api/v1/batting-skills
       def index

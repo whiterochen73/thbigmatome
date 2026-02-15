@@ -1,7 +1,8 @@
 module Api
   module V1
     class PlayerTypesController < ApplicationController
-      before_action :set_player_type, only: [:update, :destroy]
+      before_action :authenticate_user!
+      before_action :set_player_type, only: [ :update, :destroy ]
 
       # GET /api/v1/player-types
       def index

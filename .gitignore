@@ -3,3 +3,7 @@
 /.gemini/
 /**/.serena/
 /**/.vscode/
+
+# Node.js dependencies (lefthook at root)
+/node_modules/
+/package-lock.json

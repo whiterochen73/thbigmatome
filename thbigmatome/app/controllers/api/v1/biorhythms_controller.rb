@@ -1,7 +1,8 @@
 module Api
   module V1
     class BiorhythmsController < ApplicationController
-      before_action :set_biorhythm, only: [:update, :destroy]
+      before_action :authenticate_user!
+      before_action :set_biorhythm, only: [ :update, :destroy ]
 
       # GET /api/v1/biorhythms
       def index

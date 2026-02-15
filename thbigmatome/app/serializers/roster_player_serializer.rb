@@ -27,8 +27,10 @@ class RosterPlayerSerializer < ActiveModel::Serializer
 
   def cost
     @current_cost ||= Cost.current_cost
+    return 0 unless @current_cost
 
-    object.player.cost_players.find{|cp| cp.cost_id == @current_cost.id }.send(object.selected_cost_type) # Assuming player has cost methods
+    cost_player = object.player.cost_players.find { |cp| cp.cost_id == @current_cost.id }
+    cost_player&.send(object.selected_cost_type) || 0
   end
 
   def selected_cost_type
@@ -40,16 +42,16 @@ class RosterPlayerSerializer < ActiveModel::Serializer
     # For now, a simplified version:
     # Find the last time this player moved from first to second squad
     last_moved_from_first_to_second = object.season_rosters
-                                        .where(squad: 'second')
+                                        .where(squad: "second")
                                         .order(registered_on: :desc, created_at: :desc)
                                         .first
 
     if last_moved_from_first_to_second
       previous_entry = object.season_rosters
-                            .where('registered_on < ?', last_moved_from_first_to_second.registered_on)
+                            .where("registered_on < ?", last_moved_from_first_to_second.registered_on)
                             .order(registered_on: :desc, created_at: :desc)
                             .first
-      if previous_entry && previous_entry.squad == 'first'
+      if previous_entry && previous_entry.squad == "first"
         return (last_moved_from_first_to_second.registered_on + 10.days).to_s # Return as string
       end
     end

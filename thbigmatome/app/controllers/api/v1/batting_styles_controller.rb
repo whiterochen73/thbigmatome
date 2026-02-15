@@ -1,7 +1,8 @@
 module Api
   module V1
     class BattingStylesController < ApplicationController
-      before_action :set_batting_style, only: [:update, :destroy]
+      before_action :authenticate_user!
+      before_action :set_batting_style, only: [ :update, :destroy ]
 
       # GET /api/v1/batting-styles
       def index

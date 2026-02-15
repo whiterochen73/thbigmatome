@@ -1,9 +1,8 @@
 module Api
   module V1
-    # NOTE: 認証機能が実装されたら、適切な認証処理を `before_action` に追加してください。
-    # e.g. before_action :authenticate_user!
     class PitchingStylesController < ApplicationController
-      before_action :set_pitching_style, only: [:update, :destroy]
+      before_action :authenticate_user!
+      before_action :set_pitching_style, only: [ :update, :destroy ]
 
       # GET /api/v1/pitching-styles
       def index

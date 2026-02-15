@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_11_06_120004) do
+ActiveRecord::Schema[8.0].define(version: 2026_02_15_024310) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -20,7 +20,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_11_06_120004) do
     t.string "skill_type", default: "neutral", null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
-    t.index ["name"], name: "index_batting_skills_on_name", unique: true
+    t.index [ "name" ], name: "index_batting_skills_on_name", unique: true
   end
 
   create_table "batting_styles", force: :cascade do |t|
@@ -36,15 +36,15 @@ ActiveRecord::Schema[8.0].define(version: 2025_11_06_120004) do
     t.date "end_date", null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
-    t.index ["name"], name: "index_biorhythms_on_name", unique: true
+    t.index [ "name" ], name: "index_biorhythms_on_name", unique: true
   end
 
   create_table "catchers_players", id: false, force: :cascade do |t|
     t.bigint "player_id"
     t.bigint "catcher_id"
-    t.index ["catcher_id"], name: "index_catchers_players_on_catcher_id"
-    t.index ["player_id", "catcher_id"], name: "index_catchers_players_on_player_id_and_catcher_id", unique: true
-    t.index ["player_id"], name: "index_catchers_players_on_player_id"
+    t.index [ "catcher_id" ], name: "index_catchers_players_on_catcher_id"
+    t.index [ "player_id", "catcher_id" ], name: "index_catchers_players_on_player_id_and_catcher_id", unique: true
+    t.index [ "player_id" ], name: "index_catchers_players_on_player_id"
   end
 
   create_table "cost_players", force: :cascade do |t|
@@ -57,9 +57,9 @@ ActiveRecord::Schema[8.0].define(version: 2025_11_06_120004) do
     t.integer "two_way_cost"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
-    t.index ["cost_id", "player_id"], name: "index_cost_players_on_cost_id_and_player_id"
-    t.index ["cost_id"], name: "index_cost_players_on_cost_id"
-    t.index ["player_id"], name: "index_cost_players_on_player_id"
+    t.index [ "cost_id", "player_id" ], name: "index_cost_players_on_cost_id_and_player_id"
+    t.index [ "cost_id" ], name: "index_cost_players_on_cost_id"
+    t.index [ "player_id" ], name: "index_cost_players_on_player_id"
   end
 
   create_table "costs", force: :cascade do |t|
@@ -78,9 +78,9 @@ ActiveRecord::Schema[8.0].define(version: 2025_11_06_120004) do
     t.integer "game_number", null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
-    t.index ["away_team_id"], name: "index_league_games_on_away_team_id"
-    t.index ["home_team_id"], name: "index_league_games_on_home_team_id"
-    t.index ["league_season_id"], name: "index_league_games_on_league_season_id"
+    t.index [ "away_team_id" ], name: "index_league_games_on_away_team_id"
+    t.index [ "home_team_id" ], name: "index_league_games_on_home_team_id"
+    t.index [ "league_season_id" ], name: "index_league_games_on_league_season_id"
   end
 
   create_table "league_memberships", force: :cascade do |t|
@@ -88,9 +88,9 @@ ActiveRecord::Schema[8.0].define(version: 2025_11_06_120004) do
     t.bigint "team_id", null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
-    t.index ["league_id", "team_id"], name: "index_league_memberships_on_league_id_and_team_id", unique: true
-    t.index ["league_id"], name: "index_league_memberships_on_league_id"
-    t.index ["team_id"], name: "index_league_memberships_on_team_id"
+    t.index [ "league_id", "team_id" ], name: "index_league_memberships_on_league_id_and_team_id", unique: true
+    t.index [ "league_id" ], name: "index_league_memberships_on_league_id"
+    t.index [ "team_id" ], name: "index_league_memberships_on_team_id"
   end
 
   create_table "league_pool_players", force: :cascade do |t|
@@ -98,8 +98,8 @@ ActiveRecord::Schema[8.0].define(version: 2025_11_06_120004) do
     t.bigint "player_id", null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
-    t.index ["league_season_id"], name: "index_league_pool_players_on_league_season_id"
-    t.index ["player_id"], name: "index_league_pool_players_on_player_id"
+    t.index [ "league_season_id" ], name: "index_league_pool_players_on_league_season_id"
+    t.index [ "player_id" ], name: "index_league_pool_players_on_player_id"
   end
 
   create_table "league_seasons", force: :cascade do |t|
@@ -110,7 +110,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_11_06_120004) do
     t.integer "status", default: 0, null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
-    t.index ["league_id"], name: "index_league_seasons_on_league_id"
+    t.index [ "league_id" ], name: "index_league_seasons_on_league_id"
   end
 
   create_table "leagues", force: :cascade do |t|
@@ -138,7 +138,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_11_06_120004) do
     t.string "skill_type"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
-    t.index ["name"], name: "index_pitching_skills_on_name", unique: true
+    t.index [ "name" ], name: "index_pitching_skills_on_name", unique: true
   end
 
   create_table "pitching_styles", force: :cascade do |t|
@@ -158,8 +158,8 @@ ActiveRecord::Schema[8.0].define(version: 2025_11_06_120004) do
     t.string "duration_unit", null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
-    t.index ["season_id"], name: "index_player_absences_on_season_id"
-    t.index ["team_membership_id"], name: "index_player_absences_on_team_membership_id"
+    t.index [ "season_id" ], name: "index_player_absences_on_season_id"
+    t.index [ "team_membership_id" ], name: "index_player_absences_on_team_membership_id"
   end
 
   create_table "player_batting_skills", force: :cascade do |t|
@@ -167,9 +167,9 @@ ActiveRecord::Schema[8.0].define(version: 2025_11_06_120004) do
     t.bigint "batting_skill_id", null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
-    t.index ["batting_skill_id"], name: "index_player_batting_skills_on_batting_skill_id"
-    t.index ["player_id", "batting_skill_id"], name: "index_player_batting_skills_on_player_id_and_batting_skill_id", unique: true
-    t.index ["player_id"], name: "index_player_batting_skills_on_player_id"
+    t.index [ "batting_skill_id" ], name: "index_player_batting_skills_on_batting_skill_id"
+    t.index [ "player_id", "batting_skill_id" ], name: "index_player_batting_skills_on_player_id_and_batting_skill_id", unique: true
+    t.index [ "player_id" ], name: "index_player_batting_skills_on_player_id"
   end
 
   create_table "player_biorhythms", force: :cascade do |t|
@@ -177,9 +177,9 @@ ActiveRecord::Schema[8.0].define(version: 2025_11_06_120004) do
     t.bigint "biorhythm_id", null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
-    t.index ["biorhythm_id"], name: "index_player_biorhythms_on_biorhythm_id"
-    t.index ["player_id", "biorhythm_id"], name: "index_player_biorhythms_on_player_id_and_biorhythm_id", unique: true
-    t.index ["player_id"], name: "index_player_biorhythms_on_player_id"
+    t.index [ "biorhythm_id" ], name: "index_player_biorhythms_on_biorhythm_id"
+    t.index [ "player_id", "biorhythm_id" ], name: "index_player_biorhythms_on_player_id_and_biorhythm_id", unique: true
+    t.index [ "player_id" ], name: "index_player_biorhythms_on_player_id"
   end
 
   create_table "player_pitching_skills", force: :cascade do |t|
@@ -187,9 +187,9 @@ ActiveRecord::Schema[8.0].define(version: 2025_11_06_120004) do
     t.bigint "pitching_skill_id", null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
-    t.index ["pitching_skill_id"], name: "index_player_pitching_skills_on_pitching_skill_id"
-    t.index ["player_id", "pitching_skill_id"], name: "idx_on_player_id_pitching_skill_id_bd496ce465", unique: true
-    t.index ["player_id"], name: "index_player_pitching_skills_on_player_id"
+    t.index [ "pitching_skill_id" ], name: "index_player_pitching_skills_on_pitching_skill_id"
+    t.index [ "player_id", "pitching_skill_id" ], name: "idx_on_player_id_pitching_skill_id_bd496ce465", unique: true
+    t.index [ "player_id" ], name: "index_player_pitching_skills_on_player_id"
   end
 
   create_table "player_player_types", force: :cascade do |t|
@@ -197,9 +197,9 @@ ActiveRecord::Schema[8.0].define(version: 2025_11_06_120004) do
     t.bigint "player_type_id", null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
-    t.index ["player_id", "player_type_id"], name: "index_player_player_types_on_player_id_and_player_type_id", unique: true
-    t.index ["player_id"], name: "index_player_player_types_on_player_id"
-    t.index ["player_type_id"], name: "index_player_player_types_on_player_type_id"
+    t.index [ "player_id", "player_type_id" ], name: "index_player_player_types_on_player_id_and_player_type_id", unique: true
+    t.index [ "player_id" ], name: "index_player_player_types_on_player_id"
+    t.index [ "player_type_id" ], name: "index_player_player_types_on_player_type_id"
   end
 
   create_table "player_types", force: :cascade do |t|
@@ -207,7 +207,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_11_06_120004) do
     t.text "description"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
-    t.index ["name"], name: "index_player_types_on_name", unique: true
+    t.index [ "name" ], name: "index_player_types_on_name", unique: true
   end
 
   create_table "players", force: :cascade do |t|
@@ -251,10 +251,10 @@ ActiveRecord::Schema[8.0].define(version: 2025_11_06_120004) do
     t.integer "special_throwing_c"
     t.string "pitching_style_description"
     t.string "batting_style_description"
-    t.index ["batting_style_id"], name: "index_players_on_batting_style_id"
-    t.index ["catcher_pitching_style_id"], name: "index_players_on_catcher_pitching_style_id"
-    t.index ["pinch_pitching_style_id"], name: "index_players_on_pinch_pitching_style_id"
-    t.index ["pitching_style_id"], name: "index_players_on_pitching_style_id"
+    t.index [ "batting_style_id" ], name: "index_players_on_batting_style_id"
+    t.index [ "catcher_pitching_style_id" ], name: "index_players_on_catcher_pitching_style_id"
+    t.index [ "pinch_pitching_style_id" ], name: "index_players_on_pinch_pitching_style_id"
+    t.index [ "pitching_style_id" ], name: "index_players_on_pitching_style_id"
   end
 
   create_table "schedule_details", force: :cascade do |t|
@@ -264,8 +264,8 @@ ActiveRecord::Schema[8.0].define(version: 2025_11_06_120004) do
     t.integer "priority"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
-    t.index ["schedule_id", "date"], name: "index_schedule_details_on_schedule_id_and_date", unique: true
-    t.index ["schedule_id"], name: "index_schedule_details_on_schedule_id"
+    t.index [ "schedule_id", "date" ], name: "index_schedule_details_on_schedule_id_and_date", unique: true
+    t.index [ "schedule_id" ], name: "index_schedule_details_on_schedule_id"
   end
 
   create_table "schedules", force: :cascade do |t|
@@ -284,8 +284,8 @@ ActiveRecord::Schema[8.0].define(version: 2025_11_06_120004) do
     t.date "registered_on", null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
-    t.index ["season_id"], name: "index_season_rosters_on_season_id"
-    t.index ["team_membership_id"], name: "index_season_rosters_on_team_membership_id"
+    t.index [ "season_id" ], name: "index_season_rosters_on_season_id"
+    t.index [ "team_membership_id" ], name: "index_season_rosters_on_team_membership_id"
   end
 
   create_table "season_schedules", force: :cascade do |t|
@@ -308,12 +308,12 @@ ActiveRecord::Schema[8.0].define(version: 2025_11_06_120004) do
     t.jsonb "scoreboard"
     t.jsonb "starting_lineup"
     t.jsonb "opponent_starting_lineup"
-    t.index ["announced_starter_id"], name: "index_season_schedules_on_announced_starter_id"
-    t.index ["losing_pitcher_id"], name: "index_season_schedules_on_losing_pitcher_id"
-    t.index ["oppnent_team_id"], name: "index_season_schedules_on_oppnent_team_id"
-    t.index ["save_pitcher_id"], name: "index_season_schedules_on_save_pitcher_id"
-    t.index ["season_id"], name: "index_season_schedules_on_season_id"
-    t.index ["winning_pitcher_id"], name: "index_season_schedules_on_winning_pitcher_id"
+    t.index [ "announced_starter_id" ], name: "index_season_schedules_on_announced_starter_id"
+    t.index [ "losing_pitcher_id" ], name: "index_season_schedules_on_losing_pitcher_id"
+    t.index [ "oppnent_team_id" ], name: "index_season_schedules_on_oppnent_team_id"
+    t.index [ "save_pitcher_id" ], name: "index_season_schedules_on_save_pitcher_id"
+    t.index [ "season_id" ], name: "index_season_schedules_on_season_id"
+    t.index [ "winning_pitcher_id" ], name: "index_season_schedules_on_winning_pitcher_id"
   end
 
   create_table "seasons", force: :cascade do |t|
@@ -324,8 +324,8 @@ ActiveRecord::Schema[8.0].define(version: 2025_11_06_120004) do
     t.string "team_type"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
-    t.index ["key_player_id"], name: "index_seasons_on_key_player_id"
-    t.index ["team_id"], name: "index_seasons_on_team_id"
+    t.index [ "key_player_id" ], name: "index_seasons_on_key_player_id"
+    t.index [ "team_id" ], name: "index_seasons_on_team_id"
   end
 
   create_table "team_managers", force: :cascade do |t|
@@ -334,8 +334,8 @@ ActiveRecord::Schema[8.0].define(version: 2025_11_06_120004) do
     t.integer "role", default: 0, null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
-    t.index ["manager_id"], name: "index_team_managers_on_manager_id"
-    t.index ["team_id"], name: "index_team_managers_on_team_id"
+    t.index [ "manager_id" ], name: "index_team_managers_on_manager_id"
+    t.index [ "team_id" ], name: "index_team_managers_on_team_id"
   end
 
   create_table "team_memberships", force: :cascade do |t|
@@ -345,19 +345,17 @@ ActiveRecord::Schema[8.0].define(version: 2025_11_06_120004) do
     t.string "selected_cost_type", default: "normal_cost", null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
-    t.index ["player_id"], name: "index_team_memberships_on_player_id"
-    t.index ["team_id", "player_id"], name: "index_team_memberships_on_team_id_and_player_id", unique: true
-    t.index ["team_id"], name: "index_team_memberships_on_team_id"
+    t.index [ "player_id" ], name: "index_team_memberships_on_player_id"
+    t.index [ "team_id", "player_id" ], name: "index_team_memberships_on_team_id_and_player_id", unique: true
+    t.index [ "team_id" ], name: "index_team_memberships_on_team_id"
   end
 
   create_table "teams", force: :cascade do |t|
     t.string "name"
     t.string "short_name"
     t.boolean "is_active", default: true
-    t.bigint "manager_id", null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
-    t.index ["manager_id"], name: "index_teams_on_manager_id"
   end
 
   create_table "users", force: :cascade do |t|
@@ -410,5 +408,4 @@ ActiveRecord::Schema[8.0].define(version: 2025_11_06_120004) do
   add_foreign_key "team_managers", "teams"
   add_foreign_key "team_memberships", "players"
   add_foreign_key "team_memberships", "teams"
-  add_foreign_key "teams", "managers"
 end

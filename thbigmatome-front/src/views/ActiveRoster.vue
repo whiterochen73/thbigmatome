@@ -223,6 +223,33 @@
           <v-card-title>
             <h2 class="text-h5">{{ t('activeRoster.secondSquad') }}</h2>
           </v-card-title>
+          <!-- 凡例 -->
+          <div class="d-flex flex-wrap ga-2 px-4 pb-2">
+            <v-chip
+              size="small"
+              variant="tonal"
+              color="amber-darken-2"
+              prepend-icon="mdi-timer-sand"
+            >
+              {{ t('activeRoster.legend.cooldown') }}
+            </v-chip>
+            <v-chip
+              size="small"
+              variant="tonal"
+              color="blue-darken-2"
+              prepend-icon="mdi-calendar-clock"
+            >
+              {{ t('activeRoster.legend.absenceDays') }}
+            </v-chip>
+            <v-chip
+              size="small"
+              variant="tonal"
+              color="purple-darken-2"
+              prepend-icon="mdi-baseball-bat"
+            >
+              {{ t('activeRoster.legend.absenceGames') }}
+            </v-chip>
+          </div>
           <v-card-text>
             <v-data-table
               density="compact"
@@ -230,27 +257,61 @@
               :items="secondSquadPlayers"
               hide-default-footer
               items-per-page="-1"
+              :row-props="getSecondSquadRowProps"
             >
               <template #item.actions="{ item }">
-                <v-btn
-                  icon
-                  size="small"
-                  @click="handlePromotePlayer(item)"
-                  :disabled="isPlayerOnCooldown(item)"
+                <v-tooltip
+                  v-if="isPlayerOnCooldown(item)"
+                  :text="getCooldownTooltip(item)"
+                  location="top"
                 >
+                  <template #activator="{ props }">
+                    <v-btn v-bind="props" icon size="small" disabled>
+                      <v-icon>mdi-arrow-left</v-icon>
+                    </v-btn>
+                  </template>
+                </v-tooltip>
+                <v-btn v-else icon size="small" @click="handlePromotePlayer(item)">
                   <v-icon>mdi-arrow-left</v-icon>
                 </v-btn>
               </template>
               <template #item.player_name="{ item }">
-                <span>{{ item.player_name }}</span>
-                <v-icon
-                  v-if="item.is_absent"
-                  color="red"
-                  size="small"
-                  class="ml-1"
-                  :title="getAbsenceTooltip(item)"
-                  >mdi-hospital-box</v-icon
+                <v-tooltip
+                  v-if="isPlayerOnCooldown(item)"
+                  :text="getCooldownTooltip(item)"
+                  location="top"
                 >
+                  <template #activator="{ props }">
+                    <v-icon v-bind="props" color="amber-darken-2" size="small" class="mr-1"
+                      >mdi-timer-sand</v-icon
+                    >
+                  </template>
+                </v-tooltip>
+                <v-tooltip
+                  v-if="item.is_absent && item.absence_info"
+                  :text="getAbsenceDetailTooltip(item)"
+                  location="top"
+                >
+                  <template #activator="{ props }">
+                    <v-icon
+                      v-bind="props"
+                      :color="
+                        item.absence_info.duration_unit === 'days'
+                          ? 'blue-darken-2'
+                          : 'purple-darken-2'
+                      "
+                      size="small"
+                      class="mr-1"
+                    >
+                      {{
+                        item.absence_info.duration_unit === 'days'
+                          ? 'mdi-calendar-clock'
+                          : 'mdi-baseball-bat'
+                      }}
+                    </v-icon>
+                  </template>
+                </v-tooltip>
+                <span>{{ item.player_name }}</span>
               </template>
               <template #item.player_types="{ item }">
                 <v-chip
@@ -459,6 +520,53 @@ const getFirstSquadRowProps = ({ item }: { item: RosterPlayer }) => {
     return { class: 'bg-amber-lighten-5' }
   }
   return {}
+}
+
+// 2軍テーブル行の背景色（クールダウン優先）
+const getSecondSquadRowProps = ({ item }: { item: RosterPlayer }) => {
+  if (isPlayerOnCooldown(item)) {
+    return { class: 'bg-amber-lighten-5' }
+  }
+  if (item.is_absent && item.absence_info) {
+    if (item.absence_info.duration_unit === 'games') {
+      return { class: 'bg-purple-lighten-5' }
+    }
+    return { class: 'bg-blue-lighten-5' }
+  }
+  return {}
+}
+
+// クールダウンのツールチップ
+const getCooldownTooltip = (player: RosterPlayer): string => {
+  if (!player.cooldown_until) return ''
+  const cooldownDate = new Date(player.cooldown_until)
+  const formattedDate = cooldownDate.toLocaleDateString('ja-JP', {
+    month: 'long',
+    day: 'numeric',
+  })
+  return t('activeRoster.cooldownTooltip', { date: formattedDate })
+}
+
+// 離脱の詳細ツールチップ（2軍テーブル用）
+const getAbsenceDetailTooltip = (player: RosterPlayer): string => {
+  if (!player.absence_info) return ''
+  const absenceType = t(`enums.player_absence.absence_type.${player.absence_info.absence_type}`)
+  const reason = player.absence_info.reason ? `${player.absence_info.reason} ` : ''
+  if (player.absence_info.remaining_days != null) {
+    if (player.absence_info.duration_unit === 'games') {
+      return t('activeRoster.absenceGamesTooltip', {
+        type: absenceType,
+        reason,
+        days: player.absence_info.remaining_days,
+      })
+    }
+    return t('activeRoster.absenceDaysTooltip', {
+      type: absenceType,
+      reason,
+      days: player.absence_info.remaining_days,
+    })
+  }
+  return `${absenceType}: ${reason}`
 }
 
 // 離脱終了間近（3日以内）の選手

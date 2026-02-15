@@ -137,6 +137,14 @@
       "message": "{name}は現在離脱中です（{type}: {remaining}）。1軍に登録しますか？",
       "remaining": "残り{days}日",
       "unknownEnd": "終了日未定"
+    },
+    "cooldownTooltip": "{date}まで昇格不可",
+    "absenceDaysTooltip": "離脱中（{type}: {reason}残り{days}日）",
+    "absenceGamesTooltip": "離脱中（{type}: {reason}残り{days}日相当）",
+    "legend": {
+      "cooldown": "昇格待ち",
+      "absenceDays": "離脱中(日数)",
+      "absenceGames": "離脱中(試合)"
     }
   },
   "gameResult": {

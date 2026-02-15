@@ -3,6 +3,7 @@ export interface AbsenceInfo {
   reason: string | null
   effective_end_date: string | null
   remaining_days: number | null
+  duration_unit: 'days' | 'games'
 }
 
 export interface RosterPlayer {

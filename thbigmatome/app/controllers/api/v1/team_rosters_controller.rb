@@ -199,7 +199,8 @@ module Api
               absence_type: active_absence.absence_type,
               reason: active_absence.reason,
               effective_end_date: active_absence.effective_end_date&.to_s,
-              remaining_days: active_absence.effective_end_date ? (active_absence.effective_end_date - target_date).to_i : nil
+              remaining_days: active_absence.effective_end_date ? (active_absence.effective_end_date - target_date).to_i : nil,
+              duration_unit: active_absence.duration_unit
             }
           }
         else

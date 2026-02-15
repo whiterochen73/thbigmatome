@@ -1,19 +1,20 @@
 # 既知の問題一覧
 
-最終更新: 2026-02-14
+最終更新: 2026-02-15
 
 ## バグ（コード不具合）
 
 | ID | ファイル | 深刻度 | 内容 | 発見元 |
 |----|---------|--------|------|--------|
-| BUG-001 | src/views/Players.vue:100 | high | 削除エンドポイントが `/managers/:id` になっている (正: `/players/:id`) → 選手削除が404エラーで動作しない | 04_player_management.md |
-| BUG-004 | src/types/playerDetail.ts:19-33 | high | 守備力フィールド11個が `number \| null` だが `string \| null` であるべき (schema.rb では string 型) → "5A" 等の文字列入力が正しく保存されない可能性 | 04_player_management.md |
-| BUG-005 | src/types/playerDetail.ts:46 | high | `special_throwing_c` が `string \| null` だが `number \| null` であるべき (schema.rb では integer 型) → 整数入力が正しく保存されない可能性 | 04_player_management.md |
-| BUG-006 | src/composables/useAuth.ts:25 | high | `role` が integer enum (0: general, 1: commissioner) だが文字列 `'commissioner'` で比較しており、常に `false` になる → コミッショナー権限チェックが正常に機能しない | 01_authentication.md |
-| BUG-007 | src/components/teams/TeamList.vue:27 | high | `item.manager?.name` を参照しているが、TeamSerializer は `has_one :director` で返却しており `manager` プロパティは存在しない → 監督名が常に `-` と表示される | 03_team_management.md |
+| BUG-001 | src/views/Players.vue:100 | high | ✅ 修正済み (cmd_132) 削除エンドポイントが `/managers/:id` になっている (正: `/players/:id`) → 選手削除が404エラーで動作しない | 04_player_management.md |
+| BUG-004 | src/types/playerDetail.ts:19-33 | high | ✅ 修正済み (cmd_132) 守備力フィールド10個が `number \| null` だが `string \| null` であるべき (schema.rb では string 型) → "5A" 等の文字列入力が正しく保存されない可能性。throwing_c は integer 型のため対象外 | 04_player_management.md |
+| BUG-005 | src/types/playerDetail.ts:46 | high | ✅ 修正済み (cmd_132) `special_throwing_c` が `string \| null` だが `number \| null` であるべき (schema.rb では integer 型) → 整数入力が正しく保存されない可能性 | 04_player_management.md |
+| BUG-006 | src/composables/useAuth.ts:25 | high | ✅ 修正済み (cmd_132) TypeScript 型定義で `role: number` となっていたが、Rails enum は `.slice` 経由のシリアライズ時に文字列 (`"commissioner"`) を返すため `role: string` が正しい。比較ロジック (`=== 'commissioner'`) 自体は正しく、型定義のみ修正 | 01_authentication.md |
+| BUG-007 | src/views/TeamList.vue:27 | high | ✅ 修正済み (cmd_132) `item.manager?.name` を参照しているが、TeamSerializer は `has_one :director` で返却しており `manager` プロパティは存在しない → 監督名が常に `-` と表示される | 03_team_management.md |
 | BUG-008 | app/controllers/api/v1/auth_controller.rb:15 | medium | エラーメッセージが「メールアドレスまたはパスワードが間違っています」となっているが、本システムではログインIDを使用している | 01_authentication.md |
 | BUG-002 | app/models/player.rb:122 | medium | `injury_rate` のメッセージが「1〜6」だがコードは `1..7` → ユーザー混乱 | 04_player_management.md |
 | BUG-009 | db/schema.rb (season_schedules) | medium | カラム名が `oppnent_score`, `oppnent_team_id` (正しくは `opponent_*`) → コントローラーで変換して吸収しているが不整合 | 10_game_management.md |
+| BUG-012 | src/types/playerDetail.ts:45 | high | `special_defense_c` が `number \| null` だが schema.rb では string 型 → BUG-004 と同種の型不一致 | 04_player_management.md (cmd_132 精査) |
 | BUG-003 | app/serializers/player_detail_serializer.rb:12-13,27-28 | low | `catcher_ids` メソッドが重複定義 → コードが冗長 | 04_player_management.md |
 | BUG-010 | app/serializers/roster_player_serializer.rb:4,12 | low | `number` メソッドが重複定義 | 09_roster_management.md |
 | BUG-011 | app/serializers/roster_player_serializer.rb:8,24 | low | `player_name` メソッドが重複定義 (`short_name` vs `name`) → 現在は後者 (`name`) が有効 | 09_roster_management.md |
@@ -86,16 +87,16 @@
 
 ## カテゴリ別集計
 
-- **バグ (コード不具合)**: 11件 (高: 5件、中: 4件、低: 2件)
+- **バグ (コード不具合)**: 12件 (高: 6件 [うち5件修正済み]、中: 4件、低: 2件)
 - **設計上の問題**: 15件 (高: 3件、中: 9件、低: 3件)
 - **未実装機能**: 16件 (高: 1件、中: 11件、低: 4件)
 - **バリデーション不足・制約**: 4件 (高: 1件、中: 1件、低: 2件)
 - **注意事項・リスク**: 9件 (高: 1件、中: 5件、低: 3件)
 
-**合計**: 55件
+**合計**: 56件
 
 ---
 
-**集約日**: 2026-02-14
+**集約日**: 2026-02-14 (初版), 2026-02-15 (cmd_132修正反映)
 **集約元**: 足軽4-6号報告YAML + 仕様書01-13 (全13ファイル)
-**作成者**: 足軽2号 (マルチエージェントシステム)
+**作成者**: 足軽2号 (初版) / 足軽5号 (cmd_132修正反映)

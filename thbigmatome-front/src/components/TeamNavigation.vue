@@ -45,6 +45,12 @@ const tabs = computed(() => [
     icon: 'mdi-calendar',
     to: { name: 'SeasonPortal', params: { teamId: props.teamId } },
   },
+  {
+    routeName: 'PlayerAbsenceHistory',
+    label: t('teamNavigation.playerAbsenceHistory'),
+    icon: 'mdi-account-off',
+    to: { name: 'PlayerAbsenceHistory', params: { teamId: props.teamId } },
+  },
 ])
 
 const activeTab = computed(() => {

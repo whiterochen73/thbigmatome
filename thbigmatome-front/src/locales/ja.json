@@ -890,7 +890,8 @@
   "teamNavigation": {
     "teamMembers": "メンバー管理",
     "activeRoster": "1軍登録",
-    "seasonPortal": "シーズン"
+    "seasonPortal": "シーズン",
+    "playerAbsenceHistory": "離脱者履歴"
   },
   "routes": {
     "dashboard": "ダッシュボード",

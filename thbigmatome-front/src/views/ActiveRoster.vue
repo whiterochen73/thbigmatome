@@ -4,22 +4,24 @@
     <TeamNavigation :team-id="teamId" />
     <v-toolbar color="primary">
       <template #prepend>
-        <h1 class="text-h4">{{ t('activeRoster.title') }}</h1>
+        <h1 class="text-h5">{{ t('activeRoster.title') }}</h1>
       </template>
-      <v-btn class="mx-2" color="red-darken-4" variant="flat" :to="playerAbsenceRoute">
-        {{ t('playerAbsenceHistory.title') }}
-      </v-btn>
       <template #append>
         <p class="text-h5">{{ t('seasonPortal.currentDate') }}: {{ currentDateStr }}</p>
       </template>
     </v-toolbar>
     <v-row class="mt-2">
       <v-col cols="12">
-        <v-card>
+        <v-card variant="outlined">
           <v-card-title class="d-flex">
             {{ t('activeRoster.keyPlayerSelection') }}
             <v-spacer></v-spacer>
-            <v-btn color="primary" @click="saveKeyPlayer" :disabled="!isSeasonStartDate">
+            <v-btn
+              color="primary"
+              variant="outlined"
+              @click="saveKeyPlayer"
+              :disabled="!isSeasonStartDate"
+            >
               {{ t('activeRoster.saveKeyPlayer') }}
             </v-btn>
           </v-card-title>
@@ -110,7 +112,7 @@
 
     <v-row class="mt-4">
       <v-col cols="6">
-        <v-card>
+        <v-card variant="outlined">
           <v-card-title>
             <div class="d-flex justify-space-between align-center">
               <h2 class="text-h5">{{ t('activeRoster.firstSquad') }}</h2>
@@ -209,7 +211,7 @@
         </v-card>
       </v-col>
       <v-col cols="6">
-        <v-card>
+        <v-card variant="outlined">
           <v-card-title>
             <h2 class="text-h5">{{ t('activeRoster.secondSquad') }}</h2>
           </v-card-title>
@@ -272,7 +274,9 @@
 
     <v-row class="mt-4">
       <v-col>
-        <v-btn color="primary" @click="saveRoster">{{ t('activeRoster.saveRoster') }}</v-btn>
+        <v-btn color="primary" variant="outlined" @click="saveRoster">{{
+          t('activeRoster.saveRoster')
+        }}</v-btn>
       </v-col>
     </v-row>
 
@@ -338,15 +342,6 @@ const currentDateStr = computed(() => {
 })
 
 const currentDateFormatted = computed(() => currentDate.value.toISOString().split('T')[0])
-
-const playerAbsenceRoute = computed(() => {
-  return {
-    name: 'PlayerAbsenceHistory',
-    params: {
-      teamId: teamId,
-    },
-  }
-})
 
 const seasonStartDate = ref<Date | null>(null)
 const selectedKeyPlayerId = ref<number | null>(null)

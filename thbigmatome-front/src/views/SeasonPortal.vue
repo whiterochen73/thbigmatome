@@ -3,22 +3,13 @@
     <TeamNavigation :team-id="teamId" />
     <v-toolbar color="primary">
       <template #prepend>
-        <h1 class="text-h4 mx-4">{{ season?.name }}</h1>
+        <h1 class="text-h5 mx-4">{{ season?.name }}</h1>
       </template>
-      <v-btn
-        class="mx-2"
-        color="primary"
-        variant="flat"
-        :to="gameResultRoute"
-        :disabled="!isGameDayToday"
-      >
+      <v-btn class="mx-2" variant="outlined" :to="gameResultRoute" :disabled="!isGameDayToday">
         {{ t('seasonPortal.goToGameResult') }}
       </v-btn>
-      <v-btn class="mx-2" color="red" variant="flat" @click="isDialogOpen = true">
+      <v-btn class="mx-2" color="red" variant="outlined" @click="isDialogOpen = true">
         {{ t('seasonPortal.registerAbsence') }}
-      </v-btn>
-      <v-btn class="mx-2" color="red-darken-4" variant="flat" :to="playerAbsenceRoute">
-        {{ t('playerAbsenceHistory.title') }}
       </v-btn>
       <template #append>
         <v-btn icon variant="text" @click="prevDay" :disabled="isPrevDayDisabled">
@@ -40,108 +31,111 @@
           class="mb-4"
         />
 
-        <div class="d-flex justify-space-between align-center mb-4">
-          <v-btn icon @click="prevMonth">
-            <v-icon>mdi-chevron-left</v-icon>
-          </v-btn>
-          <h2 class="text-h5">{{ monthStr }}</h2>
-          <v-btn icon @click="nextMonth">
-            <v-icon>mdi-chevron-right</v-icon>
-          </v-btn>
-        </div>
-
-        <div class="calendar-grid">
-          <div v-for="day in weekdays" :key="day" class="text-center font-weight-bold">
-            {{ day }}
+        <v-card variant="outlined" class="pa-4">
+          <div class="d-flex justify-space-between align-center mb-4">
+            <v-btn icon variant="outlined" @click="prevMonth">
+              <v-icon>mdi-chevron-left</v-icon>
+            </v-btn>
+            <h2 class="text-h5">{{ monthStr }}</h2>
+            <v-btn icon variant="outlined" @click="nextMonth">
+              <v-icon>mdi-chevron-right</v-icon>
+            </v-btn>
           </div>
-          <div
-            v-for="day in calendarDays"
-            :key="day.date.toISOString()"
-            :class="[
-              'day-cell',
-              {
-                'is-current-day': day.isCurrentDay,
-                'not-current-month': !day.isCurrentMonth,
-                saturday: day.dayOfWeek === 6 && day.isCurrentMonth,
-                sunday: day.dayOfWeek === 0 && day.isCurrentMonth,
-              },
-            ]"
-          >
-            <div class="day-number">{{ day.date.getDate() }}</div>
-            <div v-if="day.schedule">
-              <v-menu>
-                <template #activator="{ props }">
-                  <v-btn
-                    :color="getScheduleColor(day.schedule.date_type)"
-                    v-bind="props"
-                    :disabled="isDateBeforeCurrent(day.date)"
-                    block
-                    density="compact"
-                  >
-                    {{ t(`settings.schedule.dateTypes.${day.schedule.date_type}`) }}
-                  </v-btn>
-                </template>
-                <v-list>
-                  <v-list-item
-                    v-for="dateType in dateTypes"
-                    :key="dateType"
-                    @click="updateSchedule(day.schedule, dateType)"
-                  >
-                    <v-list-item-title>{{
-                      t(`settings.schedule.dateTypes.${dateType}`)
-                    }}</v-list-item-title>
-                  </v-list-item>
-                </v-list>
-              </v-menu>
-              <v-btn
-                color="primary"
-                block
-                density="compact"
-                v-if="
-                  ['game_day', 'interleague_game_day', 'playoff_day', 'no_game'].includes(
-                    day.schedule.date_type,
-                  )
-                "
-                :to="{
-                  name: 'GameResult',
-                  params: { teamId: teamId, scheduleId: day.schedule.id },
-                }"
-              >
-                {{ t('seasonPortal.gameResultInput') }}
-              </v-btn>
-              <div
-                v-if="
-                  ['game_day', 'interleague_game_day', 'playoff_day'].includes(
-                    day.schedule.date_type,
-                  ) && day.schedule.game_result
-                "
-                class="text-center text-caption mt-1"
-              >
-                vs. {{ day.schedule.game_result.opponent_short_name }}
-                {{ day.schedule.game_result.score }}
-                <v-chip
-                  :color="getResultColor(day.schedule.game_result.result)"
-                  size="x-small"
-                  class="ml-1"
-                  variant="elevated"
+
+          <div class="calendar-grid">
+            <div v-for="day in weekdays" :key="day" class="text-center font-weight-bold">
+              {{ day }}
+            </div>
+            <div
+              v-for="day in calendarDays"
+              :key="day.date.toISOString()"
+              :class="[
+                'day-cell',
+                {
+                  'is-current-day': day.isCurrentDay,
+                  'not-current-month': !day.isCurrentMonth,
+                  saturday: day.dayOfWeek === 6 && day.isCurrentMonth,
+                  sunday: day.dayOfWeek === 0 && day.isCurrentMonth,
+                },
+              ]"
+            >
+              <div class="day-number">{{ day.date.getDate() }}</div>
+              <div v-if="day.schedule">
+                <v-menu>
+                  <template #activator="{ props }">
+                    <v-btn
+                      :color="getScheduleColor(day.schedule.date_type)"
+                      v-bind="props"
+                      :disabled="isDateBeforeCurrent(day.date)"
+                      block
+                      density="compact"
+                    >
+                      {{ t(`settings.schedule.dateTypes.${day.schedule.date_type}`) }}
+                    </v-btn>
+                  </template>
+                  <v-list>
+                    <v-list-item
+                      v-for="dateType in dateTypes"
+                      :key="dateType"
+                      @click="updateSchedule(day.schedule, dateType)"
+                    >
+                      <v-list-item-title>{{
+                        t(`settings.schedule.dateTypes.${dateType}`)
+                      }}</v-list-item-title>
+                    </v-list-item>
+                  </v-list>
+                </v-menu>
+                <v-btn
+                  color="primary"
+                  block
+                  density="compact"
+                  v-if="
+                    ['game_day', 'interleague_game_day', 'playoff_day', 'no_game'].includes(
+                      day.schedule.date_type,
+                    )
+                  "
+                  :to="{
+                    name: 'GameResult',
+                    params: { teamId: teamId, scheduleId: day.schedule.id },
+                  }"
                 >
-                  <v-icon start :icon="getResultIcon(day.schedule.game_result.result)"></v-icon>
-                  {{ t(`seasonPortal.gameResult.${day.schedule.game_result.result}`) }}
-                </v-chip>
-              </div>
-              <div
-                v-else-if="
-                  ['game_day', 'interleague_game_day', 'playoff_day'].includes(
-                    day.schedule.date_type,
-                  ) && day.schedule.announced_starter
-                "
-                class="text-center text-caption mt-1"
-              >
-                {{ t('seasonPortal.announcedPitcher') }}: {{ day.schedule.announced_starter.name }}
+                  {{ t('seasonPortal.gameResultInput') }}
+                </v-btn>
+                <div
+                  v-if="
+                    ['game_day', 'interleague_game_day', 'playoff_day'].includes(
+                      day.schedule.date_type,
+                    ) && day.schedule.game_result
+                  "
+                  class="text-center text-caption mt-1"
+                >
+                  vs. {{ day.schedule.game_result.opponent_short_name }}
+                  {{ day.schedule.game_result.score }}
+                  <v-chip
+                    :color="getResultColor(day.schedule.game_result.result)"
+                    size="x-small"
+                    class="ml-1"
+                    variant="elevated"
+                  >
+                    <v-icon start :icon="getResultIcon(day.schedule.game_result.result)"></v-icon>
+                    {{ t(`seasonPortal.gameResult.${day.schedule.game_result.result}`) }}
+                  </v-chip>
+                </div>
+                <div
+                  v-else-if="
+                    ['game_day', 'interleague_game_day', 'playoff_day'].includes(
+                      day.schedule.date_type,
+                    ) && day.schedule.announced_starter
+                  "
+                  class="text-center text-caption mt-1"
+                >
+                  {{ t('seasonPortal.announcedPitcher') }}:
+                  {{ day.schedule.announced_starter.name }}
+                </div>
               </div>
             </div>
           </div>
-        </div>
+        </v-card>
       </v-col>
     </v-row>
   </v-container>
@@ -397,15 +391,6 @@ const gameResultRoute = computed(() => {
     params: {
       teamId: teamId,
       scheduleId: currentDaySchedule.value.id,
-    },
-  }
-})
-
-const playerAbsenceRoute = computed(() => {
-  return {
-    name: 'PlayerAbsenceHistory',
-    params: {
-      teamId: teamId,
     },
   }
 })

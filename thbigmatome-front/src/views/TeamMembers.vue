@@ -1,8 +1,10 @@
 <template>
   <v-container>
     <TeamNavigation :team-id="teamId" />
-    <v-toolbar color="primary" class="mb-4">
-      <v-toolbar-title>{{ t('teamMembers.title', { teamName: team.name }) }}</v-toolbar-title>
+    <v-toolbar color="primary">
+      <template #prepend>
+        <h1 class="text-h5">{{ t('teamMembers.title', { teamName: team.name }) }}</h1>
+      </template>
     </v-toolbar>
 
     <!-- Cost List & Player Selection -->
@@ -25,6 +27,7 @@
       <v-col cols="12" md="2">
         <v-btn
           color="primary"
+          variant="outlined"
           @click="addPlayer"
           :disabled="!selectedPlayer || !selectedCostListId"
         >
@@ -36,7 +39,7 @@
     <!-- Team Members Table -->
     <v-row>
       <v-col cols="12">
-        <v-card>
+        <v-card variant="outlined">
           <v-card-title class="d-flex justify-space-between">
             <span>{{ t('teamMembers.teamMembersTitle') }}</span>
             <div class="text-subtitle-1">
@@ -123,8 +126,10 @@
     <!-- Actions -->
     <v-row>
       <v-col class="d-flex justify-end mt-4">
-        <v-btn @click="goBack" class="mr-4">{{ t('actions.cancel') }}</v-btn>
-        <v-btn color="primary" @click="saveTeamMembers">{{ t('actions.save') }}</v-btn>
+        <v-btn variant="outlined" @click="goBack" class="mr-4">{{ t('actions.cancel') }}</v-btn>
+        <v-btn color="primary" variant="outlined" @click="saveTeamMembers">{{
+          t('actions.save')
+        }}</v-btn>
       </v-col>
     </v-row>
   </v-container>

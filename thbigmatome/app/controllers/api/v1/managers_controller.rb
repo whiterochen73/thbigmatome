@@ -1,12 +1,32 @@
 module Api
   module V1
     class ManagersController < ApplicationController
-      before_action :set_manager, only: [:show, :update, :destroy]
+      before_action :set_manager, only: [ :show, :update, :destroy ]
 
       # GET /api/v1/managers
       def index
-        @managers = Manager.all.includes(:teams).order(:id)
-        render json: @managers, include: :teams
+        page = (params[:page] || 1).to_i
+        per_page = (params[:per_page] || 25).to_i
+
+        # パラメータのバリデーション
+        page = 1 if page < 1
+        per_page = 25 if per_page < 1 || per_page > 100
+
+        offset = (page - 1) * per_page
+
+        @managers = Manager.all.includes(:teams).order(:id).limit(per_page).offset(offset)
+        total_count = Manager.count
+        total_pages = (total_count.to_f / per_page).ceil
+
+        render json: {
+          data: @managers.as_json(include: :teams),
+          meta: {
+            total_count: total_count,
+            per_page: per_page,
+            current_page: page,
+            total_pages: total_pages
+          }
+        }
       end
 
       # GET /api/v1/managers/:id
@@ -44,7 +64,7 @@ module Api
       def set_manager
         @manager = Manager.find(params[:id])
       rescue ActiveRecord::RecordNotFound
-        render json: { error: 'Manager not found' }, status: :not_found
+        render json: { error: "Manager not found" }, status: :not_found
       end
 
       def manager_params

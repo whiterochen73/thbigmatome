@@ -26,7 +26,8 @@
     },
     "commissionerMode": {
       "title": "コミッショナーモード",
-      "button": "コミッショナーモードへ"
+      "button": "コミッショナーモードへ",
+      "switchLabel": "コミッショナーモード（全チーム操作）"
     }
   },
   "common": {

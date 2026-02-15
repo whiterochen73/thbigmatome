@@ -13,23 +13,6 @@
         </v-card>
       </v-col>
     </v-row>
-    <v-row justify="center" class="mt-4" v-if="isCommissioner">
-      <v-col cols="12" md="8">
-        <v-card color="primary" variant="tonal">
-          <v-card-item>
-            <v-card-title class="d-flex align-center">
-              <v-icon icon="mdi-shield-crown" class="me-2"></v-icon>
-              {{ t('topMenu.commissionerMode.title') }}
-            </v-card-title>
-          </v-card-item>
-          <v-card-text>
-            <v-btn color="primary" size="large" @click="goToCommissioner">
-              {{ t('topMenu.commissionerMode.button') }}
-            </v-btn>
-          </v-card-text>
-        </v-card>
-      </v-col>
-    </v-row>
     <v-row justify="center" class="mt-4">
       <v-col cols="12" md="8">
         <v-card>
@@ -40,15 +23,31 @@
             }}</v-card-subtitle>
           </v-card-item>
           <v-card-text>
-            <div v-if="teams.length > 0">
-              <v-select
-                v-model="selectedTeam"
-                :items="teams"
-                item-title="name"
-                item-value="id"
-                :label="t('topMenu.teamSelection.selectLabel')"
-                return-object
-              ></v-select>
+            <v-switch
+              v-if="isCommissioner"
+              v-model="commissionerMode"
+              :label="t('topMenu.commissionerMode.switchLabel')"
+              color="primary"
+              hide-details
+              class="mb-4"
+              density="compact"
+            >
+              <template #prepend>
+                <v-icon icon="mdi-shield-crown"></v-icon>
+              </template>
+            </v-switch>
+            <div v-if="displayedTeams.length > 0">
+              <div class="d-flex flex-wrap ga-2">
+                <v-btn
+                  v-for="team in displayedTeams"
+                  :key="team.id"
+                  :color="selectedTeam?.id === team.id ? 'primary' : undefined"
+                  :variant="selectedTeam?.id === team.id ? 'flat' : 'outlined'"
+                  @click="selectTeam(team)"
+                >
+                  {{ team.name }}
+                </v-btn>
+              </div>
               <div class="mt-4" v-if="selectedTeam">
                 <v-btn color="primary" @click="goToTeamMembers" class="me-4">
                   {{ t('topMenu.teamSelection.registerMembers') }}
@@ -91,7 +90,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useAuth } from '@/composables/useAuth'
 import axios from 'axios'
@@ -108,11 +107,46 @@ const router = useRouter()
 
 const managers = ref<Manager[]>([])
 const teams = ref<Team[]>([])
+const allTeams = ref<Team[]>([])
 const selectedTeam = ref<Team | null>(null)
 const manager = ref<Manager | null>(null)
 const teamDialog = ref(false)
 const seasonInitializationDialog = ref(false)
 const schedules = ref<ScheduleList[]>([])
+const commissionerMode = ref(localStorage.getItem('commissionerMode') === 'on')
+
+const displayedTeams = computed(() => {
+  return commissionerMode.value ? allTeams.value : teams.value
+})
+
+const selectTeam = (team: Team) => {
+  selectedTeam.value = team
+  localStorage.setItem('selectedTeamId', String(team.id))
+}
+
+const restoreSelectedTeam = () => {
+  const savedId = localStorage.getItem('selectedTeamId')
+  if (savedId) {
+    const found = displayedTeams.value.find((t) => t.id === Number(savedId))
+    if (found) {
+      selectedTeam.value = found
+      return
+    }
+  }
+  if (displayedTeams.value.length > 0) {
+    selectedTeam.value = displayedTeams.value[0]
+  } else {
+    selectedTeam.value = null
+  }
+}
+
+watch(commissionerMode, async (newVal) => {
+  localStorage.setItem('commissionerMode', newVal ? 'on' : 'off')
+  if (newVal) {
+    await fetchAllTeams()
+  }
+  restoreSelectedTeam()
+})
 
 const addTeam = () => {
   teamDialog.value = true
@@ -130,10 +164,6 @@ const goToSeasonPortal = () => {
   }
 }
 
-const goToCommissioner = () => {
-  router.push({ name: 'Leagues' })
-}
-
 const fetchManagers = async () => {
   try {
     // NOTE: /managers はページネーション形式 { data: [...], meta: {...} } を返す
@@ -148,6 +178,15 @@ const fetchManagers = async () => {
     }
   } catch (error) {
     console.error('Failed to fetch managers:', error)
+  }
+}
+
+const fetchAllTeams = async () => {
+  try {
+    const response = await axios.get('/teams')
+    allTeams.value = response.data
+  } catch (error) {
+    console.error('Failed to fetch all teams:', error)
   }
 }
 
@@ -170,8 +209,12 @@ const handleSeasonSave = () => {
   fetchManagers()
 }
 
-onMounted(() => {
-  fetchManagers()
+onMounted(async () => {
+  await fetchManagers()
   fetchSchedules()
+  if (commissionerMode.value && isCommissioner.value) {
+    await fetchAllTeams()
+  }
+  restoreSelectedTeam()
 })
 </script>

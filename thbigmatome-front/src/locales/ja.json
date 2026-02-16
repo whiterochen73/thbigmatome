@@ -28,6 +28,10 @@
       "title": "コミッショナーモード",
       "button": "コミッショナーモードへ",
       "switchLabel": "コミッショナーモード（全チーム操作）"
+    },
+    "officialWiki": {
+      "title": "東方BIG野球 公式Wiki",
+      "subtitle": "ルール・選手データはこちら"
     }
   },
   "common": {
@@ -238,7 +242,9 @@
     "costAssignment": "コスト登録",
     "settings": "各種設定",
     "collapse": "メニューを縮小",
-    "expand": "メニューを展開"
+    "expand": "メニューを展開",
+    "externalLinks": "外部リンク",
+    "officialWiki": "公式Wiki"
   },
   "teamList": {
     "title": "チーム一覧",

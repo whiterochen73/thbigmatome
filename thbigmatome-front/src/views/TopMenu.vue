@@ -69,6 +69,28 @@
         </v-card>
       </v-col>
     </v-row>
+    <v-row justify="center" class="mt-4">
+      <v-col cols="12" md="8">
+        <v-card
+          href="https://thbigbaseball.wiki.fc2.com/"
+          target="_blank"
+          variant="tonal"
+          color="primary"
+          hover
+        >
+          <v-card-item>
+            <template v-slot:prepend>
+              <v-icon size="large">mdi-baseball-diamond</v-icon>
+            </template>
+            <v-card-title>{{ t('topMenu.officialWiki.title') }}</v-card-title>
+            <v-card-subtitle>{{ t('topMenu.officialWiki.subtitle') }}</v-card-subtitle>
+            <template v-slot:append>
+              <v-icon>mdi-open-in-new</v-icon>
+            </template>
+          </v-card-item>
+        </v-card>
+      </v-col>
+    </v-row>
     <TeamDialog
       v-model:isVisible="teamDialog"
       :team="null"

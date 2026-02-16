@@ -2,7 +2,7 @@
   <v-app>
     <v-app-bar color="primary" dark>
       <v-app-bar-nav-icon @click.stop="drawer = !drawer" />
-      <v-app-bar-title @click="goToMenu" style="cursor: pointer;">
+      <v-app-bar-title @click="goToMenu" style="cursor: pointer">
         <v-icon start>mdi-baseball</v-icon>
         {{ t('layout.appTitle') }}
       </v-app-bar-title>
@@ -11,11 +11,7 @@
 
       <v-menu>
         <template v-slot:activator="{ props }">
-          <v-btn
-            v-bind="props"
-            icon="mdi-account-circle"
-            variant="text"
-          />
+          <v-btn v-bind="props" icon="mdi-account-circle" variant="text" />
         </template>
 
         <v-list>
@@ -37,11 +33,7 @@
       </v-menu>
     </v-app-bar>
 
-    <v-navigation-drawer
-      v-model="drawer"
-      :rail="rail"
-      @click="expandDrawer"
-    >
+    <v-navigation-drawer v-model="drawer" :rail="rail" @click="expandDrawer">
       <v-list nav density="compact">
         <v-list-item
           v-for="item in menuItems"
@@ -52,6 +44,22 @@
           :to="item.to"
           link
         />
+      </v-list>
+      <v-divider class="my-1" />
+      <v-list nav density="compact">
+        <v-list-subheader v-if="!rail">{{ t('navigation.externalLinks') }}</v-list-subheader>
+        <v-list-item
+          href="https://thbigbaseball.wiki.fc2.com/"
+          target="_blank"
+          prepend-icon="mdi-baseball-diamond"
+          :title="t('navigation.officialWiki')"
+          value="officialWiki"
+          link
+        >
+          <template v-slot:append v-if="!rail">
+            <v-icon size="x-small">mdi-open-in-new</v-icon>
+          </template>
+        </v-list-item>
       </v-list>
       <template v-slot:append>
         <v-list-item
@@ -83,29 +91,59 @@ import { useRouter } from 'vue-router'
 import { useAuth } from '@/composables/useAuth'
 import { useSnackbar } from '@/composables/useSnackbar'
 import { useI18n } from 'vue-i18n'
-import { ref, computed } from 'vue';
+import { ref, computed } from 'vue'
 
 const router = useRouter()
 const { user, logout, isCommissioner } = useAuth()
 const { t } = useI18n()
-const { isVisible: isSnackbarVisible, message: snackbarMessage, color: snackbarColor, timeout: snackbarTimeout } = useSnackbar()
+const {
+  isVisible: isSnackbarVisible,
+  message: snackbarMessage,
+  color: snackbarColor,
+  timeout: snackbarTimeout,
+} = useSnackbar()
 
 const menuItems = computed(() => {
   const items = [
-    { title: t('navigation.dashboard'), icon: 'mdi-view-dashboard', value: 'dashboard', to: '/menu' },
-    { title: t('navigation.managers'), icon: 'mdi-account-supervisor', value: 'managers', to: '/managers' },
+    {
+      title: t('navigation.dashboard'),
+      icon: 'mdi-view-dashboard',
+      value: 'dashboard',
+      to: '/menu',
+    },
+    {
+      title: t('navigation.managers'),
+      icon: 'mdi-account-supervisor',
+      value: 'managers',
+      to: '/managers',
+    },
     { title: t('navigation.teams'), icon: 'mdi-account-group', value: 'teams', to: '/teams' },
-    { title: t('navigation.players'), icon: 'mdi-account-multiple', value: 'players', to: '/players' },
-    { title: t('navigation.costAssignment'), icon: 'mdi-currency-usd', value: 'costAssignment', to: '/cost_assignment' },
+    {
+      title: t('navigation.players'),
+      icon: 'mdi-account-multiple',
+      value: 'players',
+      to: '/players',
+    },
+    {
+      title: t('navigation.costAssignment'),
+      icon: 'mdi-currency-usd',
+      value: 'costAssignment',
+      to: '/cost_assignment',
+    },
     { title: t('navigation.settings'), icon: 'mdi-cog', value: 'settings', to: '/settings' },
-  ];
+  ]
 
   if (isCommissioner.value) {
-    items.push({ title: 'リーグ管理', icon: 'mdi-trophy', value: 'leagues', to: '/commissioner/leagues' });
+    items.push({
+      title: 'リーグ管理',
+      icon: 'mdi-trophy',
+      value: 'leagues',
+      to: '/commissioner/leagues',
+    })
   }
 
-  return items;
-});
+  return items
+})
 
 const handleLogout = async () => {
   await logout()
@@ -122,6 +160,6 @@ const goToMenu = () => {
  * 縮小表示されているナビゲーションドロワーを展開する
  */
 const expandDrawer = () => {
-  if (rail.value) rail.value = false;
+  if (rail.value) rail.value = false
 }
 </script>

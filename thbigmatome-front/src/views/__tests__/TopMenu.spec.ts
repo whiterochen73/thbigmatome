@@ -79,6 +79,10 @@ const i18n = createI18n({
         commissionerMode: {
           switchLabel: 'コミッショナーモード',
         },
+        officialWiki: {
+          title: '東方BIG野球 公式Wiki',
+          subtitle: 'ルール・選手データはこちら',
+        },
       },
     },
   },
@@ -317,6 +321,76 @@ describe('TopMenu.vue', () => {
       expect(wrapper.text()).toContain('全チーム2')
       expect(wrapper.text()).toContain('全チーム3')
       expect(vi.mocked(axios.get)).toHaveBeenCalledWith('/teams')
+    })
+  })
+
+  describe('Official Wiki link', () => {
+    it('displays the official Wiki card', async () => {
+      setupPaginatedManagerResponse([])
+
+      const wrapper = mountTopMenu()
+      await flushPromises()
+
+      // Find the v-card with href to wiki
+      const wikiCard = wrapper
+        .findAll('.v-card')
+        .find((card) => card.attributes('href')?.includes('thbigbaseball.wiki.fc2.com'))
+      expect(wikiCard).toBeTruthy()
+    })
+
+    it('has correct URL (https://thbigbaseball.wiki.fc2.com/)', async () => {
+      setupPaginatedManagerResponse([])
+
+      const wrapper = mountTopMenu()
+      await flushPromises()
+
+      const wikiCard = wrapper
+        .findAll('.v-card')
+        .find((card) => card.attributes('href')?.includes('thbigbaseball.wiki.fc2.com'))
+      expect(wikiCard?.attributes('href')).toBe('https://thbigbaseball.wiki.fc2.com/')
+    })
+
+    it('has target="_blank" attribute', async () => {
+      setupPaginatedManagerResponse([])
+
+      const wrapper = mountTopMenu()
+      await flushPromises()
+
+      const wikiCard = wrapper
+        .findAll('.v-card')
+        .find((card) => card.attributes('href')?.includes('thbigbaseball.wiki.fc2.com'))
+      expect(wikiCard?.attributes('target')).toBe('_blank')
+    })
+
+    it('uses i18n keys topMenu.officialWiki.title and subtitle', async () => {
+      setupPaginatedManagerResponse([])
+
+      const wrapper = mountTopMenu()
+      await flushPromises()
+
+      // i18n mock already set in i18n instance
+      expect(wrapper.text()).toContain('東方BIG野球 公式Wiki')
+      expect(wrapper.text()).toContain('ルール・選手データはこちら')
+    })
+
+    it('displays mdi-open-in-new icon', async () => {
+      setupPaginatedManagerResponse([])
+
+      const wrapper = mountTopMenu()
+      await flushPromises()
+
+      const openInNewIcons = wrapper.findAll('.mdi-open-in-new')
+      expect(openInNewIcons.length).toBeGreaterThanOrEqual(1)
+    })
+
+    it('displays mdi-baseball-diamond icon', async () => {
+      setupPaginatedManagerResponse([])
+
+      const wrapper = mountTopMenu()
+      await flushPromises()
+
+      const baseballIcons = wrapper.findAll('.mdi-baseball-diamond')
+      expect(baseballIcons.length).toBeGreaterThanOrEqual(1)
     })
   })
 })

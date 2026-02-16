@@ -41,6 +41,9 @@ RSpec.configure do |config|
 
   config.before(:suite) do
     DatabaseCleaner.strategy = :transaction
+    # ActionController::API does not inherit allow_forgery_protection from
+    # config.action_controller, so disable it explicitly for request specs.
+    ApplicationController.allow_forgery_protection = false
   end
 
   config.around(:each) do |example|

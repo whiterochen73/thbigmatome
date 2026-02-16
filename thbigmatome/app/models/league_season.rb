@@ -4,7 +4,7 @@ class LeagueSeason < ApplicationRecord
   has_many :league_pool_players, dependent: :destroy
   has_many :pool_players, through: :league_pool_players, source: :player
 
-  enum status: { pending: 0, active: 1, completed: 2 }
+  enum :status, { pending: 0, active: 1, completed: 2 }
 
   validates :name, presence: true
   validates :start_date, presence: true

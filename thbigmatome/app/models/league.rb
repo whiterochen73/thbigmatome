@@ -1,5 +1,6 @@
 class League < ApplicationRecord
   has_many :league_memberships, dependent: :destroy
+  has_many :league_seasons, dependent: :destroy
   has_many :teams, through: :league_memberships
 
   validates :name, presence: true

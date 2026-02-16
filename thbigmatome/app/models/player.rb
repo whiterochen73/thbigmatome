@@ -1,6 +1,4 @@
 class Player < ApplicationRecord
-  has_one :player_pitching, dependent: :destroy
-
   has_many :team_memberships, dependent: :destroy
   has_many :teams, through: :team_memberships
 

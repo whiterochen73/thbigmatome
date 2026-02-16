@@ -113,12 +113,11 @@ RSpec.describe "Api::V1::PlayersController", type: :request do
 
     let!(:player) { create(:player) }
 
-    it "raises NameError due to missing PlayerPitching model (known issue)" do
-      # Player model has `has_one :player_pitching, dependent: :destroy`
-      # but PlayerPitching model class does not exist. This is an existing app bug.
+    it "deletes the player successfully" do
       expect {
         delete "/api/v1/players/#{player.id}", as: :json
-      }.to raise_error(NameError, /PlayerPitching/)
+      }.to change(Player, :count).by(-1)
+      expect(response).to have_http_status(:no_content)
     end
   end
 

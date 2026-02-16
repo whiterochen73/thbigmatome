@@ -8,5 +8,11 @@ export default mergeConfig(viteConfig, defineConfig({
     globals: true,
     include: ['src/**/__tests__/*.spec.ts'],
     passWithNoTests: true,
+    css: true,
+    server: {
+      deps: {
+        inline: ['vuetify'],
+      },
+    },
   }
 }))

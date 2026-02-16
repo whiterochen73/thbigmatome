@@ -36,6 +36,16 @@
                 <v-icon icon="mdi-shield-crown"></v-icon>
               </template>
             </v-switch>
+            <v-btn
+              v-if="isCommissioner"
+              color="primary"
+              variant="elevated"
+              class="mb-4"
+              prepend-icon="mdi-shield-crown"
+              @click="goToCommissionerLeagues"
+            >
+              {{ t('topMenu.commissionerMode.button') }}
+            </v-btn>
             <div v-if="displayedTeams.length > 0">
               <div class="d-flex flex-wrap ga-2">
                 <v-btn
@@ -112,6 +122,10 @@ const selectTeam = (team: Team) => {
   } else {
     seasonInitializationDialog.value = true
   }
+}
+
+const goToCommissionerLeagues = () => {
+  router.push({ name: 'Leagues' })
 }
 
 const restoreSelectedTeam = () => {

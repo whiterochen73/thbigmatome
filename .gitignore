@@ -7,3 +7,20 @@
 # Node.js dependencies (lefthook at root)
 /node_modules/
 /package-lock.json
+
+# Environment files
+.env
+.env.*
+!.env.example
+
+# Test results
+**/test-results/
+
+# Logs
+*.log
+
+# Temp
+/tmp/
+
+# Coverage
+coverage/

@@ -1,0 +1,12 @@
+{
+  "name": "thbigmatome-monorepo",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Monorepo for thbigmatome (backend + frontend)",
+  "scripts": {
+    "prepare": "lefthook install"
+  },
+  "devDependencies": {
+    "lefthook": "^1.10.7"
+  }
+}

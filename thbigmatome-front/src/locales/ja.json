@@ -4,7 +4,221 @@
       "title": "ようこそ！",
       "subtitle": "東方BIG野球まとめツールへ",
       "message": "左側のナビゲーションメニューから各機能をご利用ください。"
+    },
+    "teamSelection": {
+      "title": "チーム選択",
+      "managerName": "監督: {name}",
+      "selectLabel": "操作するチームを選択してください",
+      "noTeams": "担当するチームが登録されていません。",
+      "addTeam": "チームを新規作成する",
+      "registerMembers": "チームメンバーを登録する"
+    },
+    "seasonInitialization": {
+      "title": "シーズン初期化",
+      "seasonNameLabel": "シーズン名",
+      "selectScheduleLabel": "日程表を選択",
+      "initializeButton": "初期化"
+    },
+    "seasonPortal": {
+      "title": "シーズン画面へ",
+      "playerRegistration": "出場選手登録",
+      "gameResultInput": "試合結果入力"
+    },
+    "commissionerMode": {
+      "title": "コミッショナーモード",
+      "button": "コミッショナーモードへ",
+      "switchLabel": "コミッショナーモード（全チーム操作）"
+    },
+    "officialWiki": {
+      "title": "東方BIG野球 公式Wiki",
+      "subtitle": "ルール・選手データはこちら"
     }
+  },
+  "common": {
+    "close": "閉じる"
+  },
+  "seasonPortal": {
+    "title": "シーズン画面",
+    "currentDate": "現在の日付",
+    "gameResultInput": "試合結果入力",
+    "announcedPitcher": "先発予定",
+    "goToGameResult": "今日の試合へ",
+    "gameResult": {
+      "win": "勝",
+      "lose": "敗",
+      "draw": "分"
+    },
+    "teamMembers": "メンバー管理",
+    "registerAbsence": "離脱者登録",
+    "absenceInfo": "離脱者情報",
+    "noAbsenceInfo": "離脱者情報はありません。"
+  },
+  "playerAbsenceHistory": {
+    "title": "離脱者履歴",
+    "addAbsence": "新規離脱者登録",
+    "tableHeaders": {
+      "playerName": "選手名",
+      "absenceType": "離脱種別",
+      "reason": "理由",
+      "startDate": "開始日",
+      "duration": "期間",
+      "durationUnit": "期間単位",
+      "actions": "操作"
+    },
+    "confirmDelete": "{playerName}の離脱情報を削除してもよろしいですか？"
+  },
+  "playerAbsenceDialog": {
+    "title": {
+      "add": "新規離脱情報登録",
+      "edit": "離脱情報編集"
+    },
+    "form": {
+      "playerName": "選手名",
+      "selectPlayerName": "選手名を選択してください",
+      "absenceType": "種類",
+      "selectAbsenceType": "種類を選択してください",
+      "reason": "理由",
+      "enterReason": "理由を入力してください",
+      "startDate": "開始日",
+      "selectStartDate": "開始日を選択してください",
+      "duration": "期間",
+      "enterDuration": "期間を入力してください",
+      "durationMin": "期間は1以上である必要があります",
+      "durationUnit": "期間単位",
+      "selectDurationUnit": "期間単位を選択してください"
+    },
+    "notifications": {
+      "saveSuccess": "離脱情報を保存しました。",
+      "updateSuccess": "離脱情報を更新しました。",
+      "saveFailed": "離脱情報の保存に失敗しました。"
+    }
+  },
+  "activeRoster": {
+    "title": "出場選手登録",
+    "currentDate": "現在日付",
+    "firstSquadCount": "1軍人数",
+    "firstSquadCost": "1軍コスト",
+    "keyPlayerSelection": "特例選手選択",
+    "selectKeyPlayer": "特例選手を選択",
+    "saveKeyPlayer": "特例選手を保存",
+    "keyPlayerRestriction": "特例選手はシーズン開始日にのみ設定可能です。",
+    "keyPlayerLocked": "特例選手（抹消不可）",
+    "cooldownInfo": "昇格クールダウン情報",
+    "noCooldownInfo": "現在、昇格クールダウン中の選手はいません。",
+    "cooldownUntil": "{date}まで昇格不可",
+    "cooldownSameDayExempt": "{date}まで昇格不可（即日抹消のため免除）",
+    "firstSquad": "1軍",
+    "secondSquad": "2軍",
+    "saveRoster": "選手登録を保存",
+    "saveSuccess": "選手登録を保存しました。",
+    "saveFailed": "選手登録の保存に失敗しました。",
+    "keyPlayerSaveSuccess": "特例選手を保存しました。",
+    "keyPlayerSaveFailed": "特例選手の保存に失敗しました。",
+    "costLimitExceeded": "1軍コスト（{cost}）が上限（{limit}）を超えています。",
+    "belowMinimumPlayers": "1軍登録人数が最低人数（{min}人）に達していません。",
+    "outsideWorldCount": "外の世界枠: {count}/{max}",
+    "outsideWorldLimitExceeded": "1軍の外の世界枠の選手が上限（{limit}人）を超えています（現在{count}人）。",
+    "playerName": "選手名",
+    "position": "ポジション",
+    "playerType": "選手タイプ",
+    "costType": "コスト種類",
+    "cost": "コスト",
+    "headers": {
+      "number": "背番",
+      "name": "名前",
+      "position": "位置",
+      "player_types": "属性",
+      "throws": "投",
+      "bats": "打",
+      "cost_type": "契約",
+      "cost": "コスト",
+      "actions": ""
+    },
+    "absenceEndingSoon": "離脱終了間近の選手",
+    "remainingDays": "残り{days}日",
+    "absenceWarning": {
+      "title": "離脱中選手の昇格確認",
+      "message": "{name}は現在離脱中です（{type}: {remaining}）。1軍に登録しますか？",
+      "remaining": "残り{days}日",
+      "unknownEnd": "終了日未定"
+    },
+    "cooldownTooltip": "{date}まで昇格不可",
+    "absenceDaysTooltip": "離脱中（{type}: {reason}残り{days}日）",
+    "absenceGamesTooltip": "離脱中（{type}: {reason}残り{days}日相当）",
+    "promoteButton": "昇格",
+    "demoteButton": "降格",
+    "reconditioningBlocked": "再調整中のため1軍登録不可",
+    "chip": {
+      "reconditioning": "再調整中",
+      "cooldown": "昇格待ち",
+      "special": "特例"
+    },
+    "legend": {
+      "cooldown": "昇格待ち",
+      "absenceDays": "離脱中(日数)",
+      "absenceGames": "離脱中(試合)",
+      "injury": "負傷離脱",
+      "suspension": "出場停止",
+      "reconditioning": "再調整"
+    }
+  },
+  "gameResult": {
+    "game": "Game",
+    "basicInfo": "基本情報",
+    "announcedStarter": "予告先発",
+    "opponentTeam": "対戦相手",
+    "homeAway": {
+      "title": "ホーム/ビジター",
+      "home": "ホーム",
+      "away": "ビジター"
+    },
+    "stadium": "球場",
+    "dhSystem": {
+      "title": "DH制",
+      "enabled": "あり",
+      "disabled": "なし"
+    },
+    "gameInfo": "試合",
+    "save": "保存",
+    "saveSuccess": "保存しました",
+    "saveFailed": "保存に失敗しました",
+    "dateDisplay": "{month}月{day}日({weekday})",
+    "winningPitcher": "勝利投手",
+    "losingPitcher": "敗戦投手",
+    "savePitcher": "セーブ投手",
+    "score": "得点",
+    "opponentScore": "失点",
+    "team": "チーム",
+    "total": "合計",
+    "addInning": "回追加",
+    "removeInning": "回削除",
+    "noBottomInning": "最終回後攻攻撃なし"
+  },
+  "gameResults": {
+    "win": "勝ち",
+    "lose": "負け",
+    "draw": "引き分け"
+  },
+  "startingMemberDialog": {
+    "title": "スタメン登録",
+    "tableHeaders": {
+      "battingOrder": "打順",
+      "position": "ポジション",
+      "player": "選手",
+      "defenseRating": "守備力"
+    },
+    "homeTeamLineup": "自チームスタメン",
+    "opponentTeamLineup": "相手チームスタメン"
+  },
+  "actions": {
+    "save": "保存",
+    "cancel": "キャンセル",
+    "ok": "OK"
+  },
+  "validation": {
+    "required": "必須項目です。",
+    "dateFormat": "YYYY-MM-DD形式で入力してください",
+    "defenseFormat": "0A～5Eの形式で入力してください"
   },
   "loginForm": {
     "title": "ログイン",
@@ -24,9 +238,13 @@
     "dashboard": "トップページ",
     "managers": "監督一覧",
     "teams": "チーム一覧",
+    "players": "選手一覧",
+    "costAssignment": "コスト登録",
     "settings": "各種設定",
     "collapse": "メニューを縮小",
-    "expand": "メニューを展開"
+    "expand": "メニューを展開",
+    "externalLinks": "外部リンク",
+    "officialWiki": "公式Wiki"
   },
   "teamList": {
     "title": "チーム一覧",
@@ -39,6 +257,11 @@
       "managerName": "監督名",
       "isActive": "稼働中",
       "actions": "操作"
+    },
+    "actions": {
+      "editMembers": "メンバー編集",
+      "editTeam": "チーム編集",
+      "delete": "削除"
     },
     "deleteConfirmTitle": "チームの削除",
     "deleteConfirmMessage": "このチームを削除してもよろしいですか？",
@@ -82,13 +305,6 @@
       "ircName": "IRCネーム",
       "userId": "ユーザーID (任意)"
     },
-    "actions": {
-      "cancel": "キャンセル",
-      "save": "保存"
-    },
-    "validation": {
-      "required": "必須項目です。"
-    },
     "notifications": {
       "addSuccess": "監督を追加しました。",
       "updateSuccess": "監督情報を更新しました。",
@@ -107,10 +323,6 @@
       "manager": "監督",
       "isActive": "稼働中"
     },
-    "actions": {
-      "cancel": "キャンセル",
-      "save": "保存"
-    },
     "validation": {
       "required": "必須項目です。"
     },
@@ -123,10 +335,21 @@
     }
   },
   "confirmDialog": {
-    "ok": "OK",
-    "cancel": "キャンセル"
   },
   "settings": {
+    "title": "設定",
+    "description": "この画面では、アプリケーション全体で利用される細かいマスターデータの設定を行います。",
+    "managedByConfigFile": "この設定は設定ファイルで管理されているため、ここでは閲覧のみ可能です。",
+    "tabs": {
+      "player": "選手設定",
+      "squad": "その他"
+    },
+    "player": {
+      "description": "選手に関する設定を行います。"
+    },
+    "squad": {
+      "description": "登録に関する設定を行います。"
+    },
     "pitchingStyle": {
       "title": "投手特徴",
       "add": "特徴を追加",
@@ -293,6 +516,421 @@
       },
       "deleteConfirmTitle": "バイオリズムの削除",
       "deleteConfirmMessage": "本当にこのバイオリズムを削除しますか？"
+    },
+    "cost": {
+      "title": "コスト一覧表",
+      "add": "コスト一覧表を追加",
+      "headers": {
+        "name": "名前",
+        "start_date": "開始日",
+        "end_date": "終了日",
+        "actions": "操作"
+      },
+      "dialog": {
+        "title": {
+          "add": "コスト一覧の追加",
+          "edit": "コスト一覧の編集"
+        },
+        "form": {
+          "name": "名前",
+          "start_date": "適用開始日",
+          "end_date": "適用終了日"
+        }
+      },
+      "notifications": {
+        "noData": "コスト一覧表が登録されていません。",
+        "fetchFailed": "コスト一覧表の取得に失敗しました。",
+        "addSuccess": "コスト一覧表を追加しました。",
+        "updateSuccess": "コスト一覧表を更新しました。",
+        "deleteSuccess": "コスト一覧表を削除しました。",
+        "saveFailed": "コスト一覧表の保存に失敗しました。",
+        "saveFailedWithErrors": "保存に失敗しました:\n{errors}",
+        "deleteFailed": "コスト一覧表の削除に失敗しました。"
+      },
+      "deleteConfirmTitle": "コスト一覧表の削除",
+      "deleteConfirmMessage": "本当にこのコスト一覧表を削除しますか？"
+    },
+    "playerType": {
+      "title": "選手タイプ設定",
+      "add": "選手タイプを追加",
+      "headers": {
+        "name": "名前",
+        "description": "説明",
+        "actions": "操作"
+      },
+      "dialog": {
+        "title": {
+          "add": "選手タイプを新規追加",
+          "edit": "選手タイプを編集"
+        },
+        "form": {
+          "name": "名前",
+          "description": "説明"
+        }
+      },
+      "notifications": {
+        "noData": "選手タイプが登録されていません。",
+        "fetchFailed": "選手タイプの取得に失敗しました。",
+        "addSuccess": "選手タイプを登録しました。",
+        "updateSuccess": "選手タイプを更新しました。",
+        "deleteSuccess": "選手タイプを削除しました。",
+        "saveFailed": "選手タイプの保存に失敗しました。",
+        "saveFailedWithErrors": "選手タイプの保存に失敗しました:\n{errors}",
+        "deleteFailed": "選手タイプの削除に失敗しました。"
+      },
+      "deleteConfirmTitle": "選手タイプの削除",
+      "deleteConfirmMessage": "この選手タイプを本当に削除しますか？"
+    },
+    "schedule": {
+      "title": "日程表",
+      "add": "日程表を追加",
+      "confirmDelete": "この日程表を削除してもよろしいですか？",
+      "headers": {
+        "name": "名前",
+        "start_date": "開始日",
+        "end_date": "終了日",
+        "effective_date": "適用日",
+        "actions": "操作"
+      },
+      "dialog": {
+        "title": {
+          "add": "日程表の追加",
+          "edit": "日程表の編集"
+        },
+        "form": {
+          "name": "名前",
+          "start_date": "開始日",
+          "end_date": "終了日",
+          "effective_date": "適用日"
+        }
+      },
+      "detail": {
+        "title": "日程詳細の設定",
+        "datePickerTitle": "日付を選択",
+        "selectDate": "日付を選択してください",
+        "form": {
+          "name": "名前",
+          "start_date": "開始日",
+          "end_date": "終了日",
+          "effective_date": "適用日"
+        }
+      },
+      "notifications": {
+        "fetchFailed": "スケジュール一覧の取得に失敗しました。",
+        "addSuccess": "スケジュールを追加しました。",
+        "updateSuccess": "スケジュールを更新しました。",
+        "deleteSuccess": "スケジュールを削除しました。",
+        "saveFailed": "スケジュールの保存に失敗しました。",
+        "saveFailedWithErrors": "保存に失敗しました:\n{errors}",
+        "deleteFailed": "スケジュールの削除に失敗しました。"
+      },
+      "dateTypes": {
+        "game_day": "試合日",
+        "interleague_game_day": "交流戦試合日",
+        "playoff_day": "プレーオフ日",
+        "travel_day": "移動日",
+        "reserve_day": "予備日",
+        "interleague_reserve_day": "交流戦予備日",
+        "no_game_day": "試合不可日",
+        "postponed": "雨天中止",
+        "no_game": "雨天ノーゲーム"
+      }
     }
+  },
+  "teamMembers": {
+    "title": "チーム「{teamName}」の選手登録",
+    "selectCostList": "コスト一覧表を選択",
+    "selectPlayer": "選手を選択して追加",
+    "addPlayer": "追加",
+    "noData": "選手が登録されていません。",
+    "headers": {
+      "number": "背番号",
+      "name": "名前",
+      "position": "ポジション",
+      "throws": "投",
+      "bats": "打",
+      "player_types": "選手タイプ",
+      "cost": "コスト",
+      "excluded": "除外",
+      "actions": "操作"
+    },
+    "teamMembersTitle": "チームメンバー",
+    "totalCount": "合計人数: {count} / {max}人",
+    "totalCost": "合計コスト: {cost} / {max}",
+    "outsideWorldCount": "外の世界枠: {count} / {max}人",
+    "costTypes": {
+      "normal_cost": "通常",
+      "relief_only_cost": "リリーフ契約",
+      "pitcher_only_cost": "投手専念",
+      "fielder_only_cost": "野手専念",
+      "two_way_cost": "二刀流"
+    },
+    "notifications": {
+      "fetchTeamFailed": "チーム情報の取得に失敗しました。",
+      "fetchPlayersFailed": "選手一覧の取得に失敗しました。",
+      "fetchTeamPlayersFailed": "チームの選手一覧の取得に失敗しました。",
+      "playerAlreadyAdded": "この選手は既に追加されています。",
+      "maxPlayersExceeded": "登録人数が上限（{max}人）を超えています。",
+      "costLimitExceeded": "合計コスト（{cost}）がコスト上限（{limit}）を超えています。",
+      "outsideWorldLimitExceeded": "外の世界枠の選手が上限（{limit}人）を超えています（現在{count}人）。",
+      "totalCostExceeded": "合計コストが上限（{max}）を超えています。",
+      "selectCostList": "コスト一覧表を選択してください。",
+      "saveSuccess": "選手情報を保存しました。",
+      "saveFailed": "選手情報の保存に失敗しました。"
+    }
+  },
+  "costAssignment": {
+    "title": "コスト登録",
+    "costList": "コスト一覧",
+    "save": "保存",
+    "headers": {
+      "number": "背番号",
+      "name": "選手名",
+      "player_types": "選手タイプ",
+      "cost": "コスト",
+      "relief_only_cost": "中継ぎ契約コスト",
+      "pitcher_only_cost": "投手専念コスト",
+      "fielder_only_cost": "野手専念コスト",
+      "two_way_cost": "二刀流コスト"
+    },
+    "notifications": {
+      "fetchPlayersFailed": "選手情報の取得に失敗しました。"
+    }
+  },
+  "playerList": {
+    "title": "選手一覧",
+    "addPlayer": "選手追加",
+    "noData": "選手が登録されていません。",
+    "headers": {
+      "id": "ID",
+      "number": "背番号",
+      "name": "名前",
+      "short_name": "短縮名",
+      "position": "ポジション",
+      "actions": "操作"
+    },
+    "filters": {
+      "searchPlaceholder": "選手名で検索",
+      "position": "ポジション"
+    },
+    "deleteConfirmTitle": "選手の削除",
+    "deleteConfirmMessage": "この選手を本当に削除しますか？",
+    "fetchFailed": "選手一覧の取得に失敗しました。",
+    "deleteSuccess": "選手を削除しました。",
+    "deleteFailed": "選手の削除に失敗しました。"
+  },
+  "playerDialog": {
+    "title": {
+      "add": "選手追加",
+      "edit": "選手情報編集"
+    },
+    "form": {
+      "name": "名前",
+      "number": "背番号",
+      "short_name": "短縮名",
+      "position": "ポジション",
+      "throwing_hand": "投",
+      "batting_hand": "打",
+      "bunt": "バント",
+      "steal_start": "盗塁ST",
+      "steal_end": "盗塁ED",
+      "speed": "走力",
+      "defenseSectionTitle": "守備・送球",
+      "injury_rate": "怪我特徴",
+      "batting_style": "打者特徴",
+      "batting_style_description" : "打者特徴補足",
+      "batting_skills": "打者特殊能力",
+      "player_types": "選手タイプ",
+      "biorhythms": "バイオリズム",
+      "throwing": "送球",
+      "setIndividualOutfielders": "外野手のポジションごとに設定する",
+      "is_pitcher": "投手として登板可（投手能力設定を表示）",
+      "starter_stamina": "先発疲労P",
+      "relief_stamina": "中継疲労P",
+      "is_relief_only": "リリーフ専任",
+      "pitching_style": "投手特徴",
+      "pitching_style_description" : "投手特徴補足",
+      "pinch_pitching_style": "有走者時投手特徴",
+      "pitching_skills": "投手特殊能力",
+      "hasPartnerCatchers": "専属捕手",
+      "catchers": "専属捕手",
+      "catcher_pitching_style": "専属捕手時特徴",
+      "hasPartnerPitchers": "専属捕手",
+      "partner_pitchers": "パートナー投手"
+    },
+    "notifications": {
+      "addSuccess": "選手を追加しました。",
+      "updateSuccess": "選手情報を更新しました。",
+      "saveFailedWithErrors": "保存に失敗しました:\n{errors}",
+      "saveFailed": "選手情報の保存に失敗しました。",
+      "fetchBattingStylesFailed": "打者特徴一覧の取得に失敗しました。",
+      "fetchBattingSkillsFailed": "打者特殊能力一覧の取得に失敗しました。",
+      "fetchPitchingStylesFailed": "投手特徴一覧の取得に失敗しました。",
+      "fetchPitchingSkillsFailed": "投手特殊能力一覧の取得に失敗しました。",
+      "fetchPlayerTypesFailed": "選手タイプ一覧の取得に失敗しました。",
+      "fetchBiorhythmsFailed": "バイオリズム一覧の取得に失敗しました。"
+    }
+  },
+  "baseball": {
+    "positions": {
+      "pitcher": "投手",
+      "catcher": "捕手",
+      "infielder": "内野手",
+      "first_baseman": "一塁手",
+      "second_baseman": "二塁手",
+      "third_baseman": "三塁手",
+      "shortstop": "遊撃手",
+      "outfielder": "外野手",
+      "left_fielder": "左翼手",
+      "center_fielder": "中堅手",
+      "right_fielder": "右翼手",
+      "dh": "DH"
+    },
+    "throwingHands": {
+      "right_throw": "右",
+      "left_throw": "左"
+    },
+    "battingHands": {
+      "right_bat": "右",
+      "left_bat": "左",
+      "switch_hitter": "両"
+    },
+    "shortPositions": {
+      "p": "投",
+      "c": "捕",
+      "1b": "一",
+      "2b": "二",
+      "3b": "三",
+      "ss": "遊",
+      "if": "内",
+      "lf": "左",
+      "cf": "中",
+      "rf": "右",
+      "dh": "指",
+      "pitcher": "投",
+      "catcher": "捕",
+      "infielder": "内",
+      "first_baseman": "一",
+      "second_baseman": "二",
+      "third_baseman": "三",
+      "shortstop": "遊",
+      "outfielder": "外",
+      "left_fielder": "左",
+      "center_fielder": "中",
+      "right_fielder": "右"
+    },
+    "construction": {
+      "normal_cost": "通常",
+      "relief_only_cost": "中継",
+      "pitcher_only_cost": "投手",
+      "fielder_only_cost": "野手",
+      "two_way_cost": "２Ｗ"
+    }
+  },
+  "enums": {
+    "player_absence": {
+      "absence_type": {
+        "injury": "負傷",
+        "suspension": "出場停止",
+        "reconditioning": "再調整"
+      },
+      "duration_unit": {
+        "days": "日間",
+        "games": "試合"
+      }
+    }
+  },
+  "scoreSheet": {
+    "order": "打順",
+    "player": "選手",
+    "position": "守備",
+    "hits": "安打",
+    "rbi": "打点",
+    "backToGameResult": "試合結果に戻る",
+    "atBatResults": {
+      "single": "安打",
+      "double": "二塁打",
+      "triple": "三塁打",
+      "homerun": "本塁打",
+      "sacrifice_hit": "犠打",
+      "sacrifice_fly": "犠飛",
+      "walk": "四球",
+      "hit_by_pitch": "死球",
+      "strikeout": "三振",
+      "double_play": "併殺",
+      "ground_out": "ゴロ",
+      "fly_out": "フライ"
+    }
+  },
+  "messages": {
+    "startingMembersSaved": "スターティングメンバーを保存しました。",
+    "failedToSaveStartingMembers": "スターティングメンバーの保存に失敗しました。",
+    "noMembersToSave": "保存するメンバーがいません"
+  },
+  "commissioner": {
+    "detail": {
+      "title": "詳細管理",
+      "tabs": {
+        "seasons": "シーズン管理",
+        "games": "対戦管理",
+        "poolPlayers": "選手プール管理",
+        "teamStaff": "チームスタッフ管理",
+        "absences": "選手離脱管理"
+      },
+      "comingSoon": "この機能は準備中です。",
+      "selectTeam": "チームを選択",
+      "selectSeason": "シーズンを選択",
+      "teamStaffNoData": "スタッフが登録されていません。",
+      "noSeasons": "シーズンが登録されていません。",
+      "noGames": "対戦データがありません。",
+      "noPoolPlayers": "選手プールに選手が登録されていません。",
+      "absencesDescription": "選手の離脱管理は離脱者履歴画面から行えます。",
+      "goToAbsenceHistory": "離脱者履歴画面へ",
+      "generateSchedule": "日程生成",
+      "generateScheduleConfirm": "シーズン「{name}」の日程を生成しますか？",
+      "scheduleGenerated": "日程を生成しました。",
+      "scheduleGenerateFailed": "日程の生成に失敗しました。",
+      "seasonHeaders": {
+        "name": "シーズン名",
+        "startDate": "開始日",
+        "endDate": "終了日",
+        "status": "ステータス",
+        "actions": "操作"
+      },
+      "gameHeaders": {
+        "gameDate": "試合日",
+        "homeTeam": "ホーム",
+        "awayTeam": "アウェイ",
+        "gameNumber": "第N戦"
+      },
+      "poolPlayerHeaders": {
+        "playerName": "選手名"
+      },
+      "seasonStatus": {
+        "pending": "準備中",
+        "active": "進行中",
+        "completed": "完了"
+      }
+    }
+  },
+  "teamNavigation": {
+    "teamMembers": "メンバー管理",
+    "activeRoster": "1軍登録",
+    "seasonPortal": "シーズン",
+    "playerAbsenceHistory": "離脱者履歴"
+  },
+  "routes": {
+    "dashboard": "ダッシュボード",
+    "managers": "監督一覧",
+    "teamMembers": "チームメンバー登録",
+    "players": "選手一覧",
+    "costAssignment": "コスト登録",
+    "settings": "各種設定",
+    "leagues": "リーグ管理",
+    "seasonPortal": "シーズンポータル",
+    "activeRoster": "出場選手登録",
+    "gameResult": "試合結果入力",
+    "scoreSheet": "スコアシート",
+    "playerAbsenceHistory": "離脱者履歴"
   }
 }

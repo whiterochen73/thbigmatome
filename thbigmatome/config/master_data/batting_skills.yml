@@ -1,0 +1,14 @@
+---
+batting_skills:
+- key: 風神少女
+  name: 風神少女
+  description: 走塁表の出目を-2する。
+  skill_type: positive
+- key: 代打○
+  name: 代打○
+  description: 代打で出場した打席で打者特徴が出た場合、本来の特徴を無視して投球ナンバー１で打ち直す
+  skill_type: positive
+- key: バイオリズム
+  name: バイオリズム
+  description: 試合日が指定期間内のときに打者特徴が出た場合、投球ナンバー１で振り直す（一部選手は効果が異なる）
+  skill_type: neutral

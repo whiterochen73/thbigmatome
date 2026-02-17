@@ -1,5 +1,5 @@
 export interface BattingStyle {
   id: number
   name: string
-  description: string
+  description: string | null
 }

@@ -5,6 +5,7 @@
     i18n-key="settings.pitchingStyle"
     :dialog-component="PitchingStyleDialog"
     description-max-width="500px"
+    :readonly="true"
   />
 </template>
 

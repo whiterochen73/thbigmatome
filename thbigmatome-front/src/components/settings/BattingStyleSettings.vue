@@ -5,6 +5,7 @@
     i18n-key="settings.battingStyle"
     :dialog-component="BattingStyleDialog"
     description-max-width="500px"
+    :readonly="true"
   />
 </template>
 

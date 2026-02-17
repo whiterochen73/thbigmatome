@@ -7,4 +7,5 @@ export interface Manager {
   irc_name?: string | null;
   user_id?: string | null;
   teams?: Team[];
+  role: 'director' | 'coach';
 }

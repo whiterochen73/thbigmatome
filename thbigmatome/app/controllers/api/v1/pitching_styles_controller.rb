@@ -1,49 +1,25 @@
 module Api
   module V1
-    # NOTE: 認証機能が実装されたら、適切な認証処理を `before_action` に追加してください。
-    # e.g. before_action :authenticate_user!
-    class PitchingStylesController < ApplicationController
-      before_action :set_pitching_style, only: [:update, :destroy]
-
+    class PitchingStylesController < Api::V1::BaseController
       # GET /api/v1/pitching-styles
       def index
         @pitching_styles = PitchingStyle.all.order(:id)
-        render json: @pitching_styles
+        render json: @pitching_styles.to_json
       end
 
       # POST /api/v1/pitching-styles
       def create
-        @pitching_style = PitchingStyle.new(pitching_style_params)
-        if @pitching_style.save
-          render json: @pitching_style, status: :created
-        else
-          render json: { errors: @pitching_style.errors.full_messages }, status: :unprocessable_entity
-        end
+        render json: { error: I18n.t("master_data.managed_by_config_file") }, status: :forbidden
       end
 
       # PATCH/PUT /api/v1/pitching-styles/:id
       def update
-        if @pitching_style.update(pitching_style_params)
-          render json: @pitching_style
-        else
-          render json: { errors: @pitching_style.errors.full_messages }, status: :unprocessable_entity
-        end
+        render json: { error: I18n.t("master_data.managed_by_config_file") }, status: :forbidden
       end
 
       # DELETE /api/v1/pitching-styles/:id
       def destroy
-        @pitching_style.destroy
-        head :no_content
-      end
-
-      private
-
-      def set_pitching_style
-        @pitching_style = PitchingStyle.find(params[:id])
-      end
-
-      def pitching_style_params
-        params.require(:pitching_style).permit(:name, :description)
+        render json: { error: I18n.t("master_data.managed_by_config_file") }, status: :forbidden
       end
     end
   end

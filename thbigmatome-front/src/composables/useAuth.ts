@@ -5,6 +5,7 @@ import router from '@/router' // Vue Routerをインポート
 interface User {
   id: number
   name: string
+  role: string
 }
 
 interface LoginResponse {
@@ -21,6 +22,7 @@ const loading = ref(false)
 
 export function useAuth() {
   const isAuthenticated = computed(() => !!user.value)
+  const isCommissioner = computed(() => user.value?.role === 'commissioner')
 
   const login = async (name: string, password: string): Promise<LoginResponse> => {
     loading.value = true
@@ -68,6 +70,7 @@ export function useAuth() {
   return {
     user: computed(() => user.value),
     isAuthenticated,
+    isCommissioner,
     loading: computed(() => loading.value),
     login,
     logout,

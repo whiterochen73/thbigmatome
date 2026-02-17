@@ -41,10 +41,10 @@
       <v-card-actions>
         <v-spacer></v-spacer>
         <v-btn color="blue-darken-1" variant="text" @click="closeDialog">
-          {{ t('teamDialog.actions.cancel') }}
+          {{ t('actions.cancel') }}
         </v-btn>
         <v-btn color="blue-darken-1" variant="text" @click="saveItem" :disabled="!isFormValid">
-          {{ t('teamDialog.actions.save') }}
+          {{ t('actions.save') }}
         </v-btn>
       </v-card-actions>
     </v-card>
@@ -77,8 +77,8 @@ watch(() => props.item, (newItem) => {
 const title = computed(() => props.item ? t('settings.biorhythm.dialog.title.edit') : t('settings.biorhythm.dialog.title.add'))
 
 const rules = {
-  required: (value: string) => !!value || t('managerDialog.validation.required'),
-  dateFormat: (value: string) => /^\d{4}-\d{2}-\d{2}$/.test(value) || 'YYYY-MM-DD形式で入力してください',
+  required: (value: string) => !!value || t('validation.required'),
+  dateFormat: (value: string) => /^\d{4}-\d{2}-\d{2}$/.test(value) || t('validation.dateFormat'),
 }
 
 const isFormValid = computed(() => {

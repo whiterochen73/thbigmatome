@@ -1,0 +1,47 @@
+export interface PlayerDetail {
+  id: number | null
+  name: string
+  number: string | null
+  short_name: string | null
+  position: string | null
+  throwing_hand: string | null
+  batting_hand: string | null
+  batting_style_id: number | null
+  batting_style_description: string | null
+  batting_skill_ids: number[]
+  player_type_ids: number[]
+  biorhythm_ids: number[]
+  bunt: number
+  steal_start: number
+  steal_end: number
+  speed: number
+  injury_rate: number
+  defense_p: string | null
+  defense_c: string | null
+  throwing_c: number | null
+  defense_1b: string | null
+  defense_2b: string | null
+  defense_3b: string | null
+  defense_ss: string | null
+  defense_of: string | null
+  throwing_of: string | null
+  defense_lf: string | null
+  throwing_lf: string | null
+  defense_cf: string | null
+  throwing_cf: string | null
+  defense_rf: string | null
+  throwing_rf: string | null
+  is_pitcher: boolean
+  is_relief_only: boolean
+  starter_stamina: number | null
+  relief_stamina: number | null
+  pitching_style_id: number | null
+  pitching_style_description: string | null
+  pinch_pitching_style_id: number | null
+  pitching_skill_ids: number[]
+  catcher_ids: number[]
+  catcher_pitching_style_id: number | null
+  partner_pitcher_ids: number[]
+  special_defense_c: string | null
+  special_throwing_c: number | null
+}

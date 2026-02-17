@@ -58,6 +58,12 @@
   font-weight: normal;
 }
 
+/* v-card-title直後のv-card-text/actionsの余分なパディングを除去 */
+.v-card-title + .v-card-text,
+.v-card-title + .v-card-actions {
+  padding-top: 0;
+}
+
 body {
   min-height: 100vh;
   color: var(--color-text);
@@ -67,6 +73,8 @@ body {
     background-color 0.5s;
   line-height: 1.6;
   font-family:
+    'Zen Kaku Gothic New',
+    'Noto Sans JP',
     Inter,
     -apple-system,
     BlinkMacSystemFont,

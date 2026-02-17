@@ -25,11 +25,21 @@
             <v-col cols="12">
               <v-autocomplete
                 :readonly="!!props.defaultManagerId"
-                v-model="editedTeam.manager_id"
+                v-model="editedTeam.director_id"
                 :items="managers"
                 item-title="name"
                 item-value="id"
-                :label="t('teamDialog.form.manager')"
+                :label="t('teamDialog.form.director')"
+              ></v-autocomplete>
+            </v-col>
+            <v-col cols="12">
+              <v-autocomplete
+                v-model="editedTeam.coach_ids"
+                :items="managers"
+                item-title="name"
+                item-value="id"
+                :label="t('teamDialog.form.coaches')"
+                multiple
               ></v-autocomplete>
             </v-col>
             <v-col cols="12">
@@ -45,10 +55,10 @@
       <v-card-actions>
         <v-spacer></v-spacer>
         <v-btn color="blue-darken-1" variant="text" @click="close">
-          {{ t('teamDialog.actions.cancel') }}
+          {{ t('actions.cancel') }}
         </v-btn>
         <v-btn color="blue-darken-1" variant="text" @click="save" :disabled="!isFormValid">
-          {{ t('teamDialog.actions.save') }}
+          {{ t('actions.save') }}
         </v-btn>
       </v-card-actions>
     </v-card>
@@ -85,20 +95,29 @@ const internalIsVisible = computed({
   set: (value) => emit('update:isVisible', value)
 });
 
-const defaultTeam: Omit<Team, 'id' | 'manager'> = {
+interface EditedTeam {
+  name: string;
+  short_name: string;
+  is_active: boolean;
+  director_id?: number | null;
+  coach_ids?: number[];
+}
+
+const defaultTeam: EditedTeam = {
   name: '',
   short_name: '',
   is_active: true,
-  manager_id: 0,
+  director_id: null,
+  coach_ids: [],
 };
-const editedTeam = ref<Partial<Team>>({ ...defaultTeam });
+const editedTeam = ref<EditedTeam>({ ...defaultTeam });
 
 const managers = ref<Manager[]>([]);
 
 const isNew = computed(() => !props.team);
 
 const rules = {
-  required: (value: string) => !!value || t('teamDialog.validation.required'),
+  required: (value: string) => !!value || t('validation.required'),
 };
 
 const isFormValid = computed(() => !!editedTeam.value.name);
@@ -116,9 +135,15 @@ const fetchManagers = async () => {
 watch(() => props.isVisible, (newVal) => {
   if (newVal) {
     if (props.team) { // Edit
-      editedTeam.value = { ...props.team };
+      editedTeam.value = {
+        name: props.team.name,
+        short_name: props.team.short_name,
+        is_active: props.team.is_active,
+        director_id: props.team.director?.id,
+        coach_ids: props.team.coaches?.map(c => c.id) ?? [],
+      };
     } else { // New
-      editedTeam.value = { ...defaultTeam, manager_id: props.defaultManagerId ?? undefined };
+      editedTeam.value = { ...defaultTeam, director_id: props.defaultManagerId ?? null };
     }
 
     if (managers.value.length === 0) {
@@ -127,6 +152,12 @@ watch(() => props.isVisible, (newVal) => {
   }
 });
 
+watch(() => props.defaultManagerId, (newManagerId) => {
+  if (newManagerId && !props.team) {
+    editedTeam.value.director_id = newManagerId;
+  }
+}, { immediate: true });
+
 const close = () => {
   internalIsVisible.value = false;
 };
@@ -134,9 +165,7 @@ const close = () => {
 const save = async () => {
   if (!isFormValid.value) return;
 
-  const teamData = { ...editedTeam.value };
-  delete teamData.id; // idはURLに含まれるため、ペイロードからは除外
-  delete teamData.manager; // managerオブジェクトはペイロードに含めない
+  const teamData: EditedTeam = { ...editedTeam.value };
 
   try {
     if (isNew.value) {

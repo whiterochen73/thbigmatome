@@ -6,10 +6,15 @@
           <div class="d-flex align-center w-100">
             <span class="text-no-wrap">{{ title }}</span>
             <v-spacer></v-spacer>
-            <v-btn color="primary" @click.stop="openNewDialog" size="small">{{ t(`${i18nKey}.add`) }}</v-btn>
+            <v-btn v-if="!readonly" color="primary" @click.stop="openNewDialog" size="small">{{
+              t(`${i18nKey}.add`)
+            }}</v-btn>
           </div>
         </v-expansion-panel-title>
         <v-expansion-panel-text>
+          <v-alert v-if="readonly" type="info" variant="tonal" density="compact" class="mb-4">
+            {{ t('settings.managedByConfigFile') }}
+          </v-alert>
           <v-data-table
             :headers="tableHeaders"
             :items="items"
@@ -17,6 +22,7 @@
             :no-data-text="t(`${i18nKey}.notifications.noData`, t('teamList.noData'))"
             density="compact"
           >
+            <!-- eslint-disable-next-line vue/valid-v-slot -->
             <template v-if="hasDescriptionColumn" #item.description="{ item }">
               <v-tooltip :text="item.description ?? ''" location="top">
                 <template #activator="{ props: activatorProps }">
@@ -24,16 +30,19 @@
                     v-bind="activatorProps"
                     class="d-inline-block text-truncate"
                     :style="{ maxWidth: descriptionMaxWidth }"
-                  >{{ item.description }}</span>
+                    >{{ item.description }}</span
+                  >
                 </template>
               </v-tooltip>
             </template>
 
+            <!-- eslint-disable-next-line vue/valid-v-slot -->
             <template v-for="(_, name) in $slots" v-slot:[name]="slotProps">
               <slot :name="name" v-bind="slotProps"></slot>
             </template>
 
-            <template v-slot:item.actions="{ item }">
+            <!-- eslint-disable-next-line vue/valid-v-slot -->
+            <template v-if="!readonly" v-slot:item.actions="{ item }">
               <v-icon size="small" class="me-2" @click="openEditDialog(item)">mdi-pencil</v-icon>
               <v-icon size="small" @click="confirmDelete(item)">mdi-delete</v-icon>
             </template>
@@ -53,25 +62,35 @@
   </div>
 </template>
 
-<script setup lang="ts" generic="T extends { id: number; name: string; description?: string | null }">
+<script
+  setup
+  lang="ts"
+  generic="T extends { id: number; name: string; description?: string | null }"
+>
 import { ref, onMounted, computed, type Component, withDefaults } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useSnackbar } from '@/composables/useSnackbar'
 import axios from '@/plugins/axios'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
 
-const props = withDefaults(defineProps<{
-  title: string;
-  endpoint: string;
-  i18nKey: string;
-  dialogComponent: Component;
-  additionalHeaders?: any[];
-  hasDescriptionColumn?: boolean;
-  descriptionMaxWidth?: string;
-}>(), {
-  descriptionMaxWidth: '250px',
-  hasDescriptionColumn: true,
-})
+const props = withDefaults(
+  defineProps<{
+    title: string
+    endpoint: string
+    i18nKey: string
+    dialogComponent: Component
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    additionalHeaders?: any[]
+    hasDescriptionColumn?: boolean
+    descriptionMaxWidth?: string
+    readonly?: boolean
+  }>(),
+  {
+    descriptionMaxWidth: '250px',
+    hasDescriptionColumn: true,
+    readonly: false,
+  },
+)
 
 const { t } = useI18n()
 const { showSnackbar } = useSnackbar()
@@ -91,9 +110,21 @@ const tableHeaders = computed(() => {
   }
 
   if (props.hasDescriptionColumn) {
-    headers.push({ title: t(`${props.i18nKey}.headers.description`), key: 'description', sortable: false })
+    headers.push({
+      title: t(`${props.i18nKey}.headers.description`),
+      key: 'description',
+      sortable: false,
+    })
   }
-  headers.push({ title: t(`${props.i18nKey}.headers.actions`), key: 'actions', sortable: false, align: 'end' as const })
+
+  if (!props.readonly) {
+    headers.push({
+      title: t(`${props.i18nKey}.headers.actions`),
+      key: 'actions',
+      sortable: false,
+      align: 'end' as const,
+    })
+  }
 
   return headers
 })
@@ -103,7 +134,7 @@ const loadItems = async () => {
   try {
     const response = await axios.get<T[]>(props.endpoint)
     items.value = response.data
-  } catch (error) {
+  } catch {
     showSnackbar(t(`${props.i18nKey}.notifications.fetchFailed`), 'error')
   } finally {
     loading.value = false
@@ -132,7 +163,7 @@ const confirmDelete = async (item: T) => {
   const isConfirmed = await confirmDialog.value.open(
     t(`${props.i18nKey}.deleteConfirmTitle`),
     t(`${props.i18nKey}.deleteConfirmMessage`),
-    { color: 'error' }
+    { color: 'error' },
   )
 
   if (isConfirmed) {
@@ -145,7 +176,7 @@ const deleteItem = async (id: number) => {
     await axios.delete(`${props.endpoint}/${id}`)
     showSnackbar(t(`${props.i18nKey}.notifications.deleteSuccess`), 'success')
     await loadItems()
-  } catch (error) {
+  } catch {
     showSnackbar(t(`${props.i18nKey}.notifications.deleteFailed`), 'error')
   }
 }

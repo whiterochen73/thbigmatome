@@ -1,12 +1,12 @@
 module Api
   module V1
-    class BiorhythmsController < ApplicationController
-      before_action :set_biorhythm, only: [:update, :destroy]
+    class BiorhythmsController < Api::V1::BaseController
+      before_action :set_biorhythm, only: [ :update, :destroy ]
 
       # GET /api/v1/biorhythms
       def index
         @biorhythms = Biorhythm.all.order(:start_date, :name)
-        render json: @biorhythms
+        render json: @biorhythms.to_json
       end
 
       # POST /api/v1/biorhythms

@@ -1,0 +1,115 @@
+name: CI Tests
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+  pull_request:
+    branches:
+      - main
+      - develop
+
+jobs:
+  # ============================================================
+  # BE: RSpec テスト (thbigmatome)
+  # ============================================================
+  rspec-tests:
+    name: RSpec (BE)
+    runs-on: ubuntu-latest
+
+    # thbigmatome ディレクトリに変更があった場合のみ実行
+    # ※ PRで常に実行したい場合はこのフィルターを削除してください
+    # paths フィルターは push トリガーのみ有効（PRは常に実行）
+    # paths:
+    #   - 'thbigmatome/**'
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: thbigmatome_test
+          POSTGRES_USER: postgres
+          # NOTE: GitHub Secrets に POSTGRES_PASSWORD を登録してください
+          POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      RAILS_ENV: test
+      DATABASE_URL: postgres://postgres:${{ secrets.POSTGRES_PASSWORD }}@localhost:5432/thbigmatome_test
+      # NOTE: GitHub Secrets に RAILS_MASTER_KEY を登録してください
+      RAILS_MASTER_KEY: ${{ secrets.RAILS_MASTER_KEY }}
+
+    defaults:
+      run:
+        working-directory: thbigmatome
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.4.4'
+          bundler-cache: true
+          working-directory: thbigmatome
+
+      - name: Install dependencies
+        run: bundle install --jobs 4 --retry 3
+
+      - name: Set up database
+        run: |
+          bin/rails db:create
+          bin/rails db:schema:load
+
+      - name: Run RSpec
+        run: bundle exec rspec
+
+  # ============================================================
+  # FE: Vitest テスト (thbigmatome-front)
+  # ============================================================
+  vitest-tests:
+    name: Vitest (FE)
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: thbigmatome-front
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: thbigmatome-front/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run Vitest
+        run: npx vitest run
+
+# ============================================================
+# GitHub Secrets 設定ガイド
+# ============================================================
+# リポジトリの Settings > Secrets and variables > Actions で以下を登録してください:
+#
+# 【必須】
+# - POSTGRES_PASSWORD    : CIテスト用PostgreSQLパスワード（任意の文字列でOK）
+# - RAILS_MASTER_KEY     : config/master.key の内容
+#                          （ローカルで cat config/master.key で確認）
+#
+# 【本番デプロイ時に追加が必要な場合】
+# - DATABASE_URL         : 本番DB接続文字列
+# - THBIGMATOME_DATABASE_PASSWORD : 本番DBパスワード

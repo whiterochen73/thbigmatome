@@ -15,7 +15,7 @@ master_data_models = {
   pitching_styles: { model: PitchingStyle, fields: %i[name description] },
   batting_skills: { model: BattingSkill, fields: %i[name description skill_type] },
   pitching_skills: { model: PitchingSkill, fields: %i[name description skill_type] },
-  player_types: { model: PlayerType, fields: %i[name description] }
+  player_types: { model: PlayerType, fields: %i[name description category] }
 }
 
 master_data_models.each do |key, config|
@@ -55,7 +55,7 @@ puts 'Seeding Biorhythms...'
   { name: '秋分', start_date: '2025-09-23', end_date: '2025-10-07' },
   { name: '春の土用', start_date: '2025-04-17', end_date: '2025-05-04' },
   { name: '夏の土用', start_date: '2025-07-19', end_date: '2025-08-06' },
-  { name: '秋の土用', start_date: '2025-10-20', end_date: '2025-11-06' },
+  { name: '秋の土用', start_date: '2025-10-20', end_date: '2025-11-06' }
 ].each do |biorhythm_attrs|
   biorhythm = Biorhythm.find_or_initialize_by(name: biorhythm_attrs[:name])
   biorhythm.update!(biorhythm_attrs)
@@ -65,7 +65,7 @@ puts 'Biorhythms seeded.'
 
 puts 'Seeding Schedules...'
 [
-  { name: 'ペナント日程表', start_date: '2016-03-25', end_date: '2016-11-01', effective_date: '2025-01-01' },
+  { name: 'ペナント日程表', start_date: '2016-03-25', end_date: '2016-11-01', effective_date: '2025-01-01' }
 ].each do |schedule_attrs|
   schedule = Schedule.find_or_initialize_by(name: schedule_attrs[:name])
   schedule.update!(
@@ -308,7 +308,7 @@ puts 'Seeding Schedule Details...'
   { schedule_id: 1, date: '2016-10-30', date_type: 'playoff_day', priority: 1 },
   { schedule_id: 1, date: '2016-10-31', date_type: 'playoff_day', priority: 1 },
 
-  { schedule_id: 1, date: '2016-11-01', date_type: 'playoff_day', priority: 1 },
+  { schedule_id: 1, date: '2016-11-01', date_type: 'playoff_day', priority: 1 }
 ].each do |detail_attrs|
   detail = ScheduleDetail.find_or_initialize_by(schedule_id: detail_attrs[:schedule_id], date: detail_attrs[:date])
   detail.update!(
@@ -316,3 +316,6 @@ puts 'Seeding Schedule Details...'
     priority: detail_attrs[:priority]
   )
 end
+
+# テスト環境専用シードデータ
+load Rails.root.join('db/seeds/test.rb') if Rails.env.test?

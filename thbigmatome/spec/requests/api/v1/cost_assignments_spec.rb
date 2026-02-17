@@ -50,7 +50,7 @@ RSpec.describe "Api::V1::CostAssignmentsController", type: :request do
         },
         as: :json
 
-      expect(response).to have_http_status(:no_content).or have_http_status(:ok).or have_http_status(:created)
+      expect(response).to have_http_status(:no_content)
 
       cost_player = CostPlayer.find_by(cost: cost, player: player)
       expect(cost_player).to be_present
@@ -71,6 +71,7 @@ RSpec.describe "Api::V1::CostAssignmentsController", type: :request do
         },
         as: :json
 
+      expect(response).to have_http_status(:no_content)
       cost_player = CostPlayer.find_by(cost: cost, player: player)
       expect(cost_player.normal_cost).to eq(10)
     end

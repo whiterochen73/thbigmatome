@@ -1,6 +1,6 @@
 {
   "name": "thbigmatome-front",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "private": true,
   "type": "module",
   "scripts": {
@@ -23,6 +23,7 @@
     "vuetify": "^3.9.0"
   },
   "devDependencies": {
+    "@playwright/test": "^1.58.2",
     "@tsconfig/node22": "^22.0.2",
     "@types/node": "^24.0.13",
     "@vitejs/plugin-vue": "^6.0.0",

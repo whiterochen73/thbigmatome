@@ -40,6 +40,7 @@ RSpec.configure do |config|
   config.include FactoryBot::Syntax::Methods
 
   config.before(:suite) do
+    DatabaseCleaner.clean_with(:truncation)
     DatabaseCleaner.strategy = :transaction
     # ActionController::API does not inherit allow_forgery_protection from
     # config.action_controller, so disable it explicitly for request specs.

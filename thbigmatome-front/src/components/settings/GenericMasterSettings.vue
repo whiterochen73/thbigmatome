@@ -67,7 +67,7 @@
   lang="ts"
   generic="T extends { id: number; name: string; description?: string | null }"
 >
-import { ref, onMounted, computed, type Component, withDefaults } from 'vue'
+import { ref, onMounted, computed, type Component } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useSnackbar } from '@/composables/useSnackbar'
 import axios from '@/plugins/axios'

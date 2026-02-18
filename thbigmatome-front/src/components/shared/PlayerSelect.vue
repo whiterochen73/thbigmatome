@@ -15,12 +15,12 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, defineProps, defineEmits } from 'vue'
+import { ref, watch, type PropType } from 'vue'
 import type { Player } from '@/types/player'
 
 const props = defineProps({
   modelValue: {
-    type: [Number, Array] as any,
+    type: [Number, Array] as PropType<number | number[] | null>,
     default: null,
   },
   players: {
@@ -35,41 +35,35 @@ const props = defineProps({
     type: Boolean,
     default: false,
   },
-});
+})
 
-const emit = defineEmits(['update:modelValue']);
+const emit = defineEmits(['update:modelValue'])
 
-const search = ref('');
+const search = ref('')
 
-const selectedValue = ref(props.modelValue);
+const selectedValue = ref(props.modelValue)
 
 watch(
   () => props.modelValue,
   (newValue) => {
-    selectedValue.value = newValue;
-  }
-);
+    selectedValue.value = newValue
+  },
+)
 
 watch(
   () => selectedValue.value,
   (newValue) => {
-    emit('update:modelValue', newValue);
-  }
-);
-
+    emit('update:modelValue', newValue)
+  },
+)
 
 const filter = (_text: string, queryText: string, item: unknown) => {
-  const queryTextLower = queryText.toLowerCase();
+  const queryTextLower = queryText.toLowerCase()
 
-  const player = (item as { raw: Player }).raw;
+  const player = (item as { raw: Player }).raw
 
-  const searchText = [
-    player.number,
-    player.name,
-    player.short_name,
-  ].join(' ').toLowerCase();
+  const searchText = [player.number, player.name, player.short_name].join(' ').toLowerCase()
 
-  return searchText.includes(queryTextLower);
-};
-
+  return searchText.includes(queryTextLower)
+}
 </script>

@@ -8,30 +8,30 @@
 
 | gem | 状態 | 備考 |
 |-----|------|------|
-| minitest | **あり** (Rails標準) | `test/` ディレクトリ、`test_helper.rb` が存在 |
-| rspec-rails | なし | - |
-| factory_bot_rails | なし | - |
-| shoulda-matchers | なし | - |
-| database_cleaner | なし | - |
+| minitest | あり (Rails標準) | `test/` ディレクトリ、`test_helper.rb` が存在（未使用） |
+| rspec-rails | **あり** | `spec/` ディレクトリ、388件のテスト (2026-02-17時点) |
+| factory_bot_rails | **あり** | `spec/factories/` にファクトリ定義 |
+| shoulda-matchers | **あり** | - |
+| database_cleaner | **あり** (`database_cleaner-active_record`) | - |
 | faker | なし | - |
 | webmock / vcr | なし | - |
 
-#### 既存テストファイル
+#### テストファイル実績 (2026-02-17時点)
 
-`test/` ディレクトリにRails生成時のスケルトンが存在するが、全ファイルがコメントアウト状態で**実質テストゼロ**。
+RSpecに移行済み。`spec/` ディレクトリに388件のテストが存在し全PASS SKIP=0。
 
-| ディレクトリ | ファイル数 | 実装状況 |
-|-------------|-----------|---------|
-| test/models/ | 13 | 全て `# test "the truth"` のみ（未実装） |
-| test/controllers/ | 3 | 全て未実装 |
-| test/fixtures/ | 存在 | 未使用 |
-| test/integration/ | 存在 | 空 |
-| test/mailers/ | 存在 | 空 |
+| ディレクトリ | 件数 | 実装状況 |
+|-------------|------|---------|
+| spec/models/ | 多数 | Team・Player・PlayerAbsence等のモデルテスト実装済み |
+| spec/requests/ | 多数 | APIコントローラーのリクエストテスト実装済み |
+| spec/factories/ | あり | 主要モデルのFactoryBot定義 |
+| spec/support/ | あり | 認証共通コンテキスト等 |
+| test/ (minitest) | スケルトンのみ | Rails生成時の骨格、実質未使用 |
 
 #### CI/CD
 
-- `.github/workflows/` なし
-- CI設定なし
+- `.github/workflows/` **あり** (cmd_200で構築)
+- GitHub Actions によるRSpec・Vitest・Playwrightの自動実行が設定済み
 
 #### コード規模
 
@@ -51,17 +51,18 @@
 
 | パッケージ | 状態 |
 |-----------|------|
-| vitest | なし |
-| @vue/test-utils | なし |
+| vitest | **あり** |
+| @vue/test-utils | **あり** |
 | jest | なし |
 | @testing-library/vue | なし |
-| cypress / playwright | なし |
+| playwright | **あり** (E2Eテスト用) |
 
 #### テスト設定・テストファイル
 
-- `vitest.config.ts` / `jest.config.ts` : なし
-- `*.spec.ts` / `*.test.ts` : なし（`node_modules/` 内のみ）
-- テスト基盤は完全に未整備
+- `vitest.config.ts` : **あり**
+- `*.spec.ts` : **あり** (72件、2026-02-17時点 全PASS SKIP=0)
+- `playwright.config.ts` : **あり** (E2E 6件)
+- テスト基盤は整備済み
 
 #### コード規模
 
@@ -154,13 +155,13 @@ cmd_149〜179の実装内容およびソースコード調査に基づき、リ�
 | @testing-library/vue | よりユーザー視点のテスト記述 | 低（test-utilsで十分） |
 | msw (Mock Service Worker) | APIモック | 中（コンポーネントテスト拡充時） |
 
-#### E2E: Playwright（将来フェーズ）
+#### E2E: Playwright（導入済み）
 
 | 項目 | 選定理由 |
 |------|---------|
 | **フレームワーク** | Playwright |
 | **選定理由** | クロスブラウザ対応、自動待機、TypeScriptネイティブサポート。Cypressと比較してCI環境での安定性が高い |
-| **導入時期** | Phase 3以降。BE/FEのユニット/リクエストテストが一定量揃ってから |
+| **導入状況** | 導入済み。E2Eテスト6件実装済み（2026-02-17時点 全PASS SKIP=0） |
 
 ### 3.2 テスト種別ごとの方針
 
@@ -319,55 +320,57 @@ pre-commit:
 
 > ただし、pre-commitでの全テスト実行は遅延の原因になるため、CIでの実行を優先推奨。
 
-#### CI/CD（将来フェーズ）
+#### CI/CD（構築済み）
 
-GitHub Actionsで以下を構築:
+GitHub Actionsで以下を構築済み (cmd_200):
 
 ```
 .github/workflows/test.yml
 ├── BE: PostgreSQL service + bundle exec rspec
-├── FE: npx vitest run
-└── (将来) E2E: Playwright
+├── FE: yarn vitest run
+└── E2E: Playwright
 ```
 
 ---
 
-## 4. 実装ロードマップ
+## 4. 実装ロードマップ（実績）
 
-### Phase 1: テスト基盤構築 + 最優先テスト
+### Phase 1: テスト基盤構築 + 最優先テスト ✅ 完了
 
 **目標**: RSpec/FactoryBot/Vitest のセットアップ + 最優先テスト対象のテスト作成
 
-| ステップ | 内容 | 見積り |
-|---------|------|--------|
-| 1-1 | Gemfileにテスト関連gem追加、`rails generate rspec:install` | 小 |
-| 1-2 | FactoryBotで基本ファクトリ作成（User, Team, Player, TeamMembership, Cost, CostPlayer） | 中 |
-| 1-3 | 認証用shared_context作成 | 小 |
-| 1-4 | Team モデルテスト（コスト上限 + 外の世界枠） | 中 |
-| 1-5 | TeamRostersController リクエストテスト（昇降格 + cooldown + 再調整チェック） | 大 |
-| 1-6 | 認証・認可チェーンのリクエストテスト | 中 |
+| ステップ | 内容 | 状況 |
+|---------|------|------|
+| 1-1 | Gemfileにテスト関連gem追加、`rails generate rspec:install` | ✅ 完了 |
+| 1-2 | FactoryBotで基本ファクトリ作成（User, Team, Player, TeamMembership, Cost, CostPlayer） | ✅ 完了 |
+| 1-3 | 認証用shared_context作成 | ✅ 完了 |
+| 1-4 | Team モデルテスト（コスト上限 + 外の世界枠） | ✅ 完了 |
+| 1-5 | TeamRostersController リクエストテスト（昇降格 + cooldown + 再調整チェック） | ✅ 完了 |
+| 1-6 | 認証・認可チェーンのリクエストテスト | ✅ 完了 |
 
-### Phase 2: 高優先テスト拡充
+### Phase 2: 高優先テスト拡充 ✅ 完了
 
-| ステップ | 内容 | 見積り |
-|---------|------|--------|
-| 2-1 | PlayerAbsence モデルテスト（effective_end_date） | 中 |
-| 2-2 | Player モデルテスト（バリデーション網羅） | 中 |
-| 2-3 | Commissioner系コントローラー認可テスト | 中 |
-| 2-4 | FE: Vitest + @vue/test-utils セットアップ | 小 |
-| 2-5 | FE: useAuth / useSnackbar composableテスト | 小 |
-| 2-6 | FE: TopMenu.vue テスト（回帰バグ防止） | 中 |
+| ステップ | 内容 | 状況 |
+|---------|------|------|
+| 2-1 | PlayerAbsence モデルテスト（effective_end_date） | ✅ 完了 |
+| 2-2 | Player モデルテスト（バリデーション網羅） | ✅ 完了 |
+| 2-3 | Commissioner系コントローラー認可テスト | ✅ 完了 |
+| 2-4 | FE: Vitest + @vue/test-utils セットアップ | ✅ 完了 |
+| 2-5 | FE: useAuth / useSnackbar composableテスト | ✅ 完了 |
+| 2-6 | FE: TopMenu.vue テスト（回帰バグ防止） | ✅ 完了 |
 
-### Phase 3: 中優先テスト + E2E基盤
+### Phase 3: 中優先テスト + E2E基盤 ✅ 完了
 
-| ステップ | 内容 | 見積り |
-|---------|------|--------|
-| 3-1 | TeamMembership, SeasonRoster, User モデルテスト | 中 |
-| 3-2 | master_data.rake テスト | 小 |
-| 3-3 | 残りのコントローラーリクエストテスト | 大 |
-| 3-4 | FE: ActiveRoster.vue, CostAssignment.vue テスト | 中 |
-| 3-5 | Playwright導入 + ログイン→ロスター操作のE2Eテスト | 大 |
-| 3-6 | CI/CD（GitHub Actions）構築 | 中 |
+| ステップ | 内容 | 状況 |
+|---------|------|------|
+| 3-1 | TeamMembership, SeasonRoster, User モデルテスト | ✅ 完了 |
+| 3-2 | master_data.rake テスト | ✅ 完了 |
+| 3-3 | 残りのコントローラーリクエストテスト | ✅ 完了 |
+| 3-4 | FE: ActiveRoster.vue, CostAssignment.vue テスト | ✅ 完了 |
+| 3-5 | Playwright導入 + ログイン→ロスター操作のE2Eテスト | ✅ 完了 (6件) |
+| 3-6 | CI/CD（GitHub Actions）構築 | ✅ 完了 (cmd_200) |
+
+**実績サマリー (2026-02-17時点):** RSpec 388件 / Vitest 72件 / Playwright 6件 — 全PASS SKIP=0
 
 ---
 

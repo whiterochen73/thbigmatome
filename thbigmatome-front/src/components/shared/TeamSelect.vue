@@ -8,24 +8,22 @@
 </template>
 
 <script setup lang="ts">
-import { computed, defineProps, defineEmits } from 'vue';
-import type { Team } from '@/types/team';
+import { computed } from 'vue'
+import type { Team } from '@/types/team'
 
 const selectedTeam = defineModel()
 const props = defineProps({
   teams: {
     type: Array as () => Team[],
-    required: true
+    required: true,
   },
   displayNameType: {
     type: String,
-    default: 'name'
-  }
-});
-
-const emit = defineEmits(['update:modelValue']);
+    default: 'name',
+  },
+})
 
 const displayNameType = computed(() => {
-  return props.displayNameType === 'short_name' ? 'short_name' : 'name';
-});
+  return props.displayNameType === 'short_name' ? 'short_name' : 'name'
+})
 </script>

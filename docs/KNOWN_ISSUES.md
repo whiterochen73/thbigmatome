@@ -1,6 +1,6 @@
 # 既知の問題一覧
 
-最終更新: 2026-02-15
+最終更新: 2026-02-18
 
 ## バグ（コード不具合）
 
@@ -57,7 +57,7 @@
 | UNIMPL-012 | src/components/AbsenceInfo.vue | medium | ✅ 実装済み (cmd_164) games 単位の離脱期間フィルタリング未実装: `duration_unit === 'games'` の場合フィルタリングされない → シーズンスケジュールと照合して試合数をカウントする必要あり | 11_player_absence.md |
 | UNIMPL-013 | src/components/PlayerAbsenceFormDialog.vue | low | ✅ 実装済み (cmd_164) 保存失敗時のユーザーへの通知が未実装 (TODOコメントあり) → スナックバー等での統一的なエラー表示が望ましい | 11_player_absence.md |
 | UNIMPL-014 | roster / player_absence連携 | low | ✅ 実装済み (cmd_164) 離脱中の選手がロースターに登録できないようにする制約未実装、離脱期間終了時の自動復帰通知未実装 | 11_player_absence.md |
-| UNIMPL-015 | managers_controller.rb | low | 監督一覧のページネーション未実装 → 監督数が数百件以上になった場合、レスポンス時間が長くなりブラウザでのレンダリング負荷が増加 | 02_manager_management.md | ✅ 実装済み (cmd_163) |
+| UNIMPL-015 | managers_controller.rb | low | ✅ 実装済み (cmd_163) 監督一覧のページネーション未実装 → 監督数が数百件以上になった場合、レスポンス時間が長くなりブラウザでのレンダリング負荷が増加 | 02_manager_management.md |
 | UNIMPL-016 | LeaguesView.vue (コミッショナー) | low | ✅ 実装済み (cmd_163) チーム管理ダイアログを開くボタンが未配置、シーズン管理・対戦管理・選手プール管理・チームスタッフ管理・選手離脱管理の画面が未確認 (APIのみ実装済みと推定) | 12_commissioner.md |
 
 ## バリデーション不足・制約
@@ -97,6 +97,6 @@
 
 ---
 
-**集約日**: 2026-02-14 (初版), 2026-02-15 (cmd_132修正反映)
+**集約日**: 2026-02-14 (初版), 2026-02-15 (cmd_132修正反映), 2026-02-18 (UNIMPL-015フォーマット修正)
 **集約元**: 足軽4-6号報告YAML + 仕様書01-13 (全13ファイル)
 **作成者**: 足軽2号 (初版) / 足軽5号 (cmd_132修正反映)

@@ -61,8 +61,12 @@ Rails.application.routes.draw do
       # コストアサインメント
       resources :cost_assignments, only: [ :index, :create ]
 
-      # ユーザー登録
-      post "users", to: "users#create"
+      # ユーザー管理（commissioner専用）
+      resources :users, only: [ :index, :create ] do
+        member do
+          patch :reset_password
+        end
+      end
 
       namespace :commissioner do
         resources :leagues do

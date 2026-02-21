@@ -254,12 +254,11 @@ describe('DefaultLayout.vue', () => {
       const wrapper = mountDefaultLayout()
       await flushPromises()
 
-      expect(wrapper.text()).toContain('トップページ')
-      expect(wrapper.text()).toContain('監督一覧')
-      expect(wrapper.text()).toContain('チーム一覧')
-      expect(wrapper.text()).toContain('選手一覧')
-      expect(wrapper.text()).toContain('コスト登録')
-      expect(wrapper.text()).toContain('各種設定')
+      expect(wrapper.text()).toContain('ホーム')
+      expect(wrapper.text()).toContain('チーム編成')
+      expect(wrapper.text()).toContain('選手マスタ')
+      expect(wrapper.text()).toContain('コスト管理')
+      expect(wrapper.text()).toContain('設定')
     })
 
     it('does not display commissioner menu for regular users', async () => {

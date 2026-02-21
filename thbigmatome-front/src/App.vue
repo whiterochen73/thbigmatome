@@ -23,6 +23,8 @@ onMounted(async () => {
 </script>
 
 <style>
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&family=Shippori+Mincho:wght@400;700&display=swap');
+
 /* グローバルスタイル */
 html {
   overflow-y: auto;
@@ -30,8 +32,19 @@ html {
 
 body {
   margin: 0;
-  font-family: 'Roboto', sans-serif;
+  font-family: 'Noto Sans JP', sans-serif;
 }
 
-/* Vuetifyのデフォルトスタイルを使用 */
+.v-application {
+  font-family: 'Noto Sans JP', sans-serif !important;
+}
+
+h1,
+h2,
+h3,
+.text-h4,
+.text-h5,
+.text-h6 {
+  font-family: 'Shippori Mincho', serif;
+}
 </style>

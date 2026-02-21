@@ -29,6 +29,8 @@ Rails.application.routes.draw do
       end
 
       resources :game, only: [ :show, :update ]
+      # 試合記録（v1 API）
+      resources :games, only: [ :index, :show, :create ]
 
       # 選手一覧
       resources :players, only: [ :index, :show, :create, :update, :destroy ]

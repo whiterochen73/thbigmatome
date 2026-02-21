@@ -83,6 +83,24 @@ const menuItems = computed(() => {
       value: 'leagues',
       to: '/commissioner/leagues',
     })
+    items.push({
+      title: '球場管理',
+      icon: 'mdi-stadium',
+      value: 'stadiums',
+      to: '/commissioner/stadiums',
+    })
+    items.push({
+      title: 'カードセット',
+      icon: 'mdi-cards',
+      value: 'cardSets',
+      to: '/commissioner/card_sets',
+    })
+    items.push({
+      title: '大会管理',
+      icon: 'mdi-trophy-outline',
+      value: 'competitions',
+      to: '/commissioner/competitions',
+    })
   }
 
   return items

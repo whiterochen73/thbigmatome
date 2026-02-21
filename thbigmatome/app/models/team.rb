@@ -9,6 +9,13 @@ class Team < ApplicationRecord
   has_many :league_memberships, dependent: :destroy
   has_many :leagues, through: :league_memberships
 
+  has_many :competition_entries, dependent: :destroy
+  has_many :competitions, through: :competition_entries
+  has_many :home_games, class_name: "Game", foreign_key: :home_team_id, dependent: :destroy, inverse_of: :home_team
+  has_many :visitor_games, class_name: "Game", foreign_key: :visitor_team_id, dependent: :destroy, inverse_of: :visitor_team
+  has_many :pitcher_game_states, dependent: :destroy
+  has_many :imported_stats, dependent: :destroy
+
   has_many :team_managers, dependent: :destroy
   has_one :director_team_manager, -> { where(role: :director) }, class_name: "TeamManager", dependent: :destroy
   has_one :director, through: :director_team_manager, source: :manager

@@ -23,6 +23,12 @@ class Player < ApplicationRecord
   has_many :partner_pitchers_players, class_name: "CatchersPlayer", foreign_key: "catcher_id"
   has_many :partner_pitchers, through: :partner_pitchers_players, source: :player, dependent: :destroy
 
+  has_many :player_cards, dependent: :destroy
+  has_many :at_bats_as_batter, class_name: "AtBat", foreign_key: :batter_id, dependent: :destroy, inverse_of: :batter
+  has_many :at_bats_as_pitcher, class_name: "AtBat", foreign_key: :pitcher_id, dependent: :destroy, inverse_of: :pitcher
+  has_many :pitcher_game_states, foreign_key: :pitcher_id, dependent: :destroy, inverse_of: :pitcher
+  has_many :imported_stats, dependent: :destroy
+
   belongs_to :catcher_pitching_style, class_name: "PitchingStyle", foreign_key: :catcher_pitching_style_id, optional: true
 
   # ポジションをenumで定義

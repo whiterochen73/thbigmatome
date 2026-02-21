@@ -1,6 +1,6 @@
 # 監督管理機能仕様書
 
-最終更新: 2026-02-14
+最終更新: 2026-02-21
 
 ## 目次
 
@@ -21,18 +21,16 @@
 
 ### 機能概要
 
-監督管理機能は、野球チームの監督（Manager）情報を管理し、チームとの関係を制御する機能群を提供する。本システムでは、監督とチームの関係を以下の2つの仕組みで管理する：
+監督管理機能は、野球チームの監督（Manager）情報を管理し、チームとの関係を制御する機能群を提供する。本システムでは、監督とチームの関係を `team_managers` 中間テーブルで管理する：
 
-1. **主監督（Primary Manager）**: `teams.manager_id` 外部キー（NOT NULL）により、1チームにつき必ず1人の主監督を設定
-2. **追加スタッフ（Team Managers）**: `team_managers` 中間テーブルにより、監督（director）またはコーチ（coach）として複数のスタッフをチームに割り当て可能
+- **Team Managers**: `team_managers` 中間テーブルにより、監督（director）またはコーチ（coach）として複数のスタッフをチームに割り当て可能
 
-この二重構造により、チームには常に主監督が存在し、かつコーチ陣を柔軟に追加できる設計となっている。
+**注意**: 以前の設計では `teams.manager_id` 外部キーによる主監督設定が存在したが、現在の `teams` テーブルには `manager_id` カラムは存在しない。
 
 ### 主要機能
 
 - 監督の作成・編集・削除（CRUD操作）
-- 監督一覧表示・検索
-- チームへの監督割り当て（主監督の変更は TeamsController で実施）
+- 監督一覧表示（サーバーサイドページネーション対応）
 - チームとの関係管理（`team_managers` を通じた role 付き割り当て）
 - リーグ内兼任制約（同一リーグ内の複数チームへの兼任を禁止）
 
@@ -165,16 +163,22 @@ const loading = ref(true);
   :headers="headers"
   :items="managers"
   :loading="loading"
+  :items-length="totalItems"
+  :items-per-page="itemsPerPage"
   class="elevation-1"
   item-value="id"
   show-expand
   :no-data-text="t('managerList.noData')"
+  @update:options="onOptionsUpdate"
 >
 ```
 
 - `show-expand`: 行展開機能を有効化（チーム一覧を展開表示するため）
 - `item-value="id"`: 各行の一意キーとして `id` を使用
 - `no-data-text`: データが0件の場合のメッセージ（国際化対応）
+- `items-length`: サーバーサイドページネーションの総件数
+- `items-per-page`: 1ページあたりの表示件数（デフォルト25）
+- `@update:options`: ページ変更時にサーバーへリクエストを送信
 
 #### アクションボタン
 
@@ -266,7 +270,7 @@ const loading = ref(true);
 
 ##### データ取得
 
-展開行のデータ（`item.teams`）は、`GET /api/v1/managers` の `include: :teams` オプションにより、監督一覧取得時に一緒に取得される。フロントエンド側で追加のAPI呼び出しは不要。
+展開行のデータ（`item.teams`）は、`GET /api/v1/managers` のレスポンスに含まれる `teams` 配列により、監督一覧取得時に一緒に取得される。フロントエンド側で追加のAPI呼び出しは不要。
 
 ---
 
@@ -450,9 +454,9 @@ watch(() => props.isVisible, (newVal) => {
 ### 共通事項
 
 - **ベースURL**: `/api/v1`
-- **コントローラー**: `Api::V1::ManagersController < ApplicationController`
+- **コントローラー**: `Api::V1::ManagersController < Api::V1::BaseController`
 - **ファイルパス**: `app/controllers/api/v1/managers_controller.rb`
-- **認証**: `before_action :authenticate_user!`（ApplicationController で設定。全エンドポイントで認証必須）
+- **認証**: `before_action :authenticate_user!`（`Api::V1::BaseController` で設定。全エンドポイントで認証必須）
 - **CSRF保護**: 有効（ApplicationController で設定済み）
 - **Content-Type**: `application/json`（リクエスト・レスポンス共通）
 
@@ -460,17 +464,21 @@ watch(() => props.isVisible, (newVal) => {
 
 ### GET /api/v1/managers
 
-監督一覧を取得する。各監督に紐づくチーム情報（`teams.manager_id` が該当監督のレコード）も含めて返す。
+監督一覧を取得する。サーバーサイドページネーション対応。各監督に紐づくチーム情報も含めて返す。
 
 #### リクエスト
 
 ```http
-GET /api/v1/managers HTTP/1.1
+GET /api/v1/managers?page=1&per_page=25 HTTP/1.1
 Host: localhost:3000
-Authorization: Bearer {access_token}
 ```
 
-**クエリパラメータ**: なし
+**クエリパラメータ**:
+
+| パラメータ | 型 | デフォルト | 説明 |
+|-----------|-----|----------|------|
+| `page` | integer | 1 | ページ番号（1始まり、1未満は1に補正） |
+| `per_page` | integer | 25 | 1ページあたりの件数（1未満または100超は25に補正） |
 
 **リクエストボディ**: なし
 
@@ -479,60 +487,91 @@ Authorization: Bearer {access_token}
 ```ruby
 # GET /api/v1/managers
 def index
-  @managers = Manager.all.includes(:teams).order(:id)
-  render json: @managers, include: :teams
+  page = (params[:page] || 1).to_i
+  per_page = (params[:per_page] || 25).to_i
+
+  # パラメータのバリデーション
+  page = 1 if page < 1
+  per_page = 25 if per_page < 1 || per_page > 100
+
+  offset = (page - 1) * per_page
+
+  @managers = Manager.all.includes(teams: :season).order(:id).limit(per_page).offset(offset)
+  total_count = Manager.count
+  total_pages = (total_count.to_f / per_page).ceil
+
+  render json: {
+    data: @managers.as_json(include: { teams: { methods: [ :has_season ] } }),
+    meta: {
+      total_count: total_count,
+      per_page: per_page,
+      current_page: page,
+      total_pages: total_pages
+    }
+  }
 end
 ```
 
 #### 処理フロー
 
-1. `Manager.all` で全監督を取得
-2. `.includes(:teams)` でN+1問題を回避（eager load）
-   - `managers.teams` は `has_many :teams, through: :team_managers` で定義された関連
-   - SQLレベルでは `team_managers` を JOIN して該当チームを取得
-3. `.order(:id)` でID順にソート
-4. `render json:` により ManagerSerializer でシリアライズ
-5. `include: :teams` により、各監督の `teams` 配列も JSON に含める（TeamSerializer でシリアライズ）
+1. `page` と `per_page` パラメータを取得・バリデーション
+2. `Manager.all.includes(teams: :season)` でN+1問題を回避（eager load、チームのシーズン情報も含む）
+3. `.order(:id).limit(per_page).offset(offset)` でID順にソート・ページネーション
+4. `Manager.count` で全件数を取得
+5. `as_json(include: { teams: { methods: [:has_season] } })` でチーム情報（`has_season` メソッドの結果を含む）をJSONに含める
+6. `data` と `meta`（ページネーション情報）を含むレスポンスを返却
 
 #### 成功レスポンス（200 OK）
 
 ```json
-[
-  {
-    "id": 1,
-    "name": "霧雨魔理沙",
-    "short_name": "魔理沙",
-    "irc_name": "marisa",
-    "user_id": "user_001",
-    "teams": [
-      {
-        "id": 10,
-        "name": "博麗神社",
-        "short_name": "神社",
-        "is_active": true,
-        "manager_id": 1
-      },
-      {
-        "id": 11,
-        "name": "紅魔館",
-        "short_name": "紅魔",
-        "is_active": false,
-        "manager_id": 1
-      }
-    ]
-  },
-  {
-    "id": 2,
-    "name": "十六夜咲夜",
-    "short_name": "咲夜",
-    "irc_name": "sakuya",
-    "user_id": null,
-    "teams": []
+{
+  "data": [
+    {
+      "id": 1,
+      "name": "霧雨魔理沙",
+      "short_name": "魔理沙",
+      "irc_name": "marisa",
+      "user_id": "user_001",
+      "role": "director",
+      "teams": [
+        {
+          "id": 10,
+          "name": "博麗神社",
+          "short_name": "神社",
+          "is_active": true,
+          "has_season": true
+        },
+        {
+          "id": 11,
+          "name": "紅魔館",
+          "short_name": "紅魔",
+          "is_active": false,
+          "has_season": false
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "name": "十六夜咲夜",
+      "short_name": "咲夜",
+      "irc_name": "sakuya",
+      "user_id": null,
+      "role": "director",
+      "teams": []
+    }
+  ],
+  "meta": {
+    "total_count": 50,
+    "per_page": 25,
+    "current_page": 1,
+    "total_pages": 2
   }
-]
+}
 ```
 
 #### レスポンスフィールド詳細
+
+**data 配列の各要素:**
 
 | フィールド | 型 | 説明 |
 |-----------|-----|------|
@@ -541,12 +580,22 @@ end
 | `short_name` | string \| null | 監督の略称（nullable） |
 | `irc_name` | string \| null | IRC上での表示名（nullable） |
 | `user_id` | string \| null | 紐づくユーザーID（nullable） |
-| `teams` | array | 紐づくチーム一覧（TeamSerializer でシリアライズ） |
+| `role` | string | 役割（`as_json` により文字列で出力） |
+| `teams` | array | 紐づくチーム一覧 |
+| `teams[].has_season` | boolean | チームにシーズンが存在するかどうか |
+
+**meta オブジェクト:**
+
+| フィールド | 型 | 説明 |
+|-----------|-----|------|
+| `total_count` | number | 監督の総件数 |
+| `per_page` | number | 1ページあたりの件数 |
+| `current_page` | number | 現在のページ番号 |
+| `total_pages` | number | 総ページ数 |
 
 **注意**:
-- `teams` は ManagerSerializer で `has_many :teams` として定義されており、`include: :teams` オプション時のみレスポンスに含まれる
+- レスポンス形式は `as_json` による直接シリアライズ（ManagerSerializer は使用しない）
 - 監督にチームが紐づいていない場合、`teams` は空配列 `[]`
-- `role` カラムはシリアライザーに含まれていない（現在未使用）
 
 ---
 
@@ -602,8 +651,7 @@ end
       "id": 10,
       "name": "博麗神社",
       "short_name": "神社",
-      "is_active": true,
-      "manager_id": 1
+      "is_active": true
     }
   ]
 }
@@ -845,7 +893,6 @@ has_many :teams, through: :team_managers
 ```
 
 - `dependent: :destroy` により、監督削除時に紐づく `TeamManager` レコードも自動的に削除される
-- ただし、`teams` テーブルの `manager_id` 外部キー（NOT NULL）には注意が必要（後述の「既知の制約」参照）
 
 ---
 
@@ -861,20 +908,16 @@ has_many :teams, through: :team_managers
 | name           |    |  | team_id (FK)     |--+    | name           |
 | short_name     |    |  | manager_id (FK)  |       | short_name     |
 | irc_name       |    +--| role (enum)      |       | is_active      |
-| user_id        |       | created_at       |       | manager_id (FK)|---+
-| role (enum)    |       | updated_at       |       | created_at     |   |
-| created_at     |       +------------------+       | updated_at     |   |
-| updated_at     |                                  +----------------+   |
-+----------------+                                           ^           |
-                                                             |           |
-                                                             +-----------+
+| user_id        |       | created_at       |       | created_at     |
+| role (enum)    |       | updated_at       |       | updated_at     |
+| created_at     |       +------------------+       +----------------+
+| updated_at     |
++----------------+
 ```
 
 **設計の特徴**:
-1. `teams.manager_id` (NOT NULL FK): チームには必ず主監督が1人設定される（直接参照）
-2. `team_managers` 中間テーブル: 監督-チーム間の多対多関係を管理（role 付き）
-
-この二重構造により、主監督とコーチ陣を明確に区別しつつ、柔軟な割り当てが可能。
+- `team_managers` 中間テーブル: 監督-チーム間の多対多関係を管理（role 付き）
+- `teams` テーブルには `manager_id` カラムは存在しない。監督とチームの関係は全て `team_managers` 中間テーブルで管理される
 
 ---
 
@@ -979,7 +1022,6 @@ end
 
 **削除時の挙動**:
 - `Manager.destroy` → 紐づく `TeamManager` レコードも自動削除（`dependent: :destroy`）
-- ただし、`teams.manager_id` が該当監督を参照している場合は注意が必要（後述）
 
 #### enum（列挙型）
 
@@ -1156,22 +1198,9 @@ const response = await axios.get<Manager[]>('/managers');
 
 ### 監督とチームの関係管理
 
-#### 二重構造の設計
+#### 中間テーブルによる関係管理
 
-本システムでは、監督とチームの関係を以下の2つの仕組みで管理する：
-
-##### 1. 主監督（Primary Manager）
-
-```ruby
-# teams テーブル
-t.bigint "manager_id", null: false  # 外部キー（NOT NULL）
-```
-
-- チームには必ず1人の主監督が設定される（`manager_id` は NOT NULL 制約）
-- `Team#manager` で主監督を取得
-- 主監督の変更は `TeamsController` で実施（ManagersController では直接変更しない）
-
-##### 2. 追加スタッフ（Team Managers）
+本システムでは、監督とチームの関係を `team_managers` 中間テーブルで管理する：
 
 ```ruby
 # team_managers テーブル（中間テーブル）
@@ -1203,18 +1232,8 @@ team = Team.find(10)
 team.managers  # => [Manager, Manager, ...]
 ```
 
-- `has_many :managers, through: :team_managers` により取得（Team モデルに定義されていると仮定）
+- `has_many :managers, through: :team_managers` により取得
 - director と coach の両方を含む
-
-##### チームの主監督
-
-```ruby
-team = Team.find(10)
-team.manager  # => Manager (teams.manager_id で参照)
-```
-
-- `belongs_to :manager` により取得（Team モデルに定義されていると仮定）
-- `teams.manager_id` 外部キーで直接参照
 
 ---
 
@@ -1354,40 +1373,7 @@ has_many :team_managers, dependent: :destroy
   DELETE FROM managers WHERE id = 1;
   ```
 
-##### 2. teams.manager_id の外部キー制約
-
-```ruby
-# teams テーブル
-t.bigint "manager_id", null: false  # NOT NULL 制約
-```
-
-**問題**: 監督に紐づくチームが存在し、そのチームの `manager_id` が削除対象の監督を指している場合、削除時にエラーが発生する可能性がある。
-
-**現在の設計では**:
-- `teams.manager_id` は削除時に自動で更新されない（`dependent: :nullify` 等の設定なし）
-- 監督削除前に、該当監督の `teams` レコードの `manager_id` を別の監督に変更する必要がある
-- または、`teams.manager_id` を nullable に変更する、もしくは `dependent: :nullify` の検討が必要
-
-#### 削除前の事前チェック（推奨）
-
-```ruby
-# 監督削除前に、主監督として設定されているチームがないか確認
-def destroyable?
-  Team.where(manager_id: id).none?
-end
-
-# コントローラーでの使用例
-def destroy
-  unless @manager.destroyable?
-    render json: { error: 'この監督は主監督として設定されているため削除できません' }, status: :unprocessable_entity
-    return
-  end
-  @manager.destroy
-  head :no_content
-end
-```
-
-**注意**: 現在の実装では上記チェックは実装されていない（後述の「既知の制約」参照）。
+**注意**: `teams` テーブルには `manager_id` カラムが存在しないため、`TeamManager` レコードの自動削除のみで監督削除が完了する。
 
 ---
 
@@ -1414,15 +1400,16 @@ end
 #### インポート
 
 ```typescript
-import { ref, onMounted, computed } from 'vue';
-import { useI18n } from 'vue-i18n';
-import axios from '@/plugins/axios';
-import { useSnackbar } from '@/composables/useSnackbar';
-import ConfirmDialog from '@/components/ConfirmDialog.vue';
-import { type Manager } from '@/types/manager';
-import { type Team } from '@/types/team';
-import ManagerDialog from '@/components/ManagerDialog.vue';
-import TeamDialog from '@/components/TeamDialog.vue';
+import { ref, onMounted, computed } from 'vue'
+import { useI18n } from 'vue-i18n'
+import axios from '@/plugins/axios'
+import { useSnackbar } from '@/composables/useSnackbar'
+import ConfirmDialog from '@/components/ConfirmDialog.vue'
+import { type Manager } from '@/types/manager'
+import { type Team } from '@/types/team'
+import { type PaginatedResponse } from '@/types/pagination'
+import ManagerDialog from '@/components/ManagerDialog.vue'
+import TeamDialog from '@/components/TeamDialog.vue'
 ```
 
 #### リアクティブデータ
@@ -1431,6 +1418,9 @@ import TeamDialog from '@/components/TeamDialog.vue';
 |-----|-----|-------|------|
 | `managers` | `ref<Manager[]>` | `[]` | 監督一覧データ |
 | `loading` | `ref<boolean>` | `true` | ローディング状態 |
+| `totalItems` | `ref<number>` | `0` | 監督の総件数（ページネーション用） |
+| `itemsPerPage` | `ref<number>` | `25` | 1ページあたりの件数 |
+| `currentPage` | `ref<number>` | `1` | 現在のページ番号 |
 | `dialogVisible` | `ref<boolean>` | `false` | ManagerDialog の表示状態 |
 | `editingManager` | `ref<Manager \| null>` | `null` | 編集中の監督データ（新規作成時は `null`） |
 | `teamDialogVisible` | `ref<boolean>` | `false` | TeamDialog の表示状態 |
@@ -1457,33 +1447,53 @@ const headers = computed(() => [
 
 #### メソッド
 
-##### fetchManagers()
+##### fetchManagers(page, perPage)
 
 ```typescript
-const fetchManagers = async () => {
-  loading.value = true;
+const fetchManagers = async (
+  page: number = currentPage.value,
+  perPage: number = itemsPerPage.value,
+) => {
+  loading.value = true
   try {
-    const response = await axios.get<Manager[]>('/managers');
-    managers.value = response.data;
+    const response = await axios.get<PaginatedResponse<Manager>>('/managers', {
+      params: { page, per_page: perPage },
+    })
+    managers.value = response.data.data
+    totalItems.value = response.data.meta.total_count
+    currentPage.value = response.data.meta.current_page
+    itemsPerPage.value = response.data.meta.per_page
   } catch (error) {
-    console.error('Error fetching managers:', error);
-    showSnackbar(t('managerList.fetchFailed'), 'error');
+    console.error('Error fetching managers:', error)
+    showSnackbar(t('managerList.fetchFailed'), 'error')
   } finally {
-    loading.value = false;
+    loading.value = false
   }
-};
+}
 ```
 
 **処理フロー**:
 1. `loading.value = true` でローディング開始
-2. `GET /api/v1/managers` でデータ取得（axios のベースURLは `/api/v1`）
-3. 成功: `response.data` を `managers.value` に格納
+2. `GET /api/v1/managers?page={page}&per_page={perPage}` でデータ取得
+3. 成功: `response.data.data` を `managers.value` に格納、メタ情報からページネーション状態を更新
 4. 失敗: コンソールエラー出力 + スナックバーでエラーメッセージ表示
 5. 最後に `loading.value = false` でローディング終了
 
 **呼び出しタイミング**:
-- `onMounted()` 時（画面初期表示）
+- `onMounted()` 時（画面初期表示、デフォルトのページ・件数で取得）
 - 監督追加/編集/削除後（一覧を再取得して最新状態を反映）
+- `v-data-table` のページネーション操作時（`onOptionsUpdate` 経由）
+
+##### onOptionsUpdate(options)
+
+```typescript
+const onOptionsUpdate = (options: { page: number; itemsPerPage: number }) => {
+  fetchManagers(options.page, options.itemsPerPage)
+}
+```
+
+- `v-data-table` の `@update:options` イベントハンドラー
+- ページ変更やページサイズ変更時に、新しいパラメータで `fetchManagers` を呼び出す
 
 ##### deleteManager(id: number)
 
@@ -1721,14 +1731,31 @@ export interface Manager {
 | `short_name` | `string \| null` | - | 監督の略称（optional） |
 | `irc_name` | `string \| null` | - | IRC上での表示名（optional） |
 | `user_id` | `string \| null` | - | 紐づくユーザーID（optional） |
-| `teams` | `Team[]` | - | 紐づくチーム一覧（optional。API レスポンスの `include: :teams` により含まれる） |
+| `teams` | `Team[]` | - | 紐づくチーム一覧（optional。APIレスポンスに含まれる） |
 | `role` | `'director' \| 'coach'` | ○ | 役割（enum） |
+
+#### PaginatedResponse 型（src/types/pagination.ts）
+
+```typescript
+export interface PaginationMeta {
+  total_count: number
+  per_page: number
+  current_page: number
+  total_pages: number
+}
+
+export interface PaginatedResponse<T> {
+  data: T[]
+  meta: PaginationMeta
+}
+```
+
+監督一覧APIのレスポンスは `PaginatedResponse<Manager>` 型で受け取る。
 
 #### 注意事項
 
-- `role` フィールドは型定義に含まれているが、現在のバックエンド ManagerSerializer では `role` を出力していない
-- フロントエンドの ManagerList.vue、ManagerDialog.vue でも `role` を表示・編集していない
-- 将来的な拡張を想定した型定義と思われる
+- `role` フィールドは型定義に含まれているが、フロントエンドの ManagerList.vue、ManagerDialog.vue では `role` を表示・編集していない
+- `as_json` によるレスポンスでは `role` が文字列として含まれる
 
 ---
 
@@ -1787,62 +1814,9 @@ resources :teams, only: [:index, :create]
 
 ## 既知の制約・未実装機能
 
-### 1. teams.manager_id の外部キー制約問題
+### ~~1. teams.manager_id の外部キー制約問題~~ （解決済み）
 
-#### 問題
-
-```ruby
-# teams テーブル
-t.bigint "manager_id", null: false  # NOT NULL 制約
-```
-
-- チームには必ず主監督が設定される（`manager_id` は NOT NULL）
-- 監督削除時、`TeamManager` レコードは自動削除される（`dependent: :destroy`）が、`teams.manager_id` は自動で更新されない
-- 削除対象の監督が主監督として設定されているチームが存在する場合、削除時にエラーが発生する可能性がある
-
-#### 影響範囲
-
-- ManagersController の `destroy` アクション
-- フロントエンドの監督削除機能
-
-#### 現状の回避策
-
-削除前に手動でチームの `manager_id` を別の監督に変更する必要がある。
-
-#### 推奨される改善案
-
-##### 案1: 削除前チェックを追加
-
-```ruby
-# ManagersController
-def destroy
-  if Team.where(manager_id: @manager.id).exists?
-    render json: { error: 'この監督は主監督として設定されているため削除できません' }, status: :unprocessable_entity
-    return
-  end
-  @manager.destroy
-  head :no_content
-end
-```
-
-##### 案2: teams.manager_id を nullable に変更
-
-```ruby
-# マイグレーション
-change_column_null :teams, :manager_id, true
-```
-
-- 主監督が未設定のチームを許容する設計に変更
-
-##### 案3: dependent: :nullify を使用
-
-```ruby
-# Manager モデル
-has_many :primary_teams, class_name: 'Team', foreign_key: 'manager_id', dependent: :nullify
-```
-
-- 監督削除時、該当チームの `manager_id` を自動で `null` に設定
-- ただし、`manager_id` が NOT NULL の場合はエラーが発生するため、スキーマ変更が必要
+`teams` テーブルから `manager_id` カラムが削除されたため、この問題は解消された。監督とチームの関係は全て `team_managers` 中間テーブルで管理される。
 
 ---
 
@@ -2054,67 +2028,9 @@ errors.add(:manager_id, :cannot_be_assigned_to_multiple_teams)
 
 ---
 
-### 7. 監督一覧のページネーション未実装
+### ~~7. 監督一覧のページネーション未実装~~ （実装済み）
 
-#### 問題
-
-```ruby
-# ManagersController
-def index
-  @managers = Manager.all.includes(:teams).order(:id)
-  render json: @managers, include: :teams
-end
-```
-
-- 監督数が増えると、全件取得によるパフォーマンス低下の可能性
-- フロントエンドでページネーション機能がない
-
-#### 影響範囲
-
-- 監督数が数百件以上になった場合、レスポンス時間が長くなる
-- ブラウザでのレンダリング負荷が増加
-
-#### 推奨される改善案
-
-##### バックエンド: kaminari gem を使用
-
-```ruby
-# Gemfile
-gem 'kaminari'
-
-# ManagersController
-def index
-  page = params[:page] || 1
-  per_page = params[:per_page] || 20
-  @managers = Manager.all.includes(:teams).order(:id).page(page).per(per_page)
-  render json: @managers, include: :teams, meta: pagination_meta(@managers)
-end
-
-private
-
-def pagination_meta(object)
-  {
-    current_page: object.current_page,
-    next_page: object.next_page,
-    prev_page: object.prev_page,
-    total_pages: object.total_pages,
-    total_count: object.total_count
-  }
-end
-```
-
-##### フロントエンド: v-data-table の server-side pagination
-
-```vue
-<v-data-table
-  :headers="headers"
-  :items="managers"
-  :loading="loading"
-  :items-per-page="20"
-  :server-items-length="totalCount"
-  @update:options="fetchManagers"
->
-```
+サーバーサイドページネーションが実装された。バックエンドは `limit`/`offset` ベースのページネーション（gem不使用）、フロントエンドは `v-data-table` のサーバーサイドページネーション機能を使用。詳細は「GET /api/v1/managers」セクションおよび「fetchManagers」メソッドを参照。
 
 ---
 
@@ -2181,6 +2097,7 @@ curl -X DELETE http://localhost:3000/api/v1/managers/1 \
 | 日付 | 版 | 内容 | 作成者 |
 |------|-----|------|--------|
 | 2026-02-14 | 1.0 | 初版作成。ソースコードに基づき全面書き直し | 足軽2号 |
+| 2026-02-21 | 1.1 | ページネーション対応、BaseController継承、teams.manager_id削除を反映 | - |
 
 ---
 

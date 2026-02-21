@@ -122,9 +122,8 @@
 
 | メソッド | パス | 説明 |
 |---------|------|------|
-| GET/POST | `/api/v1/managers` | 一覧取得 / 作成 |
+| GET/POST | `/api/v1/managers` | 一覧取得（ページネーション対応） / 作成 |
 | GET/PATCH/DELETE | `/api/v1/managers/:id` | 詳細 / 更新 / 削除 |
-| GET/POST | `/api/v1/managers/:manager_id/teams` | 監督のチーム一覧 / 作成 |
 
 ### チーム
 
@@ -158,12 +157,14 @@
 
 | メソッド | パス | 説明 |
 |---------|------|------|
-| GET/POST/PATCH/DELETE | `/api/v1/player-types` | 選手タイプ |
-| GET/POST/PATCH/DELETE | `/api/v1/pitching-styles` | 投球スタイル |
-| GET/POST/PATCH/DELETE | `/api/v1/pitching-skills` | 投球スキル |
-| GET/POST/PATCH/DELETE | `/api/v1/batting-styles` | 打撃スタイル |
-| GET/POST/PATCH/DELETE | `/api/v1/batting-skills` | 打撃スキル |
-| GET/POST/PATCH/DELETE | `/api/v1/biorhythms` | バイオリズム |
+| GET | `/api/v1/player-types` | 選手タイプ（読み取り専用※） |
+| GET | `/api/v1/pitching-styles` | 投球スタイル（読み取り専用※） |
+| GET | `/api/v1/pitching-skills` | 投球スキル（読み取り専用※） |
+| GET | `/api/v1/batting-styles` | 打撃スタイル（読み取り専用※） |
+| GET | `/api/v1/batting-skills` | 打撃スキル（読み取り専用※） |
+| GET/POST/PATCH/DELETE | `/api/v1/biorhythms` | バイオリズム（CRUD可能） |
+
+※ 5種類のマスタデータは YAML → DB 同期（`rake master_data:sync`）で管理。API経由の作成・更新・削除は 403 Forbidden を返す。
 
 ### コスト
 
@@ -191,7 +192,7 @@
 | GET/POST/DELETE | `/commissioner/leagues/:id/league_memberships` | リーグ参加チーム |
 | CRUD | `/commissioner/leagues/:id/league_seasons` | リーグシーズン |
 | POST | `/commissioner/leagues/:id/league_seasons/:id/generate_schedule` | 対戦表自動生成 |
-| GET | `/commissioner/leagues/:id/league_seasons/:id/league_games` | リーグ試合一覧 |
+| GET | `/commissioner/leagues/:id/league_seasons/:id/league_games` | リーグ試合一覧 / 詳細 |
 | GET/POST/DELETE | `/commissioner/leagues/:id/league_seasons/:id/league_pool_players` | プール選手 |
 | GET | `/commissioner/leagues/:id/teams` | リーグ内チーム |
 | GET/PATCH/DELETE | `/commissioner/leagues/:id/teams/:id/team_memberships` | チームメンバー管理 |
@@ -251,7 +252,7 @@ thbigmatome-front/
     ├── layouts/                # レイアウト（DefaultLayout）
     ├── composables/            # 共有ロジック（useAuth, useSnackbar）
     ├── plugins/                # Vuetify, Axios, i18n設定
-    ├── types/                  # TypeScript型定義（24ファイル）
+    ├── types/                  # TypeScript型定義（26ファイル）
     ├── locales/                # 翻訳ファイル（ja.json）
     └── router/                 # ルーティング・認証ガード
 ```
@@ -275,3 +276,4 @@ thbigmatome-front/
 | [11_player_absence.md](11_player_absence.md) | 選手離脱管理 |
 | [12_commissioner.md](12_commissioner.md) | コミッショナー機能 |
 | [13_frontend_architecture.md](13_frontend_architecture.md) | フロントエンドアーキテクチャ |
+| [14_test_strategy.md](14_test_strategy.md) | テスト戦略 |

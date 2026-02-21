@@ -5,7 +5,7 @@
 コミッショナー機能は、リーグ運営を統括管理する権限を持つユーザー専用の機能群である。リーグ作成、シーズン管理、対戦表自動生成、参加チーム管理、選手プール管理、チームスタッフ管理、選手離脱管理など、リーグ運営に必要な全ての操作を包括する。
 
 **主要な特徴:**
-- コミッショナー権限による全APIエンドポイント保護（`commissioner?` チェック）
+- コミッショナー権限による全APIエンドポイント保護（`Api::V1::Commissioner::BaseController` 継承による `commissioner?` チェック）
 - リーグ/シーズン/対戦のCRUD操作
 - ネストされたRESTfulリソース構造（leagues → league_seasons → league_games）
 - 6チーム制総当たり対戦表の自動生成ロジック（各対戦3回、合計90試合）
@@ -13,6 +13,7 @@
 - シーズン別選手プール管理（コストランク別フィルタリング対応）
 - チーム監督・コーチの兼任制約（同一リーグ内の複数チーム兼任禁止）
 - 選手離脱管理（怪我/出場停止/調整期間）
+- フロントエンド: コミッショナーモードトグル、リーグ詳細パネル（タブ切替UI）、公式Wiki外部リンク
 
 ---
 
@@ -185,6 +186,44 @@ interface LeagueMembership {
   id: number
   team: Team
 }
+
+interface TeamManager {
+  id: number
+  team_id: number
+  manager_id: number
+  role: string
+  manager: {
+    id: number
+    name: string
+  }
+}
+
+interface LeagueSeason {
+  id: number
+  league_id: number
+  name: string
+  start_date: string
+  end_date: string
+  status: 'pending' | 'active' | 'completed'
+}
+
+interface LeagueGame {
+  id: number
+  league_season_id: number
+  home_team_id: number
+  away_team_id: number
+  game_date: string
+  game_number: number
+  home_team: Team
+  away_team: Team
+}
+
+interface LeaguePoolPlayer {
+  id: number
+  league_season_id: number
+  player_id: number
+  player: { id: number; name: string }
+}
 ```
 
 **スナックバーメッセージ:**
@@ -204,8 +243,88 @@ interface LeagueMembership {
   - `チームの削除に失敗しました` (DELETE /league_memberships/:id)
 
 **注意事項:**
-- チーム管理ダイアログを開くボタンは画面上に未配置（関数は実装済み）
-- シーズン管理、対戦管理、選手プール管理、チームスタッフ管理のUI実装は未確認（APIのみ実装済みと推定）
+- チーム管理ダイアログはリーグ一覧テーブルのアイコンボタン（`mdi-account-group`）から開く
+- リーグ詳細パネルはリーグ一覧テーブルの設定アイコン（`mdi-cog`）から開く
+
+---
+
+### リーグ詳細パネル
+
+リーグ一覧テーブルから `mdi-cog` アイコンをクリックするとリーグ詳細パネルが展開される。5つのタブで構成される。
+
+**レイアウト:**
+```
+┌───────────────────────────────────────────────────────┐
+│ {リーグ名} - 詳細管理                          [✕]    │
+├───────────────────────────────────────────────────────┤
+│ [シーズン] [対戦] [選手プール] [チームスタッフ] [離脱] │
+├───────────────────────────────────────────────────────┤
+│                                                       │
+│ （タブに応じたコンテンツ）                              │
+│                                                       │
+└───────────────────────────────────────────────────────┘
+```
+
+**タブ一覧:**
+
+| タブ値 | タイトル（i18nキー） | 内容 |
+|--------|---------------------|------|
+| `seasons` | `commissioner.detail.tabs.seasons` | シーズン一覧テーブル + スケジュール生成ボタン |
+| `games` | `commissioner.detail.tabs.games` | シーズン選択 → 対戦データテーブル |
+| `poolPlayers` | `commissioner.detail.tabs.poolPlayers` | シーズン選択 → 選手プール一覧 |
+| `teamStaff` | `commissioner.detail.tabs.teamStaff` | チーム選択 → チームマネージャー一覧 |
+| `absences` | `commissioner.detail.tabs.absences` | 離脱管理説明（情報アラート表示） |
+
+**シーズンタブ:**
+- `v-data-table` でシーズン一覧を表示（ヘッダー: シーズン名、開始日、終了日、ステータス、操作）
+- ステータスは `commissioner.detail.seasonStatus.{pending|active|completed}` で表示
+- 操作列にスケジュール生成ボタン
+
+**対戦タブ:**
+- シーズンを `v-select` で選択
+- 選択後に対戦データテーブルを表示（ヘッダー: 試合日、ホームチーム名、アウェイチーム名、試合番号）
+
+**選手プールタブ:**
+- シーズンを `v-select` で選択
+- 選択後に選手プール一覧を表示（ヘッダー: 選手名）
+
+**チームスタッフタブ:**
+- リーグ参加チームを `v-select` で選択
+- 選択後にチームマネージャー一覧を表示（ヘッダー: 監督名、役割）
+
+**離脱タブ:**
+- `v-alert` で離脱管理の説明情報を表示
+
+---
+
+### トップメニュー画面のコミッショナー機能
+
+**コンポーネント:** `src/views/TopMenu.vue`
+
+**コミッショナーモード関連UI:**
+
+1. **コミッショナーモードトグル (`v-switch`):**
+   - `isCommissioner` が `true` の場合のみ表示
+   - `localStorage` に `commissionerMode` として `'on'`/`'off'` を保存
+   - ONにすると全チーム一覧を取得して表示（管理者は所属チームのみ → 全チーム表示に切替）
+   - アイコン: `mdi-shield-crown`
+
+2. **コミッショナーモードボタン:**
+   - `isCommissioner` が `true` の場合のみ表示
+   - クリックで `/commissioner/leagues`（リーグ管理画面）へ遷移
+   - 色: `primary`、variant: `elevated`、prepend-icon: `mdi-shield-crown`
+
+3. **チーム選択UI:**
+   - コミッショナーモードOFF: ログインユーザーの所属チームのみ表示
+   - コミッショナーモードON: 全チームを表示
+   - ボタン形式でチームを選択（選択中はprimary色、それ以外はoutlined）
+   - チーム選択で `localStorage` にIDを保存し、シーズンポータルへ遷移
+
+4. **公式Wikiリンクカード:**
+   - `v-card` (variant="tonal", color="primary", hover)
+   - 外部リンク: `https://thbigbaseball.wiki.fc2.com/`
+   - アイコン: `mdi-baseball-diamond`（左）、`mdi-open-in-new`（右）
+   - i18nキー: `topMenu.officialWiki.title`, `topMenu.officialWiki.subtitle`
 
 ---
 
@@ -600,13 +719,13 @@ end
 
 ---
 
-### 9. リーグシーズン一覧取得（全シーズン）
+### 9. リーグシーズン一覧取得（リーグ別）
 
-**エンドポイント:** `GET /api/v1/league_seasons`
+**エンドポイント:** `GET /api/v1/commissioner/leagues/:league_id/league_seasons`
 
-**コントローラー:** `Api::V1::LeagueSeasonsController#index`
+**コントローラー:** `Api::V1::Commissioner::LeagueSeasonsController#index`
 
-**認証:** 要認証（コミッショナー権限不要）
+**認証:** コミッショナー権限必須（`Api::V1::Commissioner::BaseController` 継承）
 
 **リクエスト:** なし
 
@@ -632,25 +751,24 @@ end
 ]
 ```
 
-**シリアライザー:** `LeagueSeasonSerializer`
-- 出力属性: `id`, `league_id`, `name`, `start_date`, `end_date`, `status`
-
 **処理フロー:**
 ```
-[1] LeagueSeason.all で全シーズン取得
+[1] before_action :set_league で League.find(params[:league_id])
        ↓
-[2] JSON形式でレスポンス返却（LeagueSeasonSerializer使用）
+[2] @league.league_seasons でリーグに紐づくシーズンのみ取得
+       ↓
+[3] JSON形式でレスポンス返却
 ```
 
 ---
 
 ### 10. リーグシーズン詳細取得
 
-**エンドポイント:** `GET /api/v1/league_seasons/:id`
+**エンドポイント:** `GET /api/v1/commissioner/leagues/:league_id/league_seasons/:id`
 
-**コントローラー:** `Api::V1::LeagueSeasonsController#show`
+**コントローラー:** `Api::V1::Commissioner::LeagueSeasonsController#show`
 
-**認証:** 要認証（コミッショナー権限不要）
+**認証:** コミッショナー権限必須
 
 **リクエスト:** なし
 
@@ -668,26 +786,27 @@ end
 
 **処理フロー:**
 ```
-[1] before_action :set_league_season で LeagueSeason.find(params[:id])
+[1] before_action :set_league で League.find(params[:league_id])
        ↓
-[2] @league_season をJSON形式でレスポンス返却
+[2] before_action :set_league_season で @league.league_seasons.find(params[:id])
+       ↓
+[3] @league_season をJSON形式でレスポンス返却
 ```
 
 ---
 
 ### 11. リーグシーズン作成
 
-**エンドポイント:** `POST /api/v1/league_seasons`
+**エンドポイント:** `POST /api/v1/commissioner/leagues/:league_id/league_seasons`
 
-**コントローラー:** `Api::V1::LeagueSeasonsController#create`
+**コントローラー:** `Api::V1::Commissioner::LeagueSeasonsController#create`
 
-**認証:** 要認証（コミッショナー権限チェックなし。TODO: commissioner namesp追加検討）
+**認証:** コミッショナー権限必須
 
 **リクエスト:**
 ```json
 {
   "league_season": {
-    "league_id": 1,
     "name": "2025年夏季シーズン",
     "start_date": "2025-06-01",
     "end_date": "2025-08-31",
@@ -697,7 +816,6 @@ end
 ```
 
 **許可パラメータ:**
-- `league_id` (integer, required)
 - `name` (string, required)
 - `start_date` (date, required)
 - `end_date` (date, required, >= start_date)
@@ -725,24 +843,26 @@ end
 
 **処理フロー:**
 ```
-[1] league_season_params で許可パラメータ取得
+[1] before_action :set_league で League.find(params[:league_id])
        ↓
-[2] LeagueSeason.new(league_season_params)
+[2] league_season_params で許可パラメータ取得
        ↓
-[3a] @league_season.save 成功時: 201 Created, JSON返却
+[3] @league.league_seasons.build(league_season_params)
        ↓
-[3b] @league_season.save 失敗時: 422 Unprocessable Entity, errors返却
+[4a] @league_season.save 成功時: 201 Created, JSON返却
+       ↓
+[4b] @league_season.save 失敗時: 422 Unprocessable Entity, errors返却
 ```
 
 ---
 
 ### 12. リーグシーズン更新
 
-**エンドポイント:** `PUT /api/v1/league_seasons/:id`
+**エンドポイント:** `PUT /api/v1/commissioner/leagues/:league_id/league_seasons/:id`
 
-**コントローラー:** `Api::V1::LeagueSeasonsController#update`
+**コントローラー:** `Api::V1::Commissioner::LeagueSeasonsController#update`
 
-**認証:** 要認証
+**認証:** コミッショナー権限必須
 
 **リクエスト:**
 ```json
@@ -753,7 +873,7 @@ end
 }
 ```
 
-**許可パラメータ:** `league_id`, `name`, `start_date`, `end_date`, `status` (部分更新可)
+**許可パラメータ:** `name`, `start_date`, `end_date`, `status` (部分更新可)
 
 **レスポンス（成功時 200 OK）:**
 ```json
@@ -776,24 +896,26 @@ end
 
 **処理フロー:**
 ```
-[1] before_action :set_league_season で LeagueSeason.find(params[:id])
+[1] before_action :set_league で League.find(params[:league_id])
        ↓
-[2] league_season_params で許可パラメータ取得
+[2] before_action :set_league_season で @league.league_seasons.find(params[:id])
        ↓
-[3a] @league_season.update(league_season_params) 成功時: 200 OK, JSON返却
+[3] league_season_params で許可パラメータ取得
        ↓
-[3b] @league_season.update 失敗時: 422 Unprocessable Entity, errors返却
+[4a] @league_season.update(league_season_params) 成功時: 200 OK, JSON返却
+       ↓
+[4b] @league_season.update 失敗時: 422 Unprocessable Entity, errors返却
 ```
 
 ---
 
 ### 13. リーグシーズン削除
 
-**エンドポイント:** `DELETE /api/v1/league_seasons/:id`
+**エンドポイント:** `DELETE /api/v1/commissioner/leagues/:league_id/league_seasons/:id`
 
-**コントローラー:** `Api::V1::LeagueSeasonsController#destroy`
+**コントローラー:** `Api::V1::Commissioner::LeagueSeasonsController#destroy`
 
-**認証:** 要認証
+**認証:** コミッショナー権限必須
 
 **リクエスト:** なし
 
@@ -804,11 +926,13 @@ end
 
 **処理フロー:**
 ```
-[1] before_action :set_league_season で LeagueSeason.find(params[:id])
+[1] before_action :set_league で League.find(params[:league_id])
        ↓
-[2] @league_season.destroy
+[2] before_action :set_league_season で @league.league_seasons.find(params[:id])
        ↓
-[3] 204 No Content
+[3] @league_season.destroy
+       ↓
+[4] 204 No Content
 ```
 
 **注意:** リーグシーズンに紐づくリーグ対戦（`league_games`）と選手プール（`league_pool_players`）は `dependent: :destroy` により自動削除される。
@@ -817,11 +941,11 @@ end
 
 ### 14. 対戦表自動生成
 
-**エンドポイント:** `POST /api/v1/league_seasons/:id/generate_schedule`
+**エンドポイント:** `POST /api/v1/commissioner/leagues/:league_id/league_seasons/:id/generate_schedule`
 
-**コントローラー:** `Api::V1::LeagueSeasonsController#generate_schedule`
+**コントローラー:** `Api::V1::Commissioner::LeagueSeasonsController#generate_schedule`
 
-**認証:** 要認証
+**認証:** コミッショナー権限必須
 
 **リクエスト:** なし（パスパラメータのみ）
 
@@ -841,13 +965,15 @@ end
 
 **処理フロー:**
 ```
-[1] before_action :set_league_season で LeagueSeason.find(params[:id])
+[1] before_action :set_league で League.find(params[:league_id])
        ↓
-[2] @league_season.generate_schedule メソッド実行
+[2] before_action :set_league_season で @league.league_seasons.find(params[:id])
        ↓
-[3a] 成功時: 200 OK, message返却
+[3] @league_season.generate_schedule メソッド実行
        ↓
-[3b] 例外発生時: 422 Unprocessable Entity, error返却
+[4a] 成功時: 200 OK, message返却
+       ↓
+[4b] 例外発生時: 422 Unprocessable Entity, error返却
 ```
 
 **`generate_schedule` ビジネスロジック（LeagueSeasonモデル）:**
@@ -907,11 +1033,11 @@ end
 
 ### 15. リーグ対戦一覧取得（シーズン別）
 
-**エンドポイント:** `GET /api/v1/commissioner/league_seasons/:league_season_id/league_games`
+**エンドポイント:** `GET /api/v1/commissioner/leagues/:league_id/league_seasons/:league_season_id/league_games`
 
 **コントローラー:** `Api::V1::Commissioner::LeagueGamesController#index`
 
-**認証:** コミッショナー権限不要（ApplicationController継承、TODO: commissioner追加検討）
+**認証:** コミッショナー権限必須（`Api::V1::Commissioner::BaseController` 継承）
 
 **リクエスト:** なし
 
@@ -970,11 +1096,11 @@ end
 
 ### 16. リーグ対戦詳細取得
 
-**エンドポイント:** `GET /api/v1/commissioner/league_seasons/:league_season_id/league_games/:id`
+**エンドポイント:** `GET /api/v1/commissioner/leagues/:league_id/league_seasons/:league_season_id/league_games/:id`
 
 **コントローラー:** `Api::V1::Commissioner::LeagueGamesController#show`
 
-**認証:** コミッショナー権限不要（ApplicationController継承）
+**認証:** コミッショナー権限必須（`Api::V1::Commissioner::BaseController` 継承）
 
 **リクエスト:** なし
 
@@ -1011,11 +1137,11 @@ end
 
 ### 17. 選手プール一覧取得（シーズン別、コストランク別フィルタ可）
 
-**エンドポイント:** `GET /api/v1/commissioner/league_seasons/:league_season_id/league_pool_players`
+**エンドポイント:** `GET /api/v1/commissioner/leagues/:league_id/league_seasons/:league_season_id/league_pool_players`
 
 **コントローラー:** `Api::V1::Commissioner::LeaguePoolPlayersController#index`
 
-**認証:** コミッショナー権限不要（ApplicationController継承）
+**認証:** コミッショナー権限必須（`Api::V1::Commissioner::BaseController` 継承）
 
 **クエリパラメータ（オプション）:**
 - `cost_rank`: コストランクフィルタ（`A` / `B` / `C`）
@@ -1103,11 +1229,11 @@ end
 
 ### 18. 選手プール追加
 
-**エンドポイント:** `POST /api/v1/commissioner/league_seasons/:league_season_id/league_pool_players`
+**エンドポイント:** `POST /api/v1/commissioner/leagues/:league_id/league_seasons/:league_season_id/league_pool_players`
 
 **コントローラー:** `Api::V1::Commissioner::LeaguePoolPlayersController#create`
 
-**認証:** コミッショナー権限不要（ApplicationController継承）
+**認証:** コミッショナー権限必須（`Api::V1::Commissioner::BaseController` 継承）
 
 **リクエスト:**
 ```json
@@ -1157,11 +1283,11 @@ end
 
 ### 19. 選手プール削除
 
-**エンドポイント:** `DELETE /api/v1/commissioner/league_seasons/:league_season_id/league_pool_players/:id`
+**エンドポイント:** `DELETE /api/v1/commissioner/leagues/:league_id/league_seasons/:league_season_id/league_pool_players/:id`
 
 **コントローラー:** `Api::V1::Commissioner::LeaguePoolPlayersController#destroy`
 
-**認証:** コミッショナー権限不要（ApplicationController継承）
+**認証:** コミッショナー権限必須（`Api::V1::Commissioner::BaseController` 継承）
 
 **リクエスト:** なし
 
@@ -1185,11 +1311,11 @@ end
 
 ### 20. チームマネージャー一覧取得
 
-**エンドポイント:** `GET /api/v1/commissioner/teams/:team_id/team_managers`
+**エンドポイント:** `GET /api/v1/commissioner/leagues/:league_id/teams/:team_id/team_managers`
 
 **コントローラー:** `Api::V1::Commissioner::TeamManagersController#index`
 
-**認証:** コミッショナー権限不要（ApplicationController継承）
+**認証:** コミッショナー権限必須（`Api::V1::Commissioner::BaseController` 継承）
 
 **リクエスト:** なし
 
@@ -1240,11 +1366,11 @@ end
 
 ### 21. チームマネージャー詳細取得
 
-**エンドポイント:** `GET /api/v1/commissioner/teams/:team_id/team_managers/:id`
+**エンドポイント:** `GET /api/v1/commissioner/leagues/:league_id/teams/:team_id/team_managers/:id`
 
 **コントローラー:** `Api::V1::Commissioner::TeamManagersController#show`
 
-**認証:** コミッショナー権限不要（ApplicationController継承）
+**認証:** コミッショナー権限必須（`Api::V1::Commissioner::BaseController` 継承）
 
 **リクエスト:** なし
 
@@ -1277,11 +1403,11 @@ end
 
 ### 22. チームマネージャー作成
 
-**エンドポイント:** `POST /api/v1/commissioner/teams/:team_id/team_managers`
+**エンドポイント:** `POST /api/v1/commissioner/leagues/:league_id/teams/:team_id/team_managers`
 
 **コントローラー:** `Api::V1::Commissioner::TeamManagersController#create`
 
-**認証:** コミッショナー権限不要（ApplicationController継承）
+**認証:** コミッショナー権限必須（`Api::V1::Commissioner::BaseController` 継承）
 
 **リクエスト:**
 ```json
@@ -1363,11 +1489,11 @@ end
 
 ### 23. チームマネージャー更新
 
-**エンドポイント:** `PUT /api/v1/commissioner/teams/:team_id/team_managers/:id`
+**エンドポイント:** `PUT /api/v1/commissioner/leagues/:league_id/teams/:team_id/team_managers/:id`
 
 **コントローラー:** `Api::V1::Commissioner::TeamManagersController#update`
 
-**認証:** コミッショナー権限不要（ApplicationController継承）
+**認証:** コミッショナー権限必須（`Api::V1::Commissioner::BaseController` 継承）
 
 **リクエスト:**
 ```json
@@ -1414,11 +1540,11 @@ end
 
 ### 24. チームマネージャー削除
 
-**エンドポイント:** `DELETE /api/v1/commissioner/teams/:team_id/team_managers/:id`
+**エンドポイント:** `DELETE /api/v1/commissioner/leagues/:league_id/teams/:team_id/team_managers/:id`
 
 **コントローラー:** `Api::V1::Commissioner::TeamManagersController#destroy`
 
-**認証:** コミッショナー権限不要（ApplicationController継承）
+**認証:** コミッショナー権限必須（`Api::V1::Commissioner::BaseController` 継承）
 
 **リクエスト:** なし
 
@@ -1442,11 +1568,11 @@ end
 
 ### 25. チームメンバーシップ一覧取得
 
-**エンドポイント:** `GET /api/v1/commissioner/teams/:team_id/team_memberships`
+**エンドポイント:** `GET /api/v1/commissioner/leagues/:league_id/teams/:team_id/team_memberships`
 
 **コントローラー:** `Api::V1::Commissioner::TeamMembershipsController#index`
 
-**認証:** コミッショナー権限不要（ApplicationController継承）
+**認証:** コミッショナー権限必須（`Api::V1::Commissioner::BaseController` 継承）
 
 **リクエスト:** なし
 
@@ -1495,11 +1621,11 @@ end
 
 ### 26. チームメンバーシップ詳細取得
 
-**エンドポイント:** `GET /api/v1/commissioner/teams/:team_id/team_memberships/:id`
+**エンドポイント:** `GET /api/v1/commissioner/leagues/:league_id/teams/:team_id/team_memberships/:id`
 
 **コントローラー:** `Api::V1::Commissioner::TeamMembershipsController#show`
 
-**認証:** コミッショナー権限不要（ApplicationController継承）
+**認証:** コミッショナー権限必須（`Api::V1::Commissioner::BaseController` 継承）
 
 **リクエスト:** なし
 
@@ -1531,11 +1657,11 @@ end
 
 ### 27. チームメンバーシップ更新
 
-**エンドポイント:** `PUT /api/v1/commissioner/teams/:team_id/team_memberships/:id`
+**エンドポイント:** `PUT /api/v1/commissioner/leagues/:league_id/teams/:team_id/team_memberships/:id`
 
 **コントローラー:** `Api::V1::Commissioner::TeamMembershipsController#update`
 
-**認証:** コミッショナー権限不要（ApplicationController継承）
+**認証:** コミッショナー権限必須（`Api::V1::Commissioner::BaseController` 継承）
 
 **リクエスト:**
 ```json
@@ -1590,11 +1716,11 @@ end
 
 ### 28. チームメンバーシップ削除
 
-**エンドポイント:** `DELETE /api/v1/commissioner/teams/:team_id/team_memberships/:id`
+**エンドポイント:** `DELETE /api/v1/commissioner/leagues/:league_id/teams/:team_id/team_memberships/:id`
 
 **コントローラー:** `Api::V1::Commissioner::TeamMembershipsController#destroy`
 
-**認証:** コミッショナー権限不要（ApplicationController継承）
+**認証:** コミッショナー権限必須（`Api::V1::Commissioner::BaseController` 継承）
 
 **リクエスト:** なし
 
@@ -1618,11 +1744,11 @@ end
 
 ### 29. 選手離脱一覧取得（チームメンバーシップ別）
 
-**エンドポイント:** `GET /api/v1/commissioner/team_memberships/:team_membership_id/player_absences`
+**エンドポイント:** `GET /api/v1/commissioner/leagues/:league_id/teams/:team_id/team_memberships/:team_membership_id/player_absences`
 
 **コントローラー:** `Api::V1::Commissioner::PlayerAbsencesController#index`
 
-**認証:** コミッショナー権限不要（ApplicationController継承）
+**認証:** コミッショナー権限必須（`Api::V1::Commissioner::BaseController` 継承）
 
 **リクエスト:** なし
 
@@ -1671,11 +1797,11 @@ end
 
 ### 30. 選手離脱詳細取得
 
-**エンドポイント:** `GET /api/v1/commissioner/team_memberships/:team_membership_id/player_absences/:id`
+**エンドポイント:** `GET /api/v1/commissioner/leagues/:league_id/teams/:team_id/team_memberships/:team_membership_id/player_absences/:id`
 
 **コントローラー:** `Api::V1::Commissioner::PlayerAbsencesController#show`
 
-**認証:** コミッショナー権限不要（ApplicationController継承）
+**認証:** コミッショナー権限必須（`Api::V1::Commissioner::BaseController` 継承）
 
 **リクエスト:** なし
 
@@ -1707,11 +1833,11 @@ end
 
 ### 31. 選手離脱作成
 
-**エンドポイント:** `POST /api/v1/commissioner/team_memberships/:team_membership_id/player_absences`
+**エンドポイント:** `POST /api/v1/commissioner/leagues/:league_id/teams/:team_id/team_memberships/:team_membership_id/player_absences`
 
 **コントローラー:** `Api::V1::Commissioner::PlayerAbsencesController#create`
 
-**認証:** コミッショナー権限不要（ApplicationController継承）
+**認証:** コミッショナー権限必須（`Api::V1::Commissioner::BaseController` 継承）
 
 **リクエスト:**
 ```json
@@ -1779,11 +1905,11 @@ end
 
 ### 32. 選手離脱更新
 
-**エンドポイント:** `PUT /api/v1/commissioner/team_memberships/:team_membership_id/player_absences/:id`
+**エンドポイント:** `PUT /api/v1/commissioner/leagues/:league_id/teams/:team_id/team_memberships/:team_membership_id/player_absences/:id`
 
 **コントローラー:** `Api::V1::Commissioner::PlayerAbsencesController#update`
 
-**認証:** コミッショナー権限不要（ApplicationController継承）
+**認証:** コミッショナー権限必須（`Api::V1::Commissioner::BaseController` 継承）
 
 **リクエスト:**
 ```json
@@ -1835,11 +1961,11 @@ end
 
 ### 33. 選手離脱削除
 
-**エンドポイント:** `DELETE /api/v1/commissioner/team_memberships/:team_membership_id/player_absences/:id`
+**エンドポイント:** `DELETE /api/v1/commissioner/leagues/:league_id/teams/:team_id/team_memberships/:team_membership_id/player_absences/:id`
 
 **コントローラー:** `Api::V1::Commissioner::PlayerAbsencesController#destroy`
 
-**認証:** コミッショナー権限不要（ApplicationController継承）
+**認証:** コミッショナー権限必須（`Api::V1::Commissioner::BaseController` 継承）
 
 **リクエスト:** なし
 
@@ -2106,6 +2232,7 @@ end
 **アソシエーション:**
 - `has_many :league_memberships, dependent: :destroy`
 - `has_many :teams, through: :league_memberships`
+- `has_many :league_seasons`
 
 **バリデーション:**
 - `validates :name, presence: true`
@@ -2344,7 +2471,10 @@ TeamManager モデルのカスタムバリデーション `manager_cannot_be_ass
 
 **ダイアログ:**
 - リーグ作成/編集ダイアログ（インライン定義）
-- チーム管理ダイアログ（インライン定義、ボタン未配置）
+- チーム管理ダイアログ（インライン定義、テーブル行のアイコンボタンから起動）
+
+**インラインパネル:**
+- リーグ詳細パネル（テーブル行の `mdi-cog` アイコンから展開、5タブ構成）
 
 **コンポーネントディレクトリ:**
 - `src/components/commissioner/`: 存在しない（全機能が LeaguesView.vue に集約）
@@ -2370,6 +2500,30 @@ TeamManager モデルのカスタムバリデーション `manager_cannot_be_ass
 - `selectedTeamIdToAdd`: ref<number | null> - 追加対象チームID
 - `membershipLoading`: ref<boolean> - チーム管理ローディング状態
 
+**リーグ詳細パネル:**
+- `detailLeague`: ref<League | null> - 詳細表示中のリーグ
+- `detailTab`: ref<string> - 選択中のタブ（初期値: `'seasons'`）
+- `detailLeagueTeams`: ref<LeagueMembership[]> - 詳細パネル用リーグ参加チーム
+
+**シーズン管理:**
+- `leagueSeasons`: ref<LeagueSeason[]> - シーズン一覧
+- `leagueSeasonsLoading`: ref<boolean> - ローディング状態
+
+**対戦管理:**
+- `selectedGameSeasonId`: ref<number | null> - 対戦表示用の選択シーズンID
+- `leagueGames`: ref<LeagueGame[]> - 対戦一覧
+- `leagueGamesLoading`: ref<boolean> - ローディング状態
+
+**選手プール管理:**
+- `selectedPoolSeasonId`: ref<number | null> - プール表示用の選択シーズンID
+- `poolPlayers`: ref<LeaguePoolPlayer[]> - プール選手一覧
+- `poolPlayersLoading`: ref<boolean> - ローディング状態
+
+**チームスタッフ管理:**
+- `selectedStaffTeamId`: ref<number | null> - スタッフ表示用の選択チームID
+- `teamManagers`: ref<TeamManager[]> - チームマネージャー一覧
+- `teamManagersLoading`: ref<boolean> - ローディング状態
+
 ### API呼び出し（Axios）
 
 **ベースURL:** `/api/v1` （推定、Axiosインスタンス設定による）
@@ -2382,6 +2536,11 @@ TeamManager モデルのカスタムバリデーション `manager_cannot_be_ass
 - `GET /commissioner/leagues/:league_id/league_memberships` - リーグメンバーシップ一覧取得
 - `POST /commissioner/leagues/:league_id/league_memberships` - チーム追加
 - `DELETE /commissioner/leagues/:league_id/league_memberships/:id` - チーム削除
+- `GET /commissioner/leagues/:league_id/league_seasons` - シーズン一覧取得
+- `POST /commissioner/leagues/:league_id/league_seasons/:id/generate_schedule` - スケジュール生成
+- `GET /commissioner/leagues/:league_id/league_seasons/:season_id/league_games` - 対戦一覧取得
+- `GET /commissioner/leagues/:league_id/league_seasons/:season_id/league_pool_players` - プール一覧取得
+- `GET /commissioner/leagues/:league_id/teams/:team_id/team_managers` - チームマネージャー一覧
 - `GET /teams` - 全チーム取得（リーグメンバーシップ外）
 
 ### Vuetify 3コンポーネント使用状況
@@ -2414,23 +2573,21 @@ TeamManager モデルのカスタムバリデーション `manager_cannot_be_ass
 
 ### 認証・権限
 
-**現状:** 一部のコントローラー（LeagueSeasonsController, LeagueGamesController, LeaguePoolPlayersController, TeamManagersController, TeamMembershipsController, PlayerAbsencesController）がコミッショナー権限チェックを行っていない（ApplicationController継承のため、認証は必要だがcommissioner?チェックなし）。
+~~**現状:** 一部のコントローラーがコミッショナー権限チェックを行っていない。~~
 
-**提案:** これらのコントローラーを `Api::V1::Commissioner::` 名前空間に移動し、`Commissioner::BaseController` を継承させることで、全エンドポイントにコミッショナー権限チェックを統一すべき。
+**実装済み:** 全コミッショナーコントローラーが `Api::V1::Commissioner::BaseController` を継承し、`before_action :check_commissioner` による権限チェックが統一された。LeagueSeasonsController もコミッショナー名前空間に移動完了。
 
-### フロントエンド未実装機能
+### フロントエンド実装状況
 
-**現状:**
-- チーム管理ダイアログを開くボタンが LeaguesView.vue に未配置
-- シーズン管理、対戦管理、選手プール管理、チームスタッフ管理、選手離脱管理の画面が未確認（APIのみ実装済みと推定）
+**実装済み:**
+- LeaguesView.vue にチーム管理ボタン配置（`mdi-account-group` アイコン）
+- リーグ詳細パネルを新設（`mdi-cog` アイコンから展開）
+- リーグ詳細パネル内にタブUI: シーズン管理、対戦管理、選手プール管理、チームスタッフ管理、離脱管理
+- TopMenu.vue にコミッショナーモードトグルスイッチ + リーグ管理ボタン
+- TopMenu.vue に公式Wikiリンクカード
 
-**提案:**
-- LeaguesView.vue にチーム管理ボタンを追加
-- シーズン管理画面（LeagueSeasonsView.vue）を新規作成
-- 対戦管理画面（LeagueGamesView.vue）を新規作成
-- 選手プール管理画面（LeaguePoolPlayersView.vue）を新規作成
-- チームスタッフ管理画面（TeamManagersView.vue）を新規作成
-- 選手離脱管理画面（PlayerAbsencesView.vue）を新規作成
+**未実装:**
+- 離脱管理タブは説明アラート表示のみ（CRUD操作画面は未実装）
 
 ### 対戦表自動生成の改善
 
@@ -2451,12 +2608,14 @@ TeamManager モデルのカスタムバリデーション `manager_cannot_be_ass
 
 ### テスト
 
-**現状:** テストコードの存在が未確認。
+**現状:**
+- バックエンド: 6コントローラー（LeagueSeasonsController, LeagueGamesController, LeaguePoolPlayersController, TeamMembershipsController, PlayerAbsencesController, TeamManagersController）の認可テスト72件が実装済み（RSpec request specs）
+- テスト内容: Commissioner/一般ユーザー/未認証の3パターン + CRUD正常系
+- GitHub Actions CI (`test.yml`) でRSpec + Vitestが自動実行される
 
-**提案:**
-- バックエンド: RSpec + FactoryBot でモデル・コントローラーの単体テスト、統合テスト作成
+**今後:**
 - フロントエンド: Vitest + Vue Test Utils でコンポーネントテスト作成
-- E2Eテスト: Playwright または Cypress でリーグ運営フロー全体のテスト作成
+- E2Eテスト: Playwright でリーグ運営フロー全体のテスト作成
 
 ---
 
@@ -2481,5 +2640,6 @@ TeamManager モデルのカスタムバリデーション `manager_cannot_be_ass
 ---
 
 **作成日:** 2026-02-14
+**更新日:** 2026-02-21
 **作成者:** 足軽4号
-**ソースコード基準日:** 2024-11-07
+**ソースコード基準日:** 2026-02-21

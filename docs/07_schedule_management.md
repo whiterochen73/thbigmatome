@@ -233,7 +233,7 @@ const save = async () => {
 ### 共通事項
 
 - **ベースURL**: `/api/v1`
-- **認証**: `Api::V1::SchedulesController` は `ApplicationController` を直接継承している。ルーティングは `/api/v1` namespace 内に定義されている
+- **認証**: `Api::V1::SchedulesController` および `Api::V1::ScheduleDetailsController` は `Api::V1::BaseController` を継承している。`BaseController` の `before_action :authenticate_user!` により全アクションで認証が必須。未認証の場合は `401 Unauthorized`（`{ error: 'ログインが必要です' }`）を返す。ルーティングは `/api/v1` namespace 内に定義されている
 - **レスポンス形式**: JSON（日程表は `ScheduleSerializer` によるシリアライズ、日程詳細は `render json:` による直接シリアライズ）
 
 ---

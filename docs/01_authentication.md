@@ -134,7 +134,7 @@ const isFormValid = computed(() => {
 **レスポンス（失敗時 401 Unauthorized）:**
 ```json
 {
-  "error": "メールアドレスまたはパスワードが間違っています"
+  "error": "ログインIDまたはパスワードが間違っています"
 }
 ```
 
@@ -162,7 +162,7 @@ def login
     session[:user_id] = user.id
     render json: { user: user.slice(:id, :name), message: 'ログイン成功' }
   else
-    render json: { error: 'メールアドレスまたはパスワードが間違っています' }, status: :unauthorized
+    render json: { error: 'ログインIDまたはパスワードが間違っています' }, status: :unauthorized
   end
 end
 ```
@@ -583,7 +583,7 @@ export default axios;
 interface User {
   id: number
   name: string
-  role: number
+  role: string
 }
 
 interface LoginResponse {
@@ -769,15 +769,61 @@ const routes: RouteRecordRaw[] = [
         component: TopMenu,
         meta: { title: 'ダッシュボード' }
       },
-      // ... 他のルート
+      {
+        path: 'managers',
+        name: '監督一覧',
+        component: ManagerList,
+        meta: { title: '監督一覧' }
+      },
+      {
+        path: '/teams',
+        name: 'TeamList',
+        component: () => import('@/views/TeamList.vue'),
+        meta: { requiresAuth: true }
+      },
+      {
+        path: '/teams/:teamId/members',
+        name: 'TeamMembers',
+        component: () => import('@/views/TeamMembers.vue'),
+        meta: { requiresAuth: true, title: 'チームメンバー登録' }
+      },
+      {
+        path: '/players',
+        name: 'Players',
+        component: Players,
+        meta: { requiresAuth: true, title: '選手一覧' }
+      },
+      {
+        path: '/cost_assignment',
+        name: 'CostAssignment',
+        component: CostAssignment,
+        meta: { requiresAuth: true, title: 'コスト登録' }
+      },
+      {
+        path: 'settings',
+        name: '各種設定',
+        component: Settings,
+        meta: { title: '各種設定' }
+      },
       {
         path: 'commissioner/leagues',
         name: 'Leagues',
         component: () => import('@/views/commissioner/LeaguesView.vue'),
         meta: { requiresAuth: true, requiresCommissioner: true, title: 'リーグ管理' }
-      }
+      },
+      {
+        path: '/teams/:teamId/season',
+        name: 'SeasonPortal',
+        component: () => import('@/views/SeasonPortal.vue'),
+        meta: { requiresAuth: true, title: 'シーズンポータル' }
+      },
+      // ... 他のシーズン関連ルート（出場選手登録、試合結果入力、スコアシート、離脱者履歴）
     ]
-  }
+  },
+  {
+    path: '/:pathMatch(.*)*',
+    redirect: '/menu'
+  },
 ]
 
 const router = createRouter({
@@ -820,7 +866,7 @@ export default router
 
 ### 認証状態の検証
 
-- 全エンドポイントで `before_action :authenticate_user!`（ApplicationController経由）
+- 全APIエンドポイントで `before_action :authenticate_user!` を適用。`Api::V1::BaseController` が `ApplicationController` を継承し、`authenticate_user!` を `before_action` として設定。各機能コントローラーは `BaseController` を継承することで自動的に認証が有効化される。AuthController のみ `skip_before_action` で認証をスキップ
 - `current_user` ヘルパーでセッションからユーザー取得
 - 認証失敗時は 401 Unauthorized レスポンス
 
@@ -839,10 +885,11 @@ export default router
 | ファイルパス | 役割 |
 |------------|------|
 | `app/controllers/api/v1/auth_controller.rb` | 認証エンドポイント（login/logout/current_user） |
+| `app/controllers/api/v1/base_controller.rb` | API共通基底クラス（`authenticate_user!` を `before_action` として設定） |
 | `app/controllers/application_controller.rb` | CSRF保護、current_user/authenticate_user! ヘルパー |
 | `app/models/user.rb` | Userモデル（バリデーション、role enum） |
-| `db/schema.rb:363-370` | usersテーブル定義 |
-| `config/routes.rb:14-16` | 認証ルート定義 |
+| `db/schema.rb` | usersテーブル定義 |
+| `config/routes.rb` | 認証ルート定義 |
 
 ### フロントエンド
 
@@ -858,51 +905,13 @@ export default router
 
 ## 既知の問題点と制約
 
-### 1. role enumの型不一致
+### ~~1. role enumの型不一致~~ （解決済み）
 
-**問題:** `User` モデルでは `role` が integer enum（0: general, 1: commissioner）として定義されているが、フロントエンドの型定義では以下のように文字列として扱っている箇所がある:
+Railsの `enum :role` では `current_user.slice(:id, :name, :role)` が文字列値（`"general"`, `"commissioner"`）を返すため、フロントエンドの `role: string` 型定義および `user.value?.role === 'commissioner'` の比較は正しく動作する。
 
-```typescript
-// src/composables/useAuth.ts:25
-const isCommissioner = computed(() => user.value?.role === 'commissioner')
-```
+### ~~2. ログインエラーメッセージの不適切な表現~~ （解決済み）
 
-実際のAPIレスポンスでは `role` は数値（0 or 1）で返却されるため、上記の比較は常に `false` となる。
-
-**影響範囲:**
-- コミッショナー権限チェックが正常に機能しない
-- コミッショナー専用画面（`/commissioner/leagues`など）へのアクセスが不可能
-
-**修正案1（フロントエンド修正）:**
-```typescript
-const isCommissioner = computed(() => user.value?.role === 1)
-```
-
-**修正案2（バックエンドにシリアライザー追加）:**
-```ruby
-# app/serializers/user_serializer.rb
-class UserSerializer < ActiveModel::Serializer
-  attributes :id, :name, :role_name
-
-  def role_name
-    object.role
-  end
-end
-```
-
-### 2. ログインエラーメッセージの不適切な表現
-
-**問題:** エラーメッセージが「メールアドレスまたはパスワードが間違っています」となっているが、本システムではメールアドレスではなくログインIDを使用している。
-
-**現在の実装（`auth_controller.rb:15`）:**
-```ruby
-render json: { error: 'メールアドレスまたはパスワードが間違っています' }, status: :unauthorized
-```
-
-**推奨修正:**
-```ruby
-render json: { error: 'ログインIDまたはパスワードが間違っています' }, status: :unauthorized
-```
+エラーメッセージは「ログインIDまたはパスワードが間違っています」に修正済み。
 
 ### 3. ユーザー登録機能の未実装
 
@@ -953,7 +962,6 @@ TOTP（Time-based One-Time Password）などの導入可能:
 - ロールベース権限管理（general / commissioner）
 
 **既知の課題:**
-- role enumの型不一致（integer vs string）
-- エラーメッセージの表現不整合
+- 以前のrole enum型不一致およびエラーメッセージ不整合は解決済み
 
 今後の拡張として、パスワードリセット機能や多要素認証の追加が検討できる。

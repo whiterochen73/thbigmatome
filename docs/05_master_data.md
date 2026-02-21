@@ -2,7 +2,7 @@
 
 ## 1. 概要
 
-本システムでは、選手の属性を構成する6種類のマスタデータを管理する。これらはSettings画面から一括して閲覧・追加・編集・削除が可能であり、選手データと直接参照または中間テーブルを介した多対多で関連付けられる。
+本システムでは、選手の属性を構成する6種類のマスタデータを管理する。対象5種（打撃スタイル、打撃スキル、投球スタイル、投球スキル、選手タイプ）はYAML設定ファイルで管理されており、Settings画面およびAPIは**読み取り専用**となっている。バイオリズムのみDB管理のまま維持され、Settings画面からCRUD操作が可能。選手データとは直接参照または中間テーブルを介した多対多で関連付けられる。
 
 ### 1.1 マスタデータ一覧
 
@@ -108,13 +108,15 @@ import ScheduleSettings from '@/components/settings/ScheduleSettings.vue'
 | `additionalHeaders` | `any[]` | - | テーブルに追加するカラムヘッダー |
 | `hasDescriptionColumn` | `boolean` | `true` | 説明カラムの表示有無 |
 | `descriptionMaxWidth` | `string` | `'250px'` | 説明カラムの最大幅 |
+| `readonly` | `boolean` | `false` | 読み取り専用モード。`true` の場合、追加/編集/削除ボタンとアクションカラムを非表示にし、案内メッセージ（v-alert）を表示 |
 
 #### 2.2.2 UI構造
 
-1. **展開パネル（v-expansion-panels）**: 折りたたみ可能なパネル。タイトル横に「追加」ボタンを配置
-2. **データテーブル（v-data-table）**: `density="compact"` でアイテム一覧を表示。各行に編集（mdi-pencil）・削除（mdi-delete）アイコンを配置
-3. **ダイアログ**: Props で渡されたダイアログコンポーネントを `v-model` で制御
-4. **確認ダイアログ（ConfirmDialog）**: 削除時の確認用
+1. **展開パネル（v-expansion-panels）**: 折りたたみ可能なパネル。タイトル横に「追加」ボタンを配置（`readonly=false` の場合のみ）
+2. **案内メッセージ（v-alert）**: `readonly=true` の場合、「この設定は設定ファイルで管理されているため、ここでは閲覧のみ可能です。」を表示
+3. **データテーブル（v-data-table）**: `density="compact"` でアイテム一覧を表示。`readonly=false` の場合のみ各行に編集（mdi-pencil）・削除（mdi-delete）アイコンとアクションカラムを配置
+4. **ダイアログ**: Props で渡されたダイアログコンポーネントを `v-model` で制御
+5. **確認ダイアログ（ConfirmDialog）**: 削除時の確認用
 
 #### 2.2.3 データフロー
 
@@ -130,7 +132,7 @@ import ScheduleSettings from '@/components/settings/ScheduleSettings.vue'
 1. `name`（常に表示）
 2. `additionalHeaders`（Props指定時のみ）
 3. `description`（`hasDescriptionColumn` が true の場合）
-4. `actions`（常に表示、右寄せ）
+4. `actions`（`readonly=false` の場合のみ表示、右寄せ）
 
 #### 2.2.5 スロット
 
@@ -150,6 +152,7 @@ import ScheduleSettings from '@/components/settings/ScheduleSettings.vue'
 - **endpoint**: `/pitching-styles`
 - **ダイアログ**: `PitchingStyleDialog`
 - **descriptionMaxWidth**: `500px`
+- **readonly**: `true`（読み取り専用）
 - カスタマイズなし（GenericMasterSettingsの標準動作）
 
 #### 2.3.2 BattingStyleSettings
@@ -158,6 +161,7 @@ import ScheduleSettings from '@/components/settings/ScheduleSettings.vue'
 - **endpoint**: `/batting-styles`
 - **ダイアログ**: `BattingStyleDialog`
 - **descriptionMaxWidth**: `500px`
+- **readonly**: `true`（読み取り専用）
 - カスタマイズなし
 
 #### 2.3.3 PitchingSkillSettings
@@ -166,10 +170,12 @@ import ScheduleSettings from '@/components/settings/ScheduleSettings.vue'
 - **endpoint**: `/pitching-skills`
 - **ダイアログ**: `PitchingSkillDialog`
 - **descriptionMaxWidth**: `400px`
+- **readonly**: `true`（読み取り専用）
 - **カスタマイズ**: `item.name` スロットで `skill_type` に応じた色付き `v-chip` を表示
   - `positive` → 青（`blue`）
   - `negative` → 赤（`red`）
   - `neutral` → 緑（`green`）
+- **SkillType**: `@/types/skill` からインポート
 
 #### 2.3.4 BattingSkillSettings
 
@@ -177,7 +183,9 @@ import ScheduleSettings from '@/components/settings/ScheduleSettings.vue'
 - **endpoint**: `/batting-skills`
 - **ダイアログ**: `BattingSkillDialog`
 - **descriptionMaxWidth**: `400px`
+- **readonly**: `true`（読み取り専用）
 - **カスタマイズ**: PitchingSkillSettingsと同一のスキルタイプ色付きチップ表示
+- **SkillType**: `@/types/skill` からインポート
 
 #### 2.3.5 PlayerTypeSettings
 
@@ -185,6 +193,7 @@ import ScheduleSettings from '@/components/settings/ScheduleSettings.vue'
 - **endpoint**: `/player-types`
 - **ダイアログ**: `PlayerTypeDialog`
 - **descriptionMaxWidth**: `500px`
+- **readonly**: `true`（読み取り専用）
 - カスタマイズなし
 
 #### 2.3.6 BiorhythmSettings
@@ -299,12 +308,13 @@ Settings.vue
 ### 3.1 共通事項
 
 - **ベースURL**: `/api/v1`
-- **コントローラー継承**: 6種類とも `Api::V1::*Controller < ApplicationController` を直接継承（`BaseController` を経由しない）
-- **認証**: コントローラーに明示的な認証ガードは定義されていない。`PitchingStylesController` にTODOコメントあり:「認証機能が実装されたら、適切な認証処理を `before_action` に追加してください」
+- **コントローラー継承**: 6種類とも `Api::V1::*Controller < Api::V1::BaseController` を継承
+- **認証**: `Api::V1::BaseController` で `before_action :authenticate_user!` が設定されており、全エンドポイントで認証必須
 - **レスポンス形式**: `to_json` による直接シリアライズ（専用シリアライザーなし）。`created_at`, `updated_at` もレスポンスに含まれる
-- **エラーレスポンス**: `{ errors: ["エラーメッセージ1", ...] }`（422 Unprocessable Entity）。`ActiveModel::Errors#full_messages` がそのまま格納される
+- **エラーレスポンス**: バイオリズムのみ `{ errors: ["エラーメッセージ1", ...] }`（422 Unprocessable Entity）。YAML管理対象5種は `{ error: "..." }`（403 Forbidden）
 - **ソート**: 全indexアクションで `order(:id)` を適用（Biorhythmのみ `order(:start_date, :name)`）
 - **アクション**: 全マスタデータとも `index`, `create`, `update`, `destroy` の4アクション。`show` アクションはなし
+- **YAML管理対象の書き込み制限**: 打撃スタイル、打撃スキル、投球スタイル、投球スキル、選手タイプの5種は、`create`/`update`/`destroy` アクションが `403 Forbidden` を返す（`I18n.t("master_data.managed_by_config_file")`）。`index`（読み取り）のみ許可
 
 ### 3.2 打撃スキル（BattingSkill）
 
@@ -330,45 +340,19 @@ GET /api/v1/batting-skills
 ]
 ```
 
-#### POST /api/v1/batting-skills
+#### POST /api/v1/batting-skills（無効化）
 
-打撃スキルを新規作成する。
+YAML設定ファイル管理のため、書き込みは禁止。
 
-```
-POST /api/v1/batting-skills
-Content-Type: application/json
-```
+- **レスポンス**: 403 Forbidden `{ "error": "(master_data.managed_by_config_fileの翻訳メッセージ)" }`
 
-**リクエストボディ**:
-```json
-{
-  "batting_skill": {
-    "name": "パワーヒッター",
-    "description": "長打力が高い",
-    "skill_type": "positive"
-  }
-}
-```
+#### PATCH/PUT /api/v1/batting-skills/:id（無効化）
 
-- **成功**: 201 Created（作成されたオブジェクト）
-- **失敗**: 422 Unprocessable Entity（バリデーションエラー）
-- **Strong Parameters**: `name`, `description`, `skill_type`
+- **レスポンス**: 403 Forbidden
 
-#### PATCH/PUT /api/v1/batting-skills/:id
+#### DELETE /api/v1/batting-skills/:id（無効化）
 
-打撃スキルを更新する。
-
-**リクエストボディ**: POST と同一構造
-
-- **成功**: 200 OK（更新されたオブジェクト）
-- **失敗**: 422 Unprocessable Entity
-
-#### DELETE /api/v1/batting-skills/:id
-
-打撃スキルを削除する。
-
-- **成功**: 204 No Content
-- **制約**: `dependent: :restrict_with_error` により、選手に紐づいている場合は削除不可
+- **レスポンス**: 403 Forbidden
 
 ---
 
@@ -393,31 +377,19 @@ GET /api/v1/batting-styles
 ]
 ```
 
-#### POST /api/v1/batting-styles
+#### POST /api/v1/batting-styles（無効化）
 
-**リクエストボディ**:
-```json
-{
-  "batting_style": {
-    "name": "アッパースイング",
-    "description": "打球が上がりやすい"
-  }
-}
-```
+YAML設定ファイル管理のため、書き込みは禁止。
 
-- **Strong Parameters**: `name`, `description`
-- **成功**: 201 Created
-- **失敗**: 422 Unprocessable Entity
+- **レスポンス**: 403 Forbidden
 
-#### PATCH/PUT /api/v1/batting-styles/:id
+#### PATCH/PUT /api/v1/batting-styles/:id（無効化）
 
-- **成功**: 200 OK
-- **失敗**: 422 Unprocessable Entity
+- **レスポンス**: 403 Forbidden
 
-#### DELETE /api/v1/batting-styles/:id
+#### DELETE /api/v1/batting-styles/:id（無効化）
 
-- **成功**: 204 No Content
-- **制約**: `players` テーブルの `batting_style_id` 外部キーにより、参照されている場合は外部キー制約違反でエラー
+- **レスポンス**: 403 Forbidden
 
 ---
 
@@ -431,32 +403,19 @@ GET /api/v1/pitching-skills
 
 **レスポンス**: BattingSkillと同一構造（`id`, `name`, `description`, `skill_type`, `created_at`, `updated_at`）
 
-#### POST /api/v1/pitching-skills
+#### POST /api/v1/pitching-skills（無効化）
 
-**リクエストボディ**:
-```json
-{
-  "pitching_skill": {
-    "name": "ノビ",
-    "description": "ストレートにノビがある",
-    "skill_type": "positive"
-  }
-}
-```
+YAML設定ファイル管理のため、書き込みは禁止。
 
-- **Strong Parameters**: `name`, `description`, `skill_type`
-- **成功**: 201 Created
-- **失敗**: 422 Unprocessable Entity
+- **レスポンス**: 403 Forbidden
 
-#### PATCH/PUT /api/v1/pitching-skills/:id
+#### PATCH/PUT /api/v1/pitching-skills/:id（無効化）
 
-- **成功**: 200 OK
-- **失敗**: 422 Unprocessable Entity
+- **レスポンス**: 403 Forbidden
 
-#### DELETE /api/v1/pitching-skills/:id
+#### DELETE /api/v1/pitching-skills/:id（無効化）
 
-- **成功**: 204 No Content
-- **備考**: `PitchingSkill` モデルに `has_many` 定義はないが、`player_pitching_skills` テーブルの外部キー制約がDB側で機能する
+- **レスポンス**: 403 Forbidden
 
 ---
 
@@ -470,31 +429,19 @@ GET /api/v1/pitching-styles
 
 **レスポンス**: BattingStyleと同一構造（`id`, `name`, `description`, `created_at`, `updated_at`）
 
-#### POST /api/v1/pitching-styles
+#### POST /api/v1/pitching-styles（無効化）
 
-**リクエストボディ**:
-```json
-{
-  "pitching_style": {
-    "name": "オーバースロー",
-    "description": "上手投げの標準的なフォーム"
-  }
-}
-```
+YAML設定ファイル管理のため、書き込みは禁止。
 
-- **Strong Parameters**: `name`, `description`
-- **成功**: 201 Created
-- **失敗**: 422 Unprocessable Entity
+- **レスポンス**: 403 Forbidden
 
-#### PATCH/PUT /api/v1/pitching-styles/:id
+#### PATCH/PUT /api/v1/pitching-styles/:id（無効化）
 
-- **成功**: 200 OK
-- **失敗**: 422 Unprocessable Entity
+- **レスポンス**: 403 Forbidden
 
-#### DELETE /api/v1/pitching-styles/:id
+#### DELETE /api/v1/pitching-styles/:id（無効化）
 
-- **成功**: 204 No Content
-- **制約**: `players` テーブルの `pitching_style_id`, `pinch_pitching_style_id`, `catcher_pitching_style_id` 外部キーにより参照制約あり
+- **レスポンス**: 403 Forbidden
 
 ---
 
@@ -519,31 +466,19 @@ GET /api/v1/player-types
 ]
 ```
 
-#### POST /api/v1/player-types
+#### POST /api/v1/player-types（無効化）
 
-**リクエストボディ**:
-```json
-{
-  "player_type": {
-    "name": "サブマリン",
-    "description": "アンダースロー投手"
-  }
-}
-```
+YAML設定ファイル管理のため、書き込みは禁止。
 
-- **Strong Parameters**: `name`, `description`
-- **成功**: 201 Created
-- **失敗**: 422 Unprocessable Entity
+- **レスポンス**: 403 Forbidden
 
-#### PATCH/PUT /api/v1/player-types/:id
+#### PATCH/PUT /api/v1/player-types/:id（無効化）
 
-- **成功**: 200 OK
-- **失敗**: 422 Unprocessable Entity
+- **レスポンス**: 403 Forbidden
 
-#### DELETE /api/v1/player-types/:id
+#### DELETE /api/v1/player-types/:id（無効化）
 
-- **成功**: 204 No Content
-- **制約**: `dependent: :restrict_with_error` により、選手に紐づいている場合は削除不可
+- **レスポンス**: 403 Forbidden
 
 ---
 
@@ -616,37 +551,59 @@ URLパスはケバブケース（`player-types`, `batting-skills` 等）。`bior
 
 ### 3.9 コントローラ構造
 
-すべてのコントローラは `Api::V1` モジュール配下に配置され、以下の共通パターンを持つ:
+すべてのコントローラは `Api::V1::BaseController` を継承する。YAML管理対象5種とバイオリズムで構造が異なる。
+
+#### 3.9.1 YAML管理対象コントローラ（読み取り専用）
+
+打撃スタイル、打撃スキル、投球スタイル、投球スキル、選手タイプの5種:
 
 ```ruby
 module Api
   module V1
-    class {Resource}Controller < ApplicationController
-      before_action :set_{resource}, only: [:update, :destroy]
-
+    class {Resource}Controller < Api::V1::BaseController
       def index    # GET    全件取得（ソート済み、to_jsonで直接レンダリング）
-      def create   # POST   新規作成（成功: 201、失敗: 422）
-      def update   # PATCH  更新（成功: 200、失敗: 422）
-      def destroy  # DELETE 削除（成功: 204 No Content）
-
-      private
-      def set_{resource}         # params[:id]でレコード検索（find）
-      def {resource}_params      # Strong Parameters
+      def create   # POST   403 Forbidden（設定ファイル管理のため）
+      def update   # PATCH  403 Forbidden
+      def destroy  # DELETE 403 Forbidden
     end
   end
 end
 ```
 
-#### 3.9.1 コントローラ別Strong Parameters一覧
+- `set_*` や `*_params` プライベートメソッドは不要のため削除済み
+- `create`/`update`/`destroy` は `render json: { error: I18n.t("master_data.managed_by_config_file") }, status: :forbidden` を返す
 
-| コントローラ | 許可パラメータ |
-|------------|--------------|
-| BattingSkillsController | `name`, `description`, `skill_type` |
-| BattingStylesController | `name`, `description` |
-| PitchingSkillsController | `name`, `description`, `skill_type` |
-| PitchingStylesController | `name`, `description` |
-| PlayerTypesController | `name`, `description` |
-| BiorhythmsController | `name`, `start_date`, `end_date` |
+#### 3.9.2 バイオリズムコントローラ（CRUD有効）
+
+```ruby
+module Api
+  module V1
+    class BiorhythmsController < Api::V1::BaseController
+      before_action :set_biorhythm, only: [:update, :destroy]
+
+      def index    # GET    全件取得（start_date, name順）
+      def create   # POST   新規作成（成功: 201、失敗: 422）
+      def update   # PATCH  更新（成功: 200、失敗: 422）
+      def destroy  # DELETE 削除（成功: 204 No Content）
+
+      private
+      def set_biorhythm         # params[:id]でレコード検索（find）
+      def biorhythm_params      # Strong Parameters: name, start_date, end_date
+    end
+  end
+end
+```
+
+#### 3.9.3 コントローラ別Strong Parameters一覧
+
+| コントローラ | 許可パラメータ | 状態 |
+|------------|--------------|------|
+| BattingSkillsController | - | 読み取り専用（403） |
+| BattingStylesController | - | 読み取り専用（403） |
+| PitchingSkillsController | - | 読み取り専用（403） |
+| PitchingStylesController | - | 読み取り専用（403） |
+| PlayerTypesController | - | 読み取り専用（403） |
+| BiorhythmsController | `name`, `start_date`, `end_date` | CRUD有効 |
 
 ---
 
@@ -1014,9 +971,9 @@ export interface Biorhythm {
 
 ## 7. 既知の制約・未実装機能
 
-### 7.1 認証未実装
+### ~~7.1 認証未実装~~ （解決済み）
 
-6種類のマスタデータコントローラはいずれも認証ガード（`before_action :authenticate_user!` 等）を実装していない。`PitchingStylesController` にTODOコメントとして記載されているが、他の5コントローラには記載もない。全マスタデータのCRUD操作は認証なしでアクセス可能な状態である。
+6種類のマスタデータコントローラは全て `Api::V1::BaseController` を継承しており、`before_action :authenticate_user!` により認証が必須となった。
 
 ### 7.2 専用シリアライザー不在
 
@@ -1043,9 +1000,9 @@ export interface Biorhythm {
 
 `Biorhythm` モデルでは `start_date` と `end_date` の存在チェックのみ行っており、`start_date <= end_date` の論理チェック、期間重複チェック、年度範囲チェック等は未実装。フロントエンド側も日付形式の正規表現チェックのみで、論理的な期間バリデーションは行っていない。
 
-### 7.7 SkillType型の重複定義
+### ~~7.7 SkillType型の重複定義~~ （解決済み）
 
-`SkillType` 型（`'positive' | 'negative' | 'neutral'`）が `battingSkill.ts` と `pitchingSkill.ts` の2箇所で個別に定義されている。共通の型定義ファイルに統合されていない。
+`SkillType` 型は `src/types/skill.ts` に共通定義として統合された。`BattingSkillSettings` と `PitchingSkillSettings` は `@/types/skill` からインポートしている。ただし、`battingSkill.ts` と `pitchingSkill.ts` にも個別の `SkillType` 定義が残っている可能性がある。
 
 ---
 
@@ -1055,25 +1012,50 @@ export interface Biorhythm {
 
 対象5種（打撃特徴、投球特徴、打撃特殊能力、投球特殊能力、選手タイプ）はYAML設定ファイルでの管理に移行中。バイオリズムはDB管理のまま維持（将来的に日程表との連動予定）。
 
-#### 8.1.1 移行方針（案A: DBシード方式）
+#### 8.1.1 移行方針（案A: DBシード方式）— 実装済み
 
 - **既存テーブルと関連は維持**: `batting_skills`, `batting_styles`, `pitching_skills`, `pitching_styles`, `player_types` テーブルおよび中間テーブルはそのまま残す
 - **YAML設定ファイル**: `config/master_data/*.yml` に各マスタデータを配置
-- **Rakeタスクによる同期**:
-  - `rake master_data:sync`: YAML → DB 同期（YAML を正とし、DB に反映）
+- **Rakeタスクによる同期**（`lib/tasks/master_data.rake`）:
+  - `rake master_data:sync`: YAML → DB 同期（`find_or_initialize_by(name:)` で upsert、削除は行わない）
   - `rake master_data:export`: DB → YAML 出力（現在のDBデータをYAMLに書き出し）
+- **APIの書き込み制限**: 対象5種のコントローラで `create`/`update`/`destroy` が `403 Forbidden` を返すように変更済み
 
 この方式により、既存の選手データとの関連やAPIエンドポイントの動作を維持したまま、マスタデータの管理を YAML ファイルで一元化できる。
 
+#### 8.1.1a Rakeタスク詳細
+
+**対象モデルと同期フィールド**:
+
+| キー | モデル | ソート | 同期フィールド |
+|------|--------|-------|--------------|
+| `batting_styles` | BattingStyle | `:id` | `name`, `description` |
+| `pitching_styles` | PitchingStyle | `:id` | `name`, `description` |
+| `batting_skills` | BattingSkill | `:id` | `name`, `description`, `skill_type` |
+| `pitching_skills` | PitchingSkill | `:id` | `name`, `description`, `skill_type` |
+| `player_types` | PlayerType | `:id` | `name`, `description`, `category` |
+
+**`master_data:sync` の動作**:
+1. 各YAMLファイル（`config/master_data/{key}.yml`）を読み込み
+2. エントリごとに `Model.find_or_initialize_by(name: entry["name"])` で既存レコードを検索（なければ新規）
+3. YAMLのフィールド値を `assign_attributes` でセット
+4. 新規レコードまたは変更があったレコードのみ `save!` で保存
+5. 削除は行わない（YAMLから削除してもDBレコードは残る）
+
+**`master_data:export` の動作**:
+1. 各モデルからソート順で全レコードを取得
+2. `key` + 同期フィールドをハッシュに変換
+3. `config/master_data/{key}.yml` にYAML形式で書き出し
+
 #### 8.1.2 Settings画面の変更
 
-フロントエンドのSettings画面は**読み取り専用**に変更された:
+フロントエンドのSettings画面は**読み取り専用**に変更された（バックエンドも `403 Forbidden` で書き込みを拒否）:
 
 - **追加ボタン**: 非表示
 - **編集ボタン（mdi-pencil）**: 非表示
 - **削除ボタン（mdi-delete）**: 非表示
 - **操作カラム**: テーブルから除外
-- **案内表示**: 「この設定は設定ファイルで管理されているため、ここでは閲覧のみ可能です。」（v-alert）
+- **案内表示**: 「この設定は設定ファイルで管理されているため、ここでは閲覧のみ可能です。」（v-alert, `settings.managedByConfigFile`）
 
 **変更対象コンポーネント**:
 
@@ -1085,6 +1067,7 @@ export interface Biorhythm {
 | `PitchingSkillSettings.vue` | `:readonly="true"` を指定 |
 | `BattingSkillSettings.vue` | `:readonly="true"` を指定 |
 | `PlayerTypeSettings.vue` | `:readonly="true"` を指定 |
+| `BiorhythmSettings.vue` | `readonly` 指定なし（CRUD操作可能のまま） |
 
 **国際化対応**:
 

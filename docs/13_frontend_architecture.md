@@ -9,6 +9,10 @@
 - ルートコンポーネント: `src/App.vue`
 - レイアウトコンポーネント: `src/layouts/DefaultLayout.vue`（認証後のページ共通レイアウト）
 - バックエンドAPI（Rails）との通信はAxios経由で行い、セッションベース認証 + CSRF保護に対応
+- フォント: Zen Kaku Gothic New（メイン）/ Noto Sans JP（フォールバック）
+
+**CI/CD:**
+- GitHub Actions (`test.yml`): RSpec（BE）+ Vitest（FE）の自動テスト実行（push/PRトリガー）
 
 **技術スタック:**
 
@@ -32,6 +36,10 @@
 | prettier | 3.5.3 | コードフォーマッター |
 | vite-plugin-vue-devtools | ^7.7.7 | 開発時のVueデバッグツール |
 | npm-run-all2 | ^8.0.4 | NPMスクリプト並列実行 |
+| vitest | ^4.0.18 | ユニットテストフレームワーク |
+| @vue/test-utils | ^2.4.6 | Vueコンポーネントテストユーティリティ |
+| @playwright/test | ^1.58.2 | E2Eテストフレームワーク |
+| happy-dom | ^20.6.1 | テスト用DOM実装 |
 
 ---
 
@@ -44,7 +52,7 @@ thbigmatome-front/
 │   ├── App.vue                   # ルートコンポーネント
 │   ├── assets/                   # 静的アセット
 │   │   ├── main.css              # メインCSS
-│   │   ├── base.css              # ベースCSS
+│   │   ├── base.css              # ベースCSS（フォント設定含む）
 │   │   └── logo.svg              # ロゴSVG
 │   ├── components/               # 再利用コンポーネント
 │   │   ├── shared/               # 汎用セレクタコンポーネント
@@ -58,6 +66,7 @@ thbigmatome-front/
 │   │   ├── ConfirmDialog.vue     # 汎用確認ダイアログ
 │   │   ├── ManagerDialog.vue     # 監督追加/編集ダイアログ
 │   │   ├── TeamDialog.vue        # チーム追加/編集ダイアログ
+│   │   ├── TeamNavigation.vue    # チーム関連画面のタブナビゲーション
 │   │   ├── SeasonInitializationDialog.vue  # シーズン初期化ダイアログ
 │   │   ├── StartingMemberDialog.vue  # スタメン登録ダイアログ
 │   │   ├── Scoreboard.vue        # スコアボード表示
@@ -78,9 +87,9 @@ thbigmatome-front/
 │   ├── router/                   # ルーティング
 │   │   ├── index.ts              # ルート定義
 │   │   └── authGuard.ts          # 認証ガード
-│   ├── types/                    # TypeScript型定義（24ファイル）
+│   ├── types/                    # TypeScript型定義（26ファイル）
 │   └── views/                    # ページコンポーネント
-│       ├── TopMenu.vue           # ダッシュボード
+│       ├── TopMenu.vue           # ダッシュボード（コミッショナーモード切替、チーム選択、公式Wiki）
 │       ├── LoginForm.vue         # ログインフォーム
 │       ├── ManagerList.vue       # 監督一覧
 │       ├── TeamList.vue          # チーム一覧
@@ -441,6 +450,37 @@ createI18n({
 
 ---
 
+## フォント設定
+
+**設定ファイル:** `src/assets/base.css`
+
+アプリケーション全体のフォントは `base.css` の `body` セレクタで定義される。
+
+**フォントスタック:**
+```css
+font-family:
+  'Zen Kaku Gothic New',  /* メインフォント */
+  'Noto Sans JP',         /* フォールバック */
+  Inter,
+  -apple-system,
+  BlinkMacSystemFont,
+  'Segoe UI',
+  Roboto,
+  Oxygen,
+  Ubuntu,
+  Cantarell,
+  'Fira Sans',
+  'Droid Sans',
+  'Helvetica Neue',
+  sans-serif;
+```
+
+- **Zen Kaku Gothic New:** Google Fontsの日本語フォント。丸みのあるゴシック体で、東方BIG野球まとめのUIテーマに適した雰囲気を提供
+- **Noto Sans JP:** Google Fontsの日本語フォント。Zen Kaku Gothic New が利用できない場合のフォールバック
+- **フォントサイズ:** `15px`（`base.css` で設定）
+
+---
+
 ## レイアウト
 
 ### DefaultLayout (`src/layouts/DefaultLayout.vue`)
@@ -465,7 +505,9 @@ createI18n({
 │ コスト  │                                        │
 │ 設定    │                                        │
 │ [リーグ]│                                        │
-│        │                                        │
+│ ──────│                                        │
+│ 外部    │                                        │
+│ 公式Wiki│                                        │
 │ ◁/▷   │                                        │
 ├────────┴───────────────────────────────────────┤
 │ v-snackbar (top, tonal)                         │
@@ -495,6 +537,13 @@ createI18n({
    | `mdi-cog` | `navigation.settings` | `/settings` | 常時 |
    | `mdi-trophy` | リーグ管理 | `/commissioner/leagues` | `isCommissioner` が `true` の場合のみ |
 
+   **外部リンクセクション（ドロワー内、メニュー項目の下に `v-divider` で区切り）:**
+
+   | アイコン | タイトル（i18nキー） | リンク先 | 備考 |
+   |---------|-------------------|---------|------|
+   | `mdi-baseball-diamond` | `navigation.officialWiki` | `https://thbigbaseball.wiki.fc2.com/` | 外部リンク（`target="_blank"`）、`mdi-open-in-new` アイコン付き |
+
+   - セクションヘッダー: `navigation.externalLinks`（`v-list-subheader`、rail非表示時のみ）
    - 末尾にドロワー縮小/展開トグルボタン（`mdi-chevron-left` / `mdi-chevron-right`）
 
 3. **`v-main`（メインコンテンツ）:**
@@ -515,7 +564,7 @@ createI18n({
 
 ## 型定義一覧
 
-`src/types/` 配下に24ファイルの型定義が存在する。各ファイルはバックエンドAPIのレスポンス構造に対応した `interface` を提供する。
+`src/types/` 配下に26ファイルの型定義が存在する。各ファイルはバックエンドAPIのレスポンス構造に対応した `interface` を提供する。
 
 ### マスターデータ系
 
@@ -528,10 +577,14 @@ createI18n({
 | `pitchingSkill.ts` | `PitchingSkill`, `SkillType` | 投手特殊能力 | `id`, `name`, `description`, `skill_type` |
 | `biorhythm.ts` | `Biorhythm` | バイオリズム | `id`, `name`, `start_date`, `end_date` |
 
-**`SkillType` 定義（battingSkill.ts / pitchingSkill.ts で同一定義）:**
+**`SkillType` 定義（`skill.ts` に共通定義として分離）:**
 ```typescript
-type SkillType = 'positive' | 'negative' | 'neutral'
+export type SkillType = 'positive' | 'negative' | 'neutral'
 ```
+
+| ファイル | 型名 | 用途 | 主要フィールド |
+|---------|------|------|-------------|
+| `skill.ts` | `SkillType` | 特殊能力の種別（共通型） | `'positive' \| 'negative' \| 'neutral'` |
 
 ### 管理者・チーム系
 
@@ -548,7 +601,7 @@ type SkillType = 'positive' | 'negative' | 'neutral'
 |---------|------|------|-------------|
 | `player.ts` | `Player` | 選手基本情報 | `id`, `name`, `short_name`, `number`, `position`, `throwing_hand`, `batting_hand`, `player_type_ids`, `cost_players`, 守備力・送球力各ポジション |
 | `playerDetail.ts` | `PlayerDetail` | 選手詳細情報（編集用） | 上記に加え `batting_style_id`, `batting_skill_ids`, `biorhythm_ids`, `bunt`, `steal_start/end`, `speed`, `injury_rate`, 投手能力（`is_pitcher`, `starter_stamina`, `relief_stamina`, `pitching_style_id`, `pitching_skill_ids`）, 専属捕手（`catcher_ids`, `catcher_pitching_style_id`）, パートナー投手（`partner_pitcher_ids`）, `special_defense_c`, `special_throwing_c` |
-| `playerAbsence.ts` | `PlayerAbsence` | 選手離脱情報 | `id`, `team_membership_id`, `season_id`, `absence_type`（`'injury' \| 'suspension' \| 'reconditioning'`）, `reason`, `start_date`, `duration`, `duration_unit`（`'days' \| 'games'`）, `player_name` |
+| `playerAbsence.ts` | `PlayerAbsence` | 選手離脱情報 | `id`, `team_membership_id`, `season_id`, `absence_type`（`'injury' \| 'suspension' \| 'reconditioning'`）, `reason`, `start_date`, `duration`, `duration_unit`（`'days' \| 'games'`）, `effective_end_date`（`string \| null`）, `player_name` |
 
 ### コスト系
 
@@ -570,6 +623,12 @@ type SkillType = 'positive' | 'negative' | 'neutral'
 | `startingMember.ts` | `StartingMember` | スタメン登録 | `battingOrder`, `position`, `player` |
 | `scoreboard.ts` | `Scoreboard` | スコアボード | `home`, `away`（各イニングの得点配列） |
 
+### 汎用系
+
+| ファイル | 型名 | 用途 | 主要フィールド |
+|---------|------|------|-------------|
+| `pagination.ts` | `PaginationMeta`, `PaginatedResponse<T>` | ページネーション対応レスポンス | `total_count`, `per_page`, `current_page`, `total_pages`, `data: T[]`, `meta: PaginationMeta` |
+
 ### スケジュール系
 
 | ファイル | 型名 | 用途 | 主要フィールド |
@@ -583,6 +642,31 @@ type SkillType = 'positive' | 'negative' | 'neutral'
 ## 共有コンポーネント
 
 `src/components/shared/` 配下に5つの汎用セレクタコンポーネントが存在する。いずれもVuetifyの `v-autocomplete` または `v-select` をラップし、特定のドメインオブジェクト向けに特化した選択UIを提供する。
+
+### TeamNavigation（チーム関連画面タブナビゲーション）
+
+**ファイル:** `src/components/TeamNavigation.vue`
+
+**機能:** チーム関連画面間のタブナビゲーションを提供する共有コンポーネント。`v-tabs` を使用し、現在のルートに応じてアクティブタブを自動判定する。
+
+**Props:**
+
+| Prop | 型 | 必須 | デフォルト | 説明 |
+|------|----|----|----------|------|
+| `teamId` | `number \| string` | Yes | -- | チームID（各タブのルートパラメータに使用） |
+
+**タブ一覧:**
+
+| ルート名 | ラベル（i18nキー） | アイコン | 遷移先 |
+|---------|-------------------|---------|--------|
+| `TeamMembers` | `teamNavigation.teamMembers` | `mdi-account-group` | `/teams/:teamId/members` |
+| `SeasonRoster` | `teamNavigation.activeRoster` | `mdi-clipboard-list` | `/teams/:teamId/roster` |
+| `SeasonPortal` | `teamNavigation.seasonPortal` | `mdi-calendar` | `/teams/:teamId/season` |
+| `PlayerAbsenceHistory` | `teamNavigation.playerAbsenceHistory` | `mdi-account-off` | `/teams/:teamId/season/player_absences` |
+
+**使用箇所:** `PlayerAbsenceHistory.vue` 等のチーム関連画面で `<TeamNavigation :team-id="teamId" />` として使用。
+
+**レイアウト:** `v-card` (variant="outlined") 内に `v-tabs` を配置。`density="comfortable"`、`color="primary"`。
 
 ### TeamSelect
 
@@ -721,7 +805,7 @@ if (result) {
 
 | キー | 説明 | 主要サブキー |
 |------|------|------------|
-| `topMenu` | ダッシュボード画面 | `welcome`, `teamSelection`, `seasonInitialization`, `seasonPortal` |
+| `topMenu` | ダッシュボード画面 | `welcome`, `teamSelection`, `seasonInitialization`, `seasonPortal`, `commissionerMode`, `officialWiki` |
 | `common` | 共通テキスト | `close` |
 | `seasonPortal` | シーズンポータル画面 | `title`, `currentDate`, `gameResult`, `registerAbsence`, `absenceInfo` |
 | `playerAbsenceHistory` | 離脱者履歴画面 | `title`, `addAbsence`, `tableHeaders`, `confirmDelete` |
@@ -734,7 +818,9 @@ if (result) {
 | `validation` | バリデーションメッセージ | `required`, `dateFormat`, `defenseFormat` |
 | `loginForm` | ログインフォーム | `title`, `loginId`, `password`, `login`, `loggingIn`, `loginFailed` |
 | `layout` | レイアウト共通 | `appTitle`, `logout` |
-| `navigation` | ナビゲーションメニュー | `dashboard`, `managers`, `teams`, `players`, `costAssignment`, `settings`, `collapse`, `expand` |
+| `navigation` | ナビゲーションメニュー | `dashboard`, `managers`, `teams`, `players`, `costAssignment`, `settings`, `collapse`, `expand`, `officialWiki`, `externalLinks` |
+| `teamNavigation` | チーム画面タブナビゲーション | `teamMembers`, `activeRoster`, `seasonPortal`, `playerAbsenceHistory` |
+| `commissioner` | コミッショナー機能 | `detail.title`, `detail.tabs.*`, `detail.seasonHeaders.*`, `detail.gameHeaders.*`, `detail.poolPlayerHeaders.*`, `detail.seasonStatus.*`, `detail.generateSchedule`, `detail.selectSeason`, `detail.selectTeam`, `detail.noSeasons`, `detail.noGames`, `detail.noPoolPlayers`, `detail.teamStaffNoData`, `detail.absencesDescription` |
 | `teamList` | チーム一覧画面 | `title`, `addTeam`, `headers`, `deleteConfirm*`, `notifications` |
 | `managerList` | 監督一覧画面 | `title`, `addManager`, `headers`, `expanded`, `deleteConfirm*`, `notifications` |
 | `managerDialog` | 監督ダイアログ | `title`, `form`, `notifications` |
@@ -837,6 +923,33 @@ Project References構成で、アプリケーションコードとNode.js（ビ�
 | `npm run type-check` | `vue-tsc --build` — TypeScript型チェック |
 | `npm run lint` | `eslint . --fix` — ESLintによるリント＋自動修正 |
 | `npm run format` | `prettier --write src/` — Prettierによるフォーマット |
+| `npm run test` | `vitest` — ユニットテスト実行（watchモード） |
+| `npm run test:run` | `vitest run` — ユニットテスト実行（単発実行） |
+
+---
+
+## CI/CD
+
+### GitHub Actions (`test.yml`)
+
+**ファイル:** `.github/workflows/test.yml`（リポジトリルート）
+
+バックエンド（RSpec）とフロントエンド（Vitest）のテストを自動実行するCIワークフロー。
+
+**トリガー:**
+- `push`: `main`, `develop` ブランチ
+- `pull_request`: `main`, `develop` ブランチ
+
+**ジョブ構成:**
+
+| ジョブ名 | 対象 | 実行環境 | テストフレームワーク |
+|---------|------|---------|------------------|
+| `rspec-tests` | バックエンド（thbigmatome） | ubuntu-latest + PostgreSQL 16 | RSpec |
+| `vitest-tests` | フロントエンド（thbigmatome-front） | ubuntu-latest + Node.js 22 | Vitest |
+
+**必要なGitHub Secrets:**
+- `POSTGRES_PASSWORD`: CIテスト用PostgreSQLパスワード
+- `RAILS_MASTER_KEY`: Rails credentials用マスターキー
 
 ---
 
@@ -849,7 +962,7 @@ Project References構成で、アプリケーションコードとNode.js（ビ�
 | `src/main.ts` | アプリケーションエントリポイント（プラグイン登録） |
 | `src/App.vue` | ルートコンポーネント（認証チェック起動） |
 | `src/layouts/DefaultLayout.vue` | 認証後共通レイアウト |
-| `src/router/index.ts` | ルート定義（15ルート） |
+| `src/router/index.ts` | ルート定義（14ルート + キャッチオール） |
 | `src/router/authGuard.ts` | 認証・権限ガード |
 
 ### プラグイン
@@ -871,7 +984,7 @@ Project References構成で、アプリケーションコードとNode.js（ビ�
 
 | ファイルパス | 役割 |
 |------------|------|
-| `src/types/` 配下24ファイル | APIレスポンス対応の型定義 |
+| `src/types/` 配下26ファイル | APIレスポンス対応の型定義 |
 
 ### 共有コンポーネント
 
@@ -882,6 +995,7 @@ Project References構成で、アプリケーションコードとNode.js（ビ�
 | `src/components/shared/PlayerDetailSelect.vue` | 選手詳細選択（複数） |
 | `src/components/shared/TeamMemberSelect.vue` | チームメンバー選択 |
 | `src/components/shared/CostListSelect.vue` | コスト一覧選択 |
+| `src/components/TeamNavigation.vue` | チーム関連画面のタブナビゲーション |
 | `src/components/ConfirmDialog.vue` | 汎用確認ダイアログ |
 
 ### 設定ファイル

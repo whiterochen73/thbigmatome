@@ -189,7 +189,7 @@ const rules = {
   positiveInteger: (value: number | null) => {
     if (value === null || value === undefined) return true;
     if (!Number.isInteger(value)) return '整数を入力してください';
-    if (value < 0) return '0以上の整数を入力してください';
+    if (value < 1) return '1以上の整数を入力してください';
     return true;
   },
 };
@@ -197,8 +197,8 @@ const rules = {
 
 - 未入力（`null` / `undefined`）は許容
 - 入力がある場合は整数であること
-- 入力がある場合は0以上であること
-- 入力欄の幅: `80px`、`v-text-field` で `type="number"` `min="0"`
+- 入力がある場合は1以上であること（バックエンドのバリデーションと一致）
+- 入力欄の幅: `80px`、`v-text-field` で `type="number"` `min="1"`
 
 #### 状態管理
 
@@ -265,8 +265,8 @@ const rules = {
 ### 共通事項
 
 - **ベースURL**: `/api/v1`
-- **コントローラー継承**: `Api::V1::CostsController < ApplicationController`、`Api::V1::CostAssignmentsController < ApplicationController`
-- **認証**: `ApplicationController` 経由の認証が適用される
+- **コントローラー継承**: `Api::V1::CostsController < Api::V1::BaseController`、`Api::V1::CostAssignmentsController < Api::V1::BaseController`
+- **認証**: `Api::V1::BaseController` の `before_action :authenticate_user!` により全アクションで認証が必須。未認証の場合は `401 Unauthorized`（`{ error: 'ログインが必要です' }`）を返す
 
 ### コスト表 CRUD
 
@@ -444,7 +444,7 @@ const rules = {
   4. 5種類のコスト値を設定（直接ハッシュアクセス: `cost_player[:normal_cost] = ...`）
   5. `save!` で保存
 - **成功レスポンス**: デフォルト（暗黙の200、レスポンスボディなし）
-- **注意**: トランザクション制御が明示的にないため、途中で `save!` が失敗した場合、それ以前の保存は確定済みとなり部分的な保存状態になる可能性がある
+- **トランザクション**: `ActiveRecord::Base.transaction` で全選手の保存をラップしており、途中で `save!` が失敗した場合はトランザクション全体がロールバックされる
 
 ---
 
@@ -538,8 +538,9 @@ end
 | カラム名 | 型 | NOT NULL | デフォルト | 説明 |
 |----------|------|----------|-----------|------|
 | selected_cost_type | string | はい | `"normal_cost"` | 適用するコスト種別名 |
+| excluded_from_team_total | boolean | はい | `false` | チーム合計コスト計算から除外するフラグ |
 
-**有効な値**: `normal_cost`, `relief_only_cost`, `pitcher_only_cost`, `fielder_only_cost`, `two_way_cost`
+**selected_cost_type の有効な値**: `normal_cost`, `relief_only_cost`, `pitcher_only_cost`, `fielder_only_cost`, `two_way_cost`
 
 #### モデル定義抜粋（`app/models/team_membership.rb`）
 
@@ -550,12 +551,17 @@ class TeamMembership < ApplicationRecord
   has_many :season_rosters
   has_many :player_absences, dependent: :restrict_with_error
 
-  validates :squad, inclusion: { in: %w(first second) }
-  validates :selected_cost_type, presence: true
+  validates :squad, inclusion: { in: %w[first second] }
+  validates :selected_cost_type, presence: true, inclusion: { in: %w[normal_cost relief_only_cost pitcher_only_cost fielder_only_cost two_way_cost] }
+
+  scope :included_in_team_total, -> { where(excluded_from_team_total: false) }
+  scope :excluded_from_team_total, -> { where(excluded_from_team_total: true) }
 end
 ```
 
-- `selected_cost_type` は `presence: true` で必須。ただし、有効な値のリスト（`inclusion`）による制約はモデルレベルでは未定義。
+- `selected_cost_type` は `presence: true` と `inclusion` バリデーションにより、5種類の有効なコスト種別のいずれかを必須とする。
+- `excluded_from_team_total` は `false` がデフォルト。`true` に設定された選手はチーム全体コスト（200上限）の計算から除外される。
+- `included_in_team_total` / `excluded_from_team_total` スコープにより、コスト計算対象の選手を効率的にフィルタリングできる。
 
 ---
 
@@ -640,15 +646,16 @@ end
 **処理フロー**:
 
 1. `cost_id` から `Cost` レコードを検索（`Cost.find`）
-2. リクエスト内の `players` 配列を反復処理
-3. 各選手について `cost.cost_players.find_or_initialize_by(player_id:)` で既存の `cost_player` を検索、なければ新規初期化
-4. 5種類のコスト値を直接代入（`cost_player[:normal_cost] = player_params[:normal_cost]` 等）
-5. `save!` で保存
+2. `ActiveRecord::Base.transaction` でトランザクション開始
+3. リクエスト内の `players` 配列を反復処理
+4. 各選手について `cost.cost_players.find_or_initialize_by(player_id:)` で既存の `cost_player` を検索、なければ新規初期化
+5. 5種類のコスト値を直接代入（`cost_player[:normal_cost] = player_params[:normal_cost]` 等）
+6. `save!` で保存
 
 **特徴**:
 - 既存レコードがある場合は更新、ない場合は新規作成（upsert動作）
 - 全選手分を一括送信・保存する設計
-- **トランザクション未使用**: 途中で失敗した場合、部分保存状態になるリスクがある
+- **トランザクション使用**: `ActiveRecord::Base.transaction` で全選手の保存をラップ。途中で `save!` が失敗した場合、トランザクション全体がロールバックされ部分保存を防止する
 
 ---
 
@@ -672,7 +679,7 @@ end
 
 ```ruby
 class TeamPlayerSerializer < PlayerSerializer
-  attributes :selected_cost_type, :current_cost
+  attributes :selected_cost_type, :current_cost, :excluded_from_team_total
 
   def selected_cost_type
     object.team_memberships.find_by(team_id: @instance_options[:team].id).selected_cost_type
@@ -683,11 +690,16 @@ class TeamPlayerSerializer < PlayerSerializer
     cost_player_record = object.cost_players.find_by(cost_id: @instance_options[:cost_list_id])
     cost_player_record&.send(cost_type)
   end
+
+  def excluded_from_team_total
+    object.team_memberships.find_by(team_id: @instance_options[:team].id).excluded_from_team_total
+  end
 end
 ```
 
-- `PlayerSerializer` を継承し、`selected_cost_type` と `current_cost` を追加出力
+- `PlayerSerializer` を継承し、`selected_cost_type`、`current_cost`、`excluded_from_team_total` を追加出力
 - `current_cost` は `cost_players` テーブルから、対象コスト表の `selected_cost_type` に対応する値を動的に取得（`send` メソッドを使用）
+- `excluded_from_team_total` はチーム合計コスト計算からの除外フラグを出力
 
 #### RosterPlayerSerializer によるコスト出力
 
@@ -712,27 +724,61 @@ end
 
 ### 一軍ロースターのコスト制約
 
-`TeamRostersController#create` の `validate_first_squad_constraints` メソッドで、一軍ロースターの人数・合計コスト制約をチェックする。
+`TeamRostersController#create` の `validate_first_squad_constraints` メソッドで、一軍ロースターの人数・合計コスト制約をチェックする。バリデーションはロースター変更の**最終状態**（FINAL STATE）に対して行われる。個々の登録・抹消操作ごとではなく、全変更をトランザクション内で適用した後に一括検証する。
 
 #### 基本制約
 
 | 制約 | 値 |
 |------|-----|
 | 一軍最大人数 | 29人 |
-| 一軍最大コスト（非試合日） | 120 |
 
-#### 試合日の動的コスト上限
+#### 一軍コスト上限（人数別段階制）
 
-試合日（`date_type: 'game_day'`）には、一軍人数に応じてコスト上限が変動する。
+一軍登録人数に応じてコスト上限が段階的に設定される。設定値は `config/cost_limits.yml` で管理される。
+
+```yaml
+# config/cost_limits.yml
+team_total_max_cost: 200
+first_squad_tiers:
+  - min_players: 28
+    max_cost: 120
+  - min_players: 27
+    max_cost: 119
+  - min_players: 26
+    max_cost: 117
+  - min_players: 25
+    max_cost: 114
+first_squad_minimum_players: 25
+```
 
 | 一軍人数 | コスト上限 |
 |----------|-----------|
-| 25人 | 114 |
-| 26人 | 117 |
-| 27人 | 119 |
 | 28〜29人 | 120 |
+| 27人 | 119 |
+| 26人 | 117 |
+| 25人 | 114 |
+| 24人以下 | 登録不可（試合日のみ。非試合日は人数制約なし） |
 
-試合日には一軍に最低25人の登録が必要（シーズン初日の初期登録中を除く）。
+上限の決定ロジック（`Team.first_squad_cost_limit_for_count`）:
+
+```ruby
+def self.first_squad_cost_limit_for_count(count)
+  tier = COST_LIMIT_CONFIG["first_squad_tiers"].find { |t| count >= t["min_players"] }
+  tier ? tier["max_cost"] : nil
+end
+```
+
+`min_players` 降順で定義されたテーブルを走査し、最初にマッチした行（`count >= min_players`）の `max_cost` を返す。該当なし（24人以下）の場合は `nil` を返す（コスト上限チェックはスキップされるが、試合日には最低25人の制約が別途適用される）。
+
+#### FINAL STATE バリデーション
+
+ロースター変更処理は以下の3フェーズで実行される:
+
+1. **Phase 1**: 全ての登録・抹消変更を適用（クーリングオフチェックのみ）
+2. **Phase 2**: 変更後の一軍メンバーを再取得（`team.team_memberships.reload`）し、最終状態に対してコスト制約を検証
+3. **Phase 3**: 外の世界枠の制約を検証
+
+Phase 2 で制約違反が検出された場合、トランザクション全体がロールバックされ、Phase 1 で行われた全変更も取り消される。
 
 #### 合計コスト計算ロジック
 
@@ -747,6 +793,65 @@ total_cost = first_squad_memberships.sum { |tm|
 2. `tm.selected_cost_type`（`normal_cost`, `relief_only_cost` 等）を `send` で動的呼び出しし、コスト値を取得
 3. 全一軍選手のコスト値を合算
 
+**注意**: 一軍コスト計算は `excluded_from_team_total` の値に関係なく、一軍メンバー全員を含める。`excluded_from_team_total` フラグはチーム全体コスト（200上限）の計算にのみ影響する。
+
+#### チーム全体コスト制約（200固定）
+
+`Team#validate_team_total_cost` メソッドにより、チーム全体のコスト合計が上限（200固定）以下であることをチェックする。
+
+```ruby
+# Team モデル
+TEAM_TOTAL_MAX_COST = COST_LIMIT_CONFIG["team_total_max_cost"]  # 200
+
+def validate_team_total_cost(cost_list_id)
+  total_cost = calculate_included_team_cost(cost_list_id)
+  if total_cost > TEAM_TOTAL_MAX_COST
+    errors.add(:base, ...)
+    false
+  else
+    true
+  end
+end
+
+def calculate_included_team_cost(cost_list_id)
+  included_memberships = team_memberships.included_in_team_total.includes(player: :cost_players)
+  included_memberships.sum do |tm|
+    cost_player = tm.player.cost_players.find { |cp| cp.cost_id == cost_list_id }
+    cost_player ? (cost_player.send(tm.selected_cost_type) || 0) : 0
+  end
+end
+```
+
+- **対象**: `excluded_from_team_total` が `false` の選手のみ（`included_in_team_total` スコープ）
+- **上限**: 200（`config/cost_limits.yml` の `team_total_max_cost`）
+- **検証タイミング**: `TeamPlayersController#create` でチーム所属メンバー更新後に検証。全メンバーの更新完了後（FINAL STATE）に一括検証し、違反時はトランザクションをロールバック
+
+#### TeamPlayersController#create のコスト検証フロー
+
+```ruby
+ActiveRecord::Base.transaction do
+  # 1. 不要なメンバーシップを削除
+  @team.team_memberships.where.not(player_id: incoming_player_ids).destroy_all
+
+  # 2. 各選手のメンバーシップを作成/更新（excluded_from_team_total を含む）
+  player_params.each do |p|
+    membership = @team.team_memberships.find_or_initialize_by(player_id: p[:player_id])
+    membership.update!(
+      selected_cost_type: p[:selected_cost_type],
+      excluded_from_team_total: p[:excluded_from_team_total] || false
+    )
+  end
+
+  # 3. 全メンバー更新後にチーム全体コスト制約を検証（FINAL STATE）
+  @team.team_memberships.reload
+  if cost_list_id
+    unless @team.validate_team_total_cost(cost_list_id)
+      raise ActiveRecord::RecordInvalid.new(@team)
+    end
+  end
+end
+```
+
 #### チーム所属画面（TeamMembers.vue）のコスト制約
 
 `TeamMembers.vue` ではチーム編成時に以下の制約を表示・チェックする:
@@ -756,7 +861,7 @@ total_cost = first_squad_memberships.sum { |tm|
 | チーム最大人数 | 50人 | `MAX_PLAYERS` |
 | チーム最大合計コスト | 200 | `TOTAL_TEAM_MAX_COST` |
 
-超過時はスナックバーで警告を表示するが、保存自体はブロックしない（フロントエンドのみの警告）。
+超過時はスナックバーで警告を表示するが、保存自体はブロックしない（フロントエンドのみの警告）。バックエンドの `TeamPlayersController#create` でチーム全体コスト（200上限）の最終検証が行われ、違反時は `422 Unprocessable Entity` が返される。
 
 ---
 
@@ -921,11 +1026,11 @@ end
 
 #### TeamMembershipSerializer（`app/serializers/team_membership_serializer.rb`）
 
-チーム所属情報のJSON出力。コスト関連として `selected_cost_type` を含む。
+チーム所属情報のJSON出力。コスト関連として `selected_cost_type` と `excluded_from_team_total` を含む。
 
 ```ruby
 class TeamMembershipSerializer < ActiveModel::Serializer
-  attributes :id, :team_id, :player_id, :squad, :selected_cost_type
+  attributes :id, :team_id, :player_id, :squad, :selected_cost_type, :excluded_from_team_total
 
   belongs_to :player
 end
@@ -983,9 +1088,9 @@ resources :cost_assignments, only: [:index, :create]
 
 ## 既知の制約・注意事項
 
-1. **バックエンドとフロントエンドのバリデーション差異**: バックエンドではコスト値の最小値は `1`（`greater_than_or_equal_to: 1`）だが、フロントエンドのバリデーションでは `0以上` を許容している。この差異により、フロントエンドで `0` を入力した場合、バックエンドでバリデーションエラーとなる可能性がある。
+1. ~~**バックエンドとフロントエンドのバリデーション差異**~~: **解消済み**。バックエンド・フロントエンドともにコスト値の最小値は `1`（バックエンド: `greater_than_or_equal_to: 1`、フロントエンド: `value < 1` チェック + `min="1"`）で一致している。
 
-2. **トランザクション制御の非対称性**: `duplicate` アクションはトランザクションで保護されているが、`cost_assignments#create` の一括保存にはトランザクション制御がない。途中で `save!` が失敗した場合、それ以前の保存は確定済みとなり部分的な保存状態になる可能性がある。
+2. ~~**トランザクション制御の非対称性**~~: **解消済み**。`duplicate` アクションと `cost_assignments#create` の両方で `ActiveRecord::Base.transaction` によるトランザクション制御が適用されている。
 
 3. **current_cost の制約**: `end_date` が `null` のレコードが複数存在した場合、`first` により取得されるレコードは不定。運用上、`end_date` が `null` のコスト表は1件のみに制限すべきである。
 
@@ -995,6 +1100,6 @@ resources :cost_assignments, only: [:index, :create]
 
 6. **CostListSelect のエッジケース**: コスト表が0件の場合、`costLists.value[0]` は `undefined` となり、`costList.value` に `undefined` が設定される。
 
-7. **selected_cost_type の整合性バリデーション不足**: `TeamMembership` モデルは `selected_cost_type` に `presence: true` のみを要求し、`inclusion` バリデーションがない。無効な値（例: `"invalid_type"`）が保存された場合、`send` メソッドで `NoMethodError` が発生するリスクがある。
+7. ~~**selected_cost_type の整合性バリデーション不足**~~: **解消済み**。`TeamMembership` モデルは `selected_cost_type` に `presence: true` と `inclusion: { in: %w[normal_cost relief_only_cost pitcher_only_cost fielder_only_cost two_way_cost] }` の両方を要求し、無効な値の保存を防止している。
 
 8. **RosterPlayerSerializer の cost 計算エラーリスク**: `Cost.current_cost` が `nil` を返す場合（`end_date` が `null` のコスト表が存在しない場合）、`NoMethodError` が発生する。また、選手に `cost_player` レコードが存在しない場合も同様のエラーが発生する。

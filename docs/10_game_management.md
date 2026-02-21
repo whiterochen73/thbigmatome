@@ -357,6 +357,8 @@ resources :game, only: [:show, :update]
 - `id`: SeasonSchedule の ID
 
 **レスポンス（成功時 200 OK）:**
+
+コントローラーがインラインでハッシュを構築して返却:
 ```json
 {
   "team_id": 1,
@@ -390,11 +392,16 @@ resources :game, only: [:show, :update]
   ],
   "game_result": {
     "opponent_short_name": "白玉",
-    "score": "5-3",
+    "score": "5 - 3",
     "result": "win"
   }
 }
 ```
+
+**注意**:
+- `game_number` は `SeasonSchedule#calculated_game_number` から取得（DBカラム値 or 動的計算）
+- `announced_starter_id` は `announced_starter&.id`（TeamMembershipのID）
+- `game_result` は `date < Date.today` の場合のみ `game_result_hash` を呼び出して生成。未来の試合では `null`
 
 **レスポンス（失敗時）:**
 - `404 Not Found`: SeasonSchedule が存在しない、またはシーズンが未初期化
@@ -416,21 +423,22 @@ resources :game, only: [:show, :update]
        ↓
 [2] season, team をアソシエーションから取得
        ↓
-[3] game_number 計算:
-     - season_schedule.game_number が設定済みならそれを使用
-     - 未設定なら、同シーズン内の試合日タイプ ('game_day' or 'interleague_game_day')
-       かつ date < 当該試合日の試合数 + 1 を計算
+[3] game_number: season_schedule.calculated_game_number を呼び出し
+     - SeasonSchedule モデルのメソッドに統合済み
+     - game_number カラムが設定済みならそれを使用
+     - 未設定なら動的計算
        ↓
-[4] game_result 生成（過去の試合かつスコア入力済みの場合のみ）:
-     - date < Date.today かつ score/opponent_score が存在
-     - result: 'win' / 'lose' / 'draw' を判定
+[4] game_result: season_schedule.game_result_hash を呼び出し
+     - SeasonSchedule モデルのメソッドに統合済み
+     - date < Date.today の場合のみ呼び出し
        ↓
-[5] JSON レスポンス返却
+[5] JSON レスポンス返却（インラインハッシュ構築）
 ```
 
 **注意事項:**
 - ~~`oppnent_score` はバックエンドDBのタイポ~~ → **修正済み (cmd_142)**: カラム名を `opponent_score`, `opponent_team_id` にリネーム。変換コードも除去済み。
 - `game_result` は試合日が過去かつスコア入力済みの場合のみ生成される。未来の試合や未入力の試合では `null`。
+- **DESIGN-008,009**: `game_number` と `game_result` のロジックは `SeasonSchedule` モデルに統合済み（`calculated_game_number`, `game_result_hash`）。コントローラーからの重複実装は除去されている。
 
 ---
 
@@ -494,6 +502,8 @@ params.permit(
 ```
 
 **レスポンス（成功時 200 OK）:**
+
+`season_schedule` オブジェクトをそのまま JSON として返却（`SeasonScheduleSerializer` は不使用）:
 ```json
 {
   "id": 123,
@@ -531,7 +541,6 @@ params.permit(
   ```json
   {
     "errors": [
-      "Score must be a number",
       "Home away is not included in the list"
     ]
   }
@@ -542,14 +551,15 @@ params.permit(
 [1] SeasonSchedule.find(params[:id]) で試合取得
        ↓
 [2] game_params で Strong Parameters 適用
-     - opponent_score, opponent_team_id をそのまま使用（タイポ修正済み）
        ↓
-[3] season_schedule.update(game_params) で更新実行
+[3] season_schedule.update(update_params) で更新実行
        ↓
-[4a] 成功時: SeasonScheduleSerializer でシリアライズして 200 OK 返却
+[4a] 成功時: season_schedule をそのまま JSON として 200 OK 返却
        ↓
 [4b] 失敗時: エラーメッセージ配列を 422 で返却
 ```
+
+**注意**: 更新成功時のレスポンスは `SeasonScheduleSerializer` ではなく、`season_schedule` オブジェクトをそのまま `render json:` で返却している。
 
 ---
 
@@ -625,11 +635,42 @@ params.permit(
 ```ruby
 class SeasonSchedule < ApplicationRecord
   belongs_to :season
-  belongs_to :announced_starter, class_name: 'TeamMembership', optional: true
-  belongs_to :opponent_team, class_name: 'Team', foreign_key: 'opponent_team_id', optional: true
-  belongs_to :winning_pitcher, class_name: 'Player', optional: true
-  belongs_to :losing_pitcher, class_name: 'Player', optional: true
-  belongs_to :save_pitcher, class_name: 'Player', optional: true
+  belongs_to :announced_starter, class_name: "TeamMembership", optional: true
+  belongs_to :opponent_team, class_name: "Team", foreign_key: "opponent_team_id", optional: true
+  belongs_to :winning_pitcher, class_name: "Player", optional: true
+  belongs_to :losing_pitcher, class_name: "Player", optional: true
+  belongs_to :save_pitcher, class_name: "Player", optional: true
+
+  validates :home_away, inclusion: { in: [ "home", "visitor" ] }, allow_blank: true
+end
+```
+
+**モデルメソッド:**
+
+| メソッド | 説明 |
+|---------|------|
+| `calculated_game_number` | `game_number` カラム値があればそれを使用、なければ同シーズン内の試合日（`game_day` / `interleague_game_day`）で `date < 当該日` の件数 + 1 を動的計算 |
+| `game_result_hash` | `score` と `opponent_score` の両方が存在する場合に `{ opponent_short_name, score, result }` を返す。スコア未入力なら `nil` |
+
+```ruby
+def calculated_game_number
+  game_number || season.season_schedules
+    .where(date_type: [ "game_day", "interleague_game_day" ])
+    .where("date < ?", date)
+    .count + 1
+end
+
+def game_result_hash
+  return nil if score.blank? || opponent_score.blank?
+  result = if score > opponent_score then "win"
+  elsif score < opponent_score then "lose"
+  else "draw"
+  end
+  {
+    opponent_short_name: opponent_team&.short_name,
+    score: "#{score} - #{opponent_score}",
+    result: result
+  }
 end
 ```
 
@@ -787,35 +828,35 @@ else if (gameData.value.home_away === 'home') {
 ### 試合結果判定ロジック
 
 **実装場所:**
-- バックエンド: `GameController#show` (line 12-26), `SeasonScheduleSerializer#game_result` (line 14-30)
+- `SeasonSchedule#game_result_hash` モデルメソッド（統合済み）
+- `SeasonScheduleSerializer#game_result` はモデルメソッドに委譲
+- `GameController#show` は `date < Date.today` の場合のみ `game_result_hash` を呼び出し
 
 **判定条件:**
-1. 試合日が過去（`season_schedule.date < Date.today`）
-2. スコアが両方入力済み（`score.present? && opponent_score.present?`）
+1. 試合日が過去（`season_schedule.date < Date.today`）— コントローラーでチェック
+2. スコアが両方入力済み（`score.present? && opponent_score.present?`）— モデルメソッドでチェック
 
 **判定ロジック:**
 ```ruby
-result = if season_schedule.score > season_schedule.opponent_score
-           'win'
-         elsif season_schedule.score < season_schedule.opponent_score
-           'lose'
-         else
-           'draw'
-         end
+# SeasonSchedule#game_result_hash
+result = if score > opponent_score then "win"
+elsif score < opponent_score then "lose"
+else "draw"
+end
 ```
 
 **出力形式:**
 ```json
 {
   "opponent_short_name": "白玉",
-  "score": "5-3",
+  "score": "5 - 3",
   "result": "win"
 }
 ```
 
 **注意事項:**
 - 未来の試合や未入力の試合では `game_result` は `null`
-- シリアライザーとコントローラーで同じロジックが重複実装されている（シリアライザー版は略称使用）
+- **DESIGN-008,009**: `game_number` の計算ロジックと `game_result` の生成ロジックは `SeasonSchedule` モデルに統合済み。コントローラーとシリアライザーの重複は解消
 
 ---
 
@@ -849,6 +890,8 @@ src/
 #### GameData (`src/types/gameData.ts`)
 
 ```typescript
+import type { Scoreboard } from './scoreboard';
+
 export interface LineupItem {
   player_id: number;
   position: string;
@@ -876,6 +919,8 @@ export interface GameData {
   starting_lineup: LineupItem[] | null;
 }
 ```
+
+**注意**: `opponent_starting_lineup` は型定義に含まれていないが、`ScoreSheet.vue` のデフォルト値では `opponent_starting_lineup: []` として初期化し、APIレスポンスから取得して使用している。
 
 #### Scoreboard (`src/types/scoreboard.ts`)
 
@@ -1019,36 +1064,34 @@ const handleSaveStartingMembers = async (data: { homeLineup: StartingMember[], o
    - 打撃記録入力欄は存在するが、「安打」「打点」列の自動計算機能なし
    - `battingResults` はローカル状態のみで保存機能なし
 
-3. **game_number の重複実装:**
-   - コントローラー内で動的計算（`season_schedule.game_number || 計算ロジック`）
-   - DB保存値と計算値の整合性管理が曖昧
+3. ~~**game_number の重複実装:**~~ → **修正済み (DESIGN-008)**: `SeasonSchedule#calculated_game_number` モデルメソッドに統合。コントローラーはモデルメソッドを呼び出すのみ
 
-4. **game_result の重複実装:**
-   - `GameController#show` と `SeasonScheduleSerializer#game_result` で同じロジック
-   - 略称 (`short_name`) の使用がシリアライザーのみ
+4. ~~**game_result の重複実装:**~~ → **修正済み (DESIGN-009)**: `SeasonSchedule#game_result_hash` モデルメソッドに統合。シリアライザーもモデルメソッドに委譲
 
-5. **バリデーション未定義:**
-   - SeasonSchedule モデルにバリデーション記述なし
-   - `home_away` の値制約（'home' / 'visitor' のみ許可）はモデルレベルで未強制
+5. ~~**バリデーション未定義:**~~ → **一部修正済み**: `home_away` の値制約（`'home'` / `'visitor'` のみ許可）が `validates :home_away, inclusion: { in: ["home", "visitor"] }, allow_blank: true` としてモデルレベルで定義済み
 
 6. **CSRF トークン:**
    - ログインエンドポイント以外は全てCSRF保護が有効
    - フロントエンドの axios interceptor で自動付与
+
+7. **GameData 型と opponent_starting_lineup:**
+   - `GameData` 型定義（`gameData.ts`）に `opponent_starting_lineup` フィールドが未定義
+   - `ScoreSheet.vue` のデフォルト値では `starting_lineup: []`, `opponent_starting_lineup: []` として初期化しているが、型定義には `starting_lineup` のみ
 
 ---
 
 ## 参考資料
 
 - **バックエンド:**
-  - `app/controllers/api/v1/game_controller.rb` (99行)
-  - `app/models/season_schedule.rb` (8行)
-  - `app/serializers/season_schedule_serializer.rb` (32行)
+  - `app/controllers/api/v1/game_controller.rb` (75行)
+  - `app/models/season_schedule.rb` (32行 — `calculated_game_number`, `game_result_hash` メソッド含む)
+  - `app/serializers/season_schedule_serializer.rb` (17行 — `game_result` は `game_result_hash` に委譲)
   - `db/schema.rb` (season_schedules テーブル定義: line 291-317)
   - `config/routes.rb` (line 33)
 
 - **フロントエンド:**
-  - `src/views/GameResult.vue` (315行)
-  - `src/views/ScoreSheet.vue` (494行)
+  - `src/views/GameResult.vue` (314行)
+  - `src/views/ScoreSheet.vue` (543行)
   - `src/components/Scoreboard.vue` (129行)
   - `src/components/StartingMemberDialog.vue` (317行)
   - `src/types/gameData.ts` (28行)
@@ -1057,6 +1100,6 @@ const handleSaveStartingMembers = async (data: { homeLineup: StartingMember[], o
 
 ---
 
-**最終更新:** 2026-02-14
+**最終更新:** 2026-02-21
 **作成者:** 足軽2号（マルチエージェントシステム）
 **参照ソースコード:** 東方BIG野球まとめ (thbigmatome / thbigmatome-front)

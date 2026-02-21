@@ -5,14 +5,16 @@
 東方BIG野球まとめシステムにおけるチーム管理機能は、チームの作成・編集・削除、およびチームに所属する選手（チームメンバー）の管理を担う。チーム管理は以下の3つの主要エンティティで構成される:
 
 1. **チーム（Team）**: 名前・略称・活動状態を持つ基本エンティティ。監督・コーチは中間テーブル（TeamManager）経由で管理する
-2. **チームメンバーシップ（TeamMembership）**: チームと選手の多対多関連を管理する中間テーブル。選手ごとのコストタイプ選択（`selected_cost_type`）および軍区分（`squad`: 1軍/2軍）を保持する
+2. **チームメンバーシップ（TeamMembership）**: チームと選手の多対多関連を管理する中間テーブル。選手ごとのコストタイプ選択（`selected_cost_type`）、軍区分（`squad`: 1軍/2軍）、およびチーム合計コスト計算からの除外フラグ（`excluded_from_team_total`）を保持する
 3. **チームマネージャー（TeamManager）**: チームと監督（Manager）の関連を管理する中間テーブル。役割（`role`: director/coach）をenumで区別し、同一リーグ内での兼任禁止バリデーションを持つ
 
 チーム管理機能は以下の画面で構成される:
 
-- **チーム一覧画面（TeamList）**: 全チームの表示・作成・編集・削除
+- **トップメニュー（TopMenu）**: カード型チーム選択UI。チームカードクリックでシーズン画面へ遷移。コミッショナーモードの切り替えトグルあり
+- **チーム一覧画面（TeamList）**: 全チームの表示・作成・編集・削除。メンバー編集画面へのナビゲーションリンクあり
 - **チーム作成/編集ダイアログ（TeamDialog）**: チームの名前・略称・監督・コーチ・活動状態を設定
-- **チームメンバー編集画面（TeamMembers）**: 選手の追加・削除、コストタイプ選択、総コスト管理
+- **チームメンバー編集画面（TeamMembers）**: 選手の追加・削除、コストタイプ選択、除外フラグ、総コスト管理
+- **TeamNavigation**: チーム関連画面間のタブナビゲーション共有コンポーネント
 
 さらに、コミッショナーモード（リーグ管理）では以下の追加管理機能が提供される:
 
@@ -75,55 +77,56 @@
 
 **レイアウト:**
 ```
-┌────────────────────────────────────────────────────────┐
-│  チーム一覧                            [+ チームを追加] │
-├────────────────────────────────────────────────────────┤
-│  ID │ チーム名 │ 略称 │ 監督名 │ 活動中 │ 操作        │
-│  1  │ 紅魔館   │ SDM  │ 霊夢   │   ✓   │ [編集][削除]│
-│  2  │ 白玉楼   │ WHT  │ 魔理沙 │   ✓   │ [編集][削除]│
-│  3  │ 永遠亭   │ EIT  │ -      │       │ [編集][削除]│
-└────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────┐
+│  チーム一覧                                   [+ チームを追加]   │
+├─────────────────────────────────────────────────────────────────┤
+│  ID │ チーム名 │ 略称 │ 監督名 │ 活動中 │ 操作                  │
+│  1  │ 紅魔館   │ SDM  │ 霊夢   │   ✓   │ [メンバー][編集][削除] │
+│  2  │ 白玉楼   │ WHT  │ 魔理沙 │   ✓   │ [メンバー][編集][削除] │
+│  3  │ 永遠亭   │ EIT  │ -      │       │ [メンバー][編集][削除] │
+└─────────────────────────────────────────────────────────────────┘
 ```
 
-**データテーブルヘッダー定義（`TeamList.vue:71-78`）:**
+**データテーブルヘッダー定義:**
 
 | ヘッダー | キー | ソート | 説明 |
 |---------|------|--------|------|
 | ID | `id` | 可 | チームID |
 | チーム名 | `name` | 可 | チーム正式名称 |
 | 略称 | `short_name` | 可 | チーム略称 |
-| 監督名 | `manager_name` | 不可 | 監督の名前（カスタムスロットで `item.manager?.name` を表示） |
+| 監督名 | `manager_name` | 不可 | 監督の名前（カスタムスロットで `item.director?.name` を表示） |
 | 活動中 | `is_active` | 不可 | アクティブフラグ（`mdi-check` アイコン表示） |
-| 操作 | `actions` | 不可 | 編集・削除アイコン |
+| 操作 | `actions` | 不可 | メンバー編集・チーム編集・削除アイコン |
 
 **操作アイコン:**
 
 | アイコン | 動作 |
 |---------|------|
+| `mdi-account-group` | チームメンバー編集画面（`/teams/:teamId/members`）へ遷移。`navigateToMembers(item.id)` で `router.push` |
 | `mdi-pencil` | チーム編集ダイアログ（`TeamDialog`）を開く。`openDialog(item)` で既存データのコピーを渡す |
 | `mdi-delete` | `ConfirmDialog` で確認後、`DELETE /api/v1/teams/:id` を実行 |
 
-**データ取得（`TeamList.vue:92-103`）:**
+**データ取得:**
 ```typescript
 const fetchTeams = async () => {
-  loading.value = true;
+  loading.value = true
   try {
-    const response = await axios.get<Team[]>('/teams');
-    teams.value = response.data;
+    const response = await axios.get<Team[]>('/teams')
+    teams.value = response.data
   } catch (error) {
-    console.error('Error fetching teams:', error);
-    showSnackbar(t('teamList.fetchFailed'), 'error');
+    console.error('Error fetching teams:', error)
+    showSnackbar(t('teamList.fetchFailed'), 'error')
   } finally {
-    loading.value = false;
+    loading.value = false
   }
-};
+}
 ```
 
 - マウント時（`onMounted`）に自動取得
 - チーム保存完了（`TeamDialog` の `save` イベント）時に再取得
 - チーム削除完了時に再取得
 
-**削除フロー（`TeamList.vue:109-127`）:**
+**削除フロー:**
 ```
 [1] deleteTeam(id) 呼び出し
        ↓
@@ -136,12 +139,19 @@ const fetchTeams = async () => {
 [5] 失敗時: エラースナックバー表示
 ```
 
-**ダイアログ制御（`TeamList.vue:133-136`）:**
+**ダイアログ制御:**
 ```typescript
 const openDialog = (team: Team | null = null) => {
-  editingTeam.value = team ? { ...team } : null; // スプレッド構文でコピー（参照渡し防止）
-  dialogVisible.value = true;
-};
+  editingTeam.value = team ? { ...team } : null // スプレッド構文でコピー（参照渡し防止）
+  dialogVisible.value = true
+}
+```
+
+**メンバー編集画面へのナビゲーション:**
+```typescript
+const navigateToMembers = (teamId: number) => {
+  router.push(`/teams/${teamId}/members`)
+}
 ```
 
 **国際化キー:**
@@ -265,35 +275,41 @@ const fetchManagers = async () => {
 
 **レイアウト:**
 ```
-┌────────────────────────────────────────────────────────┐
-│  紅魔館のメンバー管理                                  │
-├────────────────────────────────────────────────────────┤
-│  コスト一覧表: [▼ 2025年度コスト表]                   │
-│  選手選択:     [▼ 00 霧雨魔理沙   ] [追加]            │
-├────────────────────────────────────────────────────────┤
-│  チームメンバー一覧                                    │
-│  合計: 25/50 人 / 総コスト: 180/200                    │
-│  [投手: 10] [捕手: 3] [内野手: 8] [外野手: 4]         │
-├────────────────────────────────────────────────────────┤
-│ 背番号 │ 名前   │ タイプ │ 守備 │ 投 │ 打 │ コスト  │ 操作│
-│ 00     │ 魔理沙 │ 二刀流 │ P    │ 右 │ 右 │[▼通常 10]│[×]│
-│ 01     │ 霊夢   │ 野手専 │ C    │ 右 │ 右 │[▼通常 8] │[×]│
-└────────────────────────────────────────────────────────┘
-│                               [キャンセル] [保存]       │
-└────────────────────────────────────────────────────────┘
+┌────────────────────────────────────────────────────────────────┐
+│ [メンバー管理] [出場選手登録] [シーズン] [離脱履歴]  ← TeamNavigation │
+├────────────────────────────────────────────────────────────────┤
+│  紅魔館のメンバー管理                                          │
+├────────────────────────────────────────────────────────────────┤
+│  コスト一覧表: [▼ 2025年度コスト表]                            │
+│  選手選択:     [▼ 00 霧雨魔理沙   ] [追加]                    │
+├────────────────────────────────────────────────────────────────┤
+│  チームメンバー一覧                                            │
+│  合計: 25/50 人 / 総コスト: 180/200                            │
+│  ⚠ コスト上限を超えています（警告アラート、超過時のみ表示）      │
+│  [投手: 10] [捕手: 3] [内野手: 8] [外野手: 4]                 │
+├────────────────────────────────────────────────────────────────┤
+│ 背番号 │ 名前   │ タイプ │ 守備 │ 投 │ 打 │ コスト   │除外│ 操作│
+│ 00     │ 魔理沙 │ 二刀流 │ P    │ 右 │ 右 │[▼通常 10]│[ ]│ [×]│
+│ 01     │ 霊夢   │ 野手専 │ C    │ 右 │ 右 │[▼通常 8] │[✓]│ [×]│
+└────────────────────────────────────────────────────────────────┘
+│                                       [キャンセル] [保存]       │
+└────────────────────────────────────────────────────────────────┘
 ```
 
 **主要な機能:**
 
-1. **コスト一覧表の選択**: `CostListSelect` 共有コンポーネントで選択。マウント時に現在日時が期間内のコスト表を自動選択。選択変更時に `watch` で全データを再取得
-2. **選手の追加**: 選択中コスト一覧表に `normal_cost` が null でない選手のみ候補に表示。すでにチームに追加済みの選手は除外
-3. **コストタイプの選択**: 選手ごとに `normal_cost`, `relief_only_cost`, `pitcher_only_cost`, `fielder_only_cost`, `two_way_cost` から選択（選手のプレイヤータイプIDに応じて選択肢が動的に変わる）
-4. **制限チェック**:
-   - 最大選手数: `MAX_PLAYERS = 50`
-   - 総コスト上限: `TOTAL_TEAM_MAX_COST = 200`
-   - 超過時は警告スナックバー表示（保存自体は可能）
+1. **TeamNavigation**: `TeamNavigation` 共有コンポーネントにより、チームメンバー管理・出場選手登録・シーズンポータル・離脱履歴の各画面間をタブで遷移可能
+2. **コスト一覧表の選択**: `CostListSelect` 共有コンポーネントで選択。マウント時に現在日時が期間内のコスト表を自動選択。選択変更時に `watch` で全データを再取得
+3. **選手の追加**: 選択中コスト一覧表に `normal_cost` が null でない選手のみ候補に表示。すでにチームに追加済みの選手は除外
+4. **コストタイプの選択**: 選手ごとに `normal_cost`, `relief_only_cost`, `pitcher_only_cost`, `fielder_only_cost`, `two_way_cost` から選択（選手のプレイヤータイプIDに応じて選択肢が動的に変わる）
+5. **除外フラグ（`excluded_from_team_total`）**: 選手ごとにチーム合計コスト計算から除外するかを切り替えるチェックボックス。除外された選手はコスト合計・人数合計に含まれない
+6. **制限チェック**:
+   - 最大選手数: `MAX_PLAYERS = 50`（除外フラグがfalseの選手のみカウント）
+   - 総コスト上限: `TOTAL_TEAM_MAX_COST = 200`（除外フラグがfalseの選手のみ計算）
+   - 超過時は `v-alert`（type="warning"）で画面上部に警告表示
+   - バックエンドでもコスト上限バリデーションを実行（`cost_list_id` パラメータ使用時）
 
-**データテーブルヘッダー定義（`TeamMembers.vue:147-156`）:**
+**データテーブルヘッダー定義:**
 
 | ヘッダー | キー | 説明 |
 |---------|------|------|
@@ -304,9 +320,10 @@ const fetchManagers = async () => {
 | 投 | `throws` | 投球腕（`t('baseball.throwingHands.${item.throwing_hand}')` で国際化） |
 | 打 | `bats` | 打席（`t('baseball.battingHands.${item.batting_hand}')` で国際化） |
 | コスト | `cost` | `v-select` でコストタイプ選択ドロップダウン |
+| 除外 | `excluded_from_team_total` | チーム合計コスト計算から除外するチェックボックス（`v-checkbox`） |
 | 操作 | `actions` | 削除ボタン（`mdi-delete`） |
 
-**コストタイプ選択肢の動的生成（`TeamMembers.vue:276-297`）:**
+**コストタイプ選択肢の動的生成:**
 
 ```typescript
 const getAvailableCostTypes = (player: Player) => {
@@ -348,7 +365,7 @@ const getAvailableCostTypes = (player: Player) => {
 
 ※ player_type_ids の定数値（2, 8, 9）の意味の詳細はマスタデータ仕様（05_master_data.md）参照。
 
-**選手追加フロー（`TeamMembers.vue:305-333`）:**
+**選手追加フロー:**
 ```
 [1] selectedCost で有効なコスト一覧表を選択（未選択時は選手選択が disabled）
        ↓
@@ -359,15 +376,15 @@ const getAvailableCostTypes = (player: Player) => {
        ↓
 [4] 重複チェック（teamPlayers に同じIDの選手がいないか確認）
        ↓
-[5] initial_cost_type = 'normal_cost' で TeamPlayer オブジェクトを作成
+[5] initial_cost_type = 'normal_cost', excluded_from_team_total = false で TeamPlayer オブジェクトを作成
        ↓
 [6] teamPlayers に追加 → selectedPlayer をクリア
        ↓
-[7] 人数制限チェック → MAX_PLAYERS 超過時は警告スナックバー
-[8] コスト制限チェック → TOTAL_TEAM_MAX_COST 超過時は警告スナックバー
+[7] 人数制限チェック → includedTeamPlayers の数が MAX_PLAYERS 超過時は警告スナックバー
+[8] コスト制限チェック → totalTeamCost が TOTAL_TEAM_MAX_COST 超過時は警告スナックバー
 ```
 
-**初期コストタイプ決定ロジック（`TeamMembers.vue:216-251`）:**
+**初期コストタイプ決定ロジック:**
 
 チームメンバー取得時（`fetchTeamPlayers`）の `selected_cost_type` 決定は以下の優先順位:
 
@@ -376,7 +393,7 @@ const getAvailableCostTypes = (player: Player) => {
 3. いずれかの選択肢が存在すればその最初の値を採用
 4. いずれもなければ `'normal_cost'` をデフォルトとする
 
-**保存フロー（`TeamMembers.vue:340-359`）:**
+**保存フロー:**
 ```
 [1] saveTeamMembers() 呼び出し
        ↓
@@ -386,8 +403,8 @@ const getAvailableCostTypes = (player: Player) => {
     {
       cost_list_id: selectedCostListId.value,
       players: [
-        { player_id: 1, selected_cost_type: 'normal_cost' },
-        { player_id: 2, selected_cost_type: 'relief_only_cost' },
+        { player_id: 1, selected_cost_type: 'normal_cost', excluded_from_team_total: false },
+        { player_id: 2, selected_cost_type: 'relief_only_cost', excluded_from_team_total: true },
         ...
       ]
     }
@@ -395,14 +412,16 @@ const getAvailableCostTypes = (player: Player) => {
 [4] POST /api/v1/teams/:teamId/team_players に送信
        ↓
 [5] 成功時: スナックバー表示
-[6] 失敗時: エラースナックバー表示
+[6] 失敗時: エラースナックバー表示（バックエンドのコスト上限チェックで拒否された場合も含む）
 ```
 
 **computed プロパティ:**
 
-1. **`totalTeamCost`**（`TeamMembers.vue:159-165`）: 全チームメンバーのコストを合算。各選手の `selected_cost_type` と選択中コスト一覧表IDに基づいて `cost_players` から実際のコスト値を取得
-2. **`availablePlayers`**（`TeamMembers.vue:167-174`）: 全選手から「選択中コスト一覧表にコストデータが存在」かつ「`normal_cost` が null でない」かつ「チーム未追加」の選手を抽出
-3. **`positionCounts`**（`TeamMembers.vue:176-189`）: チームメンバーの `position` フィールド（pitcher, catcher, infielder, outfielder）ごとの人数をカウント
+1. **`includedTeamPlayers`**: `excluded_from_team_total` が `false` のチームメンバーを抽出。人数制限・コスト合計のベースとなる
+2. **`totalTeamCost`**: `includedTeamPlayers`（除外されていない選手のみ）のコストを合算。各選手の `selected_cost_type` と選択中コスト一覧表IDに基づいて `cost_players` から実際のコスト値を取得
+3. **`isCostOverLimit`**: `totalTeamCost` が `TEAM_TOTAL_MAX_COST` (200) を超えているかのブール値。超過時は `v-alert` で警告表示
+4. **`availablePlayers`**: 全選手から「選択中コスト一覧表にコストデータが存在」かつ「`normal_cost` が null でない」かつ「チーム未追加」の選手を抽出
+5. **`positionCounts`**: チームメンバーの `position` フィールド（pitcher, catcher, infielder, outfielder）ごとの人数をカウント
 
 **データ取得タイミング:**
 
@@ -425,6 +444,87 @@ const getAvailableCostTypes = (player: Player) => {
 - `teamMembers.costTypes.*`: コストタイプ名（`normal_cost`, `relief_only_cost` 等）
 - `teamMembers.notifications.*`: 各種通知メッセージ
 - `teamMembers.unknownType`: 不明なプレイヤータイプのフォールバック
+
+---
+
+### TeamNavigation（チームナビゲーション共有コンポーネント）
+
+**コンポーネント:** `src/components/TeamNavigation.vue`
+
+**用途:** チーム関連画面間のタブナビゲーション。チームメンバー管理・出場選手登録・シーズンポータル・離脱履歴の各画面で共通使用。
+
+**Props:**
+
+| Prop | 型 | 説明 |
+|------|-----|------|
+| `teamId` | `number \| string` | チームID |
+
+**タブ構成:**
+
+| タブ | ルート名 | アイコン | 遷移先 |
+|------|---------|---------|--------|
+| メンバー管理 | `TeamMembers` | `mdi-account-group` | `/teams/:teamId/members` |
+| 出場選手登録 | `SeasonRoster` | `mdi-clipboard-list` | `/teams/:teamId/roster` |
+| シーズン | `SeasonPortal` | `mdi-calendar` | `/teams/:teamId/season` |
+| 離脱履歴 | `PlayerAbsenceHistory` | `mdi-account-off` | `/teams/:teamId/absences` |
+
+**実装:**
+```vue
+<v-card variant="outlined" class="mb-2">
+  <v-tabs :model-value="activeTab" color="primary" density="comfortable">
+    <v-tab v-for="tab in tabs" :key="tab.routeName" :value="tab.routeName"
+           :to="tab.to" :prepend-icon="tab.icon">
+      {{ tab.label }}
+    </v-tab>
+  </v-tabs>
+</v-card>
+```
+
+- `activeTab` は `route.name` から現在のタブを自動判定
+- 各タブは `vue-router` の `:to` で直接遷移（SPA内ナビゲーション）
+- 国際化キー: `teamNavigation.teamMembers`, `teamNavigation.activeRoster`, `teamNavigation.seasonPortal`, `teamNavigation.playerAbsenceHistory`
+
+---
+
+### トップメニューのチーム選択UI（TopMenu）
+
+**パス:** `/` (ルート)
+
+**コンポーネント:** `src/views/TopMenu.vue`
+
+**チーム選択レイアウト:**
+```
+┌──────────────────────────────────────┐
+│ チーム選択                            │
+│ マネージャー: 博麗霊夢               │
+│                                      │
+│ [🛡 コミッショナーモード (トグル)]     │
+│ [🛡 コミッショナー画面]               │
+│                                      │
+│ [紅魔館] [白玉楼] [永遠亭] [守矢]    │  ← カード型ボタン
+└──────────────────────────────────────┘
+```
+
+**コミッショナーモード:**
+- `isCommissioner` がtrueの場合に表示される `v-switch`
+- ON時: 全チーム（`allTeams`）を表示。OFF時: ログインユーザーの所属チーム（`teams`）のみ表示
+- 状態は `localStorage('commissionerMode')` に永続化
+
+**チーム選択動作:**
+```typescript
+const selectTeam = (team: Team) => {
+  selectedTeam.value = team
+  localStorage.setItem('selectedTeamId', String(team.id))
+  if (team.has_season) {
+    router.push({ name: 'SeasonPortal', params: { teamId: team.id } })
+  } else {
+    seasonInitializationDialog.value = true
+  }
+}
+```
+
+- チームカードクリック時: `has_season` がtrueならシーズンポータル画面に直接遷移、falseならシーズン初期化ダイアログを表示
+- 選択状態は `localStorage('selectedTeamId')` に永続化。画面再読み込み時に復元
 
 ---
 
@@ -685,14 +785,14 @@ GET /api/v1/teams/1/team_players?cost_list_id=3
       }
     ],
     "selected_cost_type": "normal_cost",
-    "current_cost": 10
+    "current_cost": 10,
+    "excluded_from_team_total": false
   }
 ]
 ```
 
 **処理:**
 ```ruby
-# app/controllers/api/v1/team_players_controller.rb:4-8
 def index
   cost_list_id = params[:cost_list_id]
   players = @team.players
@@ -703,7 +803,7 @@ end
 **TeamPlayerSerializer（`app/serializers/team_player_serializer.rb`）:**
 ```ruby
 class TeamPlayerSerializer < PlayerSerializer
-  attributes :selected_cost_type, :current_cost
+  attributes :selected_cost_type, :current_cost, :excluded_from_team_total
 
   def selected_cost_type
     object.team_memberships.find_by(team_id: @instance_options[:team].id).selected_cost_type
@@ -714,12 +814,17 @@ class TeamPlayerSerializer < PlayerSerializer
     cost_player_record = object.cost_players.find_by(cost_id: @instance_options[:cost_list_id])
     cost_player_record&.send(cost_type)
   end
+
+  def excluded_from_team_total
+    object.team_memberships.find_by(team_id: @instance_options[:team].id).excluded_from_team_total
+  end
 end
 ```
 
-- `PlayerSerializer` を継承し、`selected_cost_type` と `current_cost` を追加
+- `PlayerSerializer` を継承し、`selected_cost_type`、`current_cost`、`excluded_from_team_total` を追加
 - `selected_cost_type`: 該当チームの `TeamMembership` から取得
 - `current_cost`: `selected_cost_type` と `cost_list_id` に基づいて `CostPlayer` テーブルからコスト値を動的取得（`send` メソッドでカラム名を動的指定）
+- `excluded_from_team_total`: 該当チームの `TeamMembership` から除外フラグを取得
 
 **PlayerSerializer（`app/serializers/player_serializer.rb`）:**
 ```ruby
@@ -752,9 +857,9 @@ end
 {
   "cost_list_id": 3,
   "players": [
-    { "player_id": 1, "selected_cost_type": "normal_cost" },
-    { "player_id": 2, "selected_cost_type": "relief_only_cost" },
-    { "player_id": 3, "selected_cost_type": "two_way_cost" }
+    { "player_id": 1, "selected_cost_type": "normal_cost", "excluded_from_team_total": false },
+    { "player_id": 2, "selected_cost_type": "relief_only_cost", "excluded_from_team_total": true },
+    { "player_id": 3, "selected_cost_type": "two_way_cost", "excluded_from_team_total": false }
   ]
 }
 ```
@@ -769,7 +874,7 @@ end
 **レスポンス（422 Unprocessable Entity）:**
 ```json
 {
-  "error": "Validation failed: Selected cost type can't be blank"
+  "error": "チーム全体のコストが上限を超えています（コスト: 210, 上限: 200）"
 }
 ```
 
@@ -785,16 +890,21 @@ end
        ↓
 [5] 各 player について:
     - find_or_initialize_by(player_id) で既存レコード検索 or 新規初期化
-    - update!(selected_cost_type: p[:selected_cost_type]) で更新
+    - update!(selected_cost_type, excluded_from_team_total) で更新
        ↓
-[6] コミット成功 → 200 OK
-[7] ActiveRecord::RecordInvalid → ロールバック → 422 Unprocessable Entity
+[6] cost_list_id が指定されている場合、チーム合計コストの上限バリデーション実行
+    - @team.validate_team_total_cost(cost_list_id) でチーム合計コスト上限（200）チェック
+    - 超過時は RecordInvalid を raise してロールバック
+       ↓
+[7] コミット成功 → 200 OK
+[8] ActiveRecord::RecordInvalid → ロールバック → 422 Unprocessable Entity
 ```
 
-**実装コード（`app/controllers/api/v1/team_players_controller.rb:10-28`）:**
+**実装コード（`app/controllers/api/v1/team_players_controller.rb`）:**
 ```ruby
 def create
   player_params = params.require(:players)
+  cost_list_id = params[:cost_list_id]&.to_i
   incoming_player_ids = player_params.map { |p| p[:player_id] }
 
   ActiveRecord::Base.transaction do
@@ -802,20 +912,32 @@ def create
 
     player_params.each do |p|
       membership = @team.team_memberships.find_or_initialize_by(player_id: p[:player_id])
-      membership.update!(selected_cost_type: p[:selected_cost_type])
+      membership.update!(
+        selected_cost_type: p[:selected_cost_type],
+        excluded_from_team_total: p[:excluded_from_team_total] || false
+      )
+    end
+
+    # Validate team total cost limit (200 fixed) after all memberships are updated
+    @team.team_memberships.reload
+    if cost_list_id
+      unless @team.validate_team_total_cost(cost_list_id)
+        raise ActiveRecord::RecordInvalid.new(@team)
+      end
     end
   end
 
-  render json: { message: 'Team members updated successfully' }, status: :ok
+  render json: { message: "Team members updated successfully" }, status: :ok
 rescue ActiveRecord::RecordInvalid => e
-  render json: { error: e.message }, status: :unprocessable_entity
+  render json: { error: e.record&.errors&.full_messages&.join(", ") || e.message }, status: :unprocessable_entity
 end
 ```
 
 **重要な注意点:**
 - このエンドポイントは**一括置換**方式で動作する。リクエストに含まれない既存メンバーは削除される
 - フロントエンドは保存時に全メンバーを送信する必要がある
-- `cost_list_id` パラメータはリクエストに含まれるがバックエンドでは使用していない（フロントエンド側の参照用）
+- `cost_list_id` パラメータはバックエンドでチーム合計コスト上限バリデーションに使用される
+- `excluded_from_team_total` パラメータで除外フラグを設定できる（未指定時は `false`）
 - `squad` フィールドは更新されない（デフォルト値 `"second"` のまま）
 
 ---
@@ -937,19 +1059,15 @@ end
 
 ### teamsテーブル
 
-**スキーマ定義（`db/schema.rb:353-361`）:**
+**スキーマ定義:**
 ```ruby
 create_table "teams", force: :cascade do |t|
   t.string "name"
   t.string "short_name"
   t.boolean "is_active", default: true
-  t.bigint "manager_id", null: false
   t.datetime "created_at", null: false
   t.datetime "updated_at", null: false
-  t.index ["manager_id"], name: "index_teams_on_manager_id"
 end
-
-add_foreign_key "teams", "managers"
 ```
 
 **カラム詳細:**
@@ -960,19 +1078,18 @@ add_foreign_key "teams", "managers"
 | `name` | string | YES | - | チーム正式名称 |
 | `short_name` | string | YES | - | チーム略称 |
 | `is_active` | boolean | YES | `true` | アクティブフラグ |
-| `manager_id` | bigint | NO | - | 監督ID（`managers` テーブルへの外部キー） |
 | `created_at` | datetime | NO | - | 作成日時 |
 | `updated_at` | datetime | NO | - | 更新日時 |
 
-**インデックス:**
-- `index_teams_on_manager_id` (manager_id)
-
-**外部キー制約:**
-- `manager_id` → `managers.id`
+**備考:** 旧スキーマにあった `manager_id` カラムは削除済み。監督・コーチの管理はすべて `team_managers` テーブル経由で行う。
 
 **モデル（`app/models/team.rb`）:**
 ```ruby
 class Team < ApplicationRecord
+  COST_LIMIT_CONFIG = YAML.load_file(Rails.root.join("config", "cost_limits.yml")).freeze
+  TEAM_TOTAL_MAX_COST = COST_LIMIT_CONFIG["team_total_max_cost"]
+  OUTSIDE_WORLD_LIMIT = 4
+
   has_one :season, dependent: :restrict_with_error
   has_many :team_memberships, dependent: :destroy
   has_many :players, through: :team_memberships
@@ -981,9 +1098,9 @@ class Team < ApplicationRecord
   has_many :leagues, through: :league_memberships
 
   has_many :team_managers, dependent: :destroy
-  has_one :director_team_manager, -> { where(role: :director) }, class_name: 'TeamManager', dependent: :destroy
+  has_one :director_team_manager, -> { where(role: :director) }, class_name: "TeamManager", dependent: :destroy
   has_one :director, through: :director_team_manager, source: :manager
-  has_many :coach_team_managers, -> { where(role: :coach) }, class_name: 'TeamManager', dependent: :destroy
+  has_many :coach_team_managers, -> { where(role: :coach) }, class_name: "TeamManager", dependent: :destroy
   has_many :coaches, through: :coach_team_managers, source: :manager
 
   validates :name, presence: true
@@ -1008,20 +1125,32 @@ end
 **バリデーション:**
 - `name`: 必須（`presence: true`）
 
+**コスト関連メソッド:**
+
+| メソッド | 説明 |
+|---------|------|
+| `has_season` | シーズンが存在するかどうかを返す（UI表示用） |
+| `validate_team_total_cost(cost_list_id)` | チーム全体コスト（除外選手を除く）が上限以下かチェック。超過時は `errors` にメッセージを追加して `false` を返す |
+| `outside_world_first_squad_memberships` | 1軍の外の世界枠選手（`outside_world` カテゴリの `player_type` を持つ選手）を返す |
+| `validate_outside_world_limit` | 外の世界枠が最大4人以下かチェック |
+| `validate_outside_world_balance` | 外の世界枠が4人のとき、投手/野手混在必須かチェック（二刀流は両方にカウント可能） |
+| `self.first_squad_cost_limit_for_count(count)` | 1軍登録人数に対応するコスト上限を返す |
+| `self.first_squad_minimum_players` | 1軍最低人数を返す |
+
+**コスト上限設定:**
+- チーム全体コスト上限（`TEAM_TOTAL_MAX_COST`）は `config/cost_limits.yml` から読み込む
+- 外の世界枠上限: `OUTSIDE_WORLD_LIMIT = 4`
+
 **削除時の挙動:**
 - `season` が存在 → 削除不可（`restrict_with_error`）
 - `team_memberships`, `league_memberships`, `team_managers` → 連鎖削除（`dependent: :destroy`）
   - ただし `team_memberships` に `player_absences` が紐づいている場合は、そちらの `restrict_with_error` により削除が失敗する
 
-**スキーマとコントローラーの不整合:**
-
-`teams` テーブルには `manager_id` カラム（NOT NULL）が存在するが、現在のコントローラー実装では `director_id` / `coach_ids` パラメータを使用して `team_managers` テーブル経由で管理している。`teams.manager_id` カラムはチーム作成時に値が設定されるが、その後の監督変更で更新されないため、実際の監督と一致しなくなる可能性がある。
-
 ---
 
 ### team_membershipsテーブル
 
-**スキーマ定義（`db/schema.rb:341-351`）:**
+**スキーマ定義:**
 ```ruby
 create_table "team_memberships", force: :cascade do |t|
   t.bigint "team_id", null: false
@@ -1030,6 +1159,7 @@ create_table "team_memberships", force: :cascade do |t|
   t.string "selected_cost_type", default: "normal_cost", null: false
   t.datetime "created_at", null: false
   t.datetime "updated_at", null: false
+  t.boolean "excluded_from_team_total", default: false, null: false
   t.index ["player_id"], name: "index_team_memberships_on_player_id"
   t.index ["team_id", "player_id"], name: "index_team_memberships_on_team_id_and_player_id", unique: true
   t.index ["team_id"], name: "index_team_memberships_on_team_id"
@@ -1048,6 +1178,7 @@ add_foreign_key "team_memberships", "teams"
 | `player_id` | bigint | NO | - | 選手ID |
 | `squad` | string | NO | `"second"` | 軍区分（`"first"` = 1軍, `"second"` = 2軍） |
 | `selected_cost_type` | string | NO | `"normal_cost"` | 選択コストタイプ |
+| `excluded_from_team_total` | boolean | NO | `false` | チーム合計コスト計算から除外するかのフラグ |
 | `created_at` | datetime | NO | - | 作成日時 |
 | `updated_at` | datetime | NO | - | 更新日時 |
 
@@ -1075,8 +1206,12 @@ class TeamMembership < ApplicationRecord
   has_many :season_rosters
   has_many :player_absences, dependent: :restrict_with_error
 
-  validates :squad, inclusion: { in: %w(first second) }
-  validates :selected_cost_type, presence: true
+  validates :squad, inclusion: { in: %w[first second] }
+  validates :selected_cost_type, presence: true,
+            inclusion: { in: %w[normal_cost relief_only_cost pitcher_only_cost fielder_only_cost two_way_cost] }
+
+  scope :included_in_team_total, -> { where(excluded_from_team_total: false) }
+  scope :excluded_from_team_total, -> { where(excluded_from_team_total: true) }
 end
 ```
 
@@ -1091,14 +1226,18 @@ end
 
 **バリデーション:**
 - `squad`: `"first"` または `"second"` のみ許可（`inclusion`）
-- `selected_cost_type`: 必須（`presence: true`）
+- `selected_cost_type`: 必須（`presence: true`）かつ許容値リストに含まれること（`inclusion`）
+
+**スコープ:**
+- `included_in_team_total`: `excluded_from_team_total` が `false` のレコードのみ取得（コスト合計計算に使用）
+- `excluded_from_team_total`: `excluded_from_team_total` が `true` のレコードのみ取得
 
 **シリアライザー:**
 
 `TeamMembershipSerializer`（`app/serializers/team_membership_serializer.rb`）:
 ```ruby
 class TeamMembershipSerializer < ActiveModel::Serializer
-  attributes :id, :team_id, :player_id, :squad, :selected_cost_type
+  attributes :id, :team_id, :player_id, :squad, :selected_cost_type, :excluded_from_team_total
   belongs_to :player
 end
 ```
@@ -1212,24 +1351,23 @@ end
 │ name     │     │ team_id          │────→│ name     │
 │ short_name│    │ role (enum)      │     │short_name│
 │ irc_name │     │──────────────────│     │is_active │
-│ user_id  │                              │manager_id│←┐
-│ role     │                              │──────────│ │
-└──────────┘                              └────┬─────┘ │
-                                               │       │
-                                               │       │
-                              ┌─────────────────────────┘
-                              │ (FK: 未使用の遺留カラム)
-                              │
-                    ┌─────────┴────────┐     ┌──────────┐
-                    │ team_memberships │     │ players  │
-                    │──────────────────│     │──────────│
-                    │ id               │     │ id       │
-                    │ team_id          │     │ name     │
-                    │ player_id        │────→│ number   │
-                    │ squad            │     │ position │
-                    │selected_cost_type│     │ ...      │
-                    │──────────────────│     └──────────┘
-                    └──────────────────┘
+│ user_id  │                              │──────────│
+│ role     │                              └────┬─────┘
+└──────────┘                                   │
+                                               │
+                    ┌──────────────────────────┘
+                    │
+                    ┌─────────────────────┐     ┌──────────┐
+                    │  team_memberships   │     │ players  │
+                    │─────────────────────│     │──────────│
+                    │ id                  │     │ id       │
+                    │ team_id             │     │ name     │
+                    │ player_id           │────→│ number   │
+                    │ squad               │     │ position │
+                    │ selected_cost_type  │     │ ...      │
+                    │excluded_from_team_total│  └──────────┘
+                    │─────────────────────│
+                    └─────────────────────┘
 ```
 
 ---
@@ -1356,6 +1494,7 @@ type CostType = 'normal_cost' | 'relief_only_cost' | 'pitcher_only_cost' | 'fiel
 interface TeamPlayer extends Player {
   selected_cost_type: CostType;
   current_cost: number;
+  excluded_from_team_total: boolean;
 }
 ```
 
@@ -1430,7 +1569,7 @@ export interface PlayerType {
 ### コンポーネント構成
 
 **TeamList.vue:**
-- 責務: チーム一覧の表示、チーム作成・編集ダイアログの制御、チーム削除
+- 責務: チーム一覧の表示、チーム作成・編集ダイアログの制御、チーム削除、メンバー編集画面へのナビゲーション
 - 使用コンポーネント:
   - `TeamDialog`: チーム作成・編集ダイアログ（`v-model:isVisible` と `:team` props で制御）
   - `ConfirmDialog`: 削除確認ダイアログ（`ref` で直接メソッド呼び出し）
@@ -1450,8 +1589,9 @@ export interface PlayerType {
   - `isFormValid: computed(() => !!editedTeam.value.name)` — フォームバリデーション
 
 **TeamMembers.vue:**
-- 責務: チームメンバーの編集、コストタイプ選択、総コスト計算、保存
+- 責務: チームメンバーの編集、コストタイプ選択、除外フラグ設定、総コスト計算、保存
 - 使用コンポーネント:
+  - `TeamNavigation`（`src/components/TeamNavigation.vue`）: チーム関連画面間のタブナビゲーション
   - `CostListSelect`（`src/components/shared/CostListSelect.vue`）: コスト一覧表選択ドロップダウン。マウント時に `GET /api/v1/costs` でコスト表一覧を取得し、現在日時が含まれるコスト表を自動選択
 - 状態:
   - `team: ref<Partial<Team>>({})` — 対象チーム
@@ -1469,8 +1609,8 @@ export interface PlayerType {
 ### 状態管理
 
 **認証:**
-- `useAuth` composable でログイン状態を管理
-- チーム管理画面はすべて `meta: { requiresAuth: true }` で認証必須（`authGuard` で制御）
+- バックエンド: すべてのコントローラーが `Api::V1::BaseController` を継承し、認証ガードが適用される
+- フロントエンド: `useAuth` composable でログイン状態を管理。チーム管理画面はすべて `meta: { requiresAuth: true }` で認証必須（`authGuard` で制御）
 
 **スナックバー通知:**
 - `useSnackbar` composable で成功・エラーメッセージを一元表示
@@ -1558,8 +1698,10 @@ end
 | `/teams/:teamId/members` | `TeamMembers` | `TeamMembers.vue`（lazy load） | `requiresAuth: true`, `title: 'チームメンバー登録'` |
 
 **ナビゲーション:**
+- トップメニュー → シーズンポータル: チームカードクリックで遷移（`has_season` がtrueの場合）
+- チーム一覧 → チームメンバー編集: `mdi-account-group` アイコンで `/teams/:teamId/members` へ遷移
+- チームメンバー編集画面 → 関連画面: `TeamNavigation` タブで出場選手登録・シーズンポータル・離脱履歴へ遷移
 - チームメンバー編集画面 → 前画面: `router.back()` でブラウザバック
-- チーム一覧 → チームメンバー編集: 直接的なリンクは未実装
 
 ---
 
@@ -1568,8 +1710,8 @@ end
 | シリアライザー | 継承元 | 属性 | 関連 | 用途 |
 |-------------|--------|------|------|------|
 | `TeamSerializer` | `ActiveModel::Serializer` | `id`, `name`, `short_name`, `is_active`, `has_season` | `has_one :director`, `has_many :coaches` | チーム一覧/詳細 |
-| `TeamPlayerSerializer` | `PlayerSerializer` | PlayerSerializer属性 + `selected_cost_type`, `current_cost` | （PlayerSerializerの `has_many :cost_players`） | チームメンバー一覧（コスト情報付き） |
-| `TeamMembershipSerializer` | `ActiveModel::Serializer` | `id`, `team_id`, `player_id`, `squad`, `selected_cost_type` | `belongs_to :player` | コミッショナー用メンバーシップ管理 |
+| `TeamPlayerSerializer` | `PlayerSerializer` | PlayerSerializer属性 + `selected_cost_type`, `current_cost`, `excluded_from_team_total` | （PlayerSerializerの `has_many :cost_players`） | チームメンバー一覧（コスト情報・除外フラグ付き） |
+| `TeamMembershipSerializer` | `ActiveModel::Serializer` | `id`, `team_id`, `player_id`, `squad`, `selected_cost_type`, `excluded_from_team_total` | `belongs_to :player` | コミッショナー用メンバーシップ管理 |
 | `TeamManagerSerializer` | `ActiveModel::Serializer` | `id`, `team_id`, `manager_id`, `role` | `belongs_to :manager` | コミッショナー用マネージャー管理 |
 
 **TeamSerializer の `has_season` カスタム属性:**
@@ -1583,15 +1725,7 @@ end
 
 ## 既知の制約・未実装機能
 
-### 1. スキーマとコントローラー実装の不整合（teams.manager_id）
-
-**問題:** `teams` テーブルには `manager_id` カラム（NOT NULL、外部キー制約あり）が存在するが、現在のコントローラーでは `director_id` / `coach_ids` パラメータを使用して `team_managers` テーブル経由で監督・コーチを管理している。チーム作成時に `manager_id` の値が設定されるが、その後の監督変更では更新されないため、実データと乖離する。
-
-**推奨対応:** マイグレーションで `teams.manager_id` カラムを削除し、すべての監督・コーチ管理を `team_managers` テーブルに統一。
-
----
-
-### 2. チーム削除時のエラーハンドリング不足
+### 1. チーム削除時のエラーハンドリング不足
 
 **問題:** チームに紐づくシーズンが存在する場合、`Team#destroy` は `ActiveRecord::DeleteRestrictionError` を発生させるが、コントローラーでこのエラーをハンドリングしていない。
 
@@ -1609,15 +1743,7 @@ end
 
 ---
 
-### 3. チーム一覧→チームメンバー編集へのナビゲーション未実装
-
-**問題:** チーム一覧画面からチームメンバー編集画面（`/teams/:teamId/members`）へ直接遷移するリンク/ボタンが存在しない。
-
-**推奨対応:** チーム一覧の操作列に「メンバー編集」アイコンを追加。
-
----
-
-### 4. squad フィールドはチームメンバー編集画面で変更不可
+### 2. squad フィールドはチームメンバー編集画面で変更不可
 
 **問題:** `team_memberships.squad` フィールドはチームメンバー編集画面では編集できない。新規追加された選手はデフォルト値（`"second"` = 2軍）のまま。
 
@@ -1625,38 +1751,7 @@ end
 
 ---
 
-### 5. コストタイプのバリデーション不足
-
-**問題:** `TeamMembership` モデルの `selected_cost_type` に対して `presence: true` のみのバリデーションがあり、値の範囲チェック（`inclusion`）が存在しない。
-
-**影響:** 不正な値がデータベースに保存される可能性がある。
-
-**推奨対応:**
-```ruby
-validates :selected_cost_type, inclusion: {
-  in: %w(normal_cost relief_only_cost pitcher_only_cost fielder_only_cost two_way_cost),
-  message: "%{value} is not a valid cost type"
-}
-```
-
----
-
-### 6. チーム一覧の監督名表示の不整合
-
-**問題:** `TeamList.vue:27` で `item.manager?.name` を参照しているが、`TeamSerializer` は `has_one :director` で監督情報を返却しており、`manager` プロパティは存在しない。`Team` 型定義にも `manager` プロパティはなく、`director?: Manager` が定義されている。
-
-**影響:** 監督名が常に `-` と表示される可能性がある。
-
-**推奨対応:**
-```vue
-<template v-slot:item.manager_name="{ item }">
-  {{ item.director?.name || '-' }}
-</template>
-```
-
----
-
-### 7. コスト一覧表選択が必須
+### 3. コスト一覧表選択が必須
 
 **仕様:** チームメンバー編集画面では、コスト一覧表を選択しないと選手の追加・取得ができない。コスト管理がシステムの必須機能であるため、これは仕様通りの動作。
 
@@ -1667,17 +1762,18 @@ validates :selected_cost_type, inclusion: {
 チーム管理機能は、チームの基本情報（名前・略称・監督・コーチ・活動状態）の管理と、チームに所属する選手（チームメンバーシップ）の管理を統合的に提供する。
 
 **主要な特徴:**
-- チーム一覧画面でのCRUD操作（`TeamsController` 5アクション）
-- チームメンバー編集画面での選手追加・削除、コストタイプ選択（`TeamPlayersController` 一括更新方式）
+- カード型チーム選択UI（`TopMenu`）とコミッショナーモードの切り替え
+- チーム一覧画面でのCRUD操作（`TeamsController` 5アクション）とメンバー編集へのナビゲーション
+- TeamNavigation共有コンポーネントによるチーム関連画面間のタブナビゲーション
+- チームメンバー編集画面での選手追加・削除、コストタイプ選択、除外フラグ（`TeamPlayersController` 一括更新方式）
 - 守備適性情報付きメンバー一覧（`TeamMembershipsController`）
-- 総コスト（最大200）・人数制限（最大50人）のリアルタイム計算
+- 総コスト（最大200）・人数制限（最大50人）のリアルタイム計算（除外選手を除く）
+- バックエンドでのチーム合計コスト上限バリデーション
+- 外の世界枠バリデーション（最大4人、投手/野手混在チェック）
 - 監督・コーチの複数管理（`team_managers` 中間テーブル + `TeamManager` モデル）
 - 同一リーグ内での監督/コーチ兼任禁止バリデーション
 - コミッショナー用の個別CRUD管理（`commissioner/team_memberships`, `commissioner/team_managers`）
 - Vue 3 Composition API + Vuetify 3 によるリッチUI（`v-data-table`, `v-autocomplete`, `v-dialog`）
 
 **既知の課題:**
-- `teams.manager_id` カラムの遺留（コントローラーで使用されていない）
 - チーム削除時の `DeleteRestrictionError` ハンドリング未実装
-- チーム一覧の監督名表示の不整合（`manager?.name` → `director?.name`）
-- `selected_cost_type` の値範囲バリデーション未実装

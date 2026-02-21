@@ -1,6 +1,6 @@
 # 04. 選手管理システム (Player Management)
 
-最終更新: 2026-02-14
+最終更新: 2026-02-21
 対応バージョン: Rails 8.0.2, Vue 3 + TypeScript
 
 ---
@@ -15,13 +15,13 @@
 ┌─────────────────┐      ┌──────────────────┐
 │  Players.vue    │─────▶│ PlayersController│
 │  (選手一覧画面) │      │  (CRUD API)      │
-└─────────────────┘      └──────────────────┘
-         │                        │
+│  + 検索/フィルター│     └──────────────────┘
+└─────────────────┘               │
          │                        ▼
          ▼               ┌─────────────────┐
 ┌─────────────────┐     │  Player Model   │
 │ PlayerDialog    │     │  (46 columns)   │
-│  (編集Dialog)   │     │  20 relations   │
+│  (編集Dialog)   │     │  19 relations   │
 └─────────────────┘     └─────────────────┘
          │                        │
     ┌────┴────┬─────────┬─────────┼────────┐
@@ -46,6 +46,8 @@
 | **メタ情報** | 6 | id, created_at, updated_at, batting/pitching_style_description×2, is_pitcher |
 
 ### 1.3 多対多リレーション (5テーブル)
+
+> **注**: 旧バージョンにあった `has_one :player_pitching` リレーションは削除済み。投手能力は `players` テーブルの直接カラム（`is_pitcher`, `starter_stamina`, `relief_stamina`, `is_relief_only`）で管理される。
 
 | 中間テーブル | 関連マスター | カーディナリティ |
 |------------|------------|----------------|
@@ -223,13 +225,10 @@ end
 
 ---
 
-### 2.3 Player モデルのリレーション定義 (player.rb L1-29)
+### 2.3 Player モデルのリレーション定義 (player.rb)
 
 ```ruby
 class Player < ApplicationRecord
-  # 投手能力 (1:1)
-  has_one :player_pitching, dependent: :destroy
-
   # チーム所属 (多対多)
   has_many :team_memberships, dependent: :destroy
   has_many :teams, through: :team_memberships
@@ -241,9 +240,9 @@ class Player < ApplicationRecord
 
   # 投球スタイル (3種類)
   belongs_to :pitching_style, optional: true
-  belongs_to :pinch_pitching_style, class_name: 'PitchingStyle',
+  belongs_to :pinch_pitching_style, class_name: "PitchingStyle",
              foreign_key: :pinch_pitching_style_id, optional: true
-  belongs_to :catcher_pitching_style, class_name: 'PitchingStyle',
+  belongs_to :catcher_pitching_style, class_name: "PitchingStyle",
              foreign_key: :catcher_pitching_style_id, optional: true
 
   # 投球スキル
@@ -266,12 +265,14 @@ class Player < ApplicationRecord
   has_many :catchers, through: :catchers_players, source: :catcher
 
   # 捕手-投手相性 (逆方向)
-  has_many :partner_pitchers_players, class_name: 'CatchersPlayer', foreign_key: 'catcher_id'
+  has_many :partner_pitchers_players, class_name: "CatchersPlayer", foreign_key: "catcher_id"
   has_many :partner_pitchers, through: :partner_pitchers_players, source: :player, dependent: :destroy
 end
 ```
 
-**リレーション総数**: 20個
+**リレーション総数**: 19個
+
+> **変更履歴**: `has_one :player_pitching, dependent: :destroy` は削除された。このリレーションは使われていない死んだ関連で、`Player#destroy` 時に `NameError` を引き起こしていたため除去された。投手能力は `players` テーブルの直接カラムで管理されている。
 
 ---
 
@@ -286,7 +287,7 @@ enum :throwing_hand, { right_throw: 'right_throw', left_throw: 'left_throw' }
 enum :batting_hand, { right_bat: 'right_bat', left_bat: 'left_bat', switch_hitter: 'switch_hitter' }
 ```
 
-#### 2.4.2 守備力フォーマット (player.rb L37-47)
+#### 2.4.2 守備力フォーマット (player.rb)
 
 ```ruby
 DEFENSE_RATING_FORMAT = /\A[0-5][A-E|S]\z/.freeze
@@ -296,47 +297,50 @@ DEFENSE_ATTRIBUTES = %i[
 ].freeze
 
 validates(*DEFENSE_ATTRIBUTES,
-          format: { with: DEFENSE_RATING_FORMAT,
-                    message: 'は0～5の数字とA～Eのアルファベットの組み合わせ2文字で入力してください' },
+          format: { with: DEFENSE_RATING_FORMAT, message: :invalid_format },
           allow_blank: true)
 ```
+
+> **注**: バリデーションメッセージは i18n キー（`:invalid_format`）を使用。実際のメッセージは `config/locales` で定義される。
 
 **許可パターン**: `0A`, `1B`, `2C`, `3D`, `4E`, `5S` 等
 **空値**: 許可
 
-#### 2.4.3 捕手送球バリデーション (player.rb L49-63)
+#### 2.4.3 捕手送球バリデーション (player.rb)
 
 ```ruby
 # 通常捕手
 validates :throwing_c,
-          presence: { message: 'は捕手守備力が設定されている場合、必須です' },
+          presence: { message: :required_when_defense_c_present },
           if: -> { defense_c.present? }
 validates :throwing_c,
-          numericality: { only_integer: true, message: 'は整数で入力してください' },
-          inclusion: { in: -5..5, message: 'は-5～5の範囲で入力してください' },
+          numericality: { only_integer: true, message: :not_an_integer },
+          inclusion: { in: -5..5, message: :out_of_range },
           allow_blank: true
 
 # 特殊捕手 (相性投手用)
 validates :special_throwing_c,
-          presence: { message: 'は捕手守備力が設定されている場合、必須です' },
+          presence: { message: :required_when_special_defense_c_present },
           if: -> { special_defense_c.present? }
 validates :special_throwing_c,
-          numericality: { only_integer: true, message: 'は整数で入力してください' },
-          inclusion: { in: -5..5, message: 'は-5～5の範囲で入力してください' },
+          numericality: { only_integer: true, message: :not_an_integer },
+          inclusion: { in: -5..5, message: :out_of_range },
           allow_blank: true
 ```
+
+> **注**: バリデーションメッセージはすべて i18n キーを使用。
 
 **範囲**: -5〜5 (整数)
 **必須条件**: 対応する defense_c / special_defense_c が設定されている場合
 
-#### 2.4.4 外野手送球バリデーション (player.rb L65-89)
+#### 2.4.4 外野手送球バリデーション (player.rb)
 
 ```ruby
 OUTFIELDER_THROWING_ATTRIBUTES = %i[throwing_of throwing_lf throwing_cf throwing_rf].freeze
 OUTFIELDER_THROWING_VALUES = %w[S A B C].freeze
 
 validates(*OUTFIELDER_THROWING_ATTRIBUTES,
-          inclusion: { in: OUTFIELDER_THROWING_VALUES, message: 'はS, A, B, Cのいずれかで入力してください' },
+          inclusion: { in: OUTFIELDER_THROWING_VALUES, message: :must_be_s_a_b_or_c },
           allow_blank: true)
 
 # 守備力との連動チェック
@@ -344,7 +348,7 @@ validates(*OUTFIELDER_THROWING_ATTRIBUTES,
   defense_cf: :throwing_cf, defense_rf: :throwing_rf }
   .each do |defense_attr, throwing_attr|
     validates throwing_attr,
-              presence: { message: 'は対応する守備力が設定されている場合、必須です' },
+              presence: { message: :required_when_defense_present },
               if: -> { send(defense_attr).present? }
   end
 ```
@@ -352,37 +356,37 @@ validates(*OUTFIELDER_THROWING_ATTRIBUTES,
 **許可値**: S, A, B, C
 **必須条件**: 対応する defense_of/lf/cf/rf が設定されている場合
 
-#### 2.4.5 スタミナバリデーション (player.rb L73-83)
+#### 2.4.5 スタミナバリデーション (player.rb)
 
 ```ruby
 # 先発スタミナ (リリーフ専門時は無効)
 validates :starter_stamina,
-          numericality: { only_integer: true, message: 'は整数で入力してください' },
-          inclusion: { in: 4..9, message: 'は4～9の範囲で入力してください' },
+          numericality: { only_integer: true, message: :not_an_integer },
+          inclusion: { in: 4..9, message: :out_of_range },
           allow_blank: true,
           unless: :is_relief_only
 
 # リリーフスタミナ
 validates :relief_stamina,
-          numericality: { only_integer: true, message: 'は整数で入力してください' },
-          inclusion: { in: 0..3, message: 'は0～3の範囲で入力してください' },
+          numericality: { only_integer: true, message: :not_an_integer },
+          inclusion: { in: 0..3, message: :out_of_range },
           allow_blank: true
 ```
 
 **先発**: 4〜9 (`is_relief_only == true` の場合はバリデーション対象外)
 **リリーフ**: 0〜3
 
-#### 2.4.6 野手能力バリデーション (player.rb L91-95)
+#### 2.4.6 野手能力バリデーション (player.rb)
 
 ```ruby
-validates :speed, presence: true, numericality: { only_integer: true },
-          inclusion: { in: 1..5 }
-validates :bunt, presence: true, numericality: { only_integer: true },
-          inclusion: { in: 1..10 }
-validates :steal_start, presence: true, numericality: { only_integer: true },
-          inclusion: { in: 1..22 }
-validates :steal_end, presence: true, numericality: { only_integer: true },
-          inclusion: { in: 1..22 }
+validates :speed, presence: true, numericality: { only_integer: true, message: :not_an_integer },
+          inclusion: { in: 1..5, message: :out_of_range }
+validates :bunt, presence: true, numericality: { only_integer: true, message: :not_an_integer },
+          inclusion: { in: 1..10, message: :out_of_range }
+validates :steal_start, presence: true, numericality: { only_integer: true, message: :not_an_integer },
+          inclusion: { in: 1..22, message: :out_of_range }
+validates :steal_end, presence: true, numericality: { only_integer: true, message: :not_an_integer },
+          inclusion: { in: 1..22, message: :out_of_range }
 ```
 
 | フィールド | 範囲 | 必須 |
@@ -392,14 +396,32 @@ validates :steal_end, presence: true, numericality: { only_integer: true },
 | steal_start | 1〜22 | ✓ |
 | steal_end | 1〜22 | ✓ |
 
-#### 2.4.7 怪我率バリデーション (player.rb L122)
+#### 2.4.7 怪我率バリデーション (player.rb)
 
 ```ruby
-validates :injury_rate, presence: true, numericality: { only_integer: true },
-          inclusion: { in: 1..7, message: 'は1～6の範囲で入力してください' }
+validates :injury_rate, presence: true, numericality: { only_integer: true, message: :not_an_integer },
+          inclusion: { in: 1..7, message: :out_of_range }
 ```
 
-**⚠️ 不整合**: コードは `in: 1..7` だがメッセージは「1〜6」
+**備考**: 範囲は `1..7`（1以上7以下）。バリデーションメッセージは i18n キーで管理。
+
+#### 2.4.8 外野守備の排他性バリデーション (player.rb)
+
+```ruby
+validate :defense_of_exclusivity
+
+private
+
+def defense_of_exclusivity
+  has_of = defense_of.present?
+  has_individual = [ defense_lf, defense_cf, defense_rf ].any?(&:present?)
+  if has_of && has_individual
+    errors.add(:base, :of_and_individual_exclusive)
+  end
+end
+```
+
+**ルール**: 外野守備力の統合値（`defense_of`）と個別値（`defense_lf`, `defense_cf`, `defense_rf`）を同時に設定することは禁止。どちらか一方のみ設定可能。
 
 ---
 
@@ -718,6 +740,8 @@ end
 - team_memberships
 - partner_pitchers_players
 
+> **注**: 旧バージョンにあった `player_pitching` は削除済みのため、カスケード削除の対象ではなくなった。
+
 ---
 
 ### 3.6 GET /api/v1/team_registration_players
@@ -880,51 +904,71 @@ end
 ```
 ┌───────────────────────────────────────────────────────┐
 │ 選手一覧                          [ + 選手を追加 ]     │
+├───────────────────────────────────────────────────────┤
+│ [🔍 名前検索          ] [▼ ポジション]                │  ← フィルター
 ├──────┬──────────┬──────────┬──────────┬──────────────┤
 │背番号│ 名前      │ 短縮名    │ポジション│ 操作          │
 ├──────┼──────────┼──────────┼──────────┼──────────────┤
-│  1   │博麗 霊夢  │ 霊夢      │ 投手      │ 🖉  🗑       │
-│  2   │霧雨 魔理沙│ 魔理沙    │ 外野手    │ 🖉  🗑       │
+│  1   │博麗 霊夢  │ 霊夢      │ 投手      │ [編集] [削除]│
+│  2   │霧雨 魔理沙│ 魔理沙    │ 外野手    │ [編集] [削除]│
 └──────┴──────────┴──────────┴──────────┴──────────────┘
 ```
 
-##### コンポーネント実装
+##### 検索・フィルター機能
 
 ```vue
-<template>
-  <v-container fluid>
-    <v-card>
-      <v-card-title>
-        {{ t('playerList.title') }}
-        <v-spacer></v-spacer>
-        <v-btn color="primary" @click="openDialog">
-          {{ t('playerList.addPlayer') }}
-        </v-btn>
-      </v-card-title>
-      <v-card-text>
-        <v-data-table
-          :headers="headers"
-          :items="players"
-          :loading="loading"
-          item-value="id"
-          class="elevation-1"
-        >
-          <template #item.position="{ item }">
-            {{ t(`baseball.positions.${item.position}`) }}
-          </template>
-          <template #item.actions="{ item }">
-            <v-icon size="small" class="me-2" @click="openDialog(item)" icon="mdi-pencil"></v-icon>
-            <v-icon size="small" @click="deletePlayer(item.id!)" icon="mdi-delete"></v-icon>
-          </template>
-        </v-data-table>
-      </v-card-text>
-    </v-card>
-
-    <PlayerDialog v-model="dialog" :item="editedItem" @save="onSave" />
-    <ConfirmDialog ref="confirmDialog" />
-  </v-container>
-</template>
+<!-- フィルターUI -->
+<v-row dense class="mb-4">
+  <v-col cols="12" sm="6" md="4">
+    <v-text-field
+      v-model="searchText"
+      :label="t('playerList.filters.searchPlaceholder')"
+      prepend-inner-icon="mdi-magnify"
+      clearable dense hide-details
+    ></v-text-field>
+  </v-col>
+  <v-col cols="12" sm="6" md="3">
+    <v-select
+      v-model="selectedPosition"
+      :items="positionFilterOptions"
+      :label="t('playerList.filters.position')"
+      clearable dense hide-details
+    ></v-select>
+  </v-col>
+</v-row>
 ```
+
+**フィルター条件:**
+
+| フィルター | v-model | 動作 |
+|-----------|---------|------|
+| 名前検索 | `searchText` | `name` または `short_name` に対する大文字小文字無視の部分一致 |
+| ポジション | `selectedPosition` | `position` の完全一致。選択肢: 投手/捕手/内野手/外野手 |
+
+**フィルター実装:**
+```typescript
+const filteredPlayers = computed(() => {
+  let result = players.value
+
+  if (searchText.value) {
+    const search = searchText.value.toLowerCase()
+    result = result.filter(
+      (player) =>
+        player.name.toLowerCase().includes(search) ||
+        (player.short_name && player.short_name.toLowerCase().includes(search)),
+    )
+  }
+
+  if (selectedPosition.value) {
+    result = result.filter((player) => player.position === selectedPosition.value)
+  }
+
+  return result
+})
+```
+
+- `v-data-table` の `:items` には `filteredPlayers`（フィルター適用後のリスト）を渡す
+- フィルターはクライアントサイドで実行（APIにフィルターパラメータは送信しない）
 
 ##### ステート管理
 
@@ -933,13 +977,15 @@ const players = ref<PlayerDetail[]>([])
 const loading = ref(true)
 const dialog = ref(false)
 const editedItem = ref<PlayerDetail | null>(null)
+const searchText = ref('')
+const selectedPosition = ref<string | null>(null)
 
 const fetchPlayers = async () => {
   loading.value = true
   try {
     const response = await axios.get<PlayerDetail[]>('/players')
     players.value = response.data
-  } catch (error) {
+  } catch {
     showSnackbar(t('playerList.fetchFailed'), 'error')
   } finally {
     loading.value = false
@@ -949,24 +995,27 @@ const fetchPlayers = async () => {
 onMounted(fetchPlayers)
 ```
 
-##### ⚠️ 重大なバグ (Players.vue L100)
+##### 選手削除
 
 ```typescript
 const deletePlayer = async (id: number) => {
-  // ...確認ダイアログ...
+  if (!confirmDialog.value) return
+  const result = await confirmDialog.value.open(
+    t('playerList.deleteConfirmTitle'),
+    t('playerList.deleteConfirmMessage'),
+    { color: 'error' },
+  )
+  if (!result) return
   try {
-    await axios.delete(`/managers/${id}`);  // ⚠️ 間違ったエンドポイント!
-    showSnackbar(t('playerList.deleteSuccess'), 'success');
-    fetchPlayers();
+    await axios.delete(`/players/${id}`)
+    showSnackbar(t('playerList.deleteSuccess'), 'success')
+    fetchPlayers()
   } catch (error) {
-    showSnackbar(t('playerList.deleteFailed'), 'error');
+    console.error('Error deleting player:', error)
+    showSnackbar(t('playerList.deleteFailed'), 'error')
   }
-};
+}
 ```
-
-**問題**: 選手削除なのに `/managers/:id` を呼んでいる (コピペミス)
-**正しいエンドポイント**: `/players/${id}`
-**影響**: 選手削除機能が動作せず、404エラーが発生する
 
 ---
 
@@ -1484,20 +1533,21 @@ showSnackbar('エラーが発生しました', 'error')
 
 ### 7.1 バグ一覧
 
-| ID | ファイル | 行数 | 問題 | 影響 | 優先度 |
-|----|---------|------|------|------|--------|
-| BUG-001 | src/views/Players.vue | 100 | 削除エンドポイントが `/managers/:id` になっている | 選手削除が動作しない | **高** |
-| BUG-002 | app/models/player.rb | 122 | injury_rate のメッセージが「1〜6」だがコードは `1..7` | ユーザー混乱 | 中 |
-| BUG-003 | app/serializers/player_detail_serializer.rb | 12-13, 27-28 | `catcher_ids` メソッドが重複定義 | コードが冗長 | 低 |
-| BUG-004 | src/types/playerDetail.ts | 19-33, 46 | 守備力フィールドが `number | null` だが `string | null` であるべき | 入力不具合の可能性 | **高** |
-| BUG-005 | src/types/playerDetail.ts | 46 | `special_throwing_c` が `string | null` だが `number | null` であるべき | 入力不具合の可能性 | **高** |
+| ID | ファイル | 行数 | 問題 | 影響 | 優先度 | 状態 |
+|----|---------|------|------|------|--------|------|
+| BUG-001 | src/views/Players.vue | - | 削除エンドポイントが `/managers/:id` になっていた | 選手削除が動作しなかった | **高** | **修正済み** |
+| BUG-002 | app/models/player.rb | - | injury_rate のバリデーションメッセージ不整合 | - | 中 | **修正済み**（i18nキーに移行） |
+| BUG-003 | app/serializers/player_detail_serializer.rb | - | `catcher_ids` メソッドが重複定義 | コードが冗長 | 低 | 未修正 |
+| BUG-004 | src/types/playerDetail.ts | - | 守備力フィールドが `number | null` だが `string | null` であるべき | 入力不具合の可能性 | **高** | 未修正 |
+| BUG-005 | src/types/playerDetail.ts | - | `special_throwing_c` が `string | null` だが `number | null` であるべき | 入力不具合の可能性 | **高** | 未修正 |
 
 ### 7.2 未実装機能
 
 - **選手の一括インポート**: CSV/Excel からの一括登録機能
 - **選手画像アップロード**: プロフィール画像の管理
 - **選手の詳細統計**: 過去の成績データとの連携
-- **選手の検索・フィルター**: 一覧画面での条件絞り込み
+
+> **変更履歴**: 選手の検索・フィルター機能は実装済み。名前検索（部分一致）とポジションフィルターが利用可能。
 
 ### 7.3 パフォーマンス上の制約
 
@@ -1506,7 +1556,7 @@ showSnackbar('エラーが発生しました', 'error')
 
 ### 7.4 設計上の制約
 
-- **外野守備の二重管理**: `defense_of` (統合) と `defense_lf/cf/rf` (個別) が同時に設定可能だが、どちらが優先されるかのビジネスルールが未定義
+- **外野守備の排他制御**: `defense_of` (統合) と `defense_lf/cf/rf` (個別) の同時設定はバックエンドの `defense_of_exclusivity` バリデーションで禁止される。フロントエンドでも統合/個別モードの切り替えUIで制御
 - **投球スタイルの複雑性**: `pitching_style_id`, `pinch_pitching_style_id`, `catcher_pitching_style_id` の3種類があるが、優先順位や適用条件のドキュメントが不足
 
 ---
@@ -1554,7 +1604,7 @@ showSnackbar('エラーが発生しました', 'error')
 
 | ファイル | 行数 | 説明 |
 |---------|------|------|
-| `app/models/player.rb` | 123 | Playerモデル (バリデーション、リレーション) |
+| `app/models/player.rb` | 134 | Playerモデル (バリデーション、リレーション) |
 | `app/controllers/api/v1/players_controller.rb` | 49 | CRUD API |
 | `app/serializers/player_serializer.rb` | 12 | 簡易版シリアライザー |
 | `app/serializers/player_detail_serializer.rb` | 33 | 詳細版シリアライザー |
@@ -1570,7 +1620,7 @@ showSnackbar('エラーが発生しました', 'error')
 
 | ファイル | 行数 | 説明 |
 |---------|------|------|
-| `src/views/Players.vue` | 112 | 選手一覧画面 |
+| `src/views/Players.vue` | 167 | 選手一覧画面 (検索・フィルター機能付き) |
 | `src/components/players/PlayerDialog.vue` | 140 | 選手編集ダイアログ |
 | `src/components/players/PlayerIdentityForm.vue` | 153 | 基本情報フォーム |
 | `src/components/players/FielderAbilityForm.vue` | 170 | 野手能力フォーム |
@@ -1603,4 +1653,5 @@ showSnackbar('エラーが発生しました', 'error')
 
 **仕様書作成者**: 足軽4号
 **作成日**: 2026-02-14
+**最終更新**: 2026-02-21
 **根拠**: 実ソースコード (thbigmatome/, thbigmatome-front/)

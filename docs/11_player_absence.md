@@ -18,18 +18,22 @@
 
 ### 選手離脱履歴画面
 
-**パス:** `/teams/:teamId/player-absence-history` (推定)
+**パス:** `/teams/:teamId/season/player_absences`
 
 **コンポーネント:** `src/views/PlayerAbsenceHistory.vue`
 
 **レイアウト:**
 ```
 ┌──────────────────────────────────────────────────┐
-│ ツールバー (orange-lighten-3)                    │
-│ [離脱者履歴] [シーズンポータル] [離脱を追加]      │
+│ TeamNavigation (タブナビゲーション)               │
+│ [チームメンバー] [出場選手] [シーズンポータル] [離脱者]│
 └──────────────────────────────────────────────────┘
 ┌──────────────────────────────────────────────────┐
-│ データテーブル                                    │
+│ ツールバー (primary)                              │
+│ [離脱者履歴]                    [離脱を追加]      │
+└──────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────┐
+│ v-card (variant="outlined")                      │
 │ ┌─────┬─────┬─────┬─────┬─────┬─────┬────┐   │
 │ │開始 │選手 │種別 │理由 │期間 │単位 │操作│   │
 │ │日付 │名   │     │     │     │     │    │   │
@@ -146,7 +150,7 @@
    - `newAbsence.value.id` が存在 → `PUT /api/v1/player_absences/:id` (更新)
    - `newAbsence.value.id` が0 → `POST /api/v1/player_absences` (新規作成)
    - 成功時: `@saved` イベントを emit、ダイアログを閉じる
-   - 失敗時: コンソールエラー出力 (TODO: ユーザーへのエラー表示未実装)
+   - 失敗時: `useSnackbar` を使用してスナックバーでエラー通知（`playerAbsenceDialog.notifications.saveFailed`）
 
 **国際化（i18n）キー:**
 - `playerAbsenceDialog.title.add`: 新規追加時のタイトル
@@ -189,7 +193,9 @@
 2. **`filteredAbsences` 計算:**
    - `currentDate` を基準に、離脱期間中の選手をフィルタリング
    - `duration_unit === 'days'` の場合: `start_date` から `start_date + duration` 日の範囲内なら表示
-   - `duration_unit === 'games'` の場合: **未実装** (コメント: "duration_unit が 'games' の場合のロジックは後で実装")
+   - `duration_unit === 'games'` の場合: バックエンドが算出した `effective_end_date` を使用してフィルタリング
+     - `effective_end_date` が存在する場合: `start_date <= currentDate < effective_end_date` の範囲内なら表示
+     - `effective_end_date` が `null` の場合（スケジュール未設定で終了日不明）: `start_date <= currentDate` なら離脱継続中とみなして表示
 
 3. **表示テキスト生成 (`getAbsenceDisplayText`):**
    - `【{離脱種別}】{選手名}: {理由} ({開始日}から{期間}{単位})`
@@ -238,6 +244,8 @@
 
 **ベースパス:** `/api/v1/commissioner/leagues/:league_id/teams/:team_id/team_memberships/:team_membership_id/player_absences`
 
+**認証:** コミッショナー権限必須（`Api::V1::Commissioner::BaseController` 継承）
+
 **注:** ネストされたリソース構造。`team_membership_id` を親リソースとして扱う。
 
 | メソッド | パス | アクション | 説明 | レスポンス |
@@ -265,6 +273,7 @@
 | 項目 | 一般ユーザー | コミッショナー |
 |-----|------------|--------------|
 | エンドポイント構造 | フラット (`/player_absences`) | ネスト (`/.../team_memberships/:id/player_absences`) |
+| 認証レベル | 要認証（コミッショナー権限不要） | コミッショナー権限必須 |
 | `show` アクション | **なし** | あり |
 | 許可パラメータ | `team_membership_id`, `reason` 含む (7項目) | `reason` 含まない (5項目) |
 | `team_membership_id` の扱い | リクエストボディで指定 | URLパスから自動設定 |
@@ -324,6 +333,33 @@ enum :absence_type, { injury: 0, suspension: 1, reconditioning: 2 }
 
 ※ `reason` はオプショナル（NULL許可）
 
+**インスタンスメソッド:**
+
+```ruby
+# 離脱期間の終了日（排他的: この日には復帰可能）
+def effective_end_date
+  if duration_unit == "days"
+    start_date + duration.days
+  else
+    # games: シーズンスケジュールからgame_day/interleague_game_dayの日付を取得し、
+    # start_date以降のN試合目の翌日を返す
+    game_dates = season.season_schedules
+      .where(date_type: %w[game_day interleague_game_day])
+      .where("date >= ?", start_date)
+      .order(:date)
+      .limit(duration)
+      .pluck(:date)
+
+    return nil if game_dates.length < duration
+    game_dates.last + 1.day
+  end
+end
+```
+
+**戻り値:**
+- `days` 単位: `start_date + duration` 日（常に値を返す）
+- `games` 単位: シーズンスケジュール上の `duration` 試合消化後の翌日。スケジュールが不足している場合は `nil` を返す（離脱継続中を意味する）
+
 ---
 
 ### シリアライザー: `PlayerAbsenceSerializer`
@@ -333,7 +369,7 @@ enum :absence_type, { injury: 0, suspension: 1, reconditioning: 2 }
 **出力属性:**
 ```ruby
 attributes :id, :team_membership_id, :season_id, :absence_type, :reason,
-           :start_date, :duration, :duration_unit, :player_name
+           :start_date, :duration, :duration_unit, :player_name, :effective_end_date
 ```
 
 **カスタムメソッド:**
@@ -342,6 +378,8 @@ def player_name
   object.team_membership.player.name
 end
 ```
+
+**注:** `effective_end_date` はモデルの `effective_end_date` メソッドから取得される（後述の「離脱期間の計算」を参照）。
 
 **出力例 (JSON):**
 ```json
@@ -354,7 +392,8 @@ end
   "start_date": "2024-11-15",
   "duration": 7,
   "duration_unit": "days",
-  "player_name": "霧雨 魔理沙"
+  "player_name": "霧雨 魔理沙",
+  "effective_end_date": "2024-11-22"
 }
 ```
 
@@ -390,20 +429,21 @@ end
 
 **days 単位の場合:**
 - 開始日: `start_date`
-- 終了日: `start_date + duration` 日後
-- 例: 11月15日開始、7日間 → 11月22日まで離脱 (11月15日〜21日の7日間)
+- 終了日（排他的）: `start_date + duration` 日後
+- 例: 11月15日開始、7日間 → `effective_end_date` = 11月22日（11月15日〜21日の7日間離脱、22日から復帰可能）
 
 **games 単位の場合:**
-- **フロントエンドでの判定ロジック未実装** (`AbsenceInfo.vue:77` でコメント記載)
-- バックエンドには保存されるが、画面表示時のフィルタリングは未対応
-- 実装予定: シーズンスケジュールと照合して試合数をカウント
+- バックエンド（`PlayerAbsence#effective_end_date`）がシーズンスケジュール（`season_schedules` テーブル）を参照し、`start_date` 以降の `game_day` / `interleague_game_day` 日付を `duration` 件取得
+- 最後の試合日の翌日を `effective_end_date` として返す
+- スケジュールが不足している場合（未設定等）は `nil` を返す
+- フロントエンド（`AbsenceInfo.vue`）は `effective_end_date` を用いてフィルタリングし、`null` の場合は離脱継続中として扱う
 
 ### ロースター管理との連携
 
 **現状:**
 - `PlayerAbsence` モデルはロースター (`SeasonRoster`) とは独立して管理されている
-- 離脱中の選手がロースターに登録可能かどうかのチェックロジックは確認できず
-- 将来的には離脱中選手の出場制限等のビジネスルールが追加される可能性あり
+- 離脱中の選手をロースターに登録しようとした場合、フロントエンド（`ActiveRoster.vue`）で警告表示が行われる（UNIMPL-014対応）
+- 離脱情報は `AbsenceInfo.vue` コンポーネントでシーズンポータル画面等に表示される
 
 ---
 
@@ -415,17 +455,18 @@ end
 
 ```typescript
 export interface PlayerAbsence {
-  id: number;
-  team_membership_id: number;
-  season_id: number;
-  absence_type: 'injury' | 'suspension' | 'reconditioning';
-  reason: string | null;
-  start_date: string; // ISO8601 date string
-  duration: number;
-  duration_unit: 'days' | 'games';
-  created_at: string;
-  updated_at: string;
-  player_name: string; // シリアライザーで付与
+  id: number
+  team_membership_id: number
+  season_id: number
+  absence_type: 'injury' | 'suspension' | 'reconditioning'
+  reason: string | null
+  start_date: string // ISO8601 date string
+  duration: number
+  duration_unit: 'days' | 'games'
+  effective_end_date: string | null // バックエンドが算出する終了日（排他的）
+  created_at: string
+  updated_at: string
+  player_name: string // シリアライザーで付与
 }
 ```
 
@@ -433,12 +474,14 @@ export interface PlayerAbsence {
 
 ```
 PlayerAbsenceHistory.vue (離脱履歴画面)
+  ├─ TeamNavigation.vue (チーム関連画面のタブナビゲーション)
   ├─ PlayerAbsenceFormDialog.vue (登録/編集ダイアログ)
   │    └─ TeamMemberSelect.vue (選手選択コンポーネント)
   └─ (v-data-table: Vuetify標準)
 
 AbsenceInfo.vue (離脱情報表示アラート)
   └─ (独立コンポーネント、SeasonPortal等で使用)
+  └─ defineExpose: fetchPlayerAbsences (親コンポーネントから再取得を呼び出し可能)
 ```
 
 ### API呼び出しパターン
@@ -493,7 +536,7 @@ await axios.delete(`/player_absences/${id}`)
 resources :player_absences, only: [:index, :create, :update, :destroy]
 ```
 
-**コミッショナー向け (79行目):**
+**コミッショナー向け:**
 ```ruby
 namespace :commissioner do
   resources :leagues do
@@ -518,29 +561,25 @@ end
 - `GET    /api/v1/commissioner/leagues/:league_id/teams/:team_id/team_memberships/:team_membership_id/player_absences`
 - `POST   /api/v1/commissioner/leagues/:league_id/teams/:team_id/team_memberships/:team_membership_id/player_absences`
 - `PATCH  /api/v1/commissioner/leagues/:league_id/teams/:team_id/team_memberships/:team_membership_id/player_absences/:id`
-- `DELETE /api/v1/commissioner/leagues/:league_id/teams/:team_id/team_memberships/:team_membership_id/player_memberships/:team_membership_id/player_absences/:id`
+- `DELETE /api/v1/commissioner/leagues/:league_id/teams/:team_id/team_memberships/:team_membership_id/player_absences/:id`
 
 ---
 
 ## 未実装機能・今後の課題
 
-1. **games 単位の離脱期間フィルタリング** (`AbsenceInfo.vue`)
-   - 現在は `duration_unit === 'games'` の場合、フィルタリングされない
-   - シーズンスケジュール (`season_schedules`) と照合して試合数をカウントする必要あり
+1. ~~**games 単位の離脱期間フィルタリング**~~ **実装済み**
+   - バックエンド: `PlayerAbsence#effective_end_date` メソッドでシーズンスケジュールを参照し終了日を算出
+   - フロントエンド: `AbsenceInfo.vue` が `effective_end_date` を使用してフィルタリング
 
-2. **エラーハンドリングの強化** (`PlayerAbsenceFormDialog.vue`)
-   - 保存失敗時のユーザーへの通知が未実装 (TODOコメントあり)
-   - スナックバー等での統一的なエラー表示が望ましい
+2. ~~**エラーハンドリングの強化**~~ **実装済み**
+   - `PlayerAbsenceFormDialog.vue` で `useSnackbar` を使用し、保存失敗時にスナックバーで通知
 
 3. **ロースター管理との連携**
-   - 離脱中の選手がロースターに登録できないようにする制約
-   - 離脱期間終了時の自動復帰通知
+   - 離脱中の選手をロースターに登録しようとした場合の警告表示は実装済み（UNIMPL-014対応）
+   - 離脱期間終了時の自動復帰通知は未実装
 
 4. **コミッショナー向けAPIの `reason` パラメータ**
    - 現在は許可リストに含まれていないが、理由入力が必要な場合は追加検討
-
-5. **フロントエンドルーティング**
-   - `PlayerAbsenceHistory.vue` の正確なルートパスがルーター定義から確認できず (推定ベース)
 
 ---
 
@@ -554,11 +593,13 @@ end
 
 - **依存コンポーネント:**
   - `TeamMemberSelect.vue` (shared component、チームメンバー選択用ドロップダウン)
+  - `TeamNavigation.vue` (チーム関連画面のタブナビゲーション)
 
 - **i18n設定ファイル:** `src/locales/ja.json` (日本語翻訳)
 
 ---
 
-**仕様書バージョン:** 1.0
+**仕様書バージョン:** 1.1
 **作成日:** 2026-02-14
-**ソースコード参照日:** 2026-02-14
+**更新日:** 2026-02-21
+**ソースコード参照日:** 2026-02-21

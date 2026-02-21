@@ -8,25 +8,40 @@
 
 シーズンには関連機能として、ロスター管理（09_roster_management）、試合管理（10_game_management）、選手離脱（11_player_absence）が紐づく。
 
+試合結果データ（`game_number`、`score`、`opponent_score`等）は `season_schedules` テーブルに統合されており、独立した `games` テーブルは存在しない（DESIGN-008,009 による設計統合）。
+
 ## 画面構成（フロントエンド）
 
 ### シーズンポータル画面（SeasonPortal）
 
-- **パス**: `/teams/:teamId/season`（推定: ルーター設定に基づく）
+- **パス**: `/teams/:teamId/season`
 - **コンポーネント**: `src/views/SeasonPortal.vue`
+- **ルート名**: `SeasonPortal`
 - **API呼び出し**: `GET /teams/:teamId/season`（シーズン詳細取得）
+- **ルート設定**: `meta: { requiresAuth: true, title: 'シーズンポータル' }`
+
+#### チームナビゲーション
+
+画面上部に `TeamNavigation` コンポーネントが配置され、以下のタブでチーム関連画面を切り替えられる:
+
+| タブ | ルート名 | パス | アイコン |
+|------|----------|------|---------|
+| チームメンバー登録 | `TeamMembers` | `/teams/:teamId/members` | `mdi-account-group` |
+| 出場選手登録 | `SeasonRoster` | `/teams/:teamId/roster` | `mdi-clipboard-list` |
+| シーズンポータル | `SeasonPortal` | `/teams/:teamId/season` | `mdi-calendar` |
+| 離脱履歴 | `PlayerAbsenceHistory` | `/teams/:teamId/absence-history` | `mdi-account-off` |
 
 #### ツールバー
 
 | 要素 | 色 | 動作 | 条件 |
 |------|-----|------|------|
 | シーズン名（h1） | — | 表示のみ | `season.name` |
-| 試合結果入力ボタン | primary | `GameResult` 画面へ遷移 | 当日が試合日（`game_day`, `interleague_game_day`, `playoff_day`, `no_game`）の場合のみ有効 |
-| 登録選手ボタン | secondary | `/teams/:teamId/roster` へ遷移 | 常時有効 |
-| 離脱登録ボタン | red | `PlayerAbsenceFormDialog` を開く | 常時有効 |
-| 離脱履歴ボタン | red-darken-4 | `PlayerAbsenceHistory` 画面へ遷移 | 常時有効 |
+| 試合結果入力ボタン | primary（outlined） | `GameResult` 画面へ遷移 | 当日が試合日（`game_day`, `interleague_game_day`, `playoff_day`, `no_game`）の場合のみ有効 |
+| 離脱登録ボタン | teal（outlined） | `PlayerAbsenceFormDialog` を開く | 常時有効。アイコン: `mdi-hospital-box` |
 | ◀ / ▶（日付移動） | — | `prevDay()` / `nextDay()` で `current_date` を±1日更新 | 開始日以前 / 終了日以降は disabled |
 | 現在日付表示 | — | `ja-JP` ロケールで「○月○日」形式 | — |
+
+**注意**: 「登録選手」「離脱履歴」ボタンは `TeamNavigation` タブに移行されたため、ツールバーからは削除されている。
 
 #### カレンダー表示
 
@@ -102,6 +117,12 @@
 4. ダイアログ非表示時: `watch` でフォーム値を自動リセット
 
 ## APIエンドポイント
+
+### 共通事項
+
+- **ベースURL**: `/api/v1`
+- **コントローラー継承**: `Api::V1::SeasonsController`、`Api::V1::TeamSeasonsController`、`Api::V1::TeamKeyPlayersController` はいずれも `Api::V1::BaseController` を継承
+- **認証**: `Api::V1::BaseController` の `before_action :authenticate_user!` により全アクションで認証が必須。未認証の場合は `401 Unauthorized`（`{ error: 'ログインが必要です' }`）を返す
 
 ### シーズン作成
 
@@ -263,6 +284,8 @@ resources :seasons, only: [:create]
 
 ### season_schedules テーブル
 
+日程管理と試合結果を統合したテーブル。DESIGN-008,009 に基づき、従来の独立した `games` モデルの機能を `season_schedules` に統合している。日程関連カラム（`date`, `date_type` 等）と試合結果カラム（`game_number`, `score`, `opponent_score` 等）を1つのテーブルで管理する。
+
 | カラム | 型 | NULL | デフォルト | 説明 |
 |--------|-----|------|-----------|------|
 | `id` | bigint | NO | (auto) | 主キー |
@@ -271,12 +294,12 @@ resources :seasons, only: [:create]
 | `date_type` | string | YES | — | 日程種別（後述） |
 | `announced_starter_id` | bigint | YES | — | 先発予告投手（FK → team_memberships） |
 | `opponent_team_id` | bigint | YES | — | 対戦相手チーム（FK → teams） |
-| `game_number` | integer | YES | — | 試合番号 |
+| `game_number` | integer | YES | — | 試合番号（統合: 旧gameモデル由来） |
 | `stadium` | string | YES | — | 球場名 |
-| `home_away` | string | YES | — | ホーム/アウェイ |
+| `home_away` | string | YES | — | ホーム/アウェイ（`"home"` or `"visitor"`。バリデーション有） |
 | `designated_hitter_enabled` | boolean | YES | — | DH制有無 |
-| `score` | integer | YES | — | 自チームスコア |
-| `opponent_score` | integer | YES | — | 相手チームスコア |
+| `score` | integer | YES | — | 自チームスコア（統合: 旧gameモデル由来） |
+| `opponent_score` | integer | YES | — | 相手チームスコア（統合: 旧gameモデル由来） |
 | `winning_pitcher_id` | bigint | YES | — | 勝利投手（FK → players） |
 | `losing_pitcher_id` | bigint | YES | — | 敗戦投手（FK → players） |
 | `save_pitcher_id` | bigint | YES | — | セーブ投手（FK → players） |
@@ -344,7 +367,45 @@ Team
 - `team_id`: uniqueness（1チーム1シーズン。メッセージ: 「は既にシーズンが開始されています。」）
 
 **SeasonSchedule**:
-- モデルレベルのバリデーションなし（DB制約として `season_id`, `date` が NOT NULL）
+- `home_away`: `inclusion: { in: ["home", "visitor"] }, allow_blank: true` — 設定する場合は `"home"` または `"visitor"` のみ許可。未設定（`nil` / 空文字）も許容
+
+### SeasonSchedule のインスタンスメソッド
+
+#### `calculated_game_number`
+
+試合番号を返す。`game_number` カラムに値が設定されている場合はそれを返し、未設定の場合はシーズン内の `game_day` / `interleague_game_day` タイプの日程のうち、当該日付より前のレコード数 + 1 を動的に計算して返す。
+
+```ruby
+def calculated_game_number
+  game_number || season.season_schedules
+    .where(date_type: ["game_day", "interleague_game_day"])
+    .where("date < ?", date)
+    .count + 1
+end
+```
+
+#### `game_result_hash`
+
+試合結果をハッシュで返す。`score` と `opponent_score` の両方が存在する場合のみ結果を生成し、いずれかが未設定の場合は `nil` を返す。
+
+```ruby
+def game_result_hash
+  return nil if score.blank? || opponent_score.blank?
+
+  result = if score > opponent_score then "win"
+  elsif score < opponent_score then "lose"
+  else "draw"
+  end
+
+  {
+    opponent_short_name: opponent_team&.short_name,
+    score: "#{score} - #{opponent_score}",
+    result: result
+  }
+end
+```
+
+このメソッドは `SeasonScheduleSerializer#game_result` から呼び出され、シリアライズ時に試合結果を出力する。
 
 ## シリアライザー
 
@@ -378,13 +439,27 @@ end
 ```ruby
 class SeasonScheduleSerializer < ActiveModel::Serializer
   attributes :id, :date, :date_type, :announced_starter, :game_result
+
+  def announced_starter
+    return nil unless object.announced_starter_id
+    player = object.announced_starter&.player
+    return nil unless player
+    {
+      id: player.id,
+      name: player.name
+    }
+  end
+
+  def game_result
+    object.game_result_hash
+  end
 end
 ```
 
 **計算属性**:
 
 - `announced_starter`: `announced_starter_id` が設定されている場合、関連する `TeamMembership` → `Player` から `{ id, name }` を返す。未設定時は `nil`。
-- `game_result`: `score` と `opponent_score` が両方存在する場合のみ生成。
+- `game_result`: `SeasonSchedule#game_result_hash` メソッドに委譲。`score` と `opponent_score` が両方存在する場合のみ生成。
   ```json
   {
     "opponent_short_name": "チームA",
@@ -427,6 +502,7 @@ end
 | コンポーネント | パス | 役割 |
 |---------------|------|------|
 | `SeasonPortal` | `src/views/SeasonPortal.vue` | シーズンメイン画面。カレンダー表示・日付進行・日程変更 |
+| `TeamNavigation` | `src/components/TeamNavigation.vue` | チーム関連画面間のタブナビゲーション（TeamMembers、SeasonRoster、SeasonPortal、PlayerAbsenceHistory） |
 | `SeasonInitializationDialog` | `src/components/SeasonInitializationDialog.vue` | シーズン初期化ダイアログ |
 | `AbsenceInfo` | `src/components/AbsenceInfo.vue` | 現在日付の離脱選手情報表示 |
 | `PlayerAbsenceFormDialog` | `src/components/PlayerAbsenceFormDialog.vue` | 離脱登録フォームダイアログ |

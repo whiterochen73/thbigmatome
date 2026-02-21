@@ -35,6 +35,7 @@ Rails.application.routes.draw do
       resources :team_registration_players, only: [ :index ]
 
       # 各種設定マスタ
+      resources :card_sets, only: [ :index, :show ]
       resources :player_types, path: "player-types", only: [ :index, :create, :update, :destroy ]
       resources :pitching_styles, path: "pitching-styles", only: [ :index, :create, :update, :destroy ]
       resources :pitching_skills, path: "pitching-skills", only: [ :index, :create, :update, :destroy ]
@@ -58,8 +59,16 @@ Rails.application.routes.draw do
         end
       end
 
+      # 大会管理
+      resources :competitions, only: [ :index, :show, :create, :update, :destroy ]
+      # 選手カード
+      resources :player_cards, only: [ :index, :show ]
+
       # コストアサインメント
       resources :cost_assignments, only: [ :index, :create ]
+
+      # 球場マスタ
+      resources :stadiums, only: [ :index, :show, :create, :update ]
 
       # ユーザー管理（commissioner専用）
       resources :users, only: [ :index, :create ] do

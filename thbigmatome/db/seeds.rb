@@ -317,5 +317,19 @@ puts 'Seeding Schedule Details...'
   )
 end
 
+puts 'Seeding Competition: 幻想郷ペナントレースR...'
+competition = Competition.find_or_initialize_by(name: '幻想郷ペナントレースR', year: 2026)
+competition.update!(competition_type: 'league_pennant')
+puts '  幻想郷ペナントレースR seeded.'
+
+puts 'Seeding Team: 若尊バレーナ...'
+team = Team.find_or_initialize_by(name: '若尊バレーナ')
+team.update!(short_name: '若尊', is_active: true)
+puts '  若尊バレーナ seeded.'
+
+puts 'Seeding CompetitionEntry: 幻想郷ペナントレースR × 若尊バレーナ...'
+CompetitionEntry.find_or_create_by!(competition: competition, team: team)
+puts '  CompetitionEntry seeded.'
+
 # テスト環境専用シードデータ
 load Rails.root.join('db/seeds/test.rb') if Rails.env.test?

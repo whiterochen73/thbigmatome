@@ -3,6 +3,7 @@ module Api
     class UsersController < Api::V1::BaseController
       before_action :check_commissioner
       before_action :set_user, only: [ :reset_password ]
+      skip_before_action :check_commissioner, only: [ :my_teams ]
 
       # GET /api/v1/users
       def index
@@ -18,6 +19,12 @@ module Api
         else
           render json: { errors: user.errors.full_messages }, status: :unprocessable_entity
         end
+      end
+
+      # GET /api/v1/users/me/teams
+      def my_teams
+        teams = current_user.teams.order(is_active: :desc, created_at: :asc)
+        render json: teams.as_json(only: [ :id, :name, :is_active, :user_id, :short_name ])
       end
 
       # PATCH /api/v1/users/:id/reset_password

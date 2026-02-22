@@ -82,6 +82,57 @@ RSpec.describe 'Api::V1::Users', type: :request do
     end
   end
 
+  describe 'GET /api/v1/users/me/teams' do
+    context 'commissionerユーザーの場合' do
+      let!(:my_team) { create(:team, user_id: commissioner_user.id) }
+      let!(:other_team) { create(:team) }
+
+      before { login_as(commissioner_user) }
+
+      it '200を返す' do
+        get '/api/v1/users/me/teams'
+        expect(response).to have_http_status(:ok)
+      end
+
+      it '自分のチームのみ返す' do
+        get '/api/v1/users/me/teams'
+        json = JSON.parse(response.body)
+        expect(json.map { |t| t['id'] }).to include(my_team.id)
+        expect(json.map { |t| t['id'] }).not_to include(other_team.id)
+      end
+
+      it 'id/name/is_active/user_id/short_nameのフィールドを含む' do
+        get '/api/v1/users/me/teams'
+        json = JSON.parse(response.body)
+        expect(json.first.keys).to match_array(%w[id name is_active user_id short_name])
+      end
+    end
+
+    context '一般ユーザーの場合' do
+      let!(:my_team) { create(:team, user_id: player_user.id) }
+
+      before { login_as(player_user) }
+
+      it '200を返す' do
+        get '/api/v1/users/me/teams'
+        expect(response).to have_http_status(:ok)
+      end
+
+      it '自分のチームのみ返す' do
+        get '/api/v1/users/me/teams'
+        json = JSON.parse(response.body)
+        expect(json.map { |t| t['id'] }).to include(my_team.id)
+      end
+    end
+
+    context '未認証の場合' do
+      it '401を返す' do
+        get '/api/v1/users/me/teams'
+        expect(response).to have_http_status(:unauthorized)
+      end
+    end
+  end
+
   describe 'PATCH /api/v1/users/:id/reset_password' do
     let!(:target_user) { create(:user) }
 

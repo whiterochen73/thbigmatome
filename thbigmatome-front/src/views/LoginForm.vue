@@ -31,11 +31,7 @@
           {{ error }}
         </div>
 
-        <button
-          type="submit"
-          :disabled="loading || !isFormValid"
-          class="login-button"
-        >
+        <button type="submit" :disabled="loading || !isFormValid" class="login-button">
           {{ loading ? t('loginForm.loggingIn') : t('loginForm.login') }}
         </button>
       </form>
@@ -56,7 +52,7 @@ const { login, loading } = useAuth()
 
 const form = ref({
   loginName: '',
-  password: ''
+  password: '',
 })
 
 const error = ref('')
@@ -70,9 +66,9 @@ const handleLogin = async () => {
 
   try {
     await login(form.value.loginName, form.value.password)
-    router.push('/menu') // ログイン成功後のリダイレクト先
-  } catch (err: any) {
-    error.value = err.message || t('loginForm.loginFailed')
+    router.push('/') // ログイン成功後のリダイレクト先
+  } catch (err: unknown) {
+    error.value = err instanceof Error ? err.message : t('loginForm.loginFailed')
   }
 }
 </script>

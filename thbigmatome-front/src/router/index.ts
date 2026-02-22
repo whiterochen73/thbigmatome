@@ -3,7 +3,6 @@ import { createRouter, createWebHistory, type RouteRecordRaw } from 'vue-router'
 import { authGuard } from './authGuard'
 import LoginForm from '@/views/LoginForm.vue'
 import DefaultLayout from '@/layouts/DefaultLayout.vue'
-import TopMenu from '@/views/TopMenu.vue'
 import ManagerList from '@/views/ManagerList.vue'
 import Players from '@/views/Players.vue'
 import CostAssignment from '@/views/CostAssignment.vue'
@@ -24,19 +23,13 @@ const routes: RouteRecordRaw[] = [
     children: [
       {
         path: '',
-        redirect: '/home',
-      },
-      {
-        path: 'home',
         name: 'ホーム',
         component: () => import('@/views/HomeView.vue'),
         meta: { requiresAuth: true, title: 'ホーム' },
       },
       {
-        path: 'menu',
-        name: 'ダッシュボード',
-        component: TopMenu,
-        meta: { title: 'ダッシュボード' },
+        path: 'home',
+        redirect: '/',
       },
       {
         path: 'managers',
@@ -169,7 +162,7 @@ const routes: RouteRecordRaw[] = [
   },
   {
     path: '/:pathMatch(.*)*',
-    redirect: '/menu',
+    redirect: '/',
   },
 ]
 

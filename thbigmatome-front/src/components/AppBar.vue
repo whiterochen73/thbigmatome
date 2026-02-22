@@ -2,7 +2,7 @@
   <v-app-bar color="primary" elevation="2" :height="64">
     <v-app-bar-nav-icon @click.stop="emit('toggle-drawer')" />
 
-    <v-app-bar-title @click="router.push('/menu')" style="cursor: pointer">
+    <v-app-bar-title @click="router.push('/')" style="cursor: pointer">
       <v-icon start>mdi-baseball</v-icon>
       東方BIG野球まとめツール
     </v-app-bar-title>

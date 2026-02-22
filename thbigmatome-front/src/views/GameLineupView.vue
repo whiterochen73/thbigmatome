@@ -159,8 +159,7 @@ import axios from 'axios'
 
 interface LineupEntry {
   id: number
-  game_id: number
-  player_id: number
+  player_card_id: number
   player_name: string
   batting_order: number | null
   position: string
@@ -170,7 +169,7 @@ interface LineupEntry {
 }
 
 interface LineupData {
-  entries: LineupEntry[]
+  lineup: LineupEntry[]
 }
 
 const route = useRoute()
@@ -181,24 +180,24 @@ const errorMessage = ref('')
 
 const starters = computed<LineupEntry[]>(() => {
   if (!lineup.value) return []
-  return lineup.value.entries
+  return lineup.value.lineup
     .filter((e) => e.role === 'starter')
     .sort((a, b) => (a.batting_order ?? 0) - (b.batting_order ?? 0))
 })
 
 const bench = computed<LineupEntry[]>(() => {
   if (!lineup.value) return []
-  return lineup.value.entries.filter((e) => e.role === 'bench')
+  return lineup.value.lineup.filter((e) => e.role === 'bench')
 })
 
 const off = computed<LineupEntry[]>(() => {
   if (!lineup.value) return []
-  return lineup.value.entries.filter((e) => e.role === 'off')
+  return lineup.value.lineup.filter((e) => e.role === 'off')
 })
 
 const designated = computed<LineupEntry[]>(() => {
   if (!lineup.value) return []
-  return lineup.value.entries.filter((e) => e.role === 'designated_player')
+  return lineup.value.lineup.filter((e) => e.role === 'designated_player')
 })
 
 async function fetchLineup(id: string | string[]) {

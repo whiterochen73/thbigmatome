@@ -34,11 +34,10 @@ import axios from 'axios'
 const vuetify = createVuetify({ components, directives })
 
 const mockLineupData = {
-  entries: [
+  lineup: [
     {
       id: 1,
-      game_id: 42,
-      player_id: 101,
+      player_card_id: 101,
       player_name: '博麗霊夢',
       batting_order: 1,
       position: 'CF',
@@ -48,8 +47,7 @@ const mockLineupData = {
     },
     {
       id: 2,
-      game_id: 42,
-      player_id: 102,
+      player_card_id: 102,
       player_name: '霧雨魔理沙',
       batting_order: 2,
       position: 'P',
@@ -59,8 +57,7 @@ const mockLineupData = {
     },
     {
       id: 3,
-      game_id: 42,
-      player_id: 103,
+      player_card_id: 103,
       player_name: '十六夜咲夜',
       batting_order: null,
       position: 'RP',
@@ -70,8 +67,7 @@ const mockLineupData = {
     },
     {
       id: 4,
-      game_id: 42,
-      player_id: 104,
+      player_card_id: 104,
       player_name: '古明地こいし',
       batting_order: null,
       position: 'SS',
@@ -81,8 +77,7 @@ const mockLineupData = {
     },
     {
       id: 5,
-      game_id: 42,
-      player_id: 105,
+      player_card_id: 105,
       player_name: '東風谷早苗',
       batting_order: null,
       position: 'SP',

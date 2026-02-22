@@ -12,7 +12,7 @@ class PlayerCard < ApplicationRecord
   validates :card_set_id, :player_id, presence: true
   validates :card_set_id, uniqueness: { scope: :player_id }
 
-  DEFENSE_RATING_FORMAT = /\A[0-5][A-E|S]\z/.freeze
+  DEFENSE_RATING_FORMAT = /\A[0-5][A-ES]\z/.freeze
   DEFENSE_ATTRIBUTES = %i[
     defense_p defense_c defense_1b defense_2b defense_3b defense_ss
     defense_of defense_lf defense_cf defense_rf special_defense_c

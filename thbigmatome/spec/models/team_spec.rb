@@ -37,6 +37,23 @@ RSpec.describe Team, type: :model do
   end
 
   # ============================================================
+  # user_id (optional)
+  # ============================================================
+
+  describe "user association" do
+    it "user_idがnilでも有効" do
+      team = build(:team, user_id: nil)
+      expect(team).to be_valid
+    end
+
+    it "user_idを持つ場合はそのユーザーと関連付けられる" do
+      user = create(:user)
+      team = create(:team, user_id: user.id)
+      expect(team.user).to eq(user)
+    end
+  end
+
+  # ============================================================
   # コスト上限バリデーション
   # ============================================================
 

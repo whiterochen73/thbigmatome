@@ -35,6 +35,12 @@ class Api::V1::CompetitionsController < Api::V1::BaseController
     head :no_content
   end
 
+  def teams
+    competition = Competition.find(params[:id])
+    teams = competition.competition_entries.includes(:team).map(&:team)
+    render json: teams, each_serializer: TeamSerializer
+  end
+
   private
 
   def competition_params

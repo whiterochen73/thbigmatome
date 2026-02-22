@@ -72,6 +72,7 @@ Rails.application.routes.draw do
 
       # 大会管理
       resources :competitions, only: [ :index, :show, :create, :update, :destroy ] do
+        get :teams, on: :member
         get "roster", to: "competition_rosters#index"
         post "roster/players", to: "competition_rosters#add_player"
         delete "roster/players/:player_card_id", to: "competition_rosters#remove_player"

@@ -5,5 +5,7 @@ FactoryBot.define do
     association :competition
     association :team
     role { "starter" }
+    earned_runs { 0 }
+    decision { nil }
   end
 end

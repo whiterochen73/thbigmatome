@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_02_22_024311) do
+ActiveRecord::Schema[8.1].define(version: 2026_02_22_035420) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -259,6 +259,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_02_22_024311) do
     t.bigint "competition_id", null: false
     t.datetime "created_at", null: false
     t.integer "cumulative_innings", default: 0
+    t.string "decision"
+    t.integer "earned_runs", default: 0, null: false
     t.integer "fatigue_p_used", default: 0
     t.bigint "game_id", null: false
     t.string "injury_check"
@@ -270,6 +272,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_02_22_024311) do
     t.bigint "team_id", null: false
     t.datetime "updated_at", null: false
     t.index [ "competition_id" ], name: "index_pitcher_game_states_on_competition_id"
+    t.index [ "decision" ], name: "index_pitcher_game_states_on_decision"
     t.index [ "game_id", "pitcher_id" ], name: "index_pitcher_game_states_on_game_id_and_pitcher_id", unique: true
     t.index [ "game_id" ], name: "index_pitcher_game_states_on_game_id"
     t.index [ "pitcher_id" ], name: "index_pitcher_game_states_on_pitcher_id"

@@ -11,7 +11,6 @@ class PitchingStatsCalculator
     return [] if confirmed_games.empty?
 
     game_ids     = confirmed_games.pluck(:id)
-    games_by_id  = confirmed_games.index_by(&:id)
 
     pgs_records  = PitcherGameState.where(game_id: game_ids).includes(:pitcher)
     at_bats      = AtBat.where(game_id: game_ids, status: :confirmed)
@@ -20,7 +19,7 @@ class PitchingStatsCalculator
     pgs_records.group_by(&:pitcher_id).map do |pitcher_id, pgs_list|
       pitcher         = pgs_list.first.pitcher
       pitcher_at_bats = abs_by_pitcher[pitcher_id] || []
-      calc_pitcher_stats(pitcher_id, pitcher.name, pgs_list, pitcher_at_bats, games_by_id)
+      calc_pitcher_stats(pitcher_id, pitcher.name, pgs_list, pitcher_at_bats)
     end.sort_by { |s| s[:era] }
   end
 
@@ -34,7 +33,7 @@ class PitchingStatsCalculator
     whole * 3 + third
   end
 
-  def calc_pitcher_stats(player_id, player_name, pgs_list, at_bats, games_by_id)
+  def calc_pitcher_stats(player_id, player_name, pgs_list, at_bats)
     total_thirds = pgs_list.sum { |pgs| ip_to_thirds(pgs.innings_pitched) }
     actual_ip    = total_thirds / 3.0
     # Display format: e.g. 19 thirds → 6.1 (6 innings and 1 out)
@@ -44,11 +43,9 @@ class PitchingStatsCalculator
     walks        = 0
     hits_allowed = 0
     hr_allowed   = 0
-    earned_runs  = 0
 
     at_bats.each do |ab|
       code = ab.result_code.to_s.upcase
-      earned_runs += ab.rbi.to_i
       if code.start_with?("K")
         strikeouts += 1
       elsif code == "BB"
@@ -59,20 +56,11 @@ class PitchingStatsCalculator
       end
     end
 
-    wins   = 0
-    losses = 0
-    saves  = 0
+    earned_runs = pgs_list.sum(&:earned_runs)
 
-    pgs_list.each do |pgs|
-      game = games_by_id[pgs.game_id]
-      next unless game&.home_score && game.visitor_score
-
-      my_score  = game.home_team_id == pgs.team_id ? game.home_score : game.visitor_score
-      opp_score = game.home_team_id == pgs.team_id ? game.visitor_score : game.home_score
-
-      wins   += 1 if my_score > opp_score
-      losses += 1 if my_score < opp_score
-    end
+    wins   = pgs_list.count { |pgs| pgs.decision == "W" }
+    losses = pgs_list.count { |pgs| pgs.decision == "L" }
+    saves  = pgs_list.count { |pgs| pgs.decision == "S" }
 
     era  = actual_ip > 0 ? ((earned_runs.to_f / actual_ip) * 9).round(2) : 0.0
     whip = actual_ip > 0 ? ((walks + hits_allowed).to_f / actual_ip).round(2) : 0.0

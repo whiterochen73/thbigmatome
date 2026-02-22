@@ -55,24 +55,21 @@ class TeamStatsCalculator
 
       # Batting stats (hits / at-bats per team)
       (abs_by_game[game.id] || []).each do |ab|
-        batting_team_id  = ab.half == "bottom" ? home_id : visitor_id
-        pitching_team_id = ab.half == "bottom" ? visitor_id : home_id
-        code             = ab.result_code.to_s.upcase
-        rec              = team_records[batting_team_id]
+        batting_team_id = ab.half == "bottom" ? home_id : visitor_id
+        code            = ab.result_code.to_s.upcase
+        rec             = team_records[batting_team_id]
 
         rec[:hits]    += 1 if HIT_CODES.include?(code)
         rec[:at_bats] += 1 unless NON_AB_CODES.include?(code)
-
-        # Earned runs (rbi) charged to pitching team
-        team_er[pitching_team_id] += ab.rbi.to_i
       end
 
-      # Innings pitched per team (for ERA)
+      # Innings pitched and earned runs per team (for ERA)
       (pgs_by_game[game.id] || []).each do |pgs|
         ip    = pgs.innings_pitched.to_f
         whole = ip.floor
         third = (ip * 10 % 10).round
         team_ip_thirds[pgs.team_id] += whole * 3 + third
+        team_er[pgs.team_id] += pgs.earned_runs.to_i
       end
     end
 

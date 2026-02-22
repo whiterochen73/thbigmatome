@@ -4,6 +4,9 @@ class AtBat < ApplicationRecord
   belongs_to :pitcher, class_name: "Player"
   belongs_to :pinch_hit_for, class_name: "Player", optional: true
 
+  validates :seq, presence: true,
+                  numericality: { only_integer: true, greater_than: 0 },
+                  uniqueness: { scope: :game_id }
   validates :half, inclusion: { in: %w[top bottom] }
   validates :play_type, inclusion: { in: %w[normal bunt squeeze safety_bunt hit_and_run] }
   validates :result_code, presence: true

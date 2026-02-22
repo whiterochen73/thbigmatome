@@ -256,9 +256,8 @@ describe('DefaultLayout.vue', () => {
 
       expect(wrapper.text()).toContain('ホーム')
       expect(wrapper.text()).toContain('チーム編成')
-      expect(wrapper.text()).toContain('選手マスタ')
-      expect(wrapper.text()).toContain('コスト管理')
-      expect(wrapper.text()).toContain('設定')
+      expect(wrapper.text()).toContain('試合記録')
+      expect(wrapper.text()).toContain('成績まとめ')
     })
 
     it('does not display commissioner menu for regular users', async () => {
@@ -267,7 +266,7 @@ describe('DefaultLayout.vue', () => {
       const wrapper = mountDefaultLayout()
       await flushPromises()
 
-      expect(wrapper.text()).not.toContain('リーグ管理')
+      expect(wrapper.text()).not.toContain('大会管理')
     })
 
     it('displays commissioner menu when user is commissioner', async () => {
@@ -276,7 +275,8 @@ describe('DefaultLayout.vue', () => {
       const wrapper = mountDefaultLayout()
       await flushPromises()
 
-      expect(wrapper.text()).toContain('リーグ管理')
+      expect(wrapper.text()).toContain('大会管理')
+      expect(wrapper.text()).toContain('ユーザー管理')
     })
   })
 

@@ -8,7 +8,7 @@
   >
     <v-list nav density="compact">
       <v-list-item
-        v-for="item in menuItems"
+        v-for="item in mainMenuItems"
         :key="item.value"
         :prepend-icon="item.icon"
         :title="item.title"
@@ -17,6 +17,22 @@
         link
       />
     </v-list>
+
+    <template v-if="isCommissioner">
+      <v-divider class="my-1" />
+      <v-list nav density="compact">
+        <v-list-subheader v-if="!rail">管理</v-list-subheader>
+        <v-list-item
+          v-for="item in commissionerMenuItems"
+          :key="item.value"
+          :prepend-icon="item.icon"
+          :title="item.title"
+          :value="item.value"
+          :to="item.to"
+          link
+        />
+      </v-list>
+    </template>
 
     <v-divider class="my-1" />
 
@@ -47,7 +63,6 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
 import { useAuth } from '@/composables/useAuth'
 
 const props = defineProps<{
@@ -62,58 +77,40 @@ const emit = defineEmits<{
 
 const { isCommissioner } = useAuth()
 
-const menuItems = computed(() => {
-  const items = [
-    { title: 'ホーム', icon: 'mdi-view-dashboard', value: 'dashboard', to: '/' },
-    { title: 'チーム編成', icon: 'mdi-account-group', value: 'teams', to: '/teams' },
-    { title: '選手マスタ', icon: 'mdi-account', value: 'players', to: '/players' },
-    {
-      title: 'コスト管理',
-      icon: 'mdi-currency-jpy',
-      value: 'costAssignment',
-      to: '/cost_assignment',
-    },
-    { title: '試合記録', icon: 'mdi-scoreboard', value: 'games', to: '/games' },
-    { title: 'ログ取り込み', icon: 'mdi-file-import', value: 'gameImport', to: '/games/import' },
-    { title: '成績', icon: 'mdi-chart-bar', value: 'stats', to: '/stats' },
-    { title: '設定', icon: 'mdi-cog', value: 'settings', to: '/settings' },
-  ]
+const mainMenuItems = [
+  { title: 'ホーム', icon: 'mdi-view-dashboard', value: 'dashboard', to: '/' },
+  { title: '試合記録', icon: 'mdi-scoreboard', value: 'games', to: '/games' },
+  { title: '成績まとめ', icon: 'mdi-chart-bar', value: 'stats', to: '/stats' },
+  { title: 'チーム編成', icon: 'mdi-account-group', value: 'teams', to: '/teams' },
+]
 
-  if (isCommissioner.value) {
-    items.push({
-      title: 'リーグ管理',
-      icon: 'mdi-trophy',
-      value: 'leagues',
-      to: '/commissioner/leagues',
-    })
-    items.push({
-      title: '球場管理',
-      icon: 'mdi-stadium',
-      value: 'stadiums',
-      to: '/commissioner/stadiums',
-    })
-    items.push({
-      title: 'カードセット',
-      icon: 'mdi-cards',
-      value: 'cardSets',
-      to: '/commissioner/card_sets',
-    })
-    items.push({
-      title: '大会管理',
-      icon: 'mdi-trophy-outline',
-      value: 'competitions',
-      to: '/commissioner/competitions',
-    })
-    items.push({
-      title: 'ロスター',
-      icon: 'mdi-clipboard-list',
-      value: 'competitionRoster',
-      to: '/commissioner/competitions',
-    })
-  }
-
-  return items
-})
+const commissionerMenuItems = [
+  {
+    title: '大会管理',
+    icon: 'mdi-trophy-outline',
+    value: 'competitions',
+    to: '/commissioner/competitions',
+  },
+  {
+    title: 'カードセット',
+    icon: 'mdi-cards',
+    value: 'cardSets',
+    to: '/commissioner/card_sets',
+  },
+  { title: '球場', icon: 'mdi-stadium', value: 'stadiums', to: '/commissioner/stadiums' },
+  {
+    title: '選手マスタ',
+    icon: 'mdi-account',
+    value: 'commissionerPlayers',
+    to: '/commissioner/players',
+  },
+  {
+    title: 'ユーザー管理',
+    icon: 'mdi-account-cog',
+    value: 'users',
+    to: '/commissioner/users',
+  },
+]
 
 const expandDrawer = () => {
   if (props.rail) emit('update:rail', false)

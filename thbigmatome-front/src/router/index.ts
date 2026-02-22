@@ -69,9 +69,7 @@ const routes: RouteRecordRaw[] = [
       },
       {
         path: 'commissioner/leagues',
-        name: 'Leagues',
-        component: () => import('@/views/commissioner/LeaguesView.vue'),
-        meta: { requiresAuth: true, requiresCommissioner: true, title: 'リーグ管理' },
+        redirect: '/commissioner/competitions',
       },
       {
         path: 'commissioner/stadiums',
@@ -90,6 +88,16 @@ const routes: RouteRecordRaw[] = [
         name: 'Competitions',
         component: () => import('@/views/commissioner/CompetitionsView.vue'),
         meta: { requiresAuth: true, requiresCommissioner: true, title: '大会管理' },
+      },
+      {
+        path: 'commissioner/players',
+        redirect: '/players',
+      },
+      {
+        path: 'commissioner/users',
+        name: 'Users',
+        component: () => import('@/views/commissioner/UsersView.vue'),
+        meta: { requiresAuth: true, requiresCommissioner: true, title: 'ユーザー管理' },
       },
       {
         path: '/teams/:teamId/season',

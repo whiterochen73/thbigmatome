@@ -73,6 +73,11 @@ Rails.application.routes.draw do
       # 選手カード
       resources :player_cards, only: [ :index, :show ]
 
+      # 成績集計
+      get "stats/batting",  to: "stats#batting"
+      get "stats/pitching", to: "stats#pitching"
+      get "stats/team",     to: "stats#team"
+
       # コストアサインメント
       resources :cost_assignments, only: [ :index, :create ]
 

@@ -1,7 +1,8 @@
 class ApplicationController < ActionController::API
-  # CSRF保護を有効にする
+  # CSRF保護: APIモードではnull_sessionを使用する
+  # (CORS設定でorigin制限済み。CSRF失敗時はセッションを無効化してauthenticate_user!が401を返す)
   include ActionController::RequestForgeryProtection
-  protect_from_forgery with: :exception # 例外を発生させる
+  protect_from_forgery with: :null_session
 
   # フロントエンドにCSRFトークンを送信するためのメソッド (Ajax通信用)
   # これにより、Railsのセッションクッキーが送信されると同時に、
@@ -17,7 +18,7 @@ class ApplicationController < ActionController::API
   end
 
   def authenticate_user!
-    render json: { error: 'ログインが必要です' }, status: :unauthorized unless current_user
+    render json: { error: "ログインが必要です" }, status: :unauthorized unless current_user
   end
 
   def set_csrf_token_header
@@ -25,7 +26,7 @@ class ApplicationController < ActionController::API
       # ヘッダーにX-CSRF-Tokenとしてトークンをセット
       # このトークンは、フォーム送信時やAjaxリクエスト時に
       # フロントエンドがリクエストヘッダーに含める必要がある
-      response.set_header('X-CSRF-Token', form_authenticity_token)
+      response.set_header("X-CSRF-Token", form_authenticity_token)
     end
   end
 end

@@ -9,4 +9,8 @@ class Game < ApplicationRecord
 
   validates :status, inclusion: { in: %w[draft confirmed] }
   validates :source, inclusion: { in: %w[live log_import summary] }
+
+  def draft?
+    status == "draft"
+  end
 end

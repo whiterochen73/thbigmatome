@@ -30,7 +30,14 @@ Rails.application.routes.draw do
 
       resources :game, only: [ :show, :update ]
       # 試合記録（v1 API）
-      resources :games, only: [ :index, :show, :create ]
+      resources :games, only: [ :index, :show, :create ] do
+        collection do
+          post :import_log
+        end
+        member do
+          post :confirm
+        end
+      end
 
       # 選手一覧
       resources :players, only: [ :index, :show, :create, :update, :destroy ]

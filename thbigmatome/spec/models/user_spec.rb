@@ -63,11 +63,11 @@ RSpec.describe User, type: :model do
   end
 
   describe 'enum' do
-    it { is_expected.to define_enum_for(:role).with_values(general: 0, commissioner: 1) }
+    it { is_expected.to define_enum_for(:role).with_values(player: 0, commissioner: 1) }
 
-    it 'デフォルトはgeneral' do
+    it 'デフォルトはplayer' do
       user = User.new
-      expect(user.role).to eq('general')
+      expect(user.role).to eq('player')
     end
 
     it 'commissionerに設定できる' do
@@ -75,9 +75,9 @@ RSpec.describe User, type: :model do
       expect(user).to be_commissioner
     end
 
-    it 'generalに設定できる' do
+    it 'playerに設定できる' do
       user = create(:user)
-      expect(user).to be_general
+      expect(user).to be_player
     end
   end
 

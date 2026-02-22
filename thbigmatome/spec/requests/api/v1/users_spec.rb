@@ -3,7 +3,7 @@ require 'rails_helper'
 RSpec.describe 'Api::V1::Users', type: :request do
   let(:password) { 'password123' }
   let(:commissioner_user) { create(:user, :commissioner, password: password) }
-  let(:general_user) { create(:user, password: password) }
+  let(:player_user) { create(:user, password: password) }
 
   def login_as(user)
     post '/api/v1/auth/login', params: { name: user.name, password: password }, as: :json
@@ -28,7 +28,7 @@ RSpec.describe 'Api::V1::Users', type: :request do
     end
 
     context '一般ユーザーの場合' do
-      before { login_as(general_user) }
+      before { login_as(player_user) }
 
       it '403を返す' do
         get '/api/v1/users'
@@ -46,7 +46,7 @@ RSpec.describe 'Api::V1::Users', type: :request do
 
   describe 'POST /api/v1/users' do
     let(:valid_params) do
-      { user: { name: 'new_user', display_name: '新規ユーザー', password: 'pass1234', role: 'general' } }
+      { user: { name: 'new_user', display_name: '新規ユーザー', password: 'pass1234', role: 'player' } }
     end
 
     context 'commissionerユーザーの場合' do
@@ -66,7 +66,7 @@ RSpec.describe 'Api::V1::Users', type: :request do
     end
 
     context '一般ユーザーの場合' do
-      before { login_as(general_user) }
+      before { login_as(player_user) }
 
       it '403を返す' do
         post '/api/v1/users', params: valid_params, as: :json
@@ -104,7 +104,7 @@ RSpec.describe 'Api::V1::Users', type: :request do
     end
 
     context '一般ユーザーの場合' do
-      before { login_as(general_user) }
+      before { login_as(player_user) }
 
       it '403を返す' do
         patch "/api/v1/users/#{target_user.id}/reset_password",

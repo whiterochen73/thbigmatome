@@ -83,7 +83,7 @@ RSpec.describe 'Api::V1::AuthController', type: :request do
         json = JSON.parse(response.body)
         expect(json['user']['id']).to eq(user.id)
         expect(json['user']['name']).to eq(user.name)
-        expect(json['user']['role']).to eq('general')
+        expect(json['user']['role']).to eq('player')
       end
     end
 

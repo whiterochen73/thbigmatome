@@ -3,5 +3,5 @@ class User < ApplicationRecord
   validates :name, presence: true, uniqueness: true
   validates :display_name, presence: true
 
-  enum :role, { general: 0, commissioner: 1 }
+  enum :role, { player: 0, commissioner: 1 }
 end

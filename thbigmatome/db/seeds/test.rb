@@ -5,7 +5,7 @@ puts 'Seeding test data...'
 
 # User
 user = User.find_or_initialize_by(name: 'testuser')
-user.update!(display_name: 'テストユーザー', password: 'testpassword', role: :general)
+user.update!(display_name: 'テストユーザー', password: 'testpassword', role: :player)
 puts "  User: #{user.name} (id=#{user.id})"
 
 # Manager

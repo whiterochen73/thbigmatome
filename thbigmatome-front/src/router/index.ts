@@ -148,6 +148,12 @@ const routes: RouteRecordRaw[] = [
         props: true,
       },
       {
+        path: '/games/:id/lineup',
+        name: 'GameLineup',
+        component: () => import('@/views/GameLineupView.vue'),
+        meta: { requiresAuth: true },
+      },
+      {
         path: '/stats',
         name: '成績集計',
         component: () => import('@/views/StatsView.vue'),

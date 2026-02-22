@@ -16,6 +16,19 @@
     </v-row>
 
     <template v-if="game">
+      <!-- アクションボタン -->
+      <v-row class="mb-2">
+        <v-col cols="12" class="d-flex gap-2">
+          <v-btn
+            :to="{ name: 'GameLineup', params: { id: game.id } }"
+            color="primary"
+            variant="tonal"
+          >
+            オーダー確認
+          </v-btn>
+        </v-col>
+      </v-row>
+
       <!-- 試合基本情報 -->
       <v-row>
         <v-col cols="12">

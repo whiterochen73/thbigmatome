@@ -37,6 +37,13 @@
                 <v-icon size="small" @click="deleteCompetition(item)" title="削除" class="ml-1"
                   >mdi-delete</v-icon
                 >
+                <v-icon
+                  size="small"
+                  class="ml-1"
+                  title="ロスター管理"
+                  @click="$router.push(`/competitions/${item.id}/roster`)"
+                  >mdi-clipboard-list</v-icon
+                >
               </template>
             </v-data-table>
           </v-card-text>

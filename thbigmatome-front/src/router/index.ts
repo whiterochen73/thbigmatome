@@ -153,6 +153,12 @@ const routes: RouteRecordRaw[] = [
         component: () => import('@/views/StatsView.vue'),
         meta: { requiresAuth: true, title: '成績集計' },
       },
+      {
+        path: '/competitions/:id/roster',
+        name: 'CompetitionRoster',
+        component: () => import('@/views/CompetitionRosterView.vue'),
+        meta: { requiresAuth: true },
+      },
     ],
   },
   {

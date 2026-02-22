@@ -104,6 +104,12 @@ const menuItems = computed(() => {
       value: 'competitions',
       to: '/commissioner/competitions',
     })
+    items.push({
+      title: 'ロスター',
+      icon: 'mdi-clipboard-list',
+      value: 'competitionRoster',
+      to: '/commissioner/competitions',
+    })
   }
 
   return items

@@ -41,7 +41,13 @@
                   size="small"
                   class="ml-1"
                   title="ロスター管理"
-                  @click="$router.push(`/competitions/${item.id}/roster`)"
+                  @click="
+                    userTeamId &&
+                    router.push({
+                      name: 'CompetitionRoster',
+                      params: { id: item.id, teamId: userTeamId },
+                    })
+                  "
                   >mdi-clipboard-list</v-icon
                 >
               </template>
@@ -144,6 +150,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import axios from 'axios'
+import { useRouter } from 'vue-router'
 import { useSnackbar } from '@/composables/useSnackbar'
 
 interface Competition {
@@ -154,9 +161,11 @@ interface Competition {
   entry_count: number
 }
 
+const router = useRouter()
 const { showSnackbar } = useSnackbar()
 
 const competitions = ref<Competition[]>([])
+const userTeamId = ref<number | null>(null)
 const loading = ref(false)
 const errorMessage = ref('')
 
@@ -177,7 +186,15 @@ const headers = [
   { title: '操作', key: 'actions', sortable: false, width: '100px' },
 ]
 
-onMounted(fetchCompetitions)
+onMounted(async () => {
+  await fetchCompetitions()
+  try {
+    const res = await axios.get<{ id: number }[]>('/api/v1/teams')
+    if (res.data.length > 0) userTeamId.value = res.data[0].id
+  } catch {
+    /* ignore */
+  }
+})
 
 async function fetchCompetitions() {
   loading.value = true

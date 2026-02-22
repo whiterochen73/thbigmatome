@@ -214,9 +214,11 @@ interface Competition {
 
 const route = useRoute()
 const competitionId = computed(() => route.params.id as string)
+const teamId = computed(() => route.params.teamId as string)
 
 const competitionName = ref('')
-const rosterPlayers = ref<RosterPlayer[]>([])
+const firstSquadPlayers = ref<RosterPlayer[]>([])
+const secondSquadPlayers = ref<RosterPlayer[]>([])
 const costCheck = ref<CostCheckResult | null>(null)
 const loading = ref(false)
 const activeTab = ref<'first_squad' | 'second_squad'>('first_squad')
@@ -227,14 +229,6 @@ const searchQuery = ref('')
 const searchResults = ref<PlayerSearchResult[]>([])
 const searching = ref(false)
 const adding = ref(false)
-
-const firstSquadPlayers = computed(() =>
-  rosterPlayers.value.filter((p) => p.squad === 'first_squad'),
-)
-
-const secondSquadPlayers = computed(() =>
-  rosterPlayers.value.filter((p) => p.squad === 'second_squad'),
-)
 
 const rosterHeaders = [
   { title: '選手名', key: 'player_name' },
@@ -266,10 +260,12 @@ async function fetchCompetitionName() {
 async function fetchRoster() {
   loading.value = true
   try {
-    const res = await axios.get<RosterPlayer[]>(
+    const res = await axios.get<{ first_squad: RosterPlayer[]; second_squad: RosterPlayer[] }>(
       `/api/v1/competitions/${competitionId.value}/roster`,
+      { params: { team_id: teamId.value } },
     )
-    rosterPlayers.value = res.data
+    firstSquadPlayers.value = res.data.first_squad
+    secondSquadPlayers.value = res.data.second_squad
   } catch (error) {
     console.error('Error fetching roster:', error)
   } finally {
@@ -281,6 +277,7 @@ async function fetchCostCheck() {
   try {
     const res = await axios.get<CostCheckResult>(
       `/api/v1/competitions/${competitionId.value}/roster/cost_check`,
+      { params: { team_id: teamId.value } },
     )
     costCheck.value = res.data
   } catch (error) {
@@ -316,10 +313,13 @@ async function searchPlayers() {
 async function addPlayer(playerCardId: number) {
   adding.value = true
   try {
-    await axios.post(`/api/v1/competitions/${competitionId.value}/roster/players`, {
-      player_card_id: playerCardId,
-      squad: addTargetSquad.value,
-    })
+    await axios.post(
+      `/api/v1/competitions/${competitionId.value}/roster/players?team_id=${teamId.value}`,
+      {
+        player_card_id: playerCardId,
+        squad: addTargetSquad.value,
+      },
+    )
     addDialog.value = false
     await Promise.all([fetchRoster(), fetchCostCheck()])
   } catch (error) {
@@ -331,12 +331,14 @@ async function addPlayer(playerCardId: number) {
 
 async function removePlayer(playerCardId: number) {
   try {
-    await axios.delete(`/api/v1/competitions/${competitionId.value}/roster/players/${playerCardId}`)
+    await axios.delete(
+      `/api/v1/competitions/${competitionId.value}/roster/players/${playerCardId}?team_id=${teamId.value}`,
+    )
     await Promise.all([fetchRoster(), fetchCostCheck()])
   } catch (error) {
     console.error('Error removing player:', error)
   }
 }
 
-defineExpose({ fetchRoster, fetchCostCheck, rosterPlayers, costCheck })
+defineExpose({ fetchRoster, fetchCostCheck, firstSquadPlayers, secondSquadPlayers, costCheck })
 </script>

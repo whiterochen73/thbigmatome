@@ -38,7 +38,7 @@ function createTestRouter() {
     history: createMemoryHistory(),
     routes: [
       {
-        path: '/competitions/:id/roster',
+        path: '/competitions/:id/roster/:teamId',
         name: 'CompetitionRoster',
         component: { template: '<div />' },
       },
@@ -89,7 +89,12 @@ function setupDefaultMocks(costCheck = mockCostCheckOk) {
       return Promise.resolve({ data: costCheck })
     }
     if (url.includes('/roster')) {
-      return Promise.resolve({ data: mockRosterPlayers })
+      return Promise.resolve({
+        data: {
+          first_squad: [mockRosterPlayers[0]],
+          second_squad: [mockRosterPlayers[1]],
+        },
+      })
     }
     if (url.includes('/competitions/')) {
       return Promise.resolve({ data: { id: 1, name: 'テスト大会' } })
@@ -101,7 +106,7 @@ function setupDefaultMocks(costCheck = mockCostCheckOk) {
 async function mountView(costCheck = mockCostCheckOk) {
   setupDefaultMocks(costCheck)
   const router = createTestRouter()
-  router.push('/competitions/1/roster')
+  router.push('/competitions/1/roster/10')
   await router.isReady()
   const wrapper = mount(CompetitionRosterView, {
     global: {
@@ -133,7 +138,10 @@ describe('CompetitionRosterView.vue', () => {
     const wrapper = await mountView()
     const text = wrapper.text()
     expect(text).toContain('博麗霊夢')
-    expect(vi.mocked(axios.get)).toHaveBeenCalledWith(expect.stringContaining('/roster'))
+    expect(vi.mocked(axios.get)).toHaveBeenCalledWith(
+      expect.stringContaining('/roster'),
+      expect.objectContaining({ params: expect.objectContaining({ team_id: expect.any(String) }) }),
+    )
   })
 
   it('コスト超過時のエラー表示（v-alert が表示）', async () => {

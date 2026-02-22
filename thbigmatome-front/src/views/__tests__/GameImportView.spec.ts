@@ -34,6 +34,13 @@ describe('GameImportView', () => {
     expect(wrapper.text()).toContain('IRCログ取り込み')
   })
 
+  it('shows error message when master data fetch fails on mount', async () => {
+    mockedAxios.get = vi.fn().mockRejectedValue(new Error('Network Error'))
+    const wrapper = mount(GameImportView, { global: { plugins: [vuetify] } })
+    await flushPromises()
+    expect(wrapper.text()).toContain('データの取得に失敗しました')
+  })
+
   it('parse button triggers import_log API', async () => {
     mockedAxios.post = vi.fn().mockResolvedValue({
       data: {

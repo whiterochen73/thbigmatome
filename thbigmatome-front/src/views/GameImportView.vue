@@ -185,12 +185,17 @@ const competitions = ref<Competition[]>([])
 const teams = ref<Team[]>([])
 
 onMounted(async () => {
-  const [compRes, teamRes] = await Promise.all([
-    axios.get<Competition[]>('/api/v1/competitions'),
-    axios.get<Team[]>('/api/v1/teams'),
-  ])
-  competitions.value = compRes.data
-  teams.value = teamRes.data
+  try {
+    const [compRes, teamRes] = await Promise.all([
+      axios.get<Competition[]>('/api/v1/competitions'),
+      axios.get<Team[]>('/api/v1/teams'),
+    ])
+    competitions.value = compRes.data
+    teams.value = teamRes.data
+  } catch (error) {
+    errorMessage.value = 'データの取得に失敗しました'
+    console.error('Failed to load master data:', error)
+  }
 })
 
 const logText = ref('')

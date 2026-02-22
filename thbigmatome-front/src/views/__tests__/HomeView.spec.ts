@@ -86,10 +86,12 @@ describe('HomeView', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     vi.mocked(axios.get).mockImplementation((url: string) => {
-      if (url === '/competitions') {
-        return Promise.resolve({ data: [{ id: 1, name: '第3回Lペナ' }] })
+      if (url === '/api/v1/competitions') {
+        return Promise.resolve({
+          data: [{ id: 1, name: '第3回Lペナ', competition_type: 'league_pennant' }],
+        })
       }
-      if (url === '/home/summary') {
+      if (url === '/api/v1/home/summary') {
         return Promise.resolve({ data: mockSummary })
       }
       return Promise.resolve({ data: [] })

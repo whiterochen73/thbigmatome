@@ -161,9 +161,9 @@ async function fetchStats() {
   try {
     const params = { competition_id: selectedCompetitionId.value }
     const [battingRes, pitchingRes, teamRes] = await Promise.all([
-      axios.get<{ batting_stats: BattingStat[] }>('/api/v1/stats/batting', { params }),
-      axios.get<{ pitching_stats: PitchingStat[] }>('/api/v1/stats/pitching', { params }),
-      axios.get<{ team_stats: TeamStat[] }>('/api/v1/stats/team', { params }),
+      axios.get<{ batting_stats: BattingStat[] }>('/stats/batting', { params }),
+      axios.get<{ pitching_stats: PitchingStat[] }>('/stats/pitching', { params }),
+      axios.get<{ team_stats: TeamStat[] }>('/stats/team', { params }),
     ])
     battingStats.value = battingRes.data.batting_stats
     pitchingStats.value = pitchingRes.data.pitching_stats

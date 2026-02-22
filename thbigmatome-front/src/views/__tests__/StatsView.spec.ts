@@ -55,9 +55,9 @@ describe('StatsView', () => {
   it('fetches stats when competition is selected', async () => {
     ;(axios.get as ReturnType<typeof vi.fn>).mockImplementation((url: string) => {
       if (url === '/competitions') return Promise.resolve({ data: [{ id: 1, name: '大会A' }] })
-      if (url === '/api/v1/stats/batting') return Promise.resolve({ data: { batting_stats: [] } })
-      if (url === '/api/v1/stats/pitching') return Promise.resolve({ data: { pitching_stats: [] } })
-      if (url === '/api/v1/stats/team') return Promise.resolve({ data: { team_stats: [] } })
+      if (url === '/stats/batting') return Promise.resolve({ data: { batting_stats: [] } })
+      if (url === '/stats/pitching') return Promise.resolve({ data: { pitching_stats: [] } })
+      if (url === '/stats/team') return Promise.resolve({ data: { team_stats: [] } })
       return Promise.resolve({ data: [] })
     })
 
@@ -74,15 +74,15 @@ describe('StatsView', () => {
     await flushPromises()
 
     expect(axios.get).toHaveBeenCalledWith(
-      '/api/v1/stats/batting',
+      '/stats/batting',
       expect.objectContaining({ params: { competition_id: 1 } }),
     )
     expect(axios.get).toHaveBeenCalledWith(
-      '/api/v1/stats/pitching',
+      '/stats/pitching',
       expect.objectContaining({ params: { competition_id: 1 } }),
     )
     expect(axios.get).toHaveBeenCalledWith(
-      '/api/v1/stats/team',
+      '/stats/team',
       expect.objectContaining({ params: { competition_id: 1 } }),
     )
   })

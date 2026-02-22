@@ -3,7 +3,7 @@ import { test, expect } from '@playwright/test'
 // TODO: テスト用ユーザー情報
 // seeds.rb にユーザーデータなし、test/fixtures/ も未作成。
 // 実際のテスト実行前に、Railsテスト環境DBに下記ユーザーを作成すること:
-//   rails runner -e test "User.create!(name: 'testuser', display_name: 'テストユーザー', password: 'testpassword', role: :general)"
+//   rails runner -e test "User.create!(name: 'testuser', display_name: 'テストユーザー', password: 'testpassword', role: :player)"
 // または seeds_test.rb を作成して db:seed RAILS_ENV=test で投入すること。
 const TEST_USER = {
   name: 'testuser',

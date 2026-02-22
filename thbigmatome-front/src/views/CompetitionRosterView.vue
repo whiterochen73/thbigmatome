@@ -250,7 +250,7 @@ onMounted(async () => {
 
 async function fetchCompetitionName() {
   try {
-    const res = await axios.get<Competition>(`/api/v1/competitions/${competitionId.value}`)
+    const res = await axios.get<Competition>(`/competitions/${competitionId.value}`)
     competitionName.value = res.data.name
   } catch {
     competitionName.value = `大会 #${competitionId.value}`
@@ -261,7 +261,7 @@ async function fetchRoster() {
   loading.value = true
   try {
     const res = await axios.get<{ first_squad: RosterPlayer[]; second_squad: RosterPlayer[] }>(
-      `/api/v1/competitions/${competitionId.value}/roster`,
+      `/competitions/${competitionId.value}/roster`,
       { params: { team_id: teamId.value } },
     )
     firstSquadPlayers.value = res.data.first_squad
@@ -276,7 +276,7 @@ async function fetchRoster() {
 async function fetchCostCheck() {
   try {
     const res = await axios.get<CostCheckResult>(
-      `/api/v1/competitions/${competitionId.value}/roster/cost_check`,
+      `/competitions/${competitionId.value}/roster/cost_check`,
       { params: { team_id: teamId.value } },
     )
     costCheck.value = res.data
@@ -299,7 +299,7 @@ async function searchPlayers() {
   }
   searching.value = true
   try {
-    const res = await axios.get<PlayerSearchResult[]>('/api/v1/player_cards', {
+    const res = await axios.get<PlayerSearchResult[]>('/player_cards', {
       params: { q: searchQuery.value },
     })
     searchResults.value = res.data
@@ -314,7 +314,7 @@ async function addPlayer(playerCardId: number) {
   adding.value = true
   try {
     await axios.post(
-      `/api/v1/competitions/${competitionId.value}/roster/players?team_id=${teamId.value}`,
+      `/competitions/${competitionId.value}/roster/players?team_id=${teamId.value}`,
       {
         player_card_id: playerCardId,
         squad: addTargetSquad.value,
@@ -332,7 +332,7 @@ async function addPlayer(playerCardId: number) {
 async function removePlayer(playerCardId: number) {
   try {
     await axios.delete(
-      `/api/v1/competitions/${competitionId.value}/roster/players/${playerCardId}?team_id=${teamId.value}`,
+      `/competitions/${competitionId.value}/roster/players/${playerCardId}?team_id=${teamId.value}`,
     )
     await Promise.all([fetchRoster(), fetchCostCheck()])
   } catch (error) {

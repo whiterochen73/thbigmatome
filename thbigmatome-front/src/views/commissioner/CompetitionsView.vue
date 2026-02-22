@@ -189,7 +189,7 @@ const headers = [
 onMounted(async () => {
   await fetchCompetitions()
   try {
-    const res = await axios.get<{ id: number }[]>('/api/v1/teams')
+    const res = await axios.get<{ id: number }[]>('/teams')
     if (res.data.length > 0) userTeamId.value = res.data[0].id
   } catch {
     /* ignore */

@@ -324,7 +324,7 @@ puts '  幻想郷ペナントレースR seeded.'
 
 puts 'Seeding Team: 若尊バレーナ...'
 team = Team.find_or_initialize_by(name: '若尊バレーナ')
-team.update!(short_name: '若尊', is_active: true)
+team.update!(short_name: '若尊', is_active: true, user_id: User.find_by(role: :commissioner)&.id || User.first&.id)
 puts '  若尊バレーナ seeded.'
 
 puts 'Seeding CompetitionEntry: 幻想郷ペナントレースR × 若尊バレーナ...'

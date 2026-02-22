@@ -2,6 +2,8 @@ class Team < ApplicationRecord
   COST_LIMIT_CONFIG = YAML.load_file(Rails.root.join("config", "cost_limits.yml")).freeze
   TEAM_TOTAL_MAX_COST = COST_LIMIT_CONFIG["team_total_max_cost"]
 
+  belongs_to :user, optional: true
+
   has_one :season, dependent: :restrict_with_error
   has_many :team_memberships, dependent: :destroy
   has_many :players, through: :team_memberships

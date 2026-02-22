@@ -4,4 +4,6 @@ class User < ApplicationRecord
   validates :display_name, presence: true
 
   enum :role, { player: 0, commissioner: 1 }
+
+  has_many :teams, foreign_key: :user_id, dependent: :nullify
 end

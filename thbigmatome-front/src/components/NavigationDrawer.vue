@@ -75,6 +75,7 @@ const menuItems = computed(() => {
     },
     { title: '試合記録', icon: 'mdi-scoreboard', value: 'games', to: '/games' },
     { title: 'ログ取り込み', icon: 'mdi-file-import', value: 'gameImport', to: '/games/import' },
+    { title: '成績', icon: 'mdi-chart-bar', value: 'stats', to: '/stats' },
     { title: '設定', icon: 'mdi-cog', value: 'settings', to: '/settings' },
   ]
 

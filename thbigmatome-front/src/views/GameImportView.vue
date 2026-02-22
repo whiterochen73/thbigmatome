@@ -38,6 +38,16 @@
       </v-col>
     </v-row>
 
+    <!-- モード切り替え (コミッショナーのみ) -->
+    <v-row v-if="isCommissioner">
+      <v-col cols="12">
+        <v-btn-toggle v-model="mode" mandatory color="primary" class="mb-2">
+          <v-btn value="player">プレイヤーモード</v-btn>
+          <v-btn value="commissioner">コミッショナーモード</v-btn>
+        </v-btn-toggle>
+      </v-col>
+    </v-row>
+
     <!-- Step 1: 入力フォーム -->
     <v-row>
       <v-col cols="12">
@@ -63,30 +73,82 @@
                   label="大会"
                   density="compact"
                   variant="outlined"
+                  @update:model-value="onCompetitionChange"
                 ></v-select>
               </v-col>
-              <v-col cols="12" md="3">
-                <v-select
-                  v-model="formData.home_team_id"
-                  :items="teams"
-                  item-title="name"
-                  item-value="id"
-                  label="ホームチーム"
-                  density="compact"
-                  variant="outlined"
-                ></v-select>
-              </v-col>
-              <v-col cols="12" md="3">
-                <v-select
-                  v-model="formData.visitor_team_id"
-                  :items="teams"
-                  item-title="name"
-                  item-value="id"
-                  label="ビジターチーム"
-                  density="compact"
-                  variant="outlined"
-                ></v-select>
-              </v-col>
+
+              <!-- プレイヤーモード -->
+              <template v-if="mode === 'player'">
+                <v-col v-if="myTeamError" cols="12">
+                  <v-alert type="error" variant="tonal" density="compact">
+                    あなたのチームが見つかりません
+                  </v-alert>
+                </v-col>
+                <v-col v-else-if="needsTeamSelect" cols="12" md="3">
+                  <v-select
+                    v-model="myTeam"
+                    :items="selectableMyTeams"
+                    item-title="name"
+                    item-value="id"
+                    label="自チーム"
+                    density="compact"
+                    variant="outlined"
+                  ></v-select>
+                </v-col>
+                <v-col v-else-if="myTeam !== null" cols="12" md="3">
+                  <v-text-field
+                    :model-value="allTeams.find((t) => t.id === myTeam)?.name ?? ''"
+                    label="自チーム"
+                    density="compact"
+                    variant="outlined"
+                    readonly
+                  ></v-text-field>
+                </v-col>
+                <v-col cols="12" md="3">
+                  <v-btn-toggle v-model="playerSide" mandatory color="primary" density="compact">
+                    <v-btn value="home">ホーム</v-btn>
+                    <v-btn value="visitor">ビジター</v-btn>
+                  </v-btn-toggle>
+                </v-col>
+                <v-col cols="12" md="3">
+                  <v-select
+                    v-model="opponentTeamId"
+                    :items="opponentTeams"
+                    item-title="name"
+                    item-value="id"
+                    label="相手チーム"
+                    density="compact"
+                    variant="outlined"
+                  ></v-select>
+                </v-col>
+              </template>
+
+              <!-- コミッショナーモード -->
+              <template v-else>
+                <v-col cols="12" md="3">
+                  <v-select
+                    v-model="formData.home_team_id"
+                    :items="allTeams"
+                    item-title="name"
+                    item-value="id"
+                    label="ホームチーム"
+                    density="compact"
+                    variant="outlined"
+                  ></v-select>
+                </v-col>
+                <v-col cols="12" md="3">
+                  <v-select
+                    v-model="formData.visitor_team_id"
+                    :items="allTeams"
+                    item-title="name"
+                    item-value="id"
+                    label="ビジターチーム"
+                    density="compact"
+                    variant="outlined"
+                  ></v-select>
+                </v-col>
+              </template>
+
               <v-col cols="12" md="3">
                 <v-text-field
                   v-model="formData.real_date"
@@ -141,9 +203,10 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import axios from 'axios'
 import { useSnackbar } from '@/composables/useSnackbar'
+import { useAuth } from '@/composables/useAuth'
 
 interface Competition {
   id: number
@@ -157,6 +220,8 @@ interface Team {
   id: number
   name: string
   short_name: string
+  user_id: number | null
+  is_active: boolean
 }
 
 interface AtBat {
@@ -180,23 +245,14 @@ interface ParseResponse {
 }
 
 const { showSnackbar } = useSnackbar()
+const { user, isCommissioner } = useAuth()
 
 const competitions = ref<Competition[]>([])
-const teams = ref<Team[]>([])
-
-onMounted(async () => {
-  try {
-    const [compRes, teamRes] = await Promise.all([
-      axios.get<Competition[]>('/competitions'),
-      axios.get<Team[]>('/teams'),
-    ])
-    competitions.value = compRes.data
-    teams.value = teamRes.data
-  } catch (error) {
-    errorMessage.value = 'データの取得に失敗しました'
-    console.error('Failed to load master data:', error)
-  }
-})
+const allTeams = ref<Team[]>([])
+const mode = ref<'player' | 'commissioner'>('player')
+const myTeam = ref<number | null>(null)
+const playerSide = ref<'home' | 'visitor'>('home')
+const opponentTeamId = ref<number | null>(null)
 
 const logText = ref('')
 const formData = ref({
@@ -210,6 +266,89 @@ const loading = ref(false)
 const errorMessage = ref('')
 const successMessage = ref('')
 const parsedResult = ref<ParseResponse | null>(null)
+
+const myTeams = computed(() => {
+  if (!user.value) return []
+  return allTeams.value.filter((t) => t.user_id === user.value!.id)
+})
+
+const activeMyTeams = computed(() => myTeams.value.filter((t) => t.is_active))
+
+const myTeamError = computed(() => myTeams.value.length === 0 && allTeams.value.length > 0)
+
+const needsTeamSelect = computed(() => activeMyTeams.value.length >= 2)
+
+const selectableMyTeams = computed(() => {
+  const active = activeMyTeams.value
+  const inactive = myTeams.value.filter((t) => !t.is_active)
+  return [...active, ...inactive]
+})
+
+const opponentTeams = computed(() => allTeams.value.filter((t) => t.id !== myTeam.value))
+
+watch([myTeam, playerSide, opponentTeamId], () => {
+  if (mode.value === 'player') {
+    if (playerSide.value === 'home') {
+      formData.value.home_team_id = myTeam.value
+      formData.value.visitor_team_id = opponentTeamId.value
+    } else {
+      formData.value.home_team_id = opponentTeamId.value
+      formData.value.visitor_team_id = myTeam.value
+    }
+  }
+})
+
+watch(mode, (newMode) => {
+  if (newMode === 'player') {
+    formData.value.home_team_id = null
+    formData.value.visitor_team_id = null
+  }
+})
+
+async function fetchTeams(competitionId: number) {
+  try {
+    const res = await axios.get<Team[]>(`/competitions/${competitionId}/teams`)
+    allTeams.value = res.data
+    if (user.value) {
+      const uid = user.value.id
+      const active = res.data.filter((t) => t.user_id === uid && t.is_active)
+      const all = res.data.filter((t) => t.user_id === uid)
+      if (active.length === 1) {
+        myTeam.value = active[0].id
+      } else if (active.length === 0 && all.length === 1) {
+        myTeam.value = all[0].id
+      } else {
+        myTeam.value = null
+      }
+    }
+  } catch (error) {
+    errorMessage.value = 'チームの取得に失敗しました'
+    console.error('Failed to load teams:', error)
+  }
+}
+
+async function onCompetitionChange(newId: number | null) {
+  if (newId) await fetchTeams(newId)
+}
+
+onMounted(async () => {
+  try {
+    const compRes = await axios.get<Competition[]>('/competitions')
+    competitions.value = compRes.data
+    const pennant = competitions.value.find((c) => c.competition_type === 'league_pennant')
+    if (pennant) {
+      formData.value.competition_id = pennant.id
+    } else if (competitions.value.length > 0) {
+      formData.value.competition_id = competitions.value[0].id
+    }
+    if (formData.value.competition_id) {
+      await fetchTeams(formData.value.competition_id)
+    }
+  } catch (error) {
+    errorMessage.value = 'データの取得に失敗しました'
+    console.error('Failed to load master data:', error)
+  }
+})
 
 const previewHeaders = [
   { title: '回', key: 'inning', width: '60px' },

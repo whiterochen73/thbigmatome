@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_02_22_035420) do
+ActiveRecord::Schema[8.1].define(version: 2026_02_22_052417) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -96,6 +96,17 @@ ActiveRecord::Schema[8.1].define(version: 2026_02_22_035420) do
     t.index [ "competition_id", "team_id" ], name: "index_competition_entries_on_competition_id_and_team_id", unique: true
     t.index [ "competition_id" ], name: "index_competition_entries_on_competition_id"
     t.index [ "team_id" ], name: "index_competition_entries_on_team_id"
+  end
+
+  create_table "competition_rosters", force: :cascade do |t|
+    t.bigint "competition_entry_id", null: false
+    t.datetime "created_at", null: false
+    t.bigint "player_card_id", null: false
+    t.integer "squad", null: false
+    t.datetime "updated_at", null: false
+    t.index [ "competition_entry_id", "player_card_id" ], name: "index_competition_rosters_on_entry_and_card", unique: true
+    t.index [ "competition_entry_id" ], name: "index_competition_rosters_on_competition_entry_id"
+    t.index [ "player_card_id" ], name: "index_competition_rosters_on_player_card_id"
   end
 
   create_table "competitions", force: :cascade do |t|
@@ -597,6 +608,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_02_22_035420) do
   add_foreign_key "competition_entries", "competitions"
   add_foreign_key "competition_entries", "teams"
   add_foreign_key "competition_entries", "teams", column: "base_team_id"
+  add_foreign_key "competition_rosters", "competition_entries"
+  add_foreign_key "competition_rosters", "player_cards"
   add_foreign_key "cost_players", "costs"
   add_foreign_key "cost_players", "players"
   add_foreign_key "game_events", "games"

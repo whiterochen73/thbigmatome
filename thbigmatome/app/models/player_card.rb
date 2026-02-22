@@ -10,6 +10,7 @@ class PlayerCard < ApplicationRecord
 
   has_many :player_card_player_types, dependent: :destroy
   has_many :player_types, through: :player_card_player_types
+  has_many :competition_rosters, dependent: :destroy
 
   validates :card_set_id, :player_id, presence: true
   validates :card_set_id, uniqueness: { scope: :player_id }

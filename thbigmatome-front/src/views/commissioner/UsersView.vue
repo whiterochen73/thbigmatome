@@ -147,7 +147,7 @@ interface User {
   id: number
   name: string
   display_name: string
-  role: 'general' | 'commissioner'
+  role: 'player' | 'commissioner'
 }
 
 const { showSnackbar } = useSnackbar()
@@ -159,7 +159,7 @@ const errorMessage = ref('')
 const createDialog = ref(false)
 const creating = ref(false)
 const createErrors = ref<string[]>([])
-const newUser = ref({ name: '', display_name: '', password: '', role: 'general' })
+const newUser = ref({ name: '', display_name: '', password: '', role: 'player' })
 
 const resetDialog = ref(false)
 const resetting = ref(false)
@@ -168,7 +168,7 @@ const resetTarget = ref<User | null>(null)
 const newPassword = ref('')
 
 const roleOptions = [
-  { label: '一般', value: 'general' },
+  { label: '一般', value: 'player' },
   { label: 'コミッショナー', value: 'commissioner' },
 ]
 
@@ -196,7 +196,7 @@ async function fetchUsers() {
 }
 
 function openCreateDialog() {
-  newUser.value = { name: '', display_name: '', password: '', role: 'general' }
+  newUser.value = { name: '', display_name: '', password: '', role: 'player' }
   createErrors.value = []
   createDialog.value = true
 }

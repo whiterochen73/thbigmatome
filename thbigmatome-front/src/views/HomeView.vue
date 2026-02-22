@@ -227,7 +227,7 @@ onMounted(() => {
 
 async function fetchCompetitions() {
   try {
-    const response = await axios.get<Competition[]>('/api/v1/competitions')
+    const response = await axios.get<Competition[]>('/competitions')
     competitions.value = response.data
     if (competitions.value.length > 0) {
       const lpena = competitions.value.find((c) => c.competition_type === 'league_pennant')
@@ -245,7 +245,7 @@ async function fetchSummary() {
     return
   }
   try {
-    const response = await axios.get<HomeSummary>('/api/v1/home/summary', {
+    const response = await axios.get<HomeSummary>('/home/summary', {
       params: { competition_id: selectedCompetitionId.value },
     })
     summary.value = response.data

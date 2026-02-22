@@ -14,9 +14,6 @@ module Api
         player_card = PlayerCard.find(params[:player_card_id])
         squad = params[:squad]
 
-        # バリデーション前に仮追加してコスト検証
-        validator = CostValidator.new(@competition_entry.id)
-
         # 既存チェック
         existing = @competition_entry.competition_rosters.find_by(player_card_id: player_card.id)
         if existing
@@ -35,7 +32,13 @@ module Api
         end
 
         # 仮保存してコスト検証
-        roster.save!
+        begin
+          roster.save!
+        rescue ActiveRecord::RecordNotUnique
+          render json: { error: "選手は既にロスターに登録されています" }, status: :unprocessable_entity
+          return
+        end
+
         validation = CostValidator.new(@competition_entry.id).validate
 
         unless validation[:valid]
@@ -65,8 +68,16 @@ module Api
           competition_id: params[:competition_id],
           team_id: params[:team_id]
         )
+        unless current_user_owns_team?(@competition_entry.team_id)
+          render json: { error: "Forbidden" }, status: :forbidden
+          nil
+        end
       rescue ActiveRecord::RecordNotFound
         render json: { errors: [ "大会エントリーが見つかりません" ] }, status: :not_found
+      end
+
+      def current_user_owns_team?(team_id)
+        current_user.commissioner?
       end
 
       def roster_players(rosters)

@@ -41,7 +41,7 @@ RSpec.describe "Api::V1::CompetitionRosters", type: :request do
   end
 
   describe "GET /api/v1/competitions/:id/roster" do
-    include_context "authenticated user"
+    include_context "authenticated commissioner"
 
     context "エントリーが存在する場合" do
       let!(:first_card) do
@@ -87,7 +87,7 @@ RSpec.describe "Api::V1::CompetitionRosters", type: :request do
   end
 
   describe "POST /api/v1/competitions/:id/roster/players" do
-    include_context "authenticated user"
+    include_context "authenticated commissioner"
 
     context "コスト超過の場合" do
       before do
@@ -127,7 +127,7 @@ RSpec.describe "Api::V1::CompetitionRosters", type: :request do
   end
 
   describe "DELETE /api/v1/competitions/:id/roster/players/:player_card_id" do
-    include_context "authenticated user"
+    include_context "authenticated commissioner"
 
     let!(:player_card) { create_player_card_with_cost }
     let!(:roster) { create(:competition_roster, competition_entry: entry, player_card: player_card) }
@@ -140,7 +140,7 @@ RSpec.describe "Api::V1::CompetitionRosters", type: :request do
   end
 
   describe "GET /api/v1/competitions/:id/roster/cost_check" do
-    include_context "authenticated user"
+    include_context "authenticated commissioner"
 
     before do
       25.times do

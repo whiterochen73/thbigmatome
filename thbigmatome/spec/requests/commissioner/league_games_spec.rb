@@ -3,7 +3,7 @@ require 'rails_helper'
 RSpec.describe 'Commissioner::LeagueGames', type: :request do
   let(:password) { 'password123' }
   let(:commissioner_user) { create(:user, :commissioner, password: password) }
-  let(:general_user) { create(:user, password: password) }
+  let(:player_user) { create(:user, password: password) }
   let!(:league) { create(:league) }
   let!(:league_season) { create(:league_season, league: league) }
 
@@ -36,7 +36,7 @@ RSpec.describe 'Commissioner::LeagueGames', type: :request do
     end
 
     context '一般ユーザーの場合' do
-      before { login_as(general_user) }
+      before { login_as(player_user) }
 
       it '403を返す' do
         get base_path
@@ -65,7 +65,7 @@ RSpec.describe 'Commissioner::LeagueGames', type: :request do
     end
 
     context '一般ユーザーの場合' do
-      before { login_as(general_user) }
+      before { login_as(player_user) }
 
       it '403を返す' do
         get "#{base_path}/#{league_game.id}"

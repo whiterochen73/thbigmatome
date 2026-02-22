@@ -3,7 +3,7 @@ require 'rails_helper'
 RSpec.describe 'Commissioner::TeamManagers', type: :request do
   let(:password) { 'password123' }
   let(:commissioner_user) { create(:user, :commissioner, password: password) }
-  let(:general_user) { create(:user, password: password) }
+  let(:player_user) { create(:user, password: password) }
   let!(:league) { create(:league) }
   let!(:team) { create(:team) }
   let!(:league_membership) { create(:league_membership, league: league, team: team) }
@@ -38,7 +38,7 @@ RSpec.describe 'Commissioner::TeamManagers', type: :request do
     end
 
     context '一般ユーザーの場合' do
-      before { login_as(general_user) }
+      before { login_as(player_user) }
 
       it '403を返す' do
         get base_path
@@ -70,7 +70,7 @@ RSpec.describe 'Commissioner::TeamManagers', type: :request do
     end
 
     context '一般ユーザーの場合' do
-      before { login_as(general_user) }
+      before { login_as(player_user) }
 
       it '403を返す' do
         post base_path, params: valid_params, as: :json
@@ -101,7 +101,7 @@ RSpec.describe 'Commissioner::TeamManagers', type: :request do
     end
 
     context '一般ユーザーの場合' do
-      before { login_as(general_user) }
+      before { login_as(player_user) }
 
       it '403を返す' do
         patch "#{base_path}/#{team_manager.id}", params: update_params, as: :json
@@ -132,7 +132,7 @@ RSpec.describe 'Commissioner::TeamManagers', type: :request do
     end
 
     context '一般ユーザーの場合' do
-      before { login_as(general_user) }
+      before { login_as(player_user) }
 
       it '403を返す' do
         delete "#{base_path}/#{team_manager.id}"

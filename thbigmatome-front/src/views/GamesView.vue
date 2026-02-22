@@ -76,6 +76,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import axios from 'axios'
 
 interface Competition {
@@ -93,6 +94,7 @@ interface Game {
   source: string
 }
 
+const router = useRouter()
 const games = ref<Game[]>([])
 const competitions = ref<Competition[]>([])
 const loading = ref(false)
@@ -145,10 +147,10 @@ async function fetchCompetitions() {
 }
 
 function navigateToDetail(id: number) {
-  console.log('navigate to detail:', id)
+  router.push({ name: '試合詳細', params: { id } })
 }
 
 function navigateToImport() {
-  console.log('navigate to import')
+  router.push({ name: 'ログ取り込み' })
 }
 </script>

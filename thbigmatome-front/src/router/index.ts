@@ -122,6 +122,25 @@ const routes: RouteRecordRaw[] = [
         component: () => import('@/views/PlayerAbsenceHistory.vue'),
         meta: { requiresAuth: true, title: '離脱者履歴' },
       },
+      {
+        path: '/games',
+        name: '試合記録',
+        component: () => import('@/views/GamesView.vue'),
+        meta: { requiresAuth: true, title: '試合記録' },
+      },
+      {
+        path: '/games/import',
+        name: 'ログ取り込み',
+        component: () => import('@/views/GameImportView.vue'),
+        meta: { requiresAuth: true, title: 'IRCログ取り込み' },
+      },
+      {
+        path: '/games/:id',
+        name: '試合詳細',
+        component: () => import('@/views/GameDetailView.vue'),
+        meta: { requiresAuth: true, title: '試合詳細' },
+        props: true,
+      },
     ],
   },
   {

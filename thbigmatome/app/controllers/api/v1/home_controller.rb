@@ -23,8 +23,15 @@ class Api::V1::HomeController < Api::V1::BaseController
     render json: {
       season_progress: season_progress,
       recent_games: recent_games.map { |g| game_summary(g) },
-      batting_top3: batting_stats,
-      pitching_top3: pitching_stats,
+      batting_top3: batting_stats.map { |player|
+        player.merge(
+          hr: player[:home_runs],
+          batting_average: format("%.3f", player[:batting_average].to_f).sub(/^0/, "")
+        )
+      },
+      pitching_top3: pitching_stats.map { |pitcher|
+        pitcher.merge(era: format("%.2f", pitcher[:era].to_f))
+      },
       team_summary: team_stats
     }
   rescue ActiveRecord::RecordNotFound

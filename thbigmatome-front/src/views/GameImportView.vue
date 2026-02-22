@@ -375,8 +375,14 @@ async function parseLog() {
     })
     parsedResult.value = response.data
   } catch (error) {
-    errorMessage.value = 'ログの解析に失敗しました'
-    showSnackbar('ログの解析に失敗しました', 'error')
+    if (axios.isAxiosError(error) && error.response) {
+      const data = error.response.data
+      const detail = data.error || (data.errors && data.errors.join(', ')) || 'Unknown error'
+      errorMessage.value = `ログの解析に失敗しました: ${detail}`
+    } else {
+      errorMessage.value = 'ログの解析に失敗しました'
+    }
+    showSnackbar(errorMessage.value, 'error')
     console.error('Error parsing log:', error)
   } finally {
     loading.value = false

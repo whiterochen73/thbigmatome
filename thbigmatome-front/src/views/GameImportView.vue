@@ -187,8 +187,8 @@ const teams = ref<Team[]>([])
 onMounted(async () => {
   try {
     const [compRes, teamRes] = await Promise.all([
-      axios.get<Competition[]>('/api/v1/competitions'),
-      axios.get<Team[]>('/api/v1/teams'),
+      axios.get<Competition[]>('/competitions'),
+      axios.get<Team[]>('/teams'),
     ])
     competitions.value = compRes.data
     teams.value = teamRes.data

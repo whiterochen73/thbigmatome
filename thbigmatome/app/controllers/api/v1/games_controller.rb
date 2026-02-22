@@ -83,10 +83,15 @@ class Api::V1::GamesController < Api::V1::BaseController
     # パーサー結果からat_batsを作成
     imported_count = create_draft_at_bats(game, parsed)
 
+    all_at_bats = (parsed["innings"] || []).flat_map { |inn| inn["at_bats"] || [] }
+    innings_count = (parsed["innings"] || []).length
     render json: {
       game: GameSerializer.new(game).as_json,
-      parsed_at_bats: parsed,
-      at_bat_count: parsed["innings"]&.sum { |inn| inn["at_bats"]&.length || 0 } || 0,
+      parsed_at_bats: {
+        at_bats: all_at_bats,
+        innings: innings_count
+      },
+      at_bat_count: all_at_bats.length,
       imported_count: imported_count
     }, status: :created
   rescue JSON::ParserError => e

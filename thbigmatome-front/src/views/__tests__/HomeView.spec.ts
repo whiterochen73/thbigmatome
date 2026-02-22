@@ -89,7 +89,7 @@ describe('HomeView', () => {
       if (url === '/competitions') {
         return Promise.resolve({ data: [{ id: 1, name: '第3回Lペナ' }] })
       }
-      if (url === '/api/v1/home/summary') {
+      if (url === '/home/summary') {
         return Promise.resolve({ data: mockSummary })
       }
       return Promise.resolve({ data: [] })

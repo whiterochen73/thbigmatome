@@ -239,7 +239,7 @@ async function fetchSummary() {
     return
   }
   try {
-    const response = await axios.get<HomeSummary>('/api/v1/home/summary', {
+    const response = await axios.get<HomeSummary>('/home/summary', {
       params: { competition_id: selectedCompetitionId.value },
     })
     summary.value = response.data

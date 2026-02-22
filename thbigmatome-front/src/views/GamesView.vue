@@ -61,10 +61,7 @@
           density="compact"
         >
           <template v-slot:[`item.status`]="{ item }">
-            <v-chip
-              :color="item.status === 'confirmed' ? 'green' : 'orange'"
-              size="small"
-            >
+            <v-chip :color="item.status === 'confirmed' ? 'green' : 'orange'" size="small">
               {{ item.status }}
             </v-chip>
           </template>

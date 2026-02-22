@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_02_22_121313) do
+ActiveRecord::Schema[8.1].define(version: 2026_02_22_144433) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -188,7 +188,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_02_22_121313) do
     t.jsonb "roster_data", default: {}, null: false
     t.string "setting_date"
     t.string "source", default: "live", null: false
-    t.bigint "stadium_id", null: false
+    t.bigint "stadium_id"
     t.string "status", default: "draft", null: false
     t.datetime "updated_at", null: false
     t.integer "visitor_game_number"

@@ -1,4 +1,5 @@
 require "open3"
+require "tempfile"
 
 class Api::V1::GamesController < Api::V1::BaseController
   def index
@@ -46,8 +47,12 @@ class Api::V1::GamesController < Api::V1::BaseController
     return render json: { error: "log parameter required" }, status: :bad_request if log_text.blank?
 
     # パーサー呼び出し
-    parser_path = Rails.root.join("lib", "irc_parser", "parse_log.py")
-    stdout, stderr, status = Open3.capture3("python3", parser_path.to_s, stdin_data: log_text)
+    stdout, stderr, status = Tempfile.create([ "irc_log", ".txt" ]) do |tmp|
+      tmp.write(log_text)
+      tmp.flush
+      line_count = log_text.lines.count
+      Open3.capture3("python3", "-m", "thbig_irc_parser.log_parser", tmp.path, "1", line_count.to_s)
+    end
 
     unless status.success?
       return render json: { error: "Parser error: #{stderr.truncate(200)}" }, status: :unprocessable_entity

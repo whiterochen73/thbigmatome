@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_02_22_052417) do
+ActiveRecord::Schema[8.1].define(version: 2026_02_22_060720) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -158,6 +158,21 @@ ActiveRecord::Schema[8.1].define(version: 2026_02_22_052417) do
     t.index [ "game_id", "inning", "half" ], name: "index_game_events_on_game_id_and_inning_and_half"
     t.index [ "game_id", "seq" ], name: "index_game_events_on_game_id_and_seq", unique: true
     t.index [ "game_id" ], name: "index_game_events_on_game_id"
+  end
+
+  create_table "game_lineup_entries", force: :cascade do |t|
+    t.integer "batting_order"
+    t.datetime "created_at", null: false
+    t.bigint "game_id", null: false
+    t.boolean "is_dh_pitcher", default: false, null: false
+    t.boolean "is_reliever", default: false, null: false
+    t.bigint "player_card_id", null: false
+    t.string "position"
+    t.integer "role", null: false
+    t.datetime "updated_at", null: false
+    t.index [ "game_id", "player_card_id" ], name: "index_game_lineup_entries_on_game_id_and_player_card_id", unique: true
+    t.index [ "game_id" ], name: "index_game_lineup_entries_on_game_id"
+    t.index [ "player_card_id" ], name: "index_game_lineup_entries_on_player_card_id"
   end
 
   create_table "games", force: :cascade do |t|

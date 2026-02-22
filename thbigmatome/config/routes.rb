@@ -37,6 +37,8 @@ Rails.application.routes.draw do
         member do
           post :confirm
         end
+        resource :lineup, only: [ :show, :create, :update ],
+                          controller: "game_lineup_entries"
       end
 
       # 選手一覧

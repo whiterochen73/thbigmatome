@@ -53,7 +53,7 @@ describe('GameImportView', () => {
     await flushPromises()
 
     expect(mockedAxios.post).toHaveBeenCalledWith(
-      '/api/v1/games/import_log',
+      '/games/import_log',
       expect.objectContaining({ log: 'テストIRCログ' }),
     )
   })

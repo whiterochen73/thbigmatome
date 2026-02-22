@@ -197,7 +197,9 @@ function closeCreateDialog() {
 async function createCompetition() {
   creating.value = true
   try {
-    const response = await axios.post<Competition>('/competitions', newCompetition.value)
+    const response = await axios.post<Competition>('/competitions', {
+      competition: newCompetition.value,
+    })
     competitions.value.push(response.data)
     showSnackbar('大会を作成しました', 'success')
     closeCreateDialog()
@@ -224,10 +226,9 @@ async function updateCompetition() {
   if (!editTarget.value.id) return
   updating.value = true
   try {
-    const response = await axios.patch<Competition>(
-      `/competitions/${editTarget.value.id}`,
-      editTarget.value,
-    )
+    const response = await axios.patch<Competition>(`/competitions/${editTarget.value.id}`, {
+      competition: editTarget.value,
+    })
     const index = competitions.value.findIndex((c) => c.id === editTarget.value.id)
     if (index !== -1) {
       competitions.value[index] = response.data

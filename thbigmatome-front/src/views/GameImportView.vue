@@ -193,7 +193,7 @@ async function parseLog() {
   successMessage.value = ''
   loading.value = true
   try {
-    const response = await axios.post<ParseResponse>('/api/v1/games/import_log', {
+    const response = await axios.post<ParseResponse>('/games/import_log', {
       log: logText.value,
       ...formData.value,
     })
@@ -212,7 +212,7 @@ async function confirmGame() {
   errorMessage.value = ''
   loading.value = true
   try {
-    await axios.post(`/api/v1/games/${parsedResult.value.game.id}/confirm`)
+    await axios.post(`/games/${parsedResult.value.game.id}/confirm`)
     successMessage.value = `取り込み完了！試合ID: ${parsedResult.value.game.id}`
     showSnackbar(`取り込み完了！試合ID: ${parsedResult.value.game.id}`, 'success')
     parsedResult.value = null

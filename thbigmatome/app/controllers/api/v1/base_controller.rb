@@ -4,6 +4,12 @@ class Api::V1::BaseController < ApplicationController
 
   private
 
+  def authorize_commissioner!
+    unless current_user&.commissioner?
+      render json: { errors: [ "Forbidden" ] }, status: :forbidden
+    end
+  end
+
   def render_json_response(object, status = :ok)
     render json: object, status: status
   end

@@ -1,4 +1,6 @@
 class Api::V1::CompetitionsController < Api::V1::BaseController
+  before_action :authorize_commissioner!, only: [ :create, :update, :destroy ]
+
   def index
     competitions = Competition.all.order(year: :desc, id: :asc)
     render json: competitions, each_serializer: CompetitionSerializer

@@ -1,4 +1,6 @@
 class Api::V1::StadiumsController < Api::V1::BaseController
+  before_action :authorize_commissioner!, only: [ :create, :update ]
+
   def index
     stadiums = Stadium.all.order(:id)
     render json: stadiums, each_serializer: StadiumSerializer

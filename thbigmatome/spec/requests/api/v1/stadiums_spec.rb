@@ -34,7 +34,7 @@ RSpec.describe "Api::V1::StadiumsController", type: :request do
   end
 
   describe "POST /api/v1/stadiums" do
-    include_context "authenticated user"
+    include_context "authenticated commissioner"
 
     it "creates a stadium and returns 201" do
       post "/api/v1/stadiums",
@@ -59,7 +59,7 @@ RSpec.describe "Api::V1::StadiumsController", type: :request do
   end
 
   describe "PATCH /api/v1/stadiums/:id" do
-    include_context "authenticated user"
+    include_context "authenticated commissioner"
 
     let!(:stadium) { create(:stadium, name: "Stadium A", code: "SA") }
 

@@ -11,7 +11,7 @@ RSpec.describe "Api::V1::Competitions", type: :request do
   end
 
   describe "POST /api/v1/competitions" do
-    include_context "authenticated user"
+    include_context "authenticated commissioner"
 
     it "creates competition" do
       post "/api/v1/competitions",

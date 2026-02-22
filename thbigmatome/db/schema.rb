@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_02_22_023741) do
+ActiveRecord::Schema[8.1].define(version: 2026_02_22_024311) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -32,10 +32,12 @@ ActiveRecord::Schema[8.1].define(version: 2026_02_22_023741) do
     t.jsonb "runners_after", default: [], null: false
     t.boolean "scored", default: false
     t.integer "seq", null: false
+    t.integer "status", default: 0, null: false
     t.datetime "updated_at", null: false
     t.index [ "batter_id" ], name: "index_at_bats_on_batter_id"
     t.index [ "game_id", "inning", "half" ], name: "index_at_bats_on_game_id_and_inning_and_half"
     t.index [ "game_id", "seq" ], name: "index_at_bats_on_game_id_and_seq", unique: true
+    t.index [ "game_id", "status" ], name: "index_at_bats_on_game_id_and_status"
     t.index [ "game_id" ], name: "index_at_bats_on_game_id"
     t.index [ "pinch_hit_for_id" ], name: "index_at_bats_on_pinch_hit_for_id"
     t.index [ "pitcher_id" ], name: "index_at_bats_on_pitcher_id"

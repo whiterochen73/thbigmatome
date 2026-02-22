@@ -27,8 +27,12 @@ class Api::V1::GamesController < Api::V1::BaseController
   def confirm
     game = Game.find(params[:id])
     if game.draft?
+      game.at_bats.draft.update_all(status: :confirmed)
       if game.update(status: "confirmed")
-        render json: game, serializer: GameSerializer
+        render json: {
+          game: GameSerializer.new(game).as_json,
+          confirmed_count: game.at_bats.confirmed.count
+        }
       else
         render json: { errors: game.errors.full_messages }, status: :unprocessable_entity
       end
@@ -64,15 +68,22 @@ class Api::V1::GamesController < Api::V1::BaseController
     }
 
     game = Game.new(game_params_for_import)
-    if game.save
-      render json: {
-        game: GameSerializer.new(game).as_json,
-        parsed_at_bats: parsed,
-        at_bat_count: parsed["at_bats"]&.length || 0
-      }, status: :created
-    else
-      render json: { errors: game.errors.full_messages }, status: :unprocessable_entity
+    unless game.save
+      return render json: { errors: game.errors.full_messages }, status: :unprocessable_entity
     end
+
+    # 再import対処: draft at_batsのみ削除（confirmedは保護）
+    game.at_bats.draft.destroy_all
+
+    # パーサー結果からat_batsを作成
+    imported_count = create_draft_at_bats(game, parsed)
+
+    render json: {
+      game: GameSerializer.new(game).as_json,
+      parsed_at_bats: parsed,
+      at_bat_count: parsed["innings"]&.sum { |inn| inn["at_bats"]&.length || 0 } || 0,
+      imported_count: imported_count
+    }, status: :created
   rescue JSON::ParserError => e
     render json: { error: "JSON parse error: #{e.message}" }, status: :unprocessable_entity
   end
@@ -81,5 +92,41 @@ class Api::V1::GamesController < Api::V1::BaseController
 
   def game_params
     params.require(:game).permit(:competition_id, :home_team_id, :visitor_team_id, :real_date, :stadium_id, :status, :source)
+  end
+
+  def create_draft_at_bats(game, parsed)
+    seq = 0
+    created = 0
+    (parsed["innings"] || []).each do |inning_data|
+      inning_num = inning_data["inning"].to_i
+      half = inning_data["half"].to_s
+      (inning_data["at_bats"] || []).each do |ab|
+        batter = Player.find_by(name: ab["batter_name"]) || Player.find_by(short_name: ab["batter_name"])
+        pitcher = Player.find_by(name: ab["pitcher_name"]) || Player.find_by(short_name: ab["pitcher_name"])
+        next if batter.nil? || pitcher.nil?
+
+        seq += 1
+        result_code = ab["bat_result"].presence || ab["pitch_result"] || "?"
+        game.at_bats.create!(
+          batter: batter,
+          pitcher: pitcher,
+          inning: inning_num,
+          half: half,
+          seq: seq,
+          outs: 0,
+          outs_after: 0,
+          result_code: result_code,
+          play_type: "normal",
+          rolls: [],
+          runners: [],
+          runners_after: [],
+          scored: false,
+          rbi: 0,
+          status: :draft
+        )
+        created += 1
+      end
+    end
+    created
   end
 end

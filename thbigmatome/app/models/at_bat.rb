@@ -4,6 +4,8 @@ class AtBat < ApplicationRecord
   belongs_to :pitcher, class_name: "Player"
   belongs_to :pinch_hit_for, class_name: "Player", optional: true
 
+  enum :status, { draft: 0, confirmed: 1 }
+
   validates :seq, presence: true,
                   numericality: { only_integer: true, greater_than: 0 },
                   uniqueness: { scope: :game_id }

@@ -1,7 +1,7 @@
 source "https://rubygems.org"
 
 # Bundle edge Rails instead: gem "rails", github: "rails/rails", branch: "main"
-gem "rails", "~> 8.0.2"
+gem "rails", "~> 8.1"
 # Use postgresql as the database for Active Record
 gem "pg", "~> 1.1"
 # Use the Puma web server [https://github.com/puma/puma]
@@ -50,12 +50,12 @@ group :development, :test do
   gem "rubocop-rails-omakase", require: false
 
   # Testing
-  gem 'rspec-rails', '~> 7.0'
+  gem 'rspec-rails', '~> 8.0'
   gem 'factory_bot_rails'
   gem 'faker'
 end
 
 group :test do
-  gem 'shoulda-matchers', '~> 6.0'
+  gem 'shoulda-matchers', '~> 7.0'
   gem 'database_cleaner-active_record'
 end

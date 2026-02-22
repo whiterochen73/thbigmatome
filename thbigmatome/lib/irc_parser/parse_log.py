@@ -5,7 +5,8 @@ Usage: echo "<log>" | python3 lib/irc_parser/parse_log.py
 """
 import sys
 import json
-sys.path.insert(0, str(__file__.split('/parse_log.py')[0]))
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).parent))
 from irc_atbat_parser import parse_at_bats
 
 def main():

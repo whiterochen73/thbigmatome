@@ -73,6 +73,9 @@ Rails.application.routes.draw do
       # 選手カード
       resources :player_cards, only: [ :index, :show ]
 
+      # ホーム画面
+      get "home/summary", to: "home#summary"
+
       # 成績集計
       get "stats/batting",  to: "stats#batting"
       get "stats/pitching", to: "stats#pitching"

@@ -64,7 +64,7 @@ const { isCommissioner } = useAuth()
 
 const menuItems = computed(() => {
   const items = [
-    { title: 'ホーム', icon: 'mdi-view-dashboard', value: 'dashboard', to: '/menu' },
+    { title: 'ホーム', icon: 'mdi-view-dashboard', value: 'dashboard', to: '/home' },
     { title: 'チーム編成', icon: 'mdi-account-group', value: 'teams', to: '/teams' },
     { title: '選手マスタ', icon: 'mdi-account', value: 'players', to: '/players' },
     {

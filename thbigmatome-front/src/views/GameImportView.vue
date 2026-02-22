@@ -55,31 +55,37 @@
                 ></v-textarea>
               </v-col>
               <v-col cols="12" md="3">
-                <v-text-field
-                  v-model.number="formData.competition_id"
-                  label="大会ID"
-                  type="number"
+                <v-select
+                  v-model="formData.competition_id"
+                  :items="competitions"
+                  :item-title="(item: Competition) => `${item.name} (${item.year}年)`"
+                  item-value="id"
+                  label="大会"
                   density="compact"
                   variant="outlined"
-                ></v-text-field>
+                ></v-select>
               </v-col>
               <v-col cols="12" md="3">
-                <v-text-field
-                  v-model.number="formData.home_team_id"
-                  label="ホームチームID"
-                  type="number"
+                <v-select
+                  v-model="formData.home_team_id"
+                  :items="teams"
+                  item-title="name"
+                  item-value="id"
+                  label="ホームチーム"
                   density="compact"
                   variant="outlined"
-                ></v-text-field>
+                ></v-select>
               </v-col>
               <v-col cols="12" md="3">
-                <v-text-field
-                  v-model.number="formData.visitor_team_id"
-                  label="ビジターチームID"
-                  type="number"
+                <v-select
+                  v-model="formData.visitor_team_id"
+                  :items="teams"
+                  item-title="name"
+                  item-value="id"
+                  label="ビジターチーム"
                   density="compact"
                   variant="outlined"
-                ></v-text-field>
+                ></v-select>
               </v-col>
               <v-col cols="12" md="3">
                 <v-text-field
@@ -135,9 +141,23 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import axios from 'axios'
 import { useSnackbar } from '@/composables/useSnackbar'
+
+interface Competition {
+  id: number
+  name: string
+  year: number
+  competition_type: string
+  entry_count: number
+}
+
+interface Team {
+  id: number
+  name: string
+  short_name: string
+}
 
 interface AtBat {
   inning: number
@@ -160,6 +180,18 @@ interface ParseResponse {
 }
 
 const { showSnackbar } = useSnackbar()
+
+const competitions = ref<Competition[]>([])
+const teams = ref<Team[]>([])
+
+onMounted(async () => {
+  const [compRes, teamRes] = await Promise.all([
+    axios.get<Competition[]>('/api/v1/competitions'),
+    axios.get<Team[]>('/api/v1/teams'),
+  ])
+  competitions.value = compRes.data
+  teams.value = teamRes.data
+})
 
 const logText = ref('')
 const formData = ref({

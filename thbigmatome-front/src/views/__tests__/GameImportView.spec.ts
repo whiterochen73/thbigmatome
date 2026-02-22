@@ -19,6 +19,7 @@ const vuetify = createVuetify({ components, directives })
 describe('GameImportView', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockedAxios.get = vi.fn().mockResolvedValue({ data: [] })
   })
 
   it('mounts successfully', async () => {

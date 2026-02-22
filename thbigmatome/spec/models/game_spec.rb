@@ -5,7 +5,7 @@ RSpec.describe Game, type: :model do
     it { is_expected.to belong_to(:competition) }
     it { is_expected.to belong_to(:home_team).class_name("Team") }
     it { is_expected.to belong_to(:visitor_team).class_name("Team") }
-    it { is_expected.to belong_to(:stadium) }
+    it { is_expected.to belong_to(:stadium).optional }
     it { is_expected.to have_many(:at_bats).dependent(:destroy) }
     it { is_expected.to have_many(:game_events).dependent(:destroy) }
     it { is_expected.to have_many(:pitcher_game_states).dependent(:destroy) }

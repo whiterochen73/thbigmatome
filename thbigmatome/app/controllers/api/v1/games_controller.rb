@@ -66,7 +66,7 @@ class Api::V1::GamesController < Api::V1::BaseController
       home_team_id: params[:home_team_id],
       visitor_team_id: params[:visitor_team_id],
       real_date: params[:real_date],
-      stadium_id: params[:stadium_id] || Stadium.first&.id,
+      stadium_id: params[:stadium_id],
       status: "draft",
       source: "log_import",
       raw_log: log_text

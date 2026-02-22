@@ -9,6 +9,10 @@
 
     <v-spacer />
 
+    <v-btn icon variant="text" @click="toggleTheme">
+      <v-icon>{{ isDark ? 'mdi-weather-sunny' : 'mdi-weather-night' }}</v-icon>
+    </v-btn>
+
     <v-menu>
       <template v-slot:activator="{ props }">
         <v-btn v-bind="props" icon="mdi-account-circle" variant="text" />
@@ -33,7 +37,9 @@
 </template>
 
 <script setup lang="ts">
+import { computed } from 'vue'
 import { useRouter } from 'vue-router'
+import { useTheme } from 'vuetify'
 import { useAuth } from '@/composables/useAuth'
 
 const emit = defineEmits<{
@@ -42,6 +48,14 @@ const emit = defineEmits<{
 
 const router = useRouter()
 const { user, logout } = useAuth()
+const theme = useTheme()
+
+const isDark = computed(() => theme.global.current.value.dark)
+
+const toggleTheme = () => {
+  theme.global.name.value = theme.global.current.value.dark ? 'thbigLight' : 'thbigDark'
+  localStorage.setItem('theme', theme.global.name.value)
+}
 
 const handleLogout = async () => {
   await logout()

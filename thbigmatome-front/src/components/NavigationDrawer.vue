@@ -78,7 +78,7 @@ const emit = defineEmits<{
 const { isCommissioner } = useAuth()
 
 const mainMenuItems = [
-  { title: 'ホーム', icon: 'mdi-view-dashboard', value: 'dashboard', to: '/' },
+  { title: 'ホーム', icon: 'mdi-home', value: 'dashboard', to: '/' },
   { title: '試合記録', icon: 'mdi-scoreboard', value: 'games', to: '/games' },
   { title: '成績まとめ', icon: 'mdi-chart-bar', value: 'stats', to: '/stats' },
   { title: 'チーム編成', icon: 'mdi-account-group', value: 'teams', to: '/teams' },

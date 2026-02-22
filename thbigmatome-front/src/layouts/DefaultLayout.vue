@@ -5,7 +5,9 @@
     <NavigationDrawer v-model="drawer" :rail="rail" @update:rail="rail = $event" />
 
     <v-main>
-      <router-view />
+      <v-container fluid style="max-width: 1440px; margin: 0 auto; padding: 0">
+        <router-view />
+      </v-container>
     </v-main>
 
     <AppFooter />

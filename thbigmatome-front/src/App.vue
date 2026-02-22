@@ -6,12 +6,17 @@
 
 <script setup lang="ts">
 import { onMounted } from 'vue'
+import { useTheme } from 'vuetify'
 import { useAuth } from '@/composables/useAuth'
 
 // アプリケーション起動時に認証状態をチェック
 const { checkAuth } = useAuth()
+const theme = useTheme()
 
 onMounted(async () => {
+  const saved = localStorage.getItem('theme')
+  if (saved) theme.global.name.value = saved
+
   try {
     await checkAuth()
   } catch (error) {
@@ -46,5 +51,12 @@ h3,
 .text-h5,
 .text-h6 {
   font-family: 'Shippori Mincho', serif;
+}
+
+.font-mono,
+code,
+pre,
+.v-data-table td.numeric {
+  font-family: 'JetBrains Mono', monospace;
 }
 </style>

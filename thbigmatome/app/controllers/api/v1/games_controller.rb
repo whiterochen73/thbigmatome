@@ -83,7 +83,18 @@ class Api::V1::GamesController < Api::V1::BaseController
     # パーサー結果からat_batsを作成
     imported_count = create_draft_at_bats(game, parsed)
 
-    all_at_bats = (parsed["innings"] || []).flat_map { |inn| inn["at_bats"] || [] }
+    all_at_bats = (parsed["innings"] || []).flat_map do |inn|
+      (inn["at_bats"] || []).map do |ab|
+        {
+          inning: inn["inning"],
+          top_bottom: inn["half"],
+          order: ab["ab_num"],
+          batter: ab["batter_name"],
+          pitcher: ab["pitcher_name"],
+          result_code: ab["bat_result"].presence || ab["pitch_result"] || "?"
+        }
+      end
+    end
     innings_count = (parsed["innings"] || []).length
     render json: {
       game: GameSerializer.new(game).as_json,

@@ -1,12 +1,8 @@
 // authGuard.ts
-import { type NavigationGuardNext, type RouteLocationNormalized } from 'vue-router'
+import { type RouteLocationNormalized } from 'vue-router'
 import { useAuth } from '@/composables/useAuth'
 
-export async function authGuard(
-  to: RouteLocationNormalized,
-  from: RouteLocationNormalized,
-  next: NavigationGuardNext,
-) {
+export async function authGuard(to: RouteLocationNormalized) {
   const { isAuthenticated, checkAuth, isCommissioner } = useAuth()
 
   // ログインページへの遷移中に checkAuth を呼ばないようにする
@@ -15,11 +11,10 @@ export async function authGuard(
     // ログインページへのアクセスの場合、checkAuthは行わない (無限ループ回避)
     // ただし、ログイン済みであればトップページへリダイレクト
     if (isAuthenticated.value) {
-      next('/')
+      return '/'
     } else {
-      next() // 未ログインであればそのままログインページへ
+      return // 未ログインであればそのままログインページへ
     }
-    return // ここでガードの処理を終了
   }
 
   // それ以外のページの場合のみ認証チェックを行う
@@ -27,11 +22,9 @@ export async function authGuard(
 
   if (to.meta.requiresAuth && !isAuthenticated.value) {
     // 認証が必要なページで未認証の場合、ログインページへリダイレクト
-    next('/login')
+    return '/login'
   } else if (to.meta.requiresCommissioner && !isCommissioner.value) {
     // コミッショナー権限が必要なページでコミッショナーでない場合、トップページへリダイレクト
-    next('/')
-  } else {
-    next()
+    return '/'
   }
 }

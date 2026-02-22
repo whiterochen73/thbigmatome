@@ -63,8 +63,8 @@ interface Competition {
 
 interface BattingStat {
   player_name: string
-  games: number
-  at_bats: number
+  games_played: number
+  at_bat_count: number
   batting_average: string
   hits: number
   doubles: number
@@ -108,8 +108,8 @@ const teamStats = ref<TeamStat[]>([])
 
 const battingHeaders = [
   { title: '選手名', key: 'player_name' },
-  { title: '試合', key: 'games' },
-  { title: '打数', key: 'at_bats' },
+  { title: '試合', key: 'games_played' },
+  { title: '打数', key: 'at_bat_count' },
   { title: '打率', key: 'batting_average' },
   { title: '安打', key: 'hits' },
   { title: '二塁打', key: 'doubles' },

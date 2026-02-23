@@ -91,7 +91,12 @@ class Api::V1::GamesController < Api::V1::BaseController
           order: ab["ab_num"],
           batter: ab["batter_name"],
           pitcher: ab["pitcher_name"],
-          result_code: ab["bat_result"].presence || ab["pitch_result"] || "?"
+          result_code: ab["bat_result"].presence || ab["pitch_result"] || "?",
+          runners_before: ab["runners_before"] || [],
+          outs_after: ab["outs_after"],
+          runners_after: ab["runners_after"] || [],
+          score: ab["score"],
+          events: ab["events"] || []
         }
       end
     end

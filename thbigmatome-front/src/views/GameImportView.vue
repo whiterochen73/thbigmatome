@@ -225,6 +225,12 @@ interface Team {
   is_active: boolean
 }
 
+interface AtBatEvent {
+  type: string
+  speaker: string
+  text: string
+}
+
 interface AtBat {
   inning: number
   top_bottom: string
@@ -232,6 +238,11 @@ interface AtBat {
   batter: string
   pitcher: string
   result_code: string
+  runners_before: number[]
+  outs_after: number | null
+  runners_after: number[]
+  score: number | null
+  events: AtBatEvent[]
 }
 
 interface ParsedAtBats {
@@ -351,18 +362,50 @@ onMounted(async () => {
   }
 })
 
+const BASE_SYMBOLS = ['', '①', '②', '③']
+
+function formatRunners(bases: number[]): string {
+  if (bases.length === 0) return '---'
+  return bases.map((b) => BASE_SYMBOLS[b] ?? `${b}`).join('')
+}
+
+function formatOuts(outs: number | null): string {
+  if (outs === null || outs === undefined) return '-'
+  return `${outs}`
+}
+
+function formatEvents(events: AtBatEvent[]): string {
+  if (events.length === 0) return ''
+  return events
+    .map((e) => {
+      if (e.type === 'pinch_hit') return '代打'
+      if (e.type === 'pinch_run') return '代走'
+      if (e.type === 'pitcher_change') return 'P交代'
+      return e.type
+    })
+    .join(' ')
+}
+
 const previewHeaders = [
-  { title: '回', key: 'inning', width: '60px' },
-  { title: '表裏', key: 'top_bottom', width: '80px' },
-  { title: '順', key: 'order', width: '60px' },
+  { title: '回', key: 'inning', width: '50px' },
+  { title: '表裏', key: 'top_bottom', width: '60px' },
+  { title: '順', key: 'order', width: '50px' },
   { title: '打者', key: 'batter' },
   { title: '投手', key: 'pitcher' },
-  { title: '結果コード', key: 'result_code' },
+  { title: '結果', key: 'result_code', width: '80px' },
+  { title: '走者(前→後)', key: 'runners', width: '110px' },
+  { title: 'Out', key: 'outs_after', width: '50px' },
+  { title: 'イベント', key: 'events_str', width: '80px' },
 ]
 
 const previewItems = computed(() => {
   if (!parsedResult.value) return []
-  return parsedResult.value.parsed_at_bats.at_bats.slice(0, 10)
+  return parsedResult.value.parsed_at_bats.at_bats.map((ab) => ({
+    ...ab,
+    runners: `${formatRunners(ab.runners_before)}→${formatRunners(ab.runners_after)}`,
+    outs_after: formatOuts(ab.outs_after),
+    events_str: formatEvents(ab.events),
+  }))
 })
 
 async function parseLog() {

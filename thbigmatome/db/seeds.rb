@@ -317,6 +317,15 @@ puts 'Seeding Schedule Details...'
   )
 end
 
+# =============================================================================
+# cmd_325: commissionerユーザー (mori) のパスワード設定
+# seeds.rbでパスワードが設定されておらず401になっていたため修正
+# =============================================================================
+puts 'Seeding commissioner user: mori...'
+commissioner = User.find_or_initialize_by(name: 'mori')
+commissioner.update!(role: :commissioner, display_name: 'mori', password: 'password123')
+puts '  commissioner mori seeded.'
+
 puts 'Seeding Competition: 幻想郷ペナントレースR...'
 competition = Competition.find_or_initialize_by(name: '幻想郷ペナントレースR', year: 2026)
 competition.update!(competition_type: 'league_pennant')

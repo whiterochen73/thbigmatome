@@ -183,6 +183,7 @@
               <v-data-table
                 :headers="previewHeaders"
                 :items="previewItems"
+                :items-per-page="-1"
                 density="compact"
                 class="elevation-1 mb-4"
               ></v-data-table>

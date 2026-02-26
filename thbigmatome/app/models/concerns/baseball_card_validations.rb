@@ -1,7 +1,6 @@
 module BaseballCardValidations
   extend ActiveSupport::Concern
 
-  DEFENSE_RATING_FORMAT = /\A[0-5][A-ES]\z/.freeze
   DEFENSE_ATTRIBUTES = %i[
     defense_p defense_c defense_1b defense_2b defense_3b defense_ss
     defense_of defense_lf defense_cf defense_rf special_defense_c
@@ -12,7 +11,7 @@ module BaseballCardValidations
 
   included do
     validates(*DEFENSE_ATTRIBUTES,
-              format: { with: DEFENSE_RATING_FORMAT, message: :invalid_format },
+              format: { with: /\A[0-5][A-ES]\z/, message: :invalid_format },
               allow_blank: true)
 
     # 捕手の送球値

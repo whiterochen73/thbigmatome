@@ -2,6 +2,7 @@ FactoryBot.define do
   factory :player_card do
     association :card_set
     association :player
+    card_type { "batter" }
     speed { 3 }
     bunt { 5 }
     steal_start { 10 }

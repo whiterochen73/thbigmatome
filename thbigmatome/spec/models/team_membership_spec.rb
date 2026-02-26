@@ -102,6 +102,18 @@ RSpec.describe TeamMembership, type: :model do
     end
   end
 
+  describe 'display_name' do
+    it '設定時はその値を返す' do
+      membership = build(:team_membership, display_name: "通称")
+      expect(membership.display_name).to eq("通称")
+    end
+
+    it '未設定時はnil' do
+      membership = build(:team_membership, display_name: nil)
+      expect(membership.display_name).to be_nil
+    end
+  end
+
   describe 'デフォルト値' do
     it 'squadのデフォルトはsecond' do
       membership = TeamMembership.new

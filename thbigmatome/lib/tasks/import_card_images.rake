@@ -95,11 +95,13 @@ namespace :import do
           next
         end
 
-        pc.card_image.attach(
-          io:           File.open(path),
-          filename:     File.basename(path),
-          content_type: "image/png"
-        )
+        File.open(path, 'rb') do |f|
+          pc.card_image.attach(
+            io:           f,
+            filename:     File.basename(path),
+            content_type: "image/png"
+          )
+        end
         total_attached += 1
         puts "  Attached: #{player_name} <- #{File.basename(path)}" if total_attached <= 5 || (total_attached % 50).zero?
       end

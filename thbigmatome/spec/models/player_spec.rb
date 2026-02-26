@@ -417,6 +417,11 @@ RSpec.describe Player, type: :model do
         player = build(:player, injury_rate: 8)
         expect(player).not_to be_valid
       end
+
+      it '範囲外（-1）はエラー' do
+        player = build(:player, injury_rate: -1)
+        expect(player).not_to be_valid
+      end
     end
   end
 end

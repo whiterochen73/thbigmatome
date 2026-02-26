@@ -65,7 +65,6 @@ namespace :import do
 
       # PlayerCard
       pc = PlayerCard.find_or_create_by!(card_set_id: card_set.id, player_id: player.id, card_type: card_type) do |c|
-        c.card_type = card_type
         c.is_pitcher    = row["is_pitcher"] == "true"
         c.is_relief_only = row["is_relief_only"] == "true"
         c.is_closer     = row["is_closer"] == "true"
@@ -83,16 +82,16 @@ namespace :import do
         c.irc_display_name = row["irc_display_name"].presence
 
         if (raw = row["injury_traits"].presence)
-          begin; c.injury_traits = JSON.parse(raw); rescue JSON::ParserError; end
+          begin; c.injury_traits = JSON.parse(raw); rescue JSON::ParserError => e; Rails.logger.warn "JSON parse error: #{e.message}"; end
         end
         if (raw = row["biorhythm_date_ranges"].presence)
-          begin; c.biorhythm_date_ranges = JSON.parse(raw); rescue JSON::ParserError; end
+          begin; c.biorhythm_date_ranges = JSON.parse(raw); rescue JSON::ParserError => e; Rails.logger.warn "JSON parse error: #{e.message}"; end
         end
         if (raw = row["batting_table"].presence)
-          begin; c.batting_table = JSON.parse(raw); rescue JSON::ParserError; end
+          begin; c.batting_table = JSON.parse(raw); rescue JSON::ParserError => e; Rails.logger.warn "JSON parse error: #{e.message}"; end
         end
         if (raw = row["pitching_table"].presence)
-          begin; c.pitching_table = JSON.parse(raw); rescue JSON::ParserError; end
+          begin; c.pitching_table = JSON.parse(raw); rescue JSON::ParserError => e; Rails.logger.warn "JSON parse error: #{e.message}"; end
         end
       end
 

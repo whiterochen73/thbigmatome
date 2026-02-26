@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_02_26_200513) do
+ActiveRecord::Schema[8.1].define(version: 2026_02_26_230906) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -459,7 +459,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_02_26_200513) do
     t.string "card_image_path"
     t.string "card_label"
     t.bigint "card_set_id", null: false
-    t.string "card_type"
+    t.string "card_type", null: false
     t.bigint "catcher_pitching_style_id"
     t.datetime "created_at", null: false
     t.integer "injury_rate"

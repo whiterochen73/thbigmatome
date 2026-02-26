@@ -35,6 +35,6 @@ class Api::V1::Commissioner::TeamMembershipsController < Api::V1::Commissioner::
   end
 
   def team_membership_params
-    params.require(:team_membership).permit(:squad, :selected_cost_type)
+    params.require(:team_membership).permit(:squad, :selected_cost_type, :display_name)
   end
 end

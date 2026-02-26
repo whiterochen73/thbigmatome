@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_02_26_200511) do
+ActiveRecord::Schema[8.1].define(version: 2026_02_26_200512) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -661,6 +661,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_02_26_200511) do
 
   create_table "team_memberships", force: :cascade do |t|
     t.datetime "created_at", null: false
+    t.string "display_name"
     t.boolean "excluded_from_team_total", default: false, null: false
     t.bigint "player_id", null: false
     t.string "selected_cost_type", default: "normal_cost", null: false

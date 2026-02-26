@@ -1,5 +1,5 @@
 class TeamPlayerSerializer < PlayerSerializer
-  attributes :selected_cost_type, :current_cost, :excluded_from_team_total
+  attributes :selected_cost_type, :current_cost, :excluded_from_team_total, :display_name
 
   def selected_cost_type
     object.team_memberships.find_by(team_id: @instance_options[:team].id).selected_cost_type
@@ -14,5 +14,9 @@ class TeamPlayerSerializer < PlayerSerializer
 
   def excluded_from_team_total
     object.team_memberships.find_by(team_id: @instance_options[:team].id).excluded_from_team_total
+  end
+
+  def display_name
+    object.team_memberships.find_by(team_id: @instance_options[:team].id).display_name
   end
 end

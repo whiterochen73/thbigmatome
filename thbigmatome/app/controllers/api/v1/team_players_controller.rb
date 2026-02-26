@@ -21,7 +21,8 @@ class Api::V1::TeamPlayersController < Api::V1::BaseController
         membership = @team.team_memberships.find_or_initialize_by(player_id: p[:player_id])
         membership.update!(
           selected_cost_type: p[:selected_cost_type],
-          excluded_from_team_total: p[:excluded_from_team_total] || false
+          excluded_from_team_total: p[:excluded_from_team_total] || false,
+          display_name: p[:display_name].presence
         )
       end
 

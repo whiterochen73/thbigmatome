@@ -95,61 +95,35 @@ RSpec.describe PlayerCard, type: :model do
     end
   end
 
-  describe "BaseballCardValidations concern" do
-    it "includes BaseballCardValidations" do
-      expect(PlayerCard.included_modules).to include(BaseballCardValidations)
+  describe "stat validations" do
+    it "validates speed presence and inclusion" do
+      player_card = build(:player_card, speed: nil)
+      expect(player_card).not_to be_valid
+      expect(player_card.errors[:speed]).to include("can't be blank")
     end
 
-    describe "required fields for validation" do
-      it "validates speed presence and inclusion" do
-        player_card = build(:player_card, speed: nil)
-        expect(player_card).not_to be_valid
-        expect(player_card.errors[:speed]).to include("can't be blank")
-      end
-
-      it "validates bunt presence and inclusion" do
-        player_card = build(:player_card, bunt: nil)
-        expect(player_card).not_to be_valid
-        expect(player_card.errors[:bunt]).to include("can't be blank")
-      end
-
-      it "validates steal_start presence and inclusion" do
-        player_card = build(:player_card, steal_start: nil)
-        expect(player_card).not_to be_valid
-        expect(player_card.errors[:steal_start]).to include("can't be blank")
-      end
-
-      it "validates steal_end presence and inclusion" do
-        player_card = build(:player_card, steal_end: nil)
-        expect(player_card).not_to be_valid
-        expect(player_card.errors[:steal_end]).to include("can't be blank")
-      end
-
-      it "validates injury_rate presence and inclusion" do
-        player_card = build(:player_card, injury_rate: nil)
-        expect(player_card).not_to be_valid
-        expect(player_card.errors[:injury_rate]).to include("can't be blank")
-      end
+    it "validates bunt presence and inclusion" do
+      player_card = build(:player_card, bunt: nil)
+      expect(player_card).not_to be_valid
+      expect(player_card.errors[:bunt]).to include("can't be blank")
     end
 
-    describe "defense attribute format validation" do
-      it "validates defense_p format" do
-        player_card = build(:player_card, defense_p: "invalid")
-        expect(player_card).not_to be_valid
-        expect(player_card.errors[:defense_p]).not_to be_empty
-      end
+    it "validates steal_start presence and inclusion" do
+      player_card = build(:player_card, steal_start: nil)
+      expect(player_card).not_to be_valid
+      expect(player_card.errors[:steal_start]).to include("can't be blank")
+    end
 
-      it "allows valid defense format (e.g., 3B)" do
-        player_card = build(:player_card, defense_p: "3B")
-        player_card.validate
-        expect(player_card.errors[:defense_p]).to be_empty
-      end
+    it "validates steal_end presence and inclusion" do
+      player_card = build(:player_card, steal_end: nil)
+      expect(player_card).not_to be_valid
+      expect(player_card.errors[:steal_end]).to include("can't be blank")
+    end
 
-      it "allows blank defense attributes" do
-        player_card = build(:player_card, defense_p: "")
-        player_card.validate
-        expect(player_card.errors[:defense_p]).to be_empty
-      end
+    it "validates injury_rate presence and inclusion" do
+      player_card = build(:player_card, injury_rate: nil)
+      expect(player_card).not_to be_valid
+      expect(player_card.errors[:injury_rate]).to include("can't be blank")
     end
   end
 end

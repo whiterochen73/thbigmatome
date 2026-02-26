@@ -1,5 +1,5 @@
 class PlayerCard < ApplicationRecord
-  include BaseballCardValidations
+  has_one_attached :card_image
 
   belongs_to :card_set
   belongs_to :player
@@ -20,4 +20,39 @@ class PlayerCard < ApplicationRecord
 
   validates :card_set_id, :player_id, presence: true
   validates :card_set_id, uniqueness: { scope: :player_id }
+
+  validates :speed, presence: true,
+            numericality: { only_integer: true },
+            inclusion: { in: 1..5 }
+  validates :bunt, presence: true,
+            numericality: { only_integer: true },
+            inclusion: { in: 1..10 }
+  validates :steal_start, presence: true,
+            numericality: { only_integer: true },
+            inclusion: { in: 1..22 }
+  validates :steal_end, presence: true,
+            numericality: { only_integer: true },
+            inclusion: { in: 1..22 }
+  validates :injury_rate, presence: true,
+            numericality: { only_integer: true },
+            inclusion: { in: 1..7 }
+  validates :starter_stamina,
+            numericality: { only_integer: true },
+            inclusion: { in: 4..9 },
+            allow_blank: true,
+            unless: :is_relief_only
+  validates :relief_stamina,
+            numericality: { only_integer: true },
+            inclusion: { in: 0..3 },
+            allow_blank: true
+  validates :special_defense_c,
+            format: { with: BaseballCardValidations::DEFENSE_RATING_FORMAT },
+            allow_blank: true
+  validates :special_throwing_c,
+            presence: true,
+            if: -> { special_defense_c.present? }
+  validates :special_throwing_c,
+            numericality: { only_integer: true },
+            inclusion: { in: -5..5 },
+            allow_blank: true
 end

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_02_26_200509) do
+ActiveRecord::Schema[8.1].define(version: 2026_02_26_200510) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -429,11 +429,14 @@ ActiveRecord::Schema[8.1].define(version: 2026_02_26_200509) do
     t.string "biorhythm_period"
     t.integer "bunt"
     t.string "card_image_path"
+    t.string "card_label"
     t.bigint "card_set_id", null: false
     t.bigint "catcher_pitching_style_id"
     t.datetime "created_at", null: false
     t.integer "injury_rate"
     t.jsonb "injury_traits"
+    t.string "irc_display_name"
+    t.string "irc_macro_name"
     t.boolean "is_closer", default: false, null: false
     t.boolean "is_pitcher", default: false
     t.boolean "is_relief_only", default: false

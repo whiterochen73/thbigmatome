@@ -80,6 +80,15 @@
               items-per-page="-1"
               :disable-sort="false"
             >
+              <template #item.display_name="{ item }">
+                <v-text-field
+                  v-model="item.display_name"
+                  :placeholder="t('teamMembers.headers.display_name')"
+                  density="compact"
+                  hide-details
+                  variant="plain"
+                />
+              </template>
               <template #item.player_type_ids="{ item }">
                 <v-chip-group column>
                   <v-chip v-for="typeId in item.player_type_ids" :key="typeId">
@@ -164,6 +173,7 @@ interface TeamPlayer extends Player {
   selected_cost_type: CostType
   current_cost: number
   excluded_from_team_total: boolean
+  display_name?: string | null
 }
 
 const { t } = useI18n()
@@ -188,6 +198,7 @@ const TEAM_TOTAL_MAX_COST = 200
 const headers = computed(() => [
   { title: t('teamMembers.headers.number'), key: 'number' },
   { title: t('teamMembers.headers.name'), key: 'name' },
+  { title: t('teamMembers.headers.display_name'), key: 'display_name', sortable: false },
   { title: t('teamMembers.headers.player_types'), key: 'player_type_ids' },
   { title: t('teamMembers.headers.position'), key: 'position' },
   { title: t('teamMembers.headers.throws'), key: 'throws' },
@@ -403,6 +414,7 @@ const addPlayer = () => {
     selected_cost_type: initialCostType,
     current_cost: initialCost,
     excluded_from_team_total: false,
+    display_name: null,
   }
 
   teamPlayers.value.push(newPlayer)
@@ -440,6 +452,7 @@ const saveTeamMembers = async () => {
         player_id: p.id,
         selected_cost_type: p.selected_cost_type,
         excluded_from_team_total: p.excluded_from_team_total,
+        display_name: p.display_name || null,
       })),
     }
     await axios.post(`/teams/${teamId.value}/team_players`, payload)

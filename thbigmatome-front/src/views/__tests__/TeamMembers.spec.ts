@@ -62,6 +62,7 @@ const i18n = createI18n({
         headers: {
           number: '背番号',
           name: '名前',
+          display_name: '通称',
           position: 'ポジション',
           throws: '投',
           bats: '打',

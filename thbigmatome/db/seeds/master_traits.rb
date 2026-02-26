@@ -29,8 +29,8 @@ puts 'Seeding TraitDefinitions...'
   { name: '三振',       typical_role: nil,        description: '三振に関連する特徴' },
   { name: '三振振り逃げ', typical_role: nil,      description: '三振振り逃げに関連する特徴' },
   { name: 'ボーク',     typical_role: 'pitcher', description: 'ボークに関連する特徴' },
-  { name: '1C5',        typical_role: 'pitcher', description: '捕手1番に5球投じる特徴' },
-  { name: '1P5',        typical_role: 'pitcher', description: '先発1番に5球投じる特徴' }
+  { name: '1C5',        typical_role: 'batter',  description: 'ランナーあり→投球番号5、ランナーなし→投球番号1で打撃（野手特徴）' },
+  { name: '1P5',        typical_role: 'pitcher', description: 'ランナーあり→投球番号5、ランナーなし→投球番号1で投球（投手特徴）' }
 ].each do |attrs|
   record = TraitDefinition.find_or_initialize_by(name: attrs[:name])
   record.update!(typical_role: attrs[:typical_role], description: attrs[:description])

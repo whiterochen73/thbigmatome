@@ -12,6 +12,11 @@ class PlayerCard < ApplicationRecord
   has_many :player_types, through: :player_card_player_types
   has_many :competition_rosters, dependent: :destroy
   has_many :game_lineup_entries, dependent: :destroy
+  has_many :player_card_defenses, dependent: :destroy
+  has_many :player_card_traits, dependent: :destroy
+  has_many :player_card_abilities, dependent: :destroy
+  has_many :player_card_exclusive_catchers, dependent: :destroy
+  has_many :exclusive_catchers, through: :player_card_exclusive_catchers, source: :catcher_player
 
   validates :card_set_id, :player_id, presence: true
   validates :card_set_id, uniqueness: { scope: :player_id }

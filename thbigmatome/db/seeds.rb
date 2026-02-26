@@ -411,5 +411,8 @@ end
 puts "  #{active_team_names.size} competition entries seeded."
 puts 'Lペナ teams and managers seeded.'
 
+# 特徴・条件マスタシードデータ
+load Rails.root.join('db/seeds/master_traits.rb')
+
 # テスト環境専用シードデータ
 load Rails.root.join('db/seeds/test.rb') if Rails.env.test?

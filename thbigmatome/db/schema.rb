@@ -10,9 +10,18 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_02_22_144433) do
+ActiveRecord::Schema[8.1].define(version: 2026_02_26_200509) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
+
+  create_table "ability_definitions", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.text "effect_description"
+    t.string "name", null: false
+    t.string "typical_role"
+    t.datetime "updated_at", null: false
+    t.index [ "name" ], name: "index_ability_definitions_on_name", unique: true
+  end
 
   create_table "at_bats", force: :cascade do |t|
     t.bigint "batter_id", null: false
@@ -356,6 +365,38 @@ ActiveRecord::Schema[8.1].define(version: 2026_02_22_144433) do
     t.index [ "player_id" ], name: "index_player_biorhythms_on_player_id"
   end
 
+  create_table "player_card_abilities", force: :cascade do |t|
+    t.bigint "ability_definition_id", null: false
+    t.bigint "condition_id"
+    t.datetime "created_at", null: false
+    t.bigint "player_card_id", null: false
+    t.string "role"
+    t.integer "sort_order", default: 0
+    t.datetime "updated_at", null: false
+    t.index [ "ability_definition_id" ], name: "index_player_card_abilities_on_ability_definition_id"
+    t.index [ "condition_id" ], name: "index_player_card_abilities_on_condition_id"
+    t.index [ "player_card_id" ], name: "index_player_card_abilities_on_player_card_id"
+  end
+
+  create_table "player_card_defenses", force: :cascade do |t|
+    t.bigint "condition_id"
+    t.datetime "created_at", null: false
+    t.string "error_rank", null: false
+    t.bigint "player_card_id", null: false
+    t.string "position", null: false
+    t.integer "range_value", null: false
+    t.string "throwing"
+    t.datetime "updated_at", null: false
+    t.index [ "condition_id" ], name: "index_player_card_defenses_on_condition_id"
+    t.index [ "player_card_id", "position", "condition_id" ], name: "index_player_card_defenses_on_card_position_condition", unique: true
+    t.index [ "player_card_id" ], name: "index_player_card_defenses_on_player_card_id"
+  end
+
+  create_table "player_card_exclusive_catchers", primary_key: [ "player_card_id", "catcher_player_id" ], force: :cascade do |t|
+    t.bigint "catcher_player_id", null: false
+    t.bigint "player_card_id", null: false
+  end
+
   create_table "player_card_player_types", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.bigint "player_card_id", null: false
@@ -366,27 +407,34 @@ ActiveRecord::Schema[8.1].define(version: 2026_02_22_144433) do
     t.index [ "player_type_id" ], name: "index_player_card_player_types_on_player_type_id"
   end
 
+  create_table "player_card_traits", force: :cascade do |t|
+    t.bigint "condition_id"
+    t.datetime "created_at", null: false
+    t.bigint "player_card_id", null: false
+    t.string "role"
+    t.integer "sort_order", default: 0
+    t.bigint "trait_definition_id", null: false
+    t.datetime "updated_at", null: false
+    t.index [ "condition_id" ], name: "index_player_card_traits_on_condition_id"
+    t.index [ "player_card_id" ], name: "index_player_card_traits_on_player_card_id"
+    t.index [ "trait_definition_id" ], name: "index_player_card_traits_on_trait_definition_id"
+  end
+
   create_table "player_cards", force: :cascade do |t|
     t.jsonb "abilities", default: {}, null: false
     t.string "batting_style_description"
     t.bigint "batting_style_id"
     t.jsonb "batting_table", default: {}, null: false
+    t.jsonb "biorhythm_date_ranges"
+    t.string "biorhythm_period"
     t.integer "bunt"
     t.string "card_image_path"
     t.bigint "card_set_id", null: false
     t.bigint "catcher_pitching_style_id"
     t.datetime "created_at", null: false
-    t.string "defense_1b"
-    t.string "defense_2b"
-    t.string "defense_3b"
-    t.string "defense_c"
-    t.string "defense_cf"
-    t.string "defense_lf"
-    t.string "defense_of"
-    t.string "defense_p"
-    t.string "defense_rf"
-    t.string "defense_ss"
     t.integer "injury_rate"
+    t.jsonb "injury_traits"
+    t.boolean "is_closer", default: false, null: false
     t.boolean "is_pitcher", default: false
     t.boolean "is_relief_only", default: false
     t.bigint "pinch_pitching_style_id"
@@ -401,11 +449,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_02_22_144433) do
     t.integer "starter_stamina"
     t.integer "steal_end"
     t.integer "steal_start"
-    t.integer "throwing_c"
-    t.string "throwing_cf"
-    t.string "throwing_lf"
-    t.string "throwing_of"
-    t.string "throwing_rf"
+    t.text "unique_traits"
     t.datetime "updated_at", null: false
     t.index [ "batting_style_id" ], name: "index_player_cards_on_batting_style_id"
     t.index [ "card_set_id", "player_id" ], name: "index_player_cards_on_card_set_id_and_player_id", unique: true
@@ -606,6 +650,23 @@ ActiveRecord::Schema[8.1].define(version: 2026_02_22_144433) do
     t.bigint "user_id"
   end
 
+  create_table "trait_conditions", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.text "description"
+    t.string "name", null: false
+    t.datetime "updated_at", null: false
+    t.index [ "name" ], name: "index_trait_conditions_on_name", unique: true
+  end
+
+  create_table "trait_definitions", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.text "description"
+    t.string "name", null: false
+    t.string "typical_role"
+    t.datetime "updated_at", null: false
+    t.index [ "name" ], name: "index_trait_definitions_on_name", unique: true
+  end
+
   create_table "users", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.string "display_name"
@@ -654,8 +715,18 @@ ActiveRecord::Schema[8.1].define(version: 2026_02_22_144433) do
   add_foreign_key "player_batting_skills", "players"
   add_foreign_key "player_biorhythms", "biorhythms"
   add_foreign_key "player_biorhythms", "players"
+  add_foreign_key "player_card_abilities", "ability_definitions"
+  add_foreign_key "player_card_abilities", "player_cards"
+  add_foreign_key "player_card_abilities", "trait_conditions", column: "condition_id"
+  add_foreign_key "player_card_defenses", "player_cards"
+  add_foreign_key "player_card_defenses", "trait_conditions", column: "condition_id"
+  add_foreign_key "player_card_exclusive_catchers", "player_cards"
+  add_foreign_key "player_card_exclusive_catchers", "players", column: "catcher_player_id"
   add_foreign_key "player_card_player_types", "player_cards"
   add_foreign_key "player_card_player_types", "player_types"
+  add_foreign_key "player_card_traits", "player_cards"
+  add_foreign_key "player_card_traits", "trait_conditions", column: "condition_id"
+  add_foreign_key "player_card_traits", "trait_definitions"
   add_foreign_key "player_cards", "batting_styles"
   add_foreign_key "player_cards", "card_sets"
   add_foreign_key "player_cards", "pitching_styles"

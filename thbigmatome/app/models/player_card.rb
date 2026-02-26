@@ -19,7 +19,7 @@ class PlayerCard < ApplicationRecord
   has_many :exclusive_catchers, through: :player_card_exclusive_catchers, source: :catcher_player
 
   validates :card_set_id, :player_id, presence: true
-  validates :card_set_id, uniqueness: { scope: :player_id }
+  validates :card_set_id, uniqueness: { scope: [ :player_id, :card_type ] }
 
   validates :speed, presence: true,
             numericality: { only_integer: true },

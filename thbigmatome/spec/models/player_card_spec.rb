@@ -21,26 +21,33 @@ RSpec.describe PlayerCard, type: :model do
     end
 
     describe "uniqueness validations" do
-      it "validates uniqueness of [card_set_id, player_id]" do
-        existing = create(:player_card, card_set: card_set, player: player)
-        duplicate = build(:player_card, card_set: card_set, player: player)
+      it "validates uniqueness of [card_set_id, player_id, card_type]" do
+        existing = create(:player_card, card_set: card_set, player: player, card_type: "batter")
+        duplicate = build(:player_card, card_set: card_set, player: player, card_type: "batter")
 
         expect(duplicate).not_to be_valid
         expect(duplicate.errors[:card_set_id]).to include("has already been taken")
       end
 
+      it "allows same player in same card_set with different card_type (two-way player)" do
+        existing = create(:player_card, card_set: card_set, player: player, card_type: "batter")
+        pitcher_card = build(:player_card, card_set: card_set, player: player, card_type: "pitcher")
+
+        expect(pitcher_card).to be_valid
+      end
+
       it "allows same player in different card_set" do
-        existing = create(:player_card, card_set: card_set, player: player)
+        existing = create(:player_card, card_set: card_set, player: player, card_type: "batter")
         different_set = create(:card_set, set_type: "special")
-        new_card = build(:player_card, card_set: different_set, player: player)
+        new_card = build(:player_card, card_set: different_set, player: player, card_type: "batter")
 
         expect(new_card).to be_valid
       end
 
       it "allows different player in same card_set" do
-        existing = create(:player_card, card_set: card_set, player: player)
+        existing = create(:player_card, card_set: card_set, player: player, card_type: "batter")
         different_player = create(:player)
-        new_card = build(:player_card, card_set: card_set, player: different_player)
+        new_card = build(:player_card, card_set: card_set, player: different_player, card_type: "batter")
 
         expect(new_card).to be_valid
       end

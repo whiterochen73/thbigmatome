@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_02_26_200512) do
+ActiveRecord::Schema[8.1].define(version: 2026_02_26_200513) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -459,6 +459,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_02_26_200512) do
     t.string "card_image_path"
     t.string "card_label"
     t.bigint "card_set_id", null: false
+    t.string "card_type"
     t.bigint "catcher_pitching_style_id"
     t.datetime "created_at", null: false
     t.integer "injury_rate"
@@ -483,7 +484,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_02_26_200512) do
     t.text "unique_traits"
     t.datetime "updated_at", null: false
     t.index [ "batting_style_id" ], name: "index_player_cards_on_batting_style_id"
-    t.index [ "card_set_id", "player_id" ], name: "index_player_cards_on_card_set_id_and_player_id", unique: true
+    t.index [ "card_set_id", "player_id", "card_type" ], name: "index_player_cards_on_card_set_player_card_type", unique: true
     t.index [ "card_set_id" ], name: "index_player_cards_on_card_set_id"
     t.index [ "catcher_pitching_style_id" ], name: "index_player_cards_on_catcher_pitching_style_id"
     t.index [ "pinch_pitching_style_id" ], name: "index_player_cards_on_pinch_pitching_style_id"

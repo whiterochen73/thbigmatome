@@ -54,8 +54,18 @@ namespace :import do
         p.injury_rate = row["injury_rate"].to_i
       end
 
+      # Derive card_type from is_pitcher (CSV) or card_type column if available
+      card_type = if row["card_type"].present?
+                    row["card_type"]
+                  elsif row["is_pitcher"] == "true"
+                    "pitcher"
+                  elsif row["is_pitcher"] == "false"
+                    "batter"
+                  end
+
       # PlayerCard
-      pc = PlayerCard.find_or_create_by!(card_set_id: card_set.id, player_id: player.id) do |c|
+      pc = PlayerCard.find_or_create_by!(card_set_id: card_set.id, player_id: player.id, card_type: card_type) do |c|
+        c.card_type = card_type
         c.is_pitcher    = row["is_pitcher"] == "true"
         c.is_relief_only = row["is_relief_only"] == "true"
         c.is_closer     = row["is_closer"] == "true"

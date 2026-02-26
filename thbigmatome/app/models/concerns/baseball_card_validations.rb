@@ -63,8 +63,8 @@ module BaseballCardValidations
     validates :steal_start, presence: true, numericality: { only_integer: true, message: :not_an_integer }, inclusion: { in: 1..22, message: :out_of_range }
     validates :steal_end, presence: true, numericality: { only_integer: true, message: :not_an_integer }, inclusion: { in: 1..22, message: :out_of_range }
 
-    # 怪我特徴
-    validates :injury_rate, presence: true, numericality: { only_integer: true, message: :not_an_integer }, inclusion: { in: 1..7, message: :out_of_range }
+    # 怪我特徴 (0=怪我特徴なし, 1〜6=怪我レベル, 7=フルイニング)
+    validates :injury_rate, presence: true, numericality: { only_integer: true, message: :not_an_integer }, inclusion: { in: 0..7, message: :out_of_range }
   end
 
   private

@@ -405,17 +405,12 @@ RSpec.describe Player, type: :model do
     context '怪我特徴（injury_rate）' do
       it { is_expected.to validate_presence_of(:injury_rate) }
 
-      it '有効範囲（1..7）' do
-        (1..7).each do |val|
+      it '有効範囲（0..7）' do
+        (0..7).each do |val|
           player = build(:player, injury_rate: val)
           player.valid?
           expect(player.errors[:injury_rate]).to be_empty, "injury_rate=#{val} should be valid"
         end
-      end
-
-      it '範囲外（0）はエラー' do
-        player = build(:player, injury_rate: 0)
-        expect(player).not_to be_valid
       end
 
       it '範囲外（8）はエラー' do

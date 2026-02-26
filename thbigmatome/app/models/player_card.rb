@@ -35,7 +35,7 @@ class PlayerCard < ApplicationRecord
             inclusion: { in: 1..22 }
   validates :injury_rate, presence: true,
             numericality: { only_integer: true },
-            inclusion: { in: 1..7 }
+            inclusion: { in: 0..7 }
   validates :starter_stamina,
             numericality: { only_integer: true },
             inclusion: { in: 4..9 },

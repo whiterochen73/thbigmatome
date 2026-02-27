@@ -825,7 +825,7 @@ function getResultCategory(val: string): string | null {
 }
 
 const categoryToClass = computed<Record<string, string>>(() => {
-  if (vuetifyTheme.current.value.dark) {
+  if (vuetifyTheme.global.current.value.dark) {
     return {
       orange: 'bg-orange-darken-3',
       green: 'bg-green-darken-3',
@@ -844,7 +844,7 @@ const categoryToClass = computed<Record<string, string>>(() => {
 })
 
 const categoryToHex = computed<Record<string, string>>(() => {
-  if (vuetifyTheme.current.value.dark) {
+  if (vuetifyTheme.global.current.value.dark) {
     return {
       orange: '#5D4037',
       green: '#1B5E20',

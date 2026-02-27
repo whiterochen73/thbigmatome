@@ -16,10 +16,14 @@ export default createVuetify({
       mdi,
     },
   },
+  locale: {
+    locale: 'ja',
+    fallback: 'en',
+  },
   theme: {
-    defaultTheme: 'thbigLight',
+    defaultTheme: 'light',
     themes: {
-      thbigLight: {
+      light: {
         dark: false,
         colors: {
           // 基本カラー（和色）
@@ -42,7 +46,7 @@ export default createVuetify({
           'text-disabled': '#BBBBBB', // 無効テキスト
         },
       },
-      thbigDark: {
+      dark: {
         dark: true,
         colors: {
           // 基本カラー（Dark mode、明るく調整）

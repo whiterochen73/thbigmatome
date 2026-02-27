@@ -18,7 +18,7 @@ onMounted(async () => {
   if (saved) {
     // 旧テーマ名(thbigLight/thbigDark)をVuetify標準名に移行
     const validTheme = saved === 'thbigDark' ? 'dark' : saved === 'thbigLight' ? 'light' : saved
-    theme.global.name.value = validTheme
+    theme.change(validTheme)
     if (validTheme !== saved) localStorage.setItem('theme', validTheme)
   }
 

@@ -3,6 +3,21 @@ require "csv"
 namespace :import do
   desc "Import card data from CSV files into DB (idempotent)"
   task card_data: :environment do
+    def derive_handedness(throwing, batting)
+      throw_part = case throwing
+                   when "right" then "右投"
+                   when "left"  then "左投"
+                   else ""
+                   end
+      bat_part = case batting
+                 when "right"  then "右打"
+                 when "left"   then "左打"
+                 when "switch" then "両打"
+                 else ""
+                 end
+      result = throw_part + bat_part
+      result.empty? ? nil : result
+    end
     data_dir = ENV["CARD_DATA_DIR"] || "/home/morinaga/projects/thbig-irc-parser/data/import"
 
     card_set_defs = {
@@ -63,9 +78,12 @@ namespace :import do
                     "batter"
                   end
 
+      handedness_val = derive_handedness(row["throwing_hand"], row["batting_hand"])
+
       # PlayerCard
       pc = PlayerCard.find_or_create_by!(card_set_id: card_set.id, player_id: player.id, card_type: card_type) do |c|
         c.is_pitcher    = row["is_pitcher"] == "true"
+        c.handedness    = handedness_val
         c.is_relief_only = row["is_relief_only"] == "true"
         c.is_closer     = row["is_closer"] == "true"
         c.speed         = row["speed"].presence&.to_i
@@ -94,6 +112,9 @@ namespace :import do
           begin; c.pitching_table = JSON.parse(raw); rescue JSON::ParserError => e; Rails.logger.warn "JSON parse error: #{e.message}"; end
         end
       end
+
+      # 既存レコードの handedness が未設定の場合は更新
+      pc.update_column(:handedness, handedness_val) if pc.handedness.blank? && handedness_val.present?
 
       player_card_map[row["card_seq"]] = pc
     end

@@ -811,10 +811,10 @@ function pitchingCellColor(val: string): string {
 
 // ---- Batting result color class (IRC準拠) ----
 function getResultCategory(val: string): string | null {
-  // 安打系: H#/H#a/2H#/2H#a/3H#/HR#/IH# + 四死球: BB/DB + 従来表記: 1B/2B/3B
-  if (/^((HR|IH|[123]?H)\d{1,2}a?|BB|DB|[123]B)$/.test(val)) return 'orange'
-  // レンジ系コード（外野: SS/RF/LF/CF/P, 内野守備力数値, レンジテキスト）
-  if (/^(SS|RF|LF|CF|P|\d+|レンジ)$/.test(val)) return 'green'
+  // レンジ系コード（先に判定: 1B/2B/3B はポジション番号=一/二/三塁手のレンジ結果）
+  if (/^(SS|RF|LF|CF|P|\d+|[123]B|レンジ)$/.test(val)) return 'green'
+  // 安打系: H#/H#a/2H#/2H#a/3H#/HR#/IH# + 四死球: BB/DB
+  if (/^((HR|IH|[123]?H)\d{1,2}a?|BB|DB)$/.test(val)) return 'orange'
   // aゴロ・aフライ（走者進塁アウト）
   if (/^[GF]\d{1,2}a$/.test(val)) return 'blue'
   // UP表参照
@@ -846,7 +846,7 @@ const categoryToClass = computed<Record<string, string>>(() => {
 const categoryToHex = computed<Record<string, string>>(() => {
   if (vuetifyTheme.global.current.value.dark) {
     return {
-      orange: '#5D4037',
+      orange: '#E65100',
       green: '#1B5E20',
       blue: '#0D47A1',
       red: '#B71C1C',

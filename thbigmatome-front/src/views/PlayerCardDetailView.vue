@@ -662,6 +662,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
+import { useTheme } from 'vuetify'
 import { useRoute, useRouter } from 'vue-router'
 import axios from '@/plugins/axios'
 
@@ -724,6 +725,7 @@ interface PlayerCardDetail {
   pitching_table: string[]
 }
 
+const vuetifyTheme = useTheme()
 const route = useRoute()
 const router = useRouter()
 const card = ref<PlayerCardDetail | null>(null)
@@ -811,8 +813,8 @@ function pitchingCellColor(val: string): string {
 function getResultCategory(val: string): string | null {
   // 安打系: H#/H#a/2H#/2H#a/3H#/HR#/IH# + 四死球: BB/DB + 従来表記: 1B/2B/3B
   if (/^((HR|IH|[123]?H)\d{1,2}a?|BB|DB|[123]B)$/.test(val)) return 'orange'
-  // レンジ系コード
-  if (/^(SS|RF|LF|CF|P)$/.test(val)) return 'green'
+  // レンジ系コード（外野: SS/RF/LF/CF/P, 内野守備力数値, レンジテキスト）
+  if (/^(SS|RF|LF|CF|P|\d+|レンジ)$/.test(val)) return 'green'
   // aゴロ・aフライ（走者進塁アウト）
   if (/^[GF]\d{1,2}a$/.test(val)) return 'blue'
   // UP表参照
@@ -822,26 +824,48 @@ function getResultCategory(val: string): string | null {
   return null
 }
 
-const categoryToClass: Record<string, string> = {
-  orange: 'bg-orange-lighten-4',
-  green: 'bg-green-lighten-4',
-  blue: 'bg-blue-lighten-4',
-  red: 'bg-red-lighten-4',
-  purple: 'bg-purple-lighten-4',
-}
+const categoryToClass = computed<Record<string, string>>(() => {
+  if (vuetifyTheme.current.value.dark) {
+    return {
+      orange: 'bg-orange-darken-3',
+      green: 'bg-green-darken-3',
+      blue: 'bg-blue-darken-3',
+      red: 'bg-red-darken-3',
+      purple: 'bg-purple-darken-3',
+    }
+  }
+  return {
+    orange: 'bg-orange-lighten-4',
+    green: 'bg-green-lighten-4',
+    blue: 'bg-blue-lighten-4',
+    red: 'bg-red-lighten-4',
+    purple: 'bg-purple-lighten-4',
+  }
+})
 
-const categoryToHex: Record<string, string> = {
-  orange: '#FFE0B2',
-  green: '#C8E6C9',
-  blue: '#BBDEFB',
-  red: '#FFCDD2',
-  purple: '#E1BEE7',
-}
+const categoryToHex = computed<Record<string, string>>(() => {
+  if (vuetifyTheme.current.value.dark) {
+    return {
+      orange: '#5D4037',
+      green: '#1B5E20',
+      blue: '#0D47A1',
+      red: '#B71C1C',
+      purple: '#4A148C',
+    }
+  }
+  return {
+    orange: '#FFE0B2',
+    green: '#C8E6C9',
+    blue: '#BBDEFB',
+    red: '#FFCDD2',
+    purple: '#E1BEE7',
+  }
+})
 
 function battingResultClass(val: string): string {
   if (val.includes('/')) return ''
   const cat = getResultCategory(val)
-  return cat ? categoryToClass[cat] : ''
+  return cat ? categoryToClass.value[cat] : ''
 }
 
 function battingResultStyle(val: string): Record<string, string> {
@@ -849,8 +873,9 @@ function battingResultStyle(val: string): Record<string, string> {
   const parts = val.split('/')
   const cat1 = getResultCategory(parts[0])
   const cat2 = getResultCategory(parts[1])
-  const c1 = cat1 ? categoryToHex[cat1] : '#FFFFFF'
-  const c2 = cat2 ? categoryToHex[cat2] : '#FFFFFF'
+  const hexMap = categoryToHex.value
+  const c1 = cat1 ? hexMap[cat1] : 'transparent'
+  const c2 = cat2 ? hexMap[cat2] : 'transparent'
   if (c1 === c2) return { background: c1 }
   return { background: `linear-gradient(135deg, ${c1} 50%, ${c2} 50%)` }
 }
@@ -1054,6 +1079,10 @@ function extractErrorMessage(error: unknown): string {
 </script>
 
 <style scoped>
+.batting-table :deep(table) {
+  table-layout: fixed;
+  width: 100%;
+}
 .batting-table td {
   padding: 2px 4px !important;
   font-size: 11px;

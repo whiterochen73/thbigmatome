@@ -15,7 +15,12 @@ const theme = useTheme()
 
 onMounted(async () => {
   const saved = localStorage.getItem('theme')
-  if (saved) theme.global.name.value = saved
+  if (saved) {
+    // 旧テーマ名(thbigLight/thbigDark)をVuetify標準名に移行
+    const validTheme = saved === 'thbigDark' ? 'dark' : saved === 'thbigLight' ? 'light' : saved
+    theme.global.name.value = validTheme
+    if (validTheme !== saved) localStorage.setItem('theme', validTheme)
+  }
 
   try {
     await checkAuth()

@@ -102,7 +102,7 @@ RSpec.describe "Api::V1::PlayerCards", type: :request do
       expect(json["card_set"]).to include("id", "name")
     end
 
-    it "includes defenses list" do
+    it "includes defenses list with id" do
       card = create(:player_card)
       PlayerCardDefense.create!(
         player_card: card,
@@ -115,7 +115,41 @@ RSpec.describe "Api::V1::PlayerCards", type: :request do
 
       json = response.parsed_body
       expect(json["defenses"]).to be_an(Array)
-      expect(json["defenses"].first).to include("position", "range_value", "error_rank")
+      expect(json["defenses"].first).to include("id", "position", "range_value", "error_rank")
+    end
+
+    it "includes new fields: handedness, is_switch_hitter, is_dual_wielder, is_closer, biorhythm_period" do
+      card = create(:player_card,
+        handedness: "右",
+        is_switch_hitter: true,
+        is_dual_wielder: false,
+        is_closer: true,
+        biorhythm_period: "小暑"
+      )
+
+      get "/api/v1/player_cards/#{card.id}", as: :json
+
+      json = response.parsed_body
+      expect(json["handedness"]).to eq("右")
+      expect(json["is_switch_hitter"]).to be true
+      expect(json["is_dual_wielder"]).to be false
+      expect(json["is_closer"]).to be true
+      expect(json["biorhythm_period"]).to eq("小暑")
+    end
+
+    it "includes trait_list with condition info" do
+      card = create(:player_card)
+      td = TraitDefinition.create!(name: "変化球投手", description: "変化球が得意")
+      tc = TraitCondition.create!(name: "対左", description: "左打者に対して")
+      PlayerCardTrait.create!(player_card: card, trait_definition: td, condition: tc)
+
+      get "/api/v1/player_cards/#{card.id}", as: :json
+
+      json = response.parsed_body
+      trait = json["trait_list"].first
+      expect(trait["name"]).to eq("変化球投手")
+      expect(trait["condition_name"]).to eq("対左")
+      expect(trait["condition_description"]).to eq("左打者に対して")
     end
 
     it "returns 404 for non-existent card" do
@@ -137,6 +171,120 @@ RSpec.describe "Api::V1::PlayerCards", type: :request do
 
       expect(response).to have_http_status(:ok)
       expect(card.reload.speed).to eq(5)
+    end
+
+    it "updates new fields: handedness, is_switch_hitter, is_dual_wielder, is_closer, biorhythm_period" do
+      patch "/api/v1/player_cards/#{card.id}",
+            params: {
+              player_card: {
+                handedness: "左",
+                is_switch_hitter: true,
+                is_dual_wielder: true,
+                is_closer: true,
+                biorhythm_period: "大寒"
+              }
+            },
+            as: :json
+
+      expect(response).to have_http_status(:ok)
+      card.reload
+      expect(card.handedness).to eq("左")
+      expect(card.is_switch_hitter).to be true
+      expect(card.is_dual_wielder).to be true
+      expect(card.is_closer).to be true
+      expect(card.biorhythm_period).to eq("大寒")
+    end
+
+    it "updates player_card_defenses via nested attributes" do
+      defense = PlayerCardDefense.create!(
+        player_card: card, position: "1b", range_value: 3, error_rank: "B"
+      )
+
+      patch "/api/v1/player_cards/#{card.id}",
+            params: {
+              player_card: {
+                player_card_defenses_attributes: [
+                  { id: defense.id, range_value: 5, position: "1b", error_rank: "A" }
+                ]
+              }
+            },
+            as: :json
+
+      expect(response).to have_http_status(:ok)
+      expect(defense.reload.range_value).to eq(5)
+    end
+
+    it "adds a new defense via nested attributes" do
+      expect {
+        patch "/api/v1/player_cards/#{card.id}",
+              params: {
+                player_card: {
+                  player_card_defenses_attributes: [
+                    { position: "cf", range_value: 4, error_rank: "C" }
+                  ]
+                }
+              },
+              as: :json
+      }.to change { card.player_card_defenses.count }.by(1)
+
+      expect(response).to have_http_status(:ok)
+    end
+
+    it "destroys a defense via nested attributes with _destroy" do
+      defense = PlayerCardDefense.create!(
+        player_card: card, position: "1b", range_value: 3, error_rank: "B"
+      )
+
+      expect {
+        patch "/api/v1/player_cards/#{card.id}",
+              params: {
+                player_card: {
+                  player_card_defenses_attributes: [
+                    { id: defense.id, _destroy: true }
+                  ]
+                }
+              },
+              as: :json
+      }.to change { card.player_card_defenses.count }.by(-1)
+
+      expect(response).to have_http_status(:ok)
+    end
+
+    it "adds a trait via nested attributes" do
+      td = TraitDefinition.create!(name: "長打力", description: "長打が得意")
+
+      expect {
+        patch "/api/v1/player_cards/#{card.id}",
+              params: {
+                player_card: {
+                  player_card_traits_attributes: [
+                    { trait_definition_id: td.id, role: "main" }
+                  ]
+                }
+              },
+              as: :json
+      }.to change { card.player_card_traits.count }.by(1)
+
+      expect(response).to have_http_status(:ok)
+    end
+
+    it "removes a trait via nested attributes with _destroy" do
+      td = TraitDefinition.create!(name: "長打力", description: "長打が得意")
+      trait = PlayerCardTrait.create!(player_card: card, trait_definition: td)
+
+      expect {
+        patch "/api/v1/player_cards/#{card.id}",
+              params: {
+                player_card: {
+                  player_card_traits_attributes: [
+                    { id: trait.id, _destroy: true }
+                  ]
+                }
+              },
+              as: :json
+      }.to change { card.player_card_traits.count }.by(-1)
+
+      expect(response).to have_http_status(:ok)
     end
 
     it "returns 422 with invalid params" do

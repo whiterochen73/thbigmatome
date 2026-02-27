@@ -22,8 +22,8 @@ class Api::V1::PlayerCardsController < Api::V1::BaseController
     player_card = PlayerCard.includes(
       :player, :card_set,
       :player_card_defenses,
-      player_card_traits: :trait_definition,
-      player_card_abilities: :ability_definition
+      player_card_traits: [ :trait_definition, :condition ],
+      player_card_abilities: [ :ability_definition, :condition ]
     ).find(params[:id])
     render json: player_card, serializer: PlayerCardDetailSerializer
   end
@@ -31,6 +31,7 @@ class Api::V1::PlayerCardsController < Api::V1::BaseController
   def update
     player_card = PlayerCard.find(params[:id])
     if player_card.update(player_card_params)
+      player_card.reload
       render json: player_card, serializer: PlayerCardDetailSerializer
     else
       render json: { errors: player_card.errors.full_messages }, status: :unprocessable_entity
@@ -41,8 +42,21 @@ class Api::V1::PlayerCardsController < Api::V1::BaseController
 
   def player_card_params
     params.require(:player_card).permit(
-      :card_type, :speed, :bunt, :steal_start, :steal_end, :injury_rate,
-      :is_relief_only, :starter_stamina, :relief_stamina
+      :card_type, :handedness, :speed, :bunt,
+      :steal_start, :steal_end, :injury_rate,
+      :is_relief_only, :is_closer, :is_switch_hitter, :is_dual_wielder,
+      :starter_stamina, :relief_stamina,
+      :biorhythm_period,
+      :unique_traits, :abilities, :injury_traits,
+      player_card_defenses_attributes: [
+        :id, :position, :range_value, :error_rank, :throwing, :condition_id, :_destroy
+      ],
+      player_card_traits_attributes: [
+        :id, :trait_definition_id, :role, :sort_order, :condition_id, :_destroy
+      ],
+      player_card_abilities_attributes: [
+        :id, :ability_definition_id, :role, :sort_order, :condition_id, :_destroy
+      ]
     )
   end
 end

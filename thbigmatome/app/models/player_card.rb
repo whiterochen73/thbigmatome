@@ -16,6 +16,10 @@ class PlayerCard < ApplicationRecord
   has_many :player_card_traits, dependent: :destroy
   has_many :player_card_abilities, dependent: :destroy
   has_many :player_card_exclusive_catchers, dependent: :destroy
+
+  accepts_nested_attributes_for :player_card_defenses, allow_destroy: true
+  accepts_nested_attributes_for :player_card_traits, allow_destroy: true
+  accepts_nested_attributes_for :player_card_abilities, allow_destroy: true
   has_many :exclusive_catchers, through: :player_card_exclusive_catchers, source: :catcher_player
 
   validates :card_set_id, :player_id, presence: true

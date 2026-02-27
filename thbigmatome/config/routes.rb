@@ -79,7 +79,7 @@ Rails.application.routes.draw do
         get "roster/cost_check", to: "competition_rosters#cost_check"
       end
       # 選手カード
-      resources :player_cards, only: [ :index, :show ]
+      resources :player_cards, only: [ :index, :show, :update ]
 
       # ホーム画面
       get "home/summary", to: "home#summary"

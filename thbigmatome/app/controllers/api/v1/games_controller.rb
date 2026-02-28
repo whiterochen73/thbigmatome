@@ -42,6 +42,60 @@ class Api::V1::GamesController < Api::V1::BaseController
     end
   end
 
+  def parse_log
+    log_text = params[:log]
+    return render json: { error: "log parameter required" }, status: :bad_request if log_text.blank?
+
+    python_path = ENV.fetch("THBIG_IRC_PARSER_PYTHON", "/home/morinaga/projects/thbig-irc-parser/.venv/bin/python")
+    stdout, stderr, status = Tempfile.create([ "irc_log", ".txt" ]) do |tmp|
+      tmp.write(log_text)
+      tmp.flush
+      Open3.capture3(python_path, "-m", "thbig_irc_parser.parse_game_full", tmp.path)
+    end
+
+    unless status.success?
+      error_message = if stderr.include?("ModuleNotFoundError") || stderr.include?("No module named")
+        "パーサーが見つかりません。thbig_irc_parser のセットアップを確認してください。"
+      else
+        "Parser error: #{stderr.truncate(200)}"
+      end
+      return render json: { error: error_message }, status: :unprocessable_entity
+    end
+
+    result = JSON.parse(stdout)
+    at_bats_data = result["at_bats"]
+    pregame_info = result["pregame_info"]
+
+    all_at_bats = (at_bats_data["innings"] || []).flat_map do |inn|
+      (inn["at_bats"] || []).map do |ab|
+        {
+          inning: inn["inning"],
+          top_bottom: inn["half"],
+          order: ab["ab_num"],
+          batter: ab["batter_name"],
+          pitcher: ab["pitcher_name"],
+          result_code: ab["bat_result"].presence || ab["pitch_result"] || "?",
+          runners_before: ab["runners_before"] || [],
+          outs_after: ab["outs_after"],
+          runners_after: ab["runners_after"] || [],
+          score: ab["score"],
+          events: ab["events"] || []
+        }
+      end
+    end
+
+    render json: {
+      pregame_info: pregame_info,
+      parsed_at_bats: {
+        at_bats: all_at_bats,
+        innings: (at_bats_data["innings"] || []).length
+      },
+      at_bat_count: all_at_bats.length
+    }
+  rescue JSON::ParserError => e
+    render json: { error: "JSON parse error: #{e.message}" }, status: :unprocessable_entity
+  end
+
   def import_log
     log_text = params[:log]
     return render json: { error: "log parameter required" }, status: :bad_request if log_text.blank?

@@ -33,6 +33,7 @@ Rails.application.routes.draw do
       resources :games, only: [ :index, :show, :create ] do
         collection do
           post :import_log
+          post :parse_log
         end
         member do
           post :confirm

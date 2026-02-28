@@ -106,6 +106,68 @@ RSpec.describe "Api::V1::GamesController", type: :request do
     end
   end
 
+  describe "POST /api/v1/games/parse_log" do
+    include_context "authenticated user"
+
+    let(:parse_log_output) do
+      {
+        "at_bats" => {
+          "game_id" => 0,
+          "innings" => [
+            {
+              "inning" => 1,
+              "half" => "top",
+              "at_bats" => [
+                {
+                  "ab_num" => 1,
+                  "batter_name" => "テスト打者",
+                  "pitcher_name" => "テスト投手",
+                  "bat_result" => "1B"
+                }
+              ]
+            }
+          ]
+        },
+        "pregame_info" => {
+          "venue" => "テスト球場",
+          "home_team" => "ホームチーム",
+          "visitor_team" => "ビジターチーム",
+          "home_starter" => "先発A",
+          "visitor_starter" => "先発B",
+          "rain_canceled" => false,
+          "home_lineup" => [],
+          "visitor_lineup" => [],
+          "home_bench" => [],
+          "visitor_bench" => [],
+          "injury_check_result" => nil
+        }
+      }.to_json
+    end
+
+    before do
+      allow(Open3).to receive(:capture3).and_return([ parse_log_output, "", instance_double(Process::Status, success?: true) ])
+    end
+
+    it "parse_log成功: DBに保存せずparsed_at_batsとpregame_infoを返すこと" do
+      expect {
+        post "/api/v1/games/parse_log", params: { log: "dummy log" }, as: :json
+      }.not_to change(Game, :count)
+
+      expect(response).to have_http_status(:ok)
+      json = response.parsed_body
+      expect(json["pregame_info"]["venue"]).to eq("テスト球場")
+      expect(json["pregame_info"]["home_team"]).to eq("ホームチーム")
+      expect(json["at_bat_count"]).to eq(1)
+      expect(json["parsed_at_bats"]["innings"]).to eq(1)
+    end
+
+    it "logパラメーター不足の場合400を返すこと" do
+      post "/api/v1/games/parse_log", params: {}, as: :json
+
+      expect(response).to have_http_status(:bad_request)
+    end
+  end
+
   describe "POST /api/v1/games/import_log" do
     include_context "authenticated user"
 

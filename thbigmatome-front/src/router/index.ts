@@ -178,6 +178,18 @@ const routes: RouteRecordRaw[] = [
         component: () => import('@/views/PlayerCardDetailView.vue'),
         meta: { requiresAuth: true, title: '選手カード詳細' },
       },
+      {
+        path: '/game-records',
+        name: 'GameRecordList',
+        component: () => import('@/views/GameRecordListView.vue'),
+        meta: { requiresAuth: true, title: 'パーサーレビュー' },
+      },
+      {
+        path: '/game-records/:id',
+        name: 'GameRecordDetail',
+        component: () => import('@/views/GameRecordDetailView.vue'),
+        meta: { requiresAuth: true, title: 'パーサーレビュー詳細' },
+      },
     ],
   },
   {

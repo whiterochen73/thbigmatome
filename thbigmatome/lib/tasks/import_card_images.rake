@@ -24,7 +24,7 @@ namespace :import do
     CSV.foreach(csv_path, headers: true) do |row|
       seq = row["card_seq"].to_i
       src = row["card_source"]
-      seq_map[seq] = { name: row["name"], card_source: src }
+      seq_map[seq] = { name: row["name"], card_source: src, card_type: row["card_type"] }
       base_seqs[src] = [base_seqs.fetch(src, seq), seq].min
     end
     puts "Loaded #{seq_map.size} rows from CSV"
@@ -83,9 +83,10 @@ namespace :import do
           next
         end
 
-        pc = PlayerCard.find_by(card_set: card_set, player: player)
+        card_type = entry[:card_type]
+        pc = PlayerCard.find_by(card_set: card_set, player: player, card_type: card_type)
         unless pc
-          puts "  SKIP: PlayerCard not found: '#{player_name}' / #{card_set_name} (card_seq=#{card_seq})"
+          puts "  SKIP: PlayerCard not found: '#{player_name}' / #{card_set_name} / #{card_type} (card_seq=#{card_seq})"
           total_skipped += 1
           next
         end

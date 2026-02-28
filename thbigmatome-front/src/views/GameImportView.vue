@@ -766,8 +766,8 @@ const pitcherSummary = computed((): PitcherStat[] => {
   return Array.from(pitcherMap.entries())
     .sort(([, a], [, b]) => a.order - b.order)
     .map(([name, ps], idx) => {
-      const firstHalfLabel = ps.firstHalf === '表' ? '表' : '裏'
-      const lastHalfLabel = ps.lastHalf === '表' ? '表' : '裏'
+      const firstHalfLabel = ps.firstHalf === 'top' ? '表' : '裏'
+      const lastHalfLabel = ps.lastHalf === 'top' ? '表' : '裏'
       const entry =
         ps.firstInning === ps.lastInning && ps.firstHalf === ps.lastHalf
           ? `${ps.firstInning}回${firstHalfLabel}`
@@ -806,7 +806,7 @@ const previewItems = computed(() => {
     const scoreBefore = `${visitorScore}-${homeScore}`
     const rs = ab.runs_scored ?? 0
     if (rs > 0) {
-      if (ab.top_bottom === '表') {
+      if (ab.top_bottom === 'top') {
         visitorScore += rs
       } else {
         homeScore += rs

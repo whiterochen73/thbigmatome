@@ -79,6 +79,9 @@ class Api::V1::GamesController < Api::V1::BaseController
           outs_after: ab["outs_after"],
           runners_after: ab["runners_after"] || [],
           score: ab["score"],
+          runs_scored: ab["runs_scored"] || 0,
+          wild_pitch: ab["wild_pitch"] || false,
+          wild_pitch_type: ab["wild_pitch_type"],
           events: ab["events"] || []
         }
       end
@@ -156,6 +159,9 @@ class Api::V1::GamesController < Api::V1::BaseController
           outs_after: ab["outs_after"],
           runners_after: ab["runners_after"] || [],
           score: ab["score"],
+          runs_scored: ab["runs_scored"] || 0,
+          wild_pitch: ab["wild_pitch"] || false,
+          wild_pitch_type: ab["wild_pitch_type"],
           events: ab["events"] || []
         }
       end

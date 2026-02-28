@@ -185,4 +185,142 @@ describe('GameImportView', () => {
     expect(mockedAxios.get).toHaveBeenCalledWith('/competitions')
     expect(wrapper.exists()).toBe(true)
   })
+
+  describe('Step 3: preview features', () => {
+    const mockAtBats = [
+      {
+        inning: 1,
+        top_bottom: '表',
+        order: 1,
+        batter: '打者A',
+        pitcher: '投手X',
+        result_code: 'H7',
+        runners_before: [],
+        outs_after: 0,
+        runners_after: [1],
+        score: null,
+        runs_scored: 1,
+        wild_pitch: false,
+        wild_pitch_type: null,
+        events: [],
+      },
+      {
+        inning: 1,
+        top_bottom: '裏',
+        order: 1,
+        batter: '打者B',
+        pitcher: '投手Y',
+        result_code: 'K',
+        runners_before: [],
+        outs_after: 1,
+        runners_after: [],
+        score: null,
+        runs_scored: 0,
+        wild_pitch: false,
+        wild_pitch_type: null,
+        events: [{ type: 'pitcher_change', speaker: 'GM', text: '投手交代' }],
+      },
+      {
+        inning: 2,
+        top_bottom: '裏',
+        order: 1,
+        batter: '打者C',
+        pitcher: '投手Z',
+        result_code: 'BB',
+        runners_before: [],
+        outs_after: 0,
+        runners_after: [1],
+        score: null,
+        runs_scored: 2,
+        wild_pitch: true,
+        wild_pitch_type: '3-19',
+        events: [],
+      },
+    ]
+
+    const mockImportResponse = {
+      game: { id: 42, status: 'draft' },
+      parsed_at_bats: { at_bats: mockAtBats, innings: 2 },
+      at_bat_count: 3,
+      imported_count: 3,
+    }
+
+    async function mountToStep3() {
+      mockedAxios.post = vi
+        .fn()
+        .mockResolvedValueOnce({ data: mockParseResponse })
+        .mockResolvedValueOnce({ data: mockImportResponse })
+      const wrapper = mount(GameImportView, { global: { plugins: [vuetify] } })
+      await flushPromises()
+
+      const textarea = wrapper.find('textarea')
+      await textarea.setValue('テストIRCログ')
+      const analyzeBtn = wrapper.findAll('.v-btn').find((b) => b.text().includes('解析する'))
+      await analyzeBtn!.trigger('click')
+      await flushPromises()
+
+      const vm = wrapper.vm as unknown as {
+        formData: { competition_id: number; home_team_id: number; visitor_team_id: number }
+      }
+      vm.formData.competition_id = 1
+      vm.formData.home_team_id = 10
+      vm.formData.visitor_team_id = 20
+      await wrapper.vm.$nextTick()
+
+      const importBtn = wrapper.findAll('.v-btn').find((b) => b.text().includes('インポート'))
+      await importBtn!.trigger('click')
+      await flushPromises()
+
+      return wrapper
+    }
+
+    it('shows Step 3 preview after import', async () => {
+      const wrapper = await mountToStep3()
+      expect(wrapper.text()).toContain('Step 3')
+      expect(wrapper.text()).toContain('解析結果プレビュー')
+    })
+
+    it('shows line score section', async () => {
+      const wrapper = await mountToStep3()
+      expect(wrapper.text()).toContain('ラインスコア')
+      expect(wrapper.text()).toContain('ビジター')
+      expect(wrapper.text()).toContain('ホーム')
+    })
+
+    it('shows pitcher summary section', async () => {
+      const wrapper = await mountToStep3()
+      expect(wrapper.text()).toContain('投手サマリー')
+      expect(wrapper.text()).toContain('投手X')
+      expect(wrapper.text()).toContain('投手Y')
+      expect(wrapper.text()).toContain('投手Z')
+    })
+
+    it('shows at-bat list', async () => {
+      const wrapper = await mountToStep3()
+      expect(wrapper.text()).toContain('打席一覧')
+      expect(wrapper.text()).toContain('打者A')
+      expect(wrapper.text()).toContain('打者B')
+    })
+
+    it('pitcher summary shows starter chip for first pitcher', async () => {
+      const wrapper = await mountToStep3()
+      expect(wrapper.text()).toContain('先発')
+    })
+
+    it('shows confirm and reset buttons in Step 3', async () => {
+      const wrapper = await mountToStep3()
+      expect(wrapper.text()).toContain('確定してDB保存')
+      expect(wrapper.text()).toContain('やり直し')
+    })
+
+    it('wild_pitch event is shown in editable events', async () => {
+      const wrapper = await mountToStep3()
+      // 暴投がある at-bat (index 2) の editableEvents に wild_pitch が含まれること
+      const vm = wrapper.vm as unknown as {
+        editableEvents: Map<number, Array<{ type: string; text: string }>>
+      }
+      const evs2 = vm.editableEvents.get(2) ?? []
+      expect(evs2.some((e) => e.type === 'wild_pitch')).toBe(true)
+    })
+  })
 })

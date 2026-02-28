@@ -29,7 +29,7 @@
             size="small"
             @click="router.push({ name: 'GameRecordList' })"
           />
-          <h1 class="text-h5">{{ gameRecord.away_team_name }} @ {{ gameRecord.home_team_name }}</h1>
+          <h1 class="text-h5">vs {{ gameRecord.opponent_team_name }}</h1>
           <v-chip
             :color="gameRecord.status === 'confirmed' ? 'success' : 'amber-darken-2'"
             size="small"
@@ -53,12 +53,12 @@
                 <v-col cols="auto" class="mr-4">
                   <span class="text-caption text-grey">スコア</span><br />
                   <span class="font-weight-bold">
-                    {{ gameRecord.away_score ?? '?' }} - {{ gameRecord.home_score ?? '?' }}
+                    {{ gameRecord.score_away ?? '?' }} - {{ gameRecord.score_home ?? '?' }}
                   </span>
                 </v-col>
-                <v-col cols="auto" class="mr-4" v-if="gameRecord.venue">
+                <v-col cols="auto" class="mr-4" v-if="gameRecord.stadium">
                   <span class="text-caption text-grey">球場</span><br />
-                  <span>{{ gameRecord.venue }}</span>
+                  <span>{{ gameRecord.stadium }}</span>
                 </v-col>
                 <v-col cols="auto">
                   <span class="text-caption text-grey">打席数</span><br />
@@ -296,7 +296,7 @@ interface AtBatRecord {
   id: number
   game_record_id: number
   inning: number
-  half_inning: 'top' | 'bottom'
+  half: 'top' | 'bottom'
   ab_num: number
   batter_name: string
   pitcher_name: string
@@ -313,12 +313,12 @@ interface AtBatRecord {
 interface GameRecord {
   id: number
   game_date: string
-  home_team_name: string
-  away_team_name: string
-  home_score: number | null
-  away_score: number | null
+  team_id: number
+  opponent_team_name: string
+  score_home: number | null
+  score_away: number | null
   status: 'draft' | 'confirmed'
-  venue: string | null
+  stadium: string | null
   at_bat_records: AtBatRecord[]
 }
 
@@ -348,7 +348,7 @@ const inningGroups = computed<InningGroup[]>(() => {
   if (!gameRecord.value?.at_bat_records) return []
   const map = new Map<string, AtBatRecord[]>()
   for (const ab of gameRecord.value.at_bat_records) {
-    const key = `${ab.inning}-${ab.half_inning}`
+    const key = `${ab.inning}-${ab.half}`
     if (!map.has(key)) map.set(key, [])
     map.get(key)!.push(ab)
   }
@@ -419,9 +419,7 @@ async function saveEdit(ab: AtBatRecord) {
   cancelEdit()
 
   try {
-    const response = await axios.patch<AtBatRecord>(`/at_bat_records/${ab.id}`, {
-      at_bat_record: patchBody,
-    })
+    const response = await axios.patch<AtBatRecord>(`/at_bat_records/${ab.id}`, patchBody)
     // サーバーから返ったデータでis_modified等を更新
     const updated = response.data
     ab.is_modified = updated.is_modified

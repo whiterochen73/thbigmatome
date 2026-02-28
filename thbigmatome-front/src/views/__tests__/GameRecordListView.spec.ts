@@ -43,31 +43,33 @@ const mockGameRecords = [
   {
     id: 1,
     game_date: '2024-05-01',
-    home_team_name: '博麗神社',
-    away_team_name: '霧雨チーム',
-    home_score: 3,
-    away_score: 1,
+    team_id: 1,
+    opponent_team_name: '霧雨チーム',
+    score_home: 3,
+    score_away: 1,
     status: 'draft',
-    venue: '幻想郷球場',
-    at_bat_count: 18,
+    stadium: '幻想郷球場',
   },
   {
     id: 2,
     game_date: '2024-05-08',
-    home_team_name: '紅魔館',
-    away_team_name: '白玉楼',
-    home_score: 5,
-    away_score: 2,
+    team_id: 2,
+    opponent_team_name: '白玉楼',
+    score_home: 5,
+    score_away: 2,
     status: 'confirmed',
-    venue: null,
-    at_bat_count: 24,
+    stadium: null,
   },
 ]
+
+const mockPagination = { page: 1, per_page: 20, total: 2, total_pages: 1 }
 
 describe('GameRecordListView', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    vi.mocked(axios.get).mockResolvedValue({ data: mockGameRecords })
+    vi.mocked(axios.get).mockResolvedValue({
+      data: { game_records: mockGameRecords, pagination: mockPagination },
+    })
   })
 
   it('コンポーネントがマウントされること', async () => {
@@ -96,7 +98,7 @@ describe('GameRecordListView', () => {
     const wrapper = mount(GameRecordListView, { global: { plugins: [vuetify, router] } })
     await flushPromises()
     expect(wrapper.text()).toContain('霧雨チーム')
-    expect(wrapper.text()).toContain('博麗神社')
+    expect(wrapper.text()).toContain('白玉楼')
   })
 
   it('APIエラー時にエラーメッセージが表示されること', async () => {

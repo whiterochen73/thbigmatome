@@ -46,7 +46,7 @@ const mockAtBatRecords = [
     id: 1,
     game_record_id: 1,
     inning: 1,
-    half_inning: 'top',
+    half: 'top',
     ab_num: 1,
     batter_name: '博麗霊夢',
     pitcher_name: '霧雨魔理沙',
@@ -63,7 +63,7 @@ const mockAtBatRecords = [
     id: 2,
     game_record_id: 1,
     inning: 1,
-    half_inning: 'top',
+    half: 'top',
     ab_num: 2,
     batter_name: '霧雨魔理沙',
     pitcher_name: '霧雨魔理沙',
@@ -81,12 +81,12 @@ const mockAtBatRecords = [
 const mockGameRecord = {
   id: 1,
   game_date: '2024-05-01',
-  home_team_name: '博麗神社',
-  away_team_name: '霧雨チーム',
-  home_score: 3,
-  away_score: 1,
+  team_id: 1,
+  opponent_team_name: '霧雨チーム',
+  score_home: 3,
+  score_away: 1,
   status: 'draft',
-  venue: '幻想郷球場',
+  stadium: '幻想郷球場',
   at_bat_records: mockAtBatRecords,
 }
 
@@ -117,7 +117,6 @@ describe('GameRecordDetailView', () => {
     await router.isReady()
     const wrapper = mount(GameRecordDetailView, { global: { plugins: [vuetify, router] } })
     await flushPromises()
-    expect(wrapper.text()).toContain('博麗神社')
     expect(wrapper.text()).toContain('霧雨チーム')
     expect(wrapper.text()).toContain('幻想郷球場')
   })

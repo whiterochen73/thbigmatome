@@ -47,13 +47,11 @@
             {{ formatDate(item.game_date) }}
           </template>
 
-          <template v-slot:[`item.matchup`]="{ item }">
-            {{ item.away_team_name }} @ {{ item.home_team_name }}
-          </template>
+          <template v-slot:[`item.matchup`]="{ item }"> vs {{ item.opponent_team_name }} </template>
 
           <template v-slot:[`item.score`]="{ item }">
-            <span v-if="item.home_score !== null && item.away_score !== null">
-              {{ item.away_score }} - {{ item.home_score }}
+            <span v-if="item.score_home !== null && item.score_away !== null">
+              {{ item.score_away }} - {{ item.score_home }}
             </span>
             <span v-else class="text-grey">-</span>
           </template>
@@ -66,10 +64,6 @@
             >
               {{ item.status === 'confirmed' ? '確定済み' : '未確定' }}
             </v-chip>
-          </template>
-
-          <template v-slot:[`item.at_bat_count`]="{ item }">
-            {{ item.at_bat_count ?? '-' }}
           </template>
 
           <template v-slot:[`item.action`]="{ item }">
@@ -94,13 +88,12 @@ import axios from '@/plugins/axios'
 interface GameRecord {
   id: number
   game_date: string
-  home_team_name: string
-  away_team_name: string
-  home_score: number | null
-  away_score: number | null
+  team_id: number
+  opponent_team_name: string
+  score_home: number | null
+  score_away: number | null
   status: 'draft' | 'confirmed'
-  venue: string | null
-  at_bat_count: number | null
+  stadium: string | null
 }
 
 const router = useRouter()
@@ -118,8 +111,7 @@ const headers = [
   { title: '日付', key: 'game_date', width: '110px' },
   { title: '対戦カード', key: 'matchup', sortable: false },
   { title: 'スコア', key: 'score', sortable: false, width: '90px' },
-  { title: '球場', key: 'venue', width: '120px' },
-  { title: '打席数', key: 'at_bat_count', width: '80px' },
+  { title: '球場', key: 'stadium', width: '120px' },
   { title: 'ステータス', key: 'status', width: '110px' },
   { title: '', key: 'action', sortable: false, width: '50px' },
 ]
@@ -138,8 +130,11 @@ async function fetchGameRecords() {
   loading.value = true
   errorMessage.value = ''
   try {
-    const response = await axios.get<GameRecord[]>('/game_records')
-    gameRecords.value = response.data
+    const response = await axios.get<{
+      game_records: GameRecord[]
+      pagination: Record<string, number>
+    }>('/game_records')
+    gameRecords.value = response.data.game_records
   } catch {
     errorMessage.value = '試合記録の取得に失敗しました'
   } finally {

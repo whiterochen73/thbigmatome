@@ -1,5 +1,4 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { ref } from 'vue'
 import { mount, flushPromises } from '@vue/test-utils'
 import { createVuetify } from 'vuetify'
 import * as components from 'vuetify/components'
@@ -10,6 +9,7 @@ vi.mock('axios', () => {
   const mockAxios = {
     get: vi.fn(),
     post: vi.fn(),
+    isAxiosError: vi.fn().mockReturnValue(false),
     defaults: {
       baseURL: '',
       withCredentials: false,
@@ -27,17 +27,10 @@ vi.mock('@/plugins/axios', () => ({ default: {} }))
 vi.mock('@/composables/useSnackbar', () => ({
   useSnackbar: () => ({ showSnackbar: vi.fn() }),
 }))
-
-const mockUser = ref<{ id: number; name: string; role: string } | null>({
-  id: 1,
-  name: 'テストユーザー',
-  role: 'player',
-})
-const mockIsCommissioner = ref(false)
 vi.mock('@/composables/useAuth', () => ({
   useAuth: () => ({
-    user: mockUser,
-    isCommissioner: mockIsCommissioner,
+    user: { id: 1, name: 'テストユーザー', role: 'player' },
+    isCommissioner: false,
   }),
 }))
 
@@ -56,11 +49,27 @@ const mockTeams = [
   { id: 20, name: '相手チーム', short_name: '相手', user_id: 2, is_active: true },
 ]
 
+const mockParseResponse = {
+  pregame_info: {
+    venue: 'テスト球場',
+    home_team: 'ホームチーム',
+    visitor_team: 'ビジターチーム',
+    home_starter: '先発A',
+    visitor_starter: '先発B',
+    rain_canceled: false,
+    home_lineup: [],
+    visitor_lineup: [],
+    home_bench: [],
+    visitor_bench: [],
+    injury_check_result: null,
+  },
+  parsed_at_bats: { at_bats: [], innings: 9 },
+  at_bat_count: 27,
+}
+
 describe('GameImportView', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockUser.value = { id: 1, name: 'テストユーザー', role: 'player' }
-    mockIsCommissioner.value = false
     mockedAxios.get = vi
       .fn()
       .mockResolvedValueOnce({ data: mockCompetitions })
@@ -79,6 +88,15 @@ describe('GameImportView', () => {
     expect(wrapper.text()).toContain('IRCログ取り込み')
   })
 
+  it('Step 1 shows only log textarea and analyze button', async () => {
+    const wrapper = mount(GameImportView, { global: { plugins: [vuetify] } })
+    await flushPromises()
+    expect(wrapper.text()).toContain('Step 1')
+    expect(wrapper.text()).toContain('ログ入力')
+    const btn = wrapper.findAll('.v-btn').find((b) => b.text().includes('解析する'))
+    expect(btn).toBeTruthy()
+  })
+
   it('shows error message when master data fetch fails on mount', async () => {
     mockedAxios.get = vi.fn().mockRejectedValue(new Error('Network Error'))
     const wrapper = mount(GameImportView, { global: { plugins: [vuetify] } })
@@ -86,14 +104,8 @@ describe('GameImportView', () => {
     expect(wrapper.text()).toContain('データの取得に失敗しました')
   })
 
-  it('parse button triggers import_log API', async () => {
-    mockedAxios.post = vi.fn().mockResolvedValue({
-      data: {
-        game: { id: 42, status: 'draft' },
-        parsed_at_bats: { at_bats: [], innings: 9 },
-        at_bat_count: 27,
-      },
-    })
+  it('analyze button calls parse_log API', async () => {
+    mockedAxios.post = vi.fn().mockResolvedValue({ data: mockParseResponse })
     const wrapper = mount(GameImportView, { global: { plugins: [vuetify] } })
     await flushPromises()
 
@@ -105,45 +117,72 @@ describe('GameImportView', () => {
     await btn!.trigger('click')
     await flushPromises()
 
+    expect(mockedAxios.post).toHaveBeenCalledWith('/games/parse_log', { log: 'テストIRCログ' })
+  })
+
+  it('after analyze, advances to Step 2 with pregame info', async () => {
+    mockedAxios.post = vi.fn().mockResolvedValue({ data: mockParseResponse })
+    const wrapper = mount(GameImportView, { global: { plugins: [vuetify] } })
+    await flushPromises()
+
+    const textarea = wrapper.find('textarea')
+    await textarea.setValue('テストIRCログ')
+
+    const btn = wrapper.findAll('.v-btn').find((b) => b.text().includes('解析する'))
+    await btn!.trigger('click')
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('Step 2')
+    expect(wrapper.text()).toContain('自動検出情報')
+  })
+
+  it('Step 2 import button calls import_log API', async () => {
+    mockedAxios.post = vi
+      .fn()
+      .mockResolvedValueOnce({ data: mockParseResponse })
+      .mockResolvedValueOnce({
+        data: {
+          game: { id: 42, status: 'draft' },
+          parsed_at_bats: { at_bats: [], innings: 9 },
+          at_bat_count: 27,
+          imported_count: 0,
+        },
+      })
+    const wrapper = mount(GameImportView, { global: { plugins: [vuetify] } })
+    await flushPromises()
+
+    const textarea = wrapper.find('textarea')
+    await textarea.setValue('テストIRCログ')
+
+    const analyzeBtn = wrapper.findAll('.v-btn').find((b) => b.text().includes('解析する'))
+    await analyzeBtn!.trigger('click')
+    await flushPromises()
+
+    // Set required form values directly to enable the import button
+    const vm = wrapper.vm as unknown as {
+      formData: { competition_id: number; home_team_id: number; visitor_team_id: number }
+    }
+    vm.formData.competition_id = 1
+    vm.formData.home_team_id = 10
+    vm.formData.visitor_team_id = 20
+    await wrapper.vm.$nextTick()
+
+    // Step 2 import button
+    const importBtn = wrapper.findAll('.v-btn').find((b) => b.text().includes('インポート'))
+    expect(importBtn).toBeTruthy()
+    await importBtn!.trigger('click')
+    await flushPromises()
+
     expect(mockedAxios.post).toHaveBeenCalledWith(
       '/games/import_log',
       expect.objectContaining({ log: 'テストIRCログ' }),
     )
   })
 
-  it('does not show mode toggle for non-commissioner users', async () => {
-    mockIsCommissioner.value = false
-    const wrapper = mount(GameImportView, { global: { plugins: [vuetify] } })
-    await flushPromises()
-    expect(wrapper.text()).not.toContain('コミッショナーモード')
-  })
-
-  it('shows mode toggle for commissioner users', async () => {
-    mockIsCommissioner.value = true
-    const wrapper = mount(GameImportView, { global: { plugins: [vuetify] } })
-    await flushPromises()
-    expect(wrapper.text()).toContain('コミッショナーモード')
-    expect(wrapper.text()).toContain('プレイヤーモード')
-  })
-
-  it('fetches teams for league_pennant competition by default', async () => {
+  it('fetches competitions on mount', async () => {
     const wrapper = mount(GameImportView, { global: { plugins: [vuetify] } })
     await flushPromises()
     expect(mockedAxios.get).toHaveBeenCalledWith('/competitions')
-    expect(mockedAxios.get).toHaveBeenCalledWith('/competitions/1/teams')
     expect(wrapper.exists()).toBe(true)
-  })
-
-  it('shows my team error when user has no matching team', async () => {
-    const teamsWithoutMyTeam = [
-      { id: 20, name: '相手チーム', short_name: '相手', user_id: 2, is_active: true },
-    ]
-    mockedAxios.get = vi
-      .fn()
-      .mockResolvedValueOnce({ data: mockCompetitions })
-      .mockResolvedValueOnce({ data: teamsWithoutMyTeam })
-    const wrapper = mount(GameImportView, { global: { plugins: [vuetify] } })
-    await flushPromises()
-    expect(wrapper.text()).toContain('あなたのチームが見つかりません')
   })
 })

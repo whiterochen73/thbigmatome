@@ -47,15 +47,21 @@ class Api::V1::GamesController < Api::V1::BaseController
     return render json: { error: "log parameter required" }, status: :bad_request if log_text.blank?
 
     # パーサー呼び出し
+    python_path = ENV.fetch("THBIG_IRC_PARSER_PYTHON", "/home/morinaga/projects/thbig-irc-parser/.venv/bin/python")
     stdout, stderr, status = Tempfile.create([ "irc_log", ".txt" ]) do |tmp|
       tmp.write(log_text)
       tmp.flush
       line_count = log_text.lines.count
-      Open3.capture3("python3", "-m", "thbig_irc_parser.log_parser", tmp.path, "1", line_count.to_s)
+      Open3.capture3(python_path, "-m", "thbig_irc_parser.log_parser", tmp.path, "1", line_count.to_s)
     end
 
     unless status.success?
-      return render json: { error: "Parser error: #{stderr.truncate(200)}" }, status: :unprocessable_entity
+      error_message = if stderr.include?("ModuleNotFoundError") || stderr.include?("No module named")
+        "パーサーが見つかりません。thbig_irc_parser のセットアップを確認してください。"
+      else
+        "Parser error: #{stderr.truncate(200)}"
+      end
+      return render json: { error: error_message }, status: :unprocessable_entity
     end
 
     parsed = JSON.parse(stdout)

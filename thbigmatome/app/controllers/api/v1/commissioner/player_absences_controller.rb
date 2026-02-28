@@ -17,7 +17,7 @@ class Api::V1::Commissioner::PlayerAbsencesController < Api::V1::Commissioner::B
     if @player_absence.save
       render json: @player_absence, status: :created
     else
-      render json: @player_absence.errors, status: :unprocessable_entity
+      render json: @player_absence.errors, status: :unprocessable_content
     end
   end
 
@@ -25,7 +25,7 @@ class Api::V1::Commissioner::PlayerAbsencesController < Api::V1::Commissioner::B
     if @player_absence.update(player_absence_params)
       render json: @player_absence
     else
-      render json: @player_absence.errors, status: :unprocessable_entity
+      render json: @player_absence.errors, status: :unprocessable_content
     end
   end
 

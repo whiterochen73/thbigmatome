@@ -16,7 +16,7 @@ class Api::V1::CompetitionsController < Api::V1::BaseController
     if competition.save
       render json: competition, serializer: CompetitionSerializer, status: :created
     else
-      render json: { errors: competition.errors.full_messages }, status: :unprocessable_entity
+      render json: { errors: competition.errors.full_messages }, status: :unprocessable_content
     end
   end
 
@@ -25,7 +25,7 @@ class Api::V1::CompetitionsController < Api::V1::BaseController
     if competition.update(competition_params)
       render json: competition, serializer: CompetitionSerializer
     else
-      render json: { errors: competition.errors.full_messages }, status: :unprocessable_entity
+      render json: { errors: competition.errors.full_messages }, status: :unprocessable_content
     end
   end
 

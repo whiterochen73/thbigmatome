@@ -15,7 +15,7 @@ module Api
         if @biorhythm.save
           render json: @biorhythm, status: :created
         else
-          render json: { errors: @biorhythm.errors.full_messages }, status: :unprocessable_entity
+          render json: { errors: @biorhythm.errors.full_messages }, status: :unprocessable_content
         end
       end
 
@@ -24,7 +24,7 @@ module Api
         if @biorhythm.update(biorhythm_params)
           render json: @biorhythm
         else
-          render json: { errors: @biorhythm.errors.full_messages }, status: :unprocessable_entity
+          render json: { errors: @biorhythm.errors.full_messages }, status: :unprocessable_content
         end
       end
 

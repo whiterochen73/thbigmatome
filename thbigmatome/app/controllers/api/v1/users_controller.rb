@@ -17,7 +17,7 @@ module Api
         if user.save
           render json: user.slice(:id, :name, :display_name, :role), status: :created
         else
-          render json: { errors: user.errors.full_messages }, status: :unprocessable_entity
+          render json: { errors: user.errors.full_messages }, status: :unprocessable_content
         end
       end
 
@@ -32,7 +32,7 @@ module Api
         if @user.update(password: params[:password])
           render json: { message: "パスワードをリセットしました" }
         else
-          render json: { errors: @user.errors.full_messages }, status: :unprocessable_entity
+          render json: { errors: @user.errors.full_messages }, status: :unprocessable_content
         end
       end
 

@@ -42,7 +42,7 @@ RSpec.describe "Api::V1::AtBatRecordsController", type: :request do
       patch "/api/v1/at_bat_records/#{at_bat_record.id}",
             params: { strategy: "invalid" },
             as: :json
-      expect(response).to have_http_status(:unprocessable_entity)
+      expect(response).to have_http_status(:unprocessable_content)
     end
 
     it "存在しないidは404を返す" do

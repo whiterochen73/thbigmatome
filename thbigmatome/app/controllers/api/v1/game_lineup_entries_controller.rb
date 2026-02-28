@@ -13,7 +13,7 @@ class Api::V1::GameLineupEntriesController < Api::V1::BaseController
     if result[:success]
       render json: { lineup: result[:lineup] }, status: :created
     else
-      render json: { errors: result[:errors] }, status: :unprocessable_entity
+      render json: { errors: result[:errors] }, status: :unprocessable_content
     end
   end
 
@@ -23,7 +23,7 @@ class Api::V1::GameLineupEntriesController < Api::V1::BaseController
     if result[:success]
       render json: { lineup: result[:lineup] }, status: :ok
     else
-      render json: { errors: result[:errors] }, status: :unprocessable_entity
+      render json: { errors: result[:errors] }, status: :unprocessable_content
     end
   end
 

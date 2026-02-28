@@ -228,7 +228,7 @@ RSpec.describe "Api::V1::TeamRosters", type: :request do
           { team_membership_id: result[:membership].id, squad: "first" }
         ])
 
-        expect(response).to have_http_status(:unprocessable_entity)
+        expect(response).to have_http_status(:unprocessable_content)
         json = response.parsed_body
         expect(json["error"]).to include("cooldown")
         expect(result[:membership].reload.squad).to eq("second")
@@ -277,7 +277,7 @@ RSpec.describe "Api::V1::TeamRosters", type: :request do
           { team_membership_id: result[:membership].id, squad: "first" }
         ])
 
-        expect(response).to have_http_status(:unprocessable_entity)
+        expect(response).to have_http_status(:unprocessable_content)
         json = response.parsed_body
         expect(json["error"]).to include("再調整中")
         expect(result[:membership].reload.squad).to eq("second")
@@ -318,7 +318,7 @@ RSpec.describe "Api::V1::TeamRosters", type: :request do
           { team_membership_id: result[:membership].id, squad: "first" }
         ])
 
-        expect(response).to have_http_status(:unprocessable_entity)
+        expect(response).to have_http_status(:unprocessable_content)
         json = response.parsed_body
         expect(json["error"]).to include("コスト")
       end
@@ -354,7 +354,7 @@ RSpec.describe "Api::V1::TeamRosters", type: :request do
           { team_membership_id: r[:membership].id, squad: "first" }
         ])
 
-        expect(response).to have_http_status(:unprocessable_entity)
+        expect(response).to have_http_status(:unprocessable_content)
         json = response.parsed_body
         expect(json["error"]).to be_present
       end

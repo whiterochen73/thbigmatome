@@ -89,7 +89,7 @@ RSpec.describe "Api::V1::PlayersController", type: :request do
     it "returns 422 with invalid params" do
       post "/api/v1/players", params: { player: { name: "不完全" } }, as: :json
 
-      expect(response).to have_http_status(:unprocessable_entity)
+      expect(response).to have_http_status(:unprocessable_content)
       json = response.parsed_body
       expect(json["errors"]).to be_present
     end

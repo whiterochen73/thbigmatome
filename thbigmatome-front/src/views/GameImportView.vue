@@ -444,6 +444,7 @@ interface ParseResponse {
   pregame_info: PregameInfo
   parsed_at_bats: ParsedAtBats
   at_bat_count: number
+  raw_at_bats: object
 }
 
 interface ImportResponse {
@@ -464,7 +465,7 @@ interface PitcherStat {
   isStarter: boolean
 }
 
-interface PreviewItem extends AtBat {
+interface PreviewItem extends Omit<AtBat, 'outs_after'> {
   index: number
   runners: string
   outs_after: string
@@ -509,6 +510,7 @@ const formData = ref({
 })
 
 const importResult = ref<ImportResponse | null>(null)
+const rawAtBats = ref<object | null>(null)
 
 // Step 3 state
 const expandedRows = ref<number[]>([])
@@ -584,6 +586,7 @@ async function analyzeLog() {
       home_starter: info.home_starter ?? '',
       visitor_starter: info.visitor_starter ?? '',
     }
+    rawAtBats.value = response.data.raw_at_bats ?? null
     currentStep.value = 2
   } catch (error) {
     if (axios.isAxiosError(error) && error.response) {
@@ -605,6 +608,7 @@ async function importLog() {
     const response = await axios.post<ImportResponse>('/games/import_log', {
       log: logText.value,
       ...formData.value,
+      ...(rawAtBats.value ? { raw_at_bats: JSON.stringify(rawAtBats.value) } : {}),
     })
     importResult.value = response.data
     currentStep.value = 3
@@ -720,6 +724,15 @@ function isStrikeout(rc: string): boolean {
 const pitcherSummary = computed((): PitcherStat[] => {
   if (!importResult.value) return []
   const atBats = importResult.value.parsed_at_bats.at_bats
+
+  // 各half(top/bottom)で最初に登場した投手がその側の先発
+  const firstPitcherByHalf = new Map<string, string>()
+  atBats.forEach((ab) => {
+    if (!firstPitcherByHalf.has(ab.top_bottom)) {
+      firstPitcherByHalf.set(ab.top_bottom, ab.pitcher)
+    }
+  })
+
   const pitcherMap = new Map<
     string,
     {
@@ -765,7 +778,7 @@ const pitcherSummary = computed((): PitcherStat[] => {
 
   return Array.from(pitcherMap.entries())
     .sort(([, a], [, b]) => a.order - b.order)
-    .map(([name, ps], idx) => {
+    .map(([name, ps]) => {
       const firstHalfLabel = ps.firstHalf === 'top' ? '表' : '裏'
       const lastHalfLabel = ps.lastHalf === 'top' ? '表' : '裏'
       const entry =
@@ -780,7 +793,7 @@ const pitcherSummary = computed((): PitcherStat[] => {
         walks: ps.walks,
         strikeouts: ps.strikeouts,
         runs: ps.runs,
-        isStarter: idx === 0,
+        isStarter: firstPitcherByHalf.get(ps.firstHalf) === name,
       }
     })
 })
@@ -881,6 +894,7 @@ function resetAll() {
   currentStep.value = 1
   logText.value = ''
   importResult.value = null
+  rawAtBats.value = null
   errorMessage.value = ''
   expandedRows.value = []
   editableEvents.value = new Map()

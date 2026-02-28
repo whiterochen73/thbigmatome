@@ -11,7 +11,7 @@ class Api::V1::SchedulesController < Api::V1::BaseController
     if schedule.save
       render json: schedule, status: :created
     else
-      render json: schedule.errors, status: :unprocessable_entity
+      render json: schedule.errors, status: :unprocessable_content
     end
   end
 
@@ -19,7 +19,7 @@ class Api::V1::SchedulesController < Api::V1::BaseController
     if @schedule.update(schedule_params)
       render json: @schedule
     else
-      render json: @schedule.errors, status: :unprocessable_entity
+      render json: @schedule.errors, status: :unprocessable_content
     end
   end
 

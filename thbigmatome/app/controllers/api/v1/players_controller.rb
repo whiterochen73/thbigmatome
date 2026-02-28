@@ -14,7 +14,7 @@ class Api::V1::PlayersController < Api::V1::BaseController
     if player.save
       render json: player, status: :created
     else
-      render json: { errors: player.errors.full_messages }, status: :unprocessable_entity
+      render json: { errors: player.errors.full_messages }, status: :unprocessable_content
     end
   end
 
@@ -23,7 +23,7 @@ class Api::V1::PlayersController < Api::V1::BaseController
     if player.update(player_params)
       render json: player
     else
-      render json: { errors: player.errors.full_messages }, status: :unprocessable_entity
+      render json: { errors: player.errors.full_messages }, status: :unprocessable_content
     end
   end
 

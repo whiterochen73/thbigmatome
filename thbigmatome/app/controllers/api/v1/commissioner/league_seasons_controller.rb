@@ -17,7 +17,7 @@ class Api::V1::Commissioner::LeagueSeasonsController < Api::V1::Commissioner::Ba
     if @league_season.save
       render json: @league_season, status: :created
     else
-      render json: @league_season.errors, status: :unprocessable_entity
+      render json: @league_season.errors, status: :unprocessable_content
     end
   end
 
@@ -25,7 +25,7 @@ class Api::V1::Commissioner::LeagueSeasonsController < Api::V1::Commissioner::Ba
     if @league_season.update(league_season_params)
       render json: @league_season
     else
-      render json: @league_season.errors, status: :unprocessable_entity
+      render json: @league_season.errors, status: :unprocessable_content
     end
   end
 
@@ -38,7 +38,7 @@ class Api::V1::Commissioner::LeagueSeasonsController < Api::V1::Commissioner::Ba
     @league_season.generate_schedule
     render json: { message: "Schedule generated successfully" }, status: :ok
   rescue StandardError => e
-    render json: { error: e.message }, status: :unprocessable_entity
+    render json: { error: e.message }, status: :unprocessable_content
   end
 
   private

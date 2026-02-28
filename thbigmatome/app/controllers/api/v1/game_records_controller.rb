@@ -48,21 +48,21 @@ class Api::V1::GameRecordsController < Api::V1::BaseController
 
     render json: serialize_game_record(game_record, include_at_bats: true), status: :created
   rescue ActiveRecord::RecordInvalid => e
-    render json: { errors: e.record.errors.full_messages }, status: :unprocessable_entity
-  rescue StandardError => e
-    render json: { errors: [ e.message ] }, status: :unprocessable_entity
+    render json: { errors: e.record.errors.full_messages }, status: :unprocessable_content
+  rescue ActiveRecord::RecordNotUnique, ActiveRecord::RecordNotSaved => e
+    render json: { errors: [ e.message ] }, status: :unprocessable_content
   end
 
   # POST /api/v1/game_records/:id/confirm
   def confirm
     unless @game_record.draft?
-      return render json: { error: "Game record is not in draft status" }, status: :unprocessable_entity
+      return render json: { error: "Game record is not in draft status" }, status: :unprocessable_content
     end
 
     @game_record.update!(status: "confirmed", confirmed_at: Time.current)
     render json: serialize_game_record(@game_record, include_at_bats: false)
   rescue ActiveRecord::RecordInvalid => e
-    render json: { errors: e.record.errors.full_messages }, status: :unprocessable_entity
+    render json: { errors: e.record.errors.full_messages }, status: :unprocessable_content
   end
 
   private

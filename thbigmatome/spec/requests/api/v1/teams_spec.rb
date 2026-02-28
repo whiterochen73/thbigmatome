@@ -89,7 +89,7 @@ RSpec.describe "Api::V1::TeamsController", type: :request do
     it "returns 422 with invalid params" do
       post "/api/v1/teams", params: { team: { name: "", short_name: "" } }, as: :json
 
-      expect(response).to have_http_status(:unprocessable_entity)
+      expect(response).to have_http_status(:unprocessable_content)
       json = response.parsed_body
       expect(json["errors"]).to be_present
     end

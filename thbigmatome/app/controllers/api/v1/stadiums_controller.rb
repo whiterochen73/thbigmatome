@@ -16,7 +16,7 @@ class Api::V1::StadiumsController < Api::V1::BaseController
     if stadium.save
       render json: stadium, serializer: StadiumSerializer, status: :created
     else
-      render json: { errors: stadium.errors.full_messages }, status: :unprocessable_entity
+      render json: { errors: stadium.errors.full_messages }, status: :unprocessable_content
     end
   end
 
@@ -25,7 +25,7 @@ class Api::V1::StadiumsController < Api::V1::BaseController
     if stadium.update(stadium_params)
       render json: stadium, serializer: StadiumSerializer
     else
-      render json: { errors: stadium.errors.full_messages }, status: :unprocessable_entity
+      render json: { errors: stadium.errors.full_messages }, status: :unprocessable_content
     end
   end
 

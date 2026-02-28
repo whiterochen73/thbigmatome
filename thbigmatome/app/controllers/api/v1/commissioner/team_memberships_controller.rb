@@ -15,7 +15,7 @@ class Api::V1::Commissioner::TeamMembershipsController < Api::V1::Commissioner::
     if @team_membership.update(team_membership_params)
       render json: @team_membership
     else
-      render json: @team_membership.errors, status: :unprocessable_entity
+      render json: @team_membership.errors, status: :unprocessable_content
     end
   end
 

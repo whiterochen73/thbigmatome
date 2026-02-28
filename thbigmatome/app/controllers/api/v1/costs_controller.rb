@@ -11,7 +11,7 @@ class Api::V1::CostsController < Api::V1::BaseController
     if cost.save
       render json: cost, status: :created
     else
-      render json: cost.errors, status: :unprocessable_entity
+      render json: cost.errors, status: :unprocessable_content
     end
   end
 
@@ -19,7 +19,7 @@ class Api::V1::CostsController < Api::V1::BaseController
     if @cost.update(cost_params)
       render json: @cost
     else
-      render json: @cost.errors, status: :unprocessable_entity
+      render json: @cost.errors, status: :unprocessable_content
     end
   end
 
@@ -51,7 +51,7 @@ class Api::V1::CostsController < Api::V1::BaseController
     end
     render json: duplicated_cost, status: :created
   rescue ActiveRecord::RecordInvalid => e
-    render json: { errors: e.record.errors.full_messages }, status: :unprocessable_entity
+    render json: { errors: e.record.errors.full_messages }, status: :unprocessable_content
   end
 
   private

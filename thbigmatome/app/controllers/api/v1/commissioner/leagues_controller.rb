@@ -1,5 +1,5 @@
 class Api::V1::Commissioner::LeaguesController < Api::V1::Commissioner::BaseController
-  before_action :set_league, only: [:show, :update, :destroy]
+  before_action :set_league, only: [ :show, :update, :destroy ]
 
   def index
     leagues = League.all
@@ -15,7 +15,7 @@ class Api::V1::Commissioner::LeaguesController < Api::V1::Commissioner::BaseCont
     if league.save
       render json: league, status: :created
     else
-      render json: league.errors, status: :unprocessable_entity
+      render json: league.errors, status: :unprocessable_content
     end
   end
 
@@ -23,7 +23,7 @@ class Api::V1::Commissioner::LeaguesController < Api::V1::Commissioner::BaseCont
     if @league.update(league_params)
       render json: @league
     else
-      render json: @league.errors, status: :unprocessable_entity
+      render json: @league.errors, status: :unprocessable_content
     end
   end
 
@@ -31,7 +31,7 @@ class Api::V1::Commissioner::LeaguesController < Api::V1::Commissioner::BaseCont
     if @league.destroy
       head :no_content
     else
-      render json: @league.errors, status: :unprocessable_entity
+      render json: @league.errors, status: :unprocessable_content
     end
   end
 

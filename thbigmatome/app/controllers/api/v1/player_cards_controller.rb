@@ -34,7 +34,7 @@ class Api::V1::PlayerCardsController < Api::V1::BaseController
       player_card.reload
       render json: player_card, serializer: PlayerCardDetailSerializer
     else
-      render json: { errors: player_card.errors.full_messages }, status: :unprocessable_entity
+      render json: { errors: player_card.errors.full_messages }, status: :unprocessable_content
     end
   end
 

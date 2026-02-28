@@ -21,7 +21,7 @@ class Api::V1::GamesController < Api::V1::BaseController
     if game.save
       render json: game, serializer: GameSerializer, status: :created
     else
-      render json: { errors: game.errors.full_messages }, status: :unprocessable_entity
+      render json: { errors: game.errors.full_messages }, status: :unprocessable_content
     end
   end
 
@@ -35,10 +35,10 @@ class Api::V1::GamesController < Api::V1::BaseController
           confirmed_count: game.at_bats.confirmed.count
         }
       else
-        render json: { errors: game.errors.full_messages }, status: :unprocessable_entity
+        render json: { errors: game.errors.full_messages }, status: :unprocessable_content
       end
     else
-      render json: { error: "Game is not in draft status" }, status: :unprocessable_entity
+      render json: { error: "Game is not in draft status" }, status: :unprocessable_content
     end
   end
 
@@ -59,7 +59,7 @@ class Api::V1::GamesController < Api::V1::BaseController
       else
         "Parser error: #{stderr.truncate(200)}"
       end
-      return render json: { error: error_message }, status: :unprocessable_entity
+      return render json: { error: error_message }, status: :unprocessable_content
     end
 
     result = JSON.parse(stdout)
@@ -93,35 +93,41 @@ class Api::V1::GamesController < Api::V1::BaseController
         at_bats: all_at_bats,
         innings: (at_bats_data["innings"] || []).length
       },
-      at_bat_count: all_at_bats.length
+      at_bat_count: all_at_bats.length,
+      raw_at_bats: at_bats_data
     }
   rescue JSON::ParserError => e
-    render json: { error: "JSON parse error: #{e.message}" }, status: :unprocessable_entity
+    render json: { error: "JSON parse error: #{e.message}" }, status: :unprocessable_content
   end
 
   def import_log
     log_text = params[:log]
     return render json: { error: "log parameter required" }, status: :bad_request if log_text.blank?
 
-    # パーサー呼び出し
-    python_path = ENV.fetch("THBIG_IRC_PARSER_PYTHON", "/home/morinaga/projects/thbig-irc-parser/.venv/bin/python")
-    stdout, stderr, status = Tempfile.create([ "irc_log", ".txt" ]) do |tmp|
-      tmp.write(log_text)
-      tmp.flush
-      line_count = log_text.lines.count
-      Open3.capture3(python_path, "-m", "thbig_irc_parser.log_parser", tmp.path, "1", line_count.to_s)
-    end
-
-    unless status.success?
-      error_message = if stderr.include?("ModuleNotFoundError") || stderr.include?("No module named")
-        "パーサーが見つかりません。thbig_irc_parser のセットアップを確認してください。"
-      else
-        "Parser error: #{stderr.truncate(200)}"
+    # parse_logのキャッシュがあれば再解析をスキップ（二重読み込み解消）
+    parsed = if params[:raw_at_bats].present?
+      JSON.parse(params[:raw_at_bats])
+    else
+      # パーサー呼び出し
+      python_path = ENV.fetch("THBIG_IRC_PARSER_PYTHON", "/home/morinaga/projects/thbig-irc-parser/.venv/bin/python")
+      stdout, stderr, status = Tempfile.create([ "irc_log", ".txt" ]) do |tmp|
+        tmp.write(log_text)
+        tmp.flush
+        line_count = log_text.lines.count
+        Open3.capture3(python_path, "-m", "thbig_irc_parser.log_parser", tmp.path, "1", line_count.to_s)
       end
-      return render json: { error: error_message }, status: :unprocessable_entity
-    end
 
-    parsed = JSON.parse(stdout)
+      unless status.success?
+        error_message = if stderr.include?("ModuleNotFoundError") || stderr.include?("No module named")
+          "パーサーが見つかりません。thbig_irc_parser のセットアップを確認してください。"
+        else
+          "Parser error: #{stderr.truncate(200)}"
+        end
+        return render json: { error: error_message }, status: :unprocessable_content
+      end
+
+      JSON.parse(stdout)
+    end
 
     # draft Gameを作成（raw_logを保存）
     game_params_for_import = {
@@ -137,7 +143,7 @@ class Api::V1::GamesController < Api::V1::BaseController
 
     game = Game.new(game_params_for_import)
     unless game.save
-      return render json: { errors: game.errors.full_messages }, status: :unprocessable_entity
+      return render json: { errors: game.errors.full_messages }, status: :unprocessable_content
     end
 
     # 再import対処: draft at_batsのみ削除（confirmedは保護）
@@ -177,7 +183,7 @@ class Api::V1::GamesController < Api::V1::BaseController
       imported_count: imported_count
     }, status: :created
   rescue JSON::ParserError => e
-    render json: { error: "JSON parse error: #{e.message}" }, status: :unprocessable_entity
+    render json: { error: "JSON parse error: #{e.message}" }, status: :unprocessable_content
   end
 
   private

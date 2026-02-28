@@ -19,7 +19,7 @@ class Api::V1::Commissioner::LeaguePoolPlayersController < Api::V1::Commissioner
     if @league_pool_player.save
       render json: @league_pool_player, status: :created
     else
-      render json: @league_pool_player.errors, status: :unprocessable_entity
+      render json: @league_pool_player.errors, status: :unprocessable_content
     end
   end
 

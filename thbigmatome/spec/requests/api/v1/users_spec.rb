@@ -61,7 +61,7 @@ RSpec.describe 'Api::V1::Users', type: :request do
 
       it 'バリデーションエラー時は422を返す' do
         post '/api/v1/users', params: { user: { name: '', display_name: '', password: 'x' } }, as: :json
-        expect(response).to have_http_status(:unprocessable_entity)
+        expect(response).to have_http_status(:unprocessable_content)
       end
     end
 

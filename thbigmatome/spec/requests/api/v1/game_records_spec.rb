@@ -140,7 +140,7 @@ RSpec.describe "Api::V1::GameRecordsController", type: :request do
 
     it "不正なresultはエラー" do
       post "/api/v1/game_records", params: valid_params.merge(result: "invalid"), as: :json
-      expect(response).to have_http_status(:unprocessable_entity)
+      expect(response).to have_http_status(:unprocessable_content)
     end
   end
 
@@ -159,7 +159,7 @@ RSpec.describe "Api::V1::GameRecordsController", type: :request do
     it "既にconfirmedのときはエラー" do
       game_record = create(:game_record, :confirmed)
       post "/api/v1/game_records/#{game_record.id}/confirm", as: :json
-      expect(response).to have_http_status(:unprocessable_entity)
+      expect(response).to have_http_status(:unprocessable_content)
     end
 
     it "存在しないidは404を返す" do

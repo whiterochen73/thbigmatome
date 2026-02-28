@@ -21,7 +21,7 @@ module Api
         if @player_absence.save
           render json: @player_absence, status: :created
         else
-          render json: @player_absence.errors, status: :unprocessable_entity
+          render json: @player_absence.errors, status: :unprocessable_content
         end
       end
 
@@ -30,7 +30,7 @@ module Api
         if @player_absence.update(player_absence_params)
           render json: @player_absence
         else
-          render json: @player_absence.errors, status: :unprocessable_entity
+          render json: @player_absence.errors, status: :unprocessable_content
         end
       end
 

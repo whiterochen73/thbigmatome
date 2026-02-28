@@ -17,7 +17,7 @@ module Api
         # 既存チェック
         existing = @competition_entry.competition_rosters.find_by(player_card_id: player_card.id)
         if existing
-          render json: { errors: [ "この選手カードは既にロスターに追加されています" ] }, status: :unprocessable_entity
+          render json: { errors: [ "この選手カードは既にロスターに追加されています" ] }, status: :unprocessable_content
           return
         end
 
@@ -27,7 +27,7 @@ module Api
         )
 
         unless roster.valid?
-          render json: { errors: roster.errors.full_messages }, status: :unprocessable_entity
+          render json: { errors: roster.errors.full_messages }, status: :unprocessable_content
           return
         end
 
@@ -35,7 +35,7 @@ module Api
         begin
           roster.save!
         rescue ActiveRecord::RecordNotUnique
-          render json: { error: "選手は既にロスターに登録されています" }, status: :unprocessable_entity
+          render json: { error: "選手は既にロスターに登録されています" }, status: :unprocessable_content
           return
         end
 
@@ -43,7 +43,7 @@ module Api
 
         unless validation[:valid]
           roster.destroy
-          render json: { errors: validation[:errors] }, status: :unprocessable_entity
+          render json: { errors: validation[:errors] }, status: :unprocessable_content
           return
         end
 

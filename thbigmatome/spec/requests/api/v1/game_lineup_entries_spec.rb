@@ -120,7 +120,7 @@ RSpec.describe "Api::V1::GameLineupEntries", type: :request do
 
       it "422を返す" do
         post lineup_url, params: invalid_params, as: :json
-        expect(response).to have_http_status(:unprocessable_entity)
+        expect(response).to have_http_status(:unprocessable_content)
       end
 
       it "errors キーを含む" do

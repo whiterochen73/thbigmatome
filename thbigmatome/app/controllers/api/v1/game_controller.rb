@@ -44,7 +44,7 @@ class Api::V1::GameController < Api::V1::BaseController
     if season_schedule.update(update_params)
       render json: season_schedule, status: :ok
     else
-      render json: { errors: season_schedule.errors.full_messages }, status: :unprocessable_entity
+      render json: { errors: season_schedule.errors.full_messages }, status: :unprocessable_content
     end
   rescue ActiveRecord::RecordNotFound
     render json: { error: "Game not found" }, status: :not_found

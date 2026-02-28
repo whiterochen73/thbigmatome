@@ -40,7 +40,7 @@ module Api
         if @manager.save
           render json: @manager, status: :created
         else
-          render json: @manager.errors, status: :unprocessable_entity
+          render json: @manager.errors, status: :unprocessable_content
         end
       end
 
@@ -49,7 +49,7 @@ module Api
         if @manager.update(manager_params)
           render json: @manager
         else
-          render json: @manager.errors, status: :unprocessable_entity
+          render json: @manager.errors, status: :unprocessable_content
         end
       end
 

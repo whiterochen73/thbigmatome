@@ -37,7 +37,7 @@ class Api::V1::TeamPlayersController < Api::V1::BaseController
 
     render json: { message: "Team members updated successfully" }, status: :ok
   rescue ActiveRecord::RecordInvalid => e
-    render json: { error: e.record&.errors&.full_messages&.join(", ") || e.message }, status: :unprocessable_entity
+    render json: { error: e.record&.errors&.full_messages&.join(", ") || e.message }, status: :unprocessable_content
   end
 
   private

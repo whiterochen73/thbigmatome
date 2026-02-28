@@ -22,7 +22,7 @@ module Api
           update_managers(@team, team_params[:director_id], team_params[:coach_ids])
           render json: @team, status: :created, serializer: TeamSerializer
         else
-          render json: { errors: @team.errors.full_messages }, status: :unprocessable_entity
+          render json: { errors: @team.errors.full_messages }, status: :unprocessable_content
         end
       end
 
@@ -32,7 +32,7 @@ module Api
           update_managers(@team, team_params[:director_id], team_params[:coach_ids])
           render json: @team, serializer: TeamSerializer
         else
-          render json: { errors: @team.errors.full_messages }, status: :unprocessable_entity
+          render json: { errors: @team.errors.full_messages }, status: :unprocessable_content
         end
       end
 

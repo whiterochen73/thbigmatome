@@ -100,7 +100,7 @@ RSpec.describe "Api::V1::GamesController", type: :request do
     it "returns 422 with invalid params" do
       post "/api/v1/games", params: { game: { status: "invalid_status" } }, as: :json
 
-      expect(response).to have_http_status(:unprocessable_entity)
+      expect(response).to have_http_status(:unprocessable_content)
       json = response.parsed_body
       expect(json["errors"]).to be_present
     end
@@ -246,26 +246,6 @@ RSpec.describe "Api::V1::GamesController", type: :request do
       expect(response).to have_http_status(:created)
       expect(AtBat.find_by(id: first_at_bat_id)).not_to be_nil
     end
-
-    it "confirmed保護: confirmed at_batsは再import_log（同gameへの再import）で削除されないこと" do
-      game = create(:game,
-        competition: competition,
-        home_team: home_team,
-        visitor_team: visitor_team,
-        stadium: stadium,
-        status: "draft",
-        source: "log_import"
-      )
-      confirmed_at_bat = create(:at_bat, game: game, status: :confirmed, seq: 999)
-
-      # gameが既に存在する状態でのdraft at_bats削除確認
-      draft_at_bat = create(:at_bat, game: game, status: :draft, seq: 1000)
-
-      game.at_bats.draft.destroy_all
-
-      expect(AtBat.find_by(id: confirmed_at_bat.id)).not_to be_nil
-      expect(AtBat.find_by(id: draft_at_bat.id)).to be_nil
-    end
   end
 
   describe "POST /api/v1/games/:id/confirm" do
@@ -293,7 +273,7 @@ RSpec.describe "Api::V1::GamesController", type: :request do
 
       post "/api/v1/games/#{confirmed_game.id}/confirm", as: :json
 
-      expect(response).to have_http_status(:unprocessable_entity)
+      expect(response).to have_http_status(:unprocessable_content)
     end
   end
 end

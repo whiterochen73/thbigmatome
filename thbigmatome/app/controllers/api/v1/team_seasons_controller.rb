@@ -18,7 +18,7 @@ module Api
         if season.update(season_params)
           render json: { season: season }, status: :ok
         else
-          render json: { errors: season.errors.full_messages }, status: :unprocessable_entity
+          render json: { errors: season.errors.full_messages }, status: :unprocessable_content
         end
       rescue ActiveRecord::RecordNotFound => e
         render json: { error: e.message }, status: :not_found
@@ -29,7 +29,7 @@ module Api
         if season_schedule.update(season_schedule_params)
           render json: season_schedule
         else
-          render json: season_schedule.errors, status: :unprocessable_entity
+          render json: season_schedule.errors, status: :unprocessable_content
         end
       end
 

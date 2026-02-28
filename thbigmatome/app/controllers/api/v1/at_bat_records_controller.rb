@@ -16,7 +16,7 @@ class Api::V1::AtBatRecordsController < Api::V1::BaseController
     if @at_bat_record.update(at_bat_params.merge(is_modified: true, modified_fields: modified_fields))
       render json: serialize_at_bat_record(@at_bat_record)
     else
-      render json: { errors: @at_bat_record.errors.full_messages }, status: :unprocessable_entity
+      render json: { errors: @at_bat_record.errors.full_messages }, status: :unprocessable_content
     end
   end
 

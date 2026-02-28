@@ -12,7 +12,7 @@ class Api::V1::Commissioner::LeagueMembershipsController < Api::V1::Commissioner
     if league_membership.save
       render json: league_membership, status: :created
     else
-      render json: league_membership.errors, status: :unprocessable_entity
+      render json: league_membership.errors, status: :unprocessable_content
     end
   end
 
@@ -21,7 +21,7 @@ class Api::V1::Commissioner::LeagueMembershipsController < Api::V1::Commissioner
     if league_membership.destroy
       head :no_content
     else
-      render json: league_membership.errors, status: :unprocessable_entity
+      render json: league_membership.errors, status: :unprocessable_content
     end
   end
 

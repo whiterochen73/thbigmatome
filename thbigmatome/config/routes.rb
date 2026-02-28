@@ -41,6 +41,14 @@ Rails.application.routes.draw do
                           controller: "game_lineup_entries"
       end
 
+      # パーサー結果取り込みAPI
+      resources :game_records, only: [ :index, :show, :create ] do
+        member do
+          post :confirm
+        end
+      end
+      resources :at_bat_records, only: [ :update ]
+
       # 選手一覧
       resources :players, only: [ :index, :show, :create, :update, :destroy ]
       resources :team_registration_players, only: [ :index ]

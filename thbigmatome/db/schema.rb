@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_02_27_102506) do
+ActiveRecord::Schema[8.1].define(version: 2026_02_28_045801) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -49,6 +49,36 @@ ActiveRecord::Schema[8.1].define(version: 2026_02_27_102506) do
     t.bigint "blob_id", null: false
     t.string "variation_digest", null: false
     t.index [ "blob_id", "variation_digest" ], name: "index_active_storage_variant_records_uniqueness", unique: true
+  end
+
+  create_table "at_bat_records", force: :cascade do |t|
+    t.integer "ab_num"
+    t.string "bat_result"
+    t.integer "bat_roll"
+    t.string "batter_id"
+    t.string "batter_name"
+    t.datetime "created_at", null: false
+    t.jsonb "extra_data", default: {}
+    t.bigint "game_record_id", null: false
+    t.string "half"
+    t.integer "inning"
+    t.boolean "is_modified", default: false, null: false
+    t.jsonb "modified_fields"
+    t.integer "outs_after"
+    t.integer "outs_before"
+    t.string "pitch_result"
+    t.integer "pitch_roll"
+    t.string "pitcher_id"
+    t.string "pitcher_name"
+    t.text "play_description"
+    t.string "result_code"
+    t.jsonb "runners_after", default: {}
+    t.jsonb "runners_before", default: {}
+    t.integer "runs_scored", default: 0, null: false
+    t.string "strategy"
+    t.datetime "updated_at", null: false
+    t.index [ "game_record_id", "ab_num" ], name: "index_at_bat_records_on_game_record_id_and_ab_num", unique: true
+    t.index [ "game_record_id" ], name: "index_at_bat_records_on_game_record_id"
   end
 
   create_table "at_bats", force: :cascade do |t|
@@ -210,6 +240,27 @@ ActiveRecord::Schema[8.1].define(version: 2026_02_27_102506) do
     t.index [ "game_id", "player_card_id" ], name: "index_game_lineup_entries_on_game_id_and_player_card_id", unique: true
     t.index [ "game_id" ], name: "index_game_lineup_entries_on_game_id"
     t.index [ "player_card_id" ], name: "index_game_lineup_entries_on_player_card_id"
+  end
+
+  create_table "game_records", force: :cascade do |t|
+    t.datetime "confirmed_at"
+    t.datetime "created_at", null: false
+    t.date "game_date"
+    t.string "opponent_team_name"
+    t.datetime "parsed_at"
+    t.string "parser_version"
+    t.datetime "played_at"
+    t.string "result"
+    t.integer "score_away"
+    t.integer "score_home"
+    t.text "source_log"
+    t.string "stadium"
+    t.string "status", default: "draft", null: false
+    t.bigint "team_id", null: false
+    t.datetime "updated_at", null: false
+    t.index [ "game_date" ], name: "index_game_records_on_game_date"
+    t.index [ "status" ], name: "index_game_records_on_status"
+    t.index [ "team_id" ], name: "index_game_records_on_team_id"
   end
 
   create_table "games", force: :cascade do |t|
@@ -714,6 +765,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_02_27_102506) do
 
   add_foreign_key "active_storage_attachments", "active_storage_blobs", column: "blob_id"
   add_foreign_key "active_storage_variant_records", "active_storage_blobs", column: "blob_id"
+  add_foreign_key "at_bat_records", "game_records"
   add_foreign_key "at_bats", "games"
   add_foreign_key "at_bats", "players", column: "batter_id"
   add_foreign_key "at_bats", "players", column: "pinch_hit_for_id"
@@ -728,6 +780,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_02_27_102506) do
   add_foreign_key "cost_players", "costs"
   add_foreign_key "cost_players", "players"
   add_foreign_key "game_events", "games"
+  add_foreign_key "game_records", "teams"
   add_foreign_key "games", "competitions"
   add_foreign_key "games", "stadiums"
   add_foreign_key "games", "teams", column: "home_team_id"

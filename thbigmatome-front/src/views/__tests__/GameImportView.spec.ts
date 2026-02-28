@@ -190,7 +190,7 @@ describe('GameImportView', () => {
     const mockAtBats = [
       {
         inning: 1,
-        top_bottom: '表',
+        top_bottom: 'top',
         order: 1,
         batter: '打者A',
         pitcher: '投手X',
@@ -206,7 +206,7 @@ describe('GameImportView', () => {
       },
       {
         inning: 1,
-        top_bottom: '裏',
+        top_bottom: 'bottom',
         order: 1,
         batter: '打者B',
         pitcher: '投手Y',
@@ -222,7 +222,7 @@ describe('GameImportView', () => {
       },
       {
         inning: 2,
-        top_bottom: '裏',
+        top_bottom: 'bottom',
         order: 1,
         batter: '打者C',
         pitcher: '投手Z',
@@ -240,7 +240,7 @@ describe('GameImportView', () => {
 
     const mockImportResponse = {
       game: { id: 42, status: 'draft' },
-      parsed_at_bats: { at_bats: mockAtBats, innings: 2 },
+      parsed_at_bats: { at_bats: mockAtBats, innings: 4 },
       at_bat_count: 3,
       imported_count: 3,
     }

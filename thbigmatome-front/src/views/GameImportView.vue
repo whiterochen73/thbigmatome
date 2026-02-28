@@ -681,8 +681,8 @@ const lineScore = computed(() => {
   importResult.value.parsed_at_bats.at_bats.forEach((ab) => {
     const rs = ab.runs_scored ?? 0
     if (rs > 0) {
-      // 表 = top = visitor bats; 裏 = bottom = home bats
-      if (ab.top_bottom === '表') {
+      // top = 表 = visitor bats; bottom = 裏 = home bats
+      if (ab.top_bottom === 'top') {
         visitor[ab.inning] = (visitor[ab.inning] ?? 0) + rs
       } else {
         home[ab.inning] = (home[ab.inning] ?? 0) + rs
@@ -694,7 +694,8 @@ const lineScore = computed(() => {
 
 const lineScoreInnings = computed(() => {
   if (!importResult.value) return []
-  const count = importResult.value.parsed_at_bats.innings
+  // innings = half-inning count (top + bottom); divide by 2 to get full inning count
+  const count = Math.ceil(importResult.value.parsed_at_bats.innings / 2)
   return Array.from({ length: count }, (_, i) => i + 1)
 })
 

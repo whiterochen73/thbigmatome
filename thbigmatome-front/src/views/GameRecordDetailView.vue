@@ -96,170 +96,213 @@
             </tr>
           </thead>
           <tbody>
-            <tr
-              v-for="ab in group.records"
-              :key="ab.id"
-              :class="ab.is_modified ? 'bg-amber-lighten-5' : ''"
-            >
-              <td>{{ ab.ab_num }}</td>
-              <td>{{ ab.batter_name }}</td>
-              <td>{{ ab.pitcher_name }}</td>
+            <template v-for="ab in group.records" :key="ab.id">
+              <tr
+                :class="[
+                  ab.is_modified ? 'bg-amber-lighten-5' : '',
+                  ab.discrepancies?.length ? 'disc-row' : '',
+                ]"
+              >
+                <td>{{ ab.ab_num }}</td>
+                <td>{{ ab.batter_name }}</td>
+                <td>{{ ab.pitcher_name }}</td>
 
-              <!-- result_code インライン編集 -->
-              <td>
-                <template v-if="editingId === ab.id && editingField === 'result_code'">
-                  <v-text-field
-                    v-model="editValue"
-                    density="compact"
-                    hide-details
-                    variant="underlined"
-                    style="min-width: 60px; max-width: 80px"
-                    autofocus
-                    @keyup.enter="saveEdit(ab)"
-                    @keyup.escape="cancelEdit"
-                    @blur="saveEdit(ab)"
-                  />
-                </template>
-                <template v-else>
-                  <v-chip
-                    :color="resultColor(ab.result_code)"
-                    size="x-small"
-                    label
-                    :class="gameRecord.status === 'draft' ? 'cursor-pointer' : ''"
-                    @click="
-                      gameRecord.status === 'draft' && startEdit(ab, 'result_code', ab.result_code)
-                    "
-                  >
-                    {{ ab.result_code || '-' }}
-                  </v-chip>
-                </template>
-              </td>
-
-              <!-- runs_scored インライン編集 -->
-              <td>
-                <template v-if="editingId === ab.id && editingField === 'runs_scored'">
-                  <v-text-field
-                    v-model="editValue"
-                    density="compact"
-                    hide-details
-                    variant="underlined"
-                    type="number"
-                    style="min-width: 50px; max-width: 60px"
-                    autofocus
-                    @keyup.enter="saveEdit(ab)"
-                    @keyup.escape="cancelEdit"
-                    @blur="saveEdit(ab)"
-                  />
-                </template>
-                <template v-else>
-                  <span
-                    :class="
-                      gameRecord.status === 'draft'
-                        ? 'cursor-pointer text-decoration-underline-dotted'
-                        : ''
-                    "
-                    @click="
-                      gameRecord.status === 'draft' &&
-                      startEdit(ab, 'runs_scored', String(ab.runs_scored ?? 0))
-                    "
-                  >
-                    {{ ab.runs_scored ?? 0 }}
-                  </span>
-                </template>
-              </td>
-
-              <!-- runners_before インライン編集 -->
-              <td>
-                <template v-if="editingId === ab.id && editingField === 'runners_before'">
-                  <v-text-field
-                    v-model="editValue"
-                    density="compact"
-                    hide-details
-                    variant="underlined"
-                    style="min-width: 70px; max-width: 90px"
-                    autofocus
-                    @keyup.enter="saveEdit(ab)"
-                    @keyup.escape="cancelEdit"
-                    @blur="saveEdit(ab)"
-                  />
-                </template>
-                <template v-else>
-                  <span
-                    class="text-caption text-mono"
-                    :class="gameRecord.status === 'draft' ? 'cursor-pointer' : ''"
-                    @click="
-                      gameRecord.status === 'draft' &&
-                      startEdit(ab, 'runners_before', ab.runners_before ?? '')
-                    "
-                  >
-                    {{ ab.runners_before || '---' }}
-                  </span>
-                </template>
-              </td>
-
-              <!-- runners_after インライン編集 -->
-              <td>
-                <template v-if="editingId === ab.id && editingField === 'runners_after'">
-                  <v-text-field
-                    v-model="editValue"
-                    density="compact"
-                    hide-details
-                    variant="underlined"
-                    style="min-width: 70px; max-width: 90px"
-                    autofocus
-                    @keyup.enter="saveEdit(ab)"
-                    @keyup.escape="cancelEdit"
-                    @blur="saveEdit(ab)"
-                  />
-                </template>
-                <template v-else>
-                  <span
-                    class="text-caption text-mono"
-                    :class="gameRecord.status === 'draft' ? 'cursor-pointer' : ''"
-                    @click="
-                      gameRecord.status === 'draft' &&
-                      startEdit(ab, 'runners_after', ab.runners_after ?? '')
-                    "
-                  >
-                    {{ ab.runners_after || '---' }}
-                  </span>
-                </template>
-              </td>
-
-              <td class="text-caption">{{ ab.strategy || '-' }}</td>
-
-              <!-- play_description: ツールチップ -->
-              <td>
-                <v-tooltip
-                  v-if="ab.play_description"
-                  :text="ab.play_description"
-                  max-width="400"
-                  location="top"
-                >
-                  <template v-slot:activator="{ props: tooltipProps }">
-                    <span
-                      v-bind="tooltipProps"
-                      class="text-caption text-truncate cursor-help"
-                      style="max-width: 110px; display: inline-block"
+                <!-- result_code インライン編集 -->
+                <td>
+                  <template v-if="editingId === ab.id && editingField === 'result_code'">
+                    <v-text-field
+                      v-model="editValue"
+                      density="compact"
+                      hide-details
+                      variant="underlined"
+                      style="min-width: 60px; max-width: 80px"
+                      autofocus
+                      @keyup.enter="saveEdit(ab)"
+                      @keyup.escape="cancelEdit"
+                      @blur="saveEdit(ab)"
+                    />
+                  </template>
+                  <template v-else>
+                    <v-chip
+                      :color="resultColor(ab.result_code)"
+                      size="x-small"
+                      label
+                      :class="gameRecord.status === 'draft' ? 'cursor-pointer' : ''"
+                      @click="
+                        gameRecord.status === 'draft' &&
+                        startEdit(ab, 'result_code', ab.result_code)
+                      "
                     >
-                      {{ ab.play_description }}
+                      {{ ab.result_code || '-' }}
+                    </v-chip>
+                  </template>
+                </td>
+
+                <!-- runs_scored インライン編集 -->
+                <td>
+                  <template v-if="editingId === ab.id && editingField === 'runs_scored'">
+                    <v-text-field
+                      v-model="editValue"
+                      density="compact"
+                      hide-details
+                      variant="underlined"
+                      type="number"
+                      style="min-width: 50px; max-width: 60px"
+                      autofocus
+                      @keyup.enter="saveEdit(ab)"
+                      @keyup.escape="cancelEdit"
+                      @blur="saveEdit(ab)"
+                    />
+                  </template>
+                  <template v-else>
+                    <span
+                      :class="
+                        gameRecord.status === 'draft'
+                          ? 'cursor-pointer text-decoration-underline-dotted'
+                          : ''
+                      "
+                      @click="
+                        gameRecord.status === 'draft' &&
+                        startEdit(ab, 'runs_scored', String(ab.runs_scored ?? 0))
+                      "
+                    >
+                      {{ ab.runs_scored ?? 0 }}
                     </span>
                   </template>
-                </v-tooltip>
-                <span v-else class="text-caption text-grey">-</span>
-              </td>
+                </td>
 
-              <td>
-                <v-icon
-                  v-if="ab.is_modified"
-                  size="x-small"
-                  color="amber-darken-3"
-                  title="修正済み"
-                >
-                  mdi-pencil-circle
-                </v-icon>
-              </td>
-            </tr>
+                <!-- runners_before インライン編集 -->
+                <td>
+                  <template v-if="editingId === ab.id && editingField === 'runners_before'">
+                    <v-text-field
+                      v-model="editValue"
+                      density="compact"
+                      hide-details
+                      variant="underlined"
+                      style="min-width: 70px; max-width: 90px"
+                      autofocus
+                      @keyup.enter="saveEdit(ab)"
+                      @keyup.escape="cancelEdit"
+                      @blur="saveEdit(ab)"
+                    />
+                  </template>
+                  <template v-else>
+                    <span
+                      class="text-caption text-mono"
+                      :class="gameRecord.status === 'draft' ? 'cursor-pointer' : ''"
+                      @click="
+                        gameRecord.status === 'draft' &&
+                        startEdit(ab, 'runners_before', ab.runners_before ?? '')
+                      "
+                    >
+                      {{ ab.runners_before || '---' }}
+                    </span>
+                  </template>
+                </td>
+
+                <!-- runners_after インライン編集 -->
+                <td>
+                  <template v-if="editingId === ab.id && editingField === 'runners_after'">
+                    <v-text-field
+                      v-model="editValue"
+                      density="compact"
+                      hide-details
+                      variant="underlined"
+                      style="min-width: 70px; max-width: 90px"
+                      autofocus
+                      @keyup.enter="saveEdit(ab)"
+                      @keyup.escape="cancelEdit"
+                      @blur="saveEdit(ab)"
+                    />
+                  </template>
+                  <template v-else>
+                    <span
+                      class="text-caption text-mono"
+                      :class="gameRecord.status === 'draft' ? 'cursor-pointer' : ''"
+                      @click="
+                        gameRecord.status === 'draft' &&
+                        startEdit(ab, 'runners_after', ab.runners_after ?? '')
+                      "
+                    >
+                      {{ ab.runners_after || '---' }}
+                    </span>
+                  </template>
+                </td>
+
+                <td class="text-caption">{{ ab.strategy || '-' }}</td>
+
+                <!-- play_description: ツールチップ -->
+                <td>
+                  <v-tooltip
+                    v-if="ab.play_description"
+                    :text="ab.play_description"
+                    max-width="400"
+                    location="top"
+                  >
+                    <template v-slot:activator="{ props: tooltipProps }">
+                      <span
+                        v-bind="tooltipProps"
+                        class="text-caption text-truncate cursor-help"
+                        style="max-width: 110px; display: inline-block"
+                      >
+                        {{ ab.play_description }}
+                      </span>
+                    </template>
+                  </v-tooltip>
+                  <span v-else class="text-caption text-grey">-</span>
+                </td>
+
+                <td>
+                  <v-icon
+                    v-if="ab.is_modified"
+                    size="x-small"
+                    color="amber-darken-3"
+                    title="修正済み"
+                  >
+                    mdi-pencil-circle
+                  </v-icon>
+                  <v-icon
+                    v-if="ab.discrepancies?.length"
+                    size="x-small"
+                    :color="discrepancyIconColor(ab.discrepancies[0].cause)"
+                    title="差異あり"
+                    class="ml-1"
+                  >
+                    mdi-alert-circle
+                  </v-icon>
+                </td>
+              </tr>
+              <!-- discrepancy バナー行 -->
+              <tr v-if="ab.discrepancies?.length" class="disc-banner-row">
+                <td colspan="10" class="pa-0">
+                  <div class="disc-banner">
+                    <span class="disc-banner-title"
+                      >⚠️ discrepancy 検出 ({{ ab.discrepancies.length }}件)</span
+                    >
+                    <div
+                      v-for="(d, di) in ab.discrepancies"
+                      :key="di"
+                      class="disc-item"
+                      :class="`disc-cause--${d.cause}`"
+                    >
+                      <span class="disc-field">{{ d.field }}</span>
+                      <span class="disc-sep">:</span>
+                      <span class="disc-label">テキスト</span>
+                      <span class="disc-val">{{ formatDiscValue(d.text_value) }}</span>
+                      <span class="disc-sep">→ GSM</span>
+                      <span class="disc-val">{{ formatDiscValue(d.gsm_value) }}</span>
+                      <v-chip
+                        size="x-small"
+                        class="ml-2"
+                        :color="discrepancyChipColor(d.cause)"
+                        label
+                        >{{ discrepancyCauseLabel(d.cause) }}</v-chip
+                      >
+                    </div>
+                  </div>
+                </td>
+              </tr>
+            </template>
           </tbody>
         </v-table>
       </div>
@@ -292,6 +335,15 @@ import { ref, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import axios from '@/plugins/axios'
 
+interface Discrepancy {
+  field: string
+  text_value: unknown
+  gsm_value: unknown
+  cause: 'parser_misread' | 'human_error' | 'gsm_limitation' | 'ambiguous' | 'unknown'
+  resolution: 'gsm' | 'text' | 'manual' | null
+  note?: string
+}
+
 interface AtBatRecord {
   id: number
   game_record_id: number
@@ -308,6 +360,7 @@ interface AtBatRecord {
   play_description: string | null
   is_modified: boolean
   modified_fields: string[]
+  discrepancies: Discrepancy[]
 }
 
 interface GameRecord {
@@ -378,6 +431,45 @@ function resultColor(code: string | null): string {
   if (['HR', '本塁打'].includes(c)) return 'purple-lighten-2'
   if (['H', '1B', '2B', '3B'].includes(c)) return 'green-lighten-2'
   return 'grey-lighten-1'
+}
+
+function discrepancyChipColor(cause: Discrepancy['cause']): string {
+  const map: Record<string, string> = {
+    parser_misread: 'yellow-darken-3',
+    human_error: 'orange-darken-2',
+    gsm_limitation: 'blue-darken-1',
+    ambiguous: 'grey-darken-1',
+    unknown: 'red-darken-1',
+  }
+  return map[cause] ?? 'grey'
+}
+
+function discrepancyIconColor(cause: Discrepancy['cause']): string {
+  const map: Record<string, string> = {
+    parser_misread: 'yellow-darken-3',
+    human_error: 'orange-darken-2',
+    gsm_limitation: 'blue-darken-1',
+    ambiguous: 'grey-darken-1',
+    unknown: 'red-darken-1',
+  }
+  return map[cause] ?? 'grey'
+}
+
+function discrepancyCauseLabel(cause: Discrepancy['cause']): string {
+  const map: Record<string, string> = {
+    parser_misread: 'パーサー誤読',
+    human_error: 'ヒューマンエラー',
+    gsm_limitation: 'GSM制限',
+    ambiguous: '判定不能',
+    unknown: '未分類',
+  }
+  return map[cause] ?? cause
+}
+
+function formatDiscValue(val: unknown): string {
+  if (val === null || val === undefined) return '-'
+  if (Array.isArray(val)) return val.length === 0 ? '[]' : `[${val.join(', ')}]`
+  return String(val)
 }
 
 function startEdit(ab: AtBatRecord, field: string, value: string) {
@@ -479,5 +571,50 @@ onMounted(async () => {
 }
 .text-decoration-underline-dotted {
   text-decoration: underline dotted;
+}
+
+/* discrepancy 行ハイライト */
+.disc-row {
+  border-left: 3px solid #b33333;
+}
+
+/* discrepancy バナー */
+.disc-banner-row td {
+  padding: 0 !important;
+}
+.disc-banner {
+  background: #fff0f0;
+  border-left: 3px solid #b33333;
+  padding: 6px 12px;
+  font-size: 0.8em;
+}
+.disc-banner-title {
+  font-weight: bold;
+  color: #b33333;
+  display: block;
+  margin-bottom: 4px;
+}
+.disc-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 0;
+  flex-wrap: wrap;
+}
+.disc-field {
+  font-family: monospace;
+  font-weight: bold;
+  color: #444;
+}
+.disc-label {
+  color: #888;
+  font-size: 0.9em;
+}
+.disc-val {
+  font-family: monospace;
+  color: #333;
+}
+.disc-sep {
+  color: #aaa;
 }
 </style>

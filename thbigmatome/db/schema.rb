@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_03_01_124226) do
+ActiveRecord::Schema[8.1].define(version: 2026_03_01_140155) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -248,6 +248,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_01_124226) do
     t.datetime "confirmed_at"
     t.datetime "created_at", null: false
     t.date "game_date"
+    t.bigint "game_id"
     t.string "opponent_team_name"
     t.datetime "parsed_at"
     t.string "parser_version"
@@ -261,6 +262,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_01_124226) do
     t.bigint "team_id", null: false
     t.datetime "updated_at", null: false
     t.index [ "game_date" ], name: "index_game_records_on_game_date"
+    t.index [ "game_id" ], name: "index_game_records_on_game_id_partial", unique: true, where: "(game_id IS NOT NULL)"
     t.index [ "status" ], name: "index_game_records_on_status"
     t.index [ "team_id" ], name: "index_game_records_on_team_id"
   end
@@ -782,6 +784,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_01_124226) do
   add_foreign_key "cost_players", "costs"
   add_foreign_key "cost_players", "players"
   add_foreign_key "game_events", "games"
+  add_foreign_key "game_records", "games", on_delete: :nullify
   add_foreign_key "game_records", "teams"
   add_foreign_key "games", "competitions"
   add_foreign_key "games", "stadiums"

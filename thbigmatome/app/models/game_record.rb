@@ -1,5 +1,6 @@
 class GameRecord < ApplicationRecord
   belongs_to :team
+  belongs_to :game, optional: true
   has_many :at_bat_records, dependent: :destroy
 
   VALID_STATUSES = %w[draft confirmed].freeze

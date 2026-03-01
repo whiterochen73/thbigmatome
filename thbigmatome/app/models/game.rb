@@ -7,6 +7,7 @@ class Game < ApplicationRecord
   has_many :game_events, dependent: :destroy
   has_many :pitcher_game_states, dependent: :destroy
   has_many :game_lineup_entries, dependent: :destroy
+  has_one :game_record, dependent: :nullify
 
   validates :status, inclusion: { in: %w[draft confirmed] }
   validates :source, inclusion: { in: %w[live log_import summary] }

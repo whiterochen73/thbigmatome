@@ -774,7 +774,8 @@ onMounted(async () => {
 }
 
 /* ── 和色パレット ── */
-:root {
+/* NOTE: :rootをコンポーネントルート要素に変更（scoped内で:rootは[data-v-xxxx]付与でマッチしないため） */
+.v-container {
   --ai: #1b3a6b;
   --ai-light: #2a5298;
   --moegi: #5a8a00;

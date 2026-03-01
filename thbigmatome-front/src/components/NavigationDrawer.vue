@@ -80,12 +80,6 @@ const { isCommissioner } = useAuth()
 const mainMenuItems = [
   { title: 'ホーム', icon: 'mdi-home', value: 'dashboard', to: '/' },
   { title: '試合記録', icon: 'mdi-scoreboard', value: 'games', to: '/games' },
-  {
-    title: 'パーサーレビュー',
-    icon: 'mdi-magnify-scan',
-    value: 'gameRecords',
-    to: '/game-records',
-  },
   { title: '成績まとめ', icon: 'mdi-chart-bar', value: 'stats', to: '/stats' },
   { title: 'チーム編成', icon: 'mdi-account-group', value: 'teams', to: '/teams' },
   {

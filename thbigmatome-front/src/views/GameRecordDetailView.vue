@@ -27,7 +27,7 @@
             variant="text"
             icon="mdi-arrow-left"
             size="small"
-            @click="router.push({ name: 'GameRecordList' })"
+            @click="router.push({ name: '試合記録' })"
           />
           <h1 class="text-h5">vs {{ gameRecord.opponent_team_name }}</h1>
           <v-chip

@@ -379,6 +379,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import axios from 'axios'
 import { useSnackbar } from '@/composables/useSnackbar'
 
@@ -452,6 +453,7 @@ interface ImportResponse {
   parsed_at_bats: ParsedAtBats
   at_bat_count: number
   imported_count: number
+  game_record_id?: number
 }
 
 interface PitcherStat {
@@ -476,6 +478,7 @@ interface PreviewItem extends Omit<AtBat, 'outs_after'> {
   scored: boolean
 }
 
+const router = useRouter()
 const { showSnackbar } = useSnackbar()
 
 const currentStep = ref<1 | 2 | 3>(1)
@@ -611,7 +614,11 @@ async function importLog() {
       ...(rawAtBats.value ? { raw_at_bats: JSON.stringify(rawAtBats.value) } : {}),
     })
     importResult.value = response.data
-    currentStep.value = 3
+    if (response.data.game_record_id) {
+      router.push(`/game-records/${response.data.game_record_id}`)
+    } else {
+      currentStep.value = 3
+    }
   } catch (error) {
     if (axios.isAxiosError(error) && error.response) {
       const data = error.response.data

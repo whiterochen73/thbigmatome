@@ -65,6 +65,17 @@
               {{ item.status }}
             </v-chip>
           </template>
+          <template v-slot:[`item.review`]="{ item }">
+            <v-btn
+              v-if="item.game_record_id"
+              size="small"
+              variant="text"
+              color="primary"
+              @click="router.push(`/game-records/${item.game_record_id}`)"
+              >レビュー</v-btn
+            >
+            <span v-else class="text-grey">-</span>
+          </template>
           <template v-slot:[`item.actions`]="{ item }">
             <v-btn size="small" variant="text" @click="navigateToDetail(item.id)">詳細</v-btn>
           </template>
@@ -92,6 +103,7 @@ interface Game {
   real_date: string
   status: 'draft' | 'confirmed'
   source: string
+  game_record_id?: number | null
 }
 
 const router = useRouter()
@@ -111,6 +123,7 @@ const headers = [
   { title: 'ホームチームID', key: 'home_team_id' },
   { title: 'ビジターチームID', key: 'visitor_team_id' },
   { title: 'ステータス', key: 'status' },
+  { title: 'レビュー', key: 'review', sortable: false, width: '90px' },
   { title: '操作', key: 'actions', sortable: false, width: '100px' },
 ]
 

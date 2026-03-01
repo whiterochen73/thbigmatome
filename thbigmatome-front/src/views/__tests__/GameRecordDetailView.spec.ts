@@ -33,6 +33,7 @@ function createTestRouter(id = '1') {
   const router = createRouter({
     history: createMemoryHistory(),
     routes: [
+      { path: '/games', name: '試合記録', component: { template: '<div />' } },
       { path: '/game-records', name: 'GameRecordList', component: { template: '<div />' } },
       { path: '/game-records/:id', name: 'GameRecordDetail', component: { template: '<div />' } },
     ],

@@ -47,9 +47,6 @@
           <v-icon size="small">mdi-chevron-right</v-icon>
           <v-chip :color="currentStep === 2 ? 'primary' : 'default'" size="small">Step 2</v-chip>
           <span>メタデータ確認</span>
-          <v-icon size="small">mdi-chevron-right</v-icon>
-          <v-chip :color="currentStep === 3 ? 'primary' : 'default'" size="small">Step 3</v-chip>
-          <span>プレビュー・確定</span>
         </div>
       </v-col>
     </v-row>
@@ -204,169 +201,18 @@
       </v-col>
     </v-row>
 
-    <!-- Step 3: プレビュー・確定 -->
+    <!-- Step 3: フォールバック（game_record_id なし時のみ表示） -->
     <v-row v-if="currentStep === 3">
       <v-col cols="12">
         <v-card>
-          <v-card-title>Step 3: 解析結果プレビュー</v-card-title>
+          <v-card-title>Step 3: インポート完了</v-card-title>
           <v-card-text>
-            <p class="mb-3">
-              打席数: {{ importResult?.at_bat_count }}件、イニング数:
-              {{ importResult?.parsed_at_bats.innings }}回
+            <p class="mb-2">インポートが完了しました。</p>
+            <p class="mb-3 text-body-2">
+              試合ID: {{ importResult?.game.id }}、打席数: {{ importResult?.at_bat_count }}件
             </p>
-
-            <!-- [1] ラインスコア -->
-            <div class="mb-4">
-              <div class="text-subtitle-2 mb-2">■ ラインスコア</div>
-              <v-table density="compact" class="elevation-1">
-                <thead>
-                  <tr>
-                    <th class="text-left" style="min-width: 80px">チーム</th>
-                    <th
-                      v-for="inn in lineScoreInnings"
-                      :key="inn"
-                      class="text-center"
-                      style="min-width: 30px"
-                    >
-                      {{ inn }}
-                    </th>
-                    <th class="text-center font-weight-bold" style="min-width: 40px">計</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr>
-                    <td class="text-left text-caption">ビジター</td>
-                    <td v-for="inn in lineScoreInnings" :key="inn" class="text-center text-caption">
-                      {{ lineScore.visitor[inn] ?? 0 }}
-                    </td>
-                    <td class="text-center font-weight-bold">{{ visitorTotal }}</td>
-                  </tr>
-                  <tr>
-                    <td class="text-left text-caption">ホーム</td>
-                    <td v-for="inn in lineScoreInnings" :key="inn" class="text-center text-caption">
-                      {{ lineScore.home[inn] ?? 0 }}
-                    </td>
-                    <td class="text-center font-weight-bold">{{ homeTotal }}</td>
-                  </tr>
-                </tbody>
-              </v-table>
-            </div>
-
-            <!-- 打席一覧（得点変化・イベント展開対応） -->
-            <div class="mb-4">
-              <div class="text-subtitle-2 mb-2">■ 打席一覧</div>
-              <v-data-table
-                :headers="previewHeaders"
-                :items="previewItems"
-                :items-per-page="-1"
-                density="compact"
-                class="elevation-1"
-                show-expand
-                item-value="index"
-                v-model:expanded="expandedRows"
-                :row-props="rowProps"
-              >
-                <template v-slot:expanded-row="{ columns, item }">
-                  <tr>
-                    <td :colspan="columns.length" class="pa-2 bg-grey-lighten-5">
-                      <div class="d-flex align-center mb-1">
-                        <span class="text-caption font-weight-bold mr-2">
-                          打席イベント ({{ getEditableEvents(item.index).length }}件)
-                        </span>
-                        <v-btn
-                          size="x-small"
-                          variant="text"
-                          color="primary"
-                          prepend-icon="mdi-plus"
-                          @click="addEvent(item.index)"
-                        >
-                          追加
-                        </v-btn>
-                      </div>
-                      <div
-                        v-if="getEditableEvents(item.index).length === 0"
-                        class="text-caption text-medium-emphasis"
-                      >
-                        イベントなし
-                      </div>
-                      <div
-                        v-for="(ev, evIdx) in getEditableEvents(item.index)"
-                        :key="evIdx"
-                        class="d-flex align-center ga-1 mb-1"
-                      >
-                        <v-chip size="x-small" :color="eventColor(ev.type)" class="mr-1">
-                          {{ eventLabel(ev.type) }}
-                        </v-chip>
-                        <v-text-field
-                          :model-value="ev.text"
-                          density="compact"
-                          variant="plain"
-                          hide-details
-                          class="text-caption flex-grow-1"
-                          style="max-width: 400px"
-                          @update:model-value="
-                            (val: string) => updateEventText(item.index, evIdx, val)
-                          "
-                        ></v-text-field>
-                        <v-btn
-                          size="x-small"
-                          variant="text"
-                          color="error"
-                          icon="mdi-close"
-                          @click="removeEvent(item.index, evIdx)"
-                        ></v-btn>
-                      </div>
-                    </td>
-                  </tr>
-                </template>
-              </v-data-table>
-            </div>
-
-            <!-- [3] 投手サマリー -->
-            <div class="mb-4">
-              <div class="text-subtitle-2 mb-2">■ 投手サマリー（疲労管理用）</div>
-              <v-table density="compact" class="elevation-1">
-                <thead>
-                  <tr>
-                    <th class="text-left">投手</th>
-                    <th class="text-center">登板回</th>
-                    <th class="text-center">対戦打席</th>
-                    <th class="text-center">被安打</th>
-                    <th class="text-center">与四球</th>
-                    <th class="text-center">奪三振</th>
-                    <th class="text-center">失点</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr v-for="ps in pitcherSummary" :key="ps.name">
-                    <td>
-                      {{ ps.name }}
-                      <v-chip
-                        v-if="ps.isStarter"
-                        size="x-small"
-                        color="blue"
-                        variant="tonal"
-                        class="ml-1"
-                      >
-                        先発
-                      </v-chip>
-                    </td>
-                    <td class="text-center text-caption">{{ ps.entry }}</td>
-                    <td class="text-center">{{ ps.bf }}</td>
-                    <td class="text-center">{{ ps.hits }}</td>
-                    <td class="text-center">{{ ps.walks }}</td>
-                    <td class="text-center">{{ ps.strikeouts }}</td>
-                    <td class="text-center">{{ ps.runs }}</td>
-                  </tr>
-                </tbody>
-              </v-table>
-            </div>
-
-            <v-row>
+            <v-row class="mt-2">
               <v-col>
-                <v-btn color="success" :loading="loading" class="mr-2" @click="confirmGame">
-                  確定してDB保存
-                </v-btn>
                 <v-btn variant="outlined" @click="resetAll">やり直し</v-btn>
               </v-col>
             </v-row>
@@ -378,7 +224,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import axios from 'axios'
 import { useSnackbar } from '@/composables/useSnackbar'
@@ -399,34 +245,6 @@ interface Team {
   is_active: boolean
 }
 
-interface AtBatEvent {
-  type: string
-  speaker: string
-  text: string
-}
-
-interface AtBat {
-  inning: number
-  top_bottom: string
-  order: number
-  batter: string
-  pitcher: string
-  result_code: string
-  runners_before: number[]
-  outs_after: number | null
-  runners_after: number[]
-  score: number | null
-  runs_scored: number
-  wild_pitch: boolean
-  wild_pitch_type: string | null
-  events: AtBatEvent[]
-}
-
-interface ParsedAtBats {
-  at_bats: AtBat[]
-  innings: number
-}
-
 interface PregameInfo {
   venue: string | null
   home_team: string | null
@@ -443,39 +261,15 @@ interface PregameInfo {
 
 interface ParseResponse {
   pregame_info: PregameInfo
-  parsed_at_bats: ParsedAtBats
   at_bat_count: number
   raw_at_bats: object
 }
 
 interface ImportResponse {
   game: { id: number; status: string }
-  parsed_at_bats: ParsedAtBats
   at_bat_count: number
   imported_count: number
   game_record_id?: number
-}
-
-interface PitcherStat {
-  name: string
-  entry: string
-  bf: number
-  hits: number
-  walks: number
-  strikeouts: number
-  runs: number
-  isStarter: boolean
-}
-
-interface PreviewItem extends Omit<AtBat, 'outs_after'> {
-  index: number
-  runners: string
-  outs_after: string
-  events_str: string
-  score_before: string
-  score_after: string
-  score_change: string
-  scored: boolean
 }
 
 const router = useRouter()
@@ -515,32 +309,12 @@ const formData = ref({
 const importResult = ref<ImportResponse | null>(null)
 const rawAtBats = ref<object | null>(null)
 
-// Step 3 state
-const expandedRows = ref<number[]>([])
-const editableEvents = ref<Map<number, AtBatEvent[]>>(new Map())
-
 const canImport = computed(
   () =>
     formData.value.competition_id !== null &&
     formData.value.home_team_id !== null &&
     formData.value.visitor_team_id !== null,
 )
-
-// Initialize editable events when import result changes
-watch(importResult, (result) => {
-  if (result) {
-    const map = new Map<number, AtBatEvent[]>()
-    result.parsed_at_bats.at_bats.forEach((ab, idx) => {
-      const evs = [...ab.events]
-      if (ab.wild_pitch) {
-        evs.push({ type: 'wild_pitch', speaker: '', text: ab.wild_pitch_type ?? '暴投' })
-      }
-      map.set(idx, evs)
-    })
-    editableEvents.value = map
-    expandedRows.value = []
-  }
-})
 
 onMounted(async () => {
   try {
@@ -638,273 +412,12 @@ function backToStep1() {
   errorMessage.value = ''
 }
 
-const BASE_SYMBOLS = ['', '①', '②', '③']
-
-function formatRunners(bases: number[]): string {
-  if (bases.length === 0) return '---'
-  return bases.map((b) => BASE_SYMBOLS[b] ?? `${b}`).join('')
-}
-
-function formatOuts(outs: number | null): string {
-  if (outs === null || outs === undefined) return '-'
-  return `${outs}`
-}
-
-function formatEvents(events: AtBatEvent[]): string {
-  if (events.length === 0) return ''
-  return events
-    .map((e) => {
-      if (e.type === 'pinch_hit') return '代打'
-      if (e.type === 'pinch_run') return '代走'
-      if (e.type === 'pitcher_change') return 'P交代'
-      if (e.type === 'wild_pitch') return '暴投'
-      return e.type
-    })
-    .join(' ')
-}
-
-function eventLabel(type: string): string {
-  const labels: Record<string, string> = {
-    pinch_hit: '代打',
-    pinch_run: '代走',
-    pitcher_change: 'P交代',
-    wild_pitch: '暴投',
-  }
-  return labels[type] ?? type
-}
-
-function eventColor(type: string): string {
-  const colors: Record<string, string> = {
-    pinch_hit: 'orange',
-    pinch_run: 'purple',
-    pitcher_change: 'red',
-    wild_pitch: 'amber',
-  }
-  return colors[type] ?? 'grey'
-}
-
-// Line score computation
-const lineScore = computed(() => {
-  if (!importResult.value)
-    return { home: {} as Record<number, number>, visitor: {} as Record<number, number> }
-  const home: Record<number, number> = {}
-  const visitor: Record<number, number> = {}
-  importResult.value.parsed_at_bats.at_bats.forEach((ab) => {
-    const rs = ab.runs_scored ?? 0
-    if (rs > 0) {
-      // top = 表 = visitor bats; bottom = 裏 = home bats
-      if (ab.top_bottom === 'top') {
-        visitor[ab.inning] = (visitor[ab.inning] ?? 0) + rs
-      } else {
-        home[ab.inning] = (home[ab.inning] ?? 0) + rs
-      }
-    }
-  })
-  return { home, visitor }
-})
-
-const lineScoreInnings = computed(() => {
-  if (!importResult.value) return []
-  // innings = half-inning count (top + bottom); divide by 2 to get full inning count
-  const count = Math.ceil(importResult.value.parsed_at_bats.innings / 2)
-  return Array.from({ length: count }, (_, i) => i + 1)
-})
-
-const homeTotal = computed(() => Object.values(lineScore.value.home).reduce((s, v) => s + v, 0))
-const visitorTotal = computed(() =>
-  Object.values(lineScore.value.visitor).reduce((s, v) => s + v, 0),
-)
-
-// Pitcher summary computation
-function isHit(rc: string): boolean {
-  return /^(HR|3H|2H|IH|H)\d/.test(rc)
-}
-
-function isWalk(rc: string): boolean {
-  return rc === 'BB'
-}
-
-function isStrikeout(rc: string): boolean {
-  return rc === 'K'
-}
-
-const pitcherSummary = computed((): PitcherStat[] => {
-  if (!importResult.value) return []
-  const atBats = importResult.value.parsed_at_bats.at_bats
-
-  // 各half(top/bottom)で最初に登場した投手がその側の先発
-  const firstPitcherByHalf = new Map<string, string>()
-  atBats.forEach((ab) => {
-    if (!firstPitcherByHalf.has(ab.top_bottom)) {
-      firstPitcherByHalf.set(ab.top_bottom, ab.pitcher)
-    }
-  })
-
-  const pitcherMap = new Map<
-    string,
-    {
-      order: number
-      firstInning: number
-      lastInning: number
-      firstHalf: string
-      lastHalf: string
-      bf: number
-      hits: number
-      walks: number
-      strikeouts: number
-      runs: number
-    }
-  >()
-  let globalOrder = 0
-
-  atBats.forEach((ab) => {
-    const name = ab.pitcher
-    if (!pitcherMap.has(name)) {
-      pitcherMap.set(name, {
-        order: globalOrder++,
-        firstInning: ab.inning,
-        lastInning: ab.inning,
-        firstHalf: ab.top_bottom,
-        lastHalf: ab.top_bottom,
-        bf: 0,
-        hits: 0,
-        walks: 0,
-        strikeouts: 0,
-        runs: 0,
-      })
-    }
-    const ps = pitcherMap.get(name)!
-    ps.lastInning = ab.inning
-    ps.lastHalf = ab.top_bottom
-    ps.bf += 1
-    if (isHit(ab.result_code)) ps.hits += 1
-    if (isWalk(ab.result_code)) ps.walks += 1
-    if (isStrikeout(ab.result_code)) ps.strikeouts += 1
-    ps.runs += ab.runs_scored ?? 0
-  })
-
-  return Array.from(pitcherMap.entries())
-    .sort(([, a], [, b]) => a.order - b.order)
-    .map(([name, ps]) => {
-      const firstHalfLabel = ps.firstHalf === 'top' ? '表' : '裏'
-      const lastHalfLabel = ps.lastHalf === 'top' ? '表' : '裏'
-      const entry =
-        ps.firstInning === ps.lastInning && ps.firstHalf === ps.lastHalf
-          ? `${ps.firstInning}回${firstHalfLabel}`
-          : `${ps.firstInning}回${firstHalfLabel}〜${ps.lastInning}回${lastHalfLabel}`
-      return {
-        name,
-        entry,
-        bf: ps.bf,
-        hits: ps.hits,
-        walks: ps.walks,
-        strikeouts: ps.strikeouts,
-        runs: ps.runs,
-        isStarter: firstPitcherByHalf.get(ps.firstHalf) === name,
-      }
-    })
-})
-
-const previewHeaders = [
-  { title: '回', key: 'inning', width: '50px' },
-  { title: '表裏', key: 'top_bottom', width: '60px' },
-  { title: '順', key: 'order', width: '50px' },
-  { title: '打者', key: 'batter' },
-  { title: '投手', key: 'pitcher' },
-  { title: '結果', key: 'result_code', width: '80px' },
-  { title: '走者(前→後)', key: 'runners', width: '110px' },
-  { title: 'Out', key: 'outs_after', width: '50px' },
-  { title: 'スコア', key: 'score_change', width: '130px' },
-  { title: 'イベント', key: 'events_str', width: '80px' },
-]
-
-const previewItems = computed(() => {
-  if (!importResult.value) return []
-  let homeScore = 0
-  let visitorScore = 0
-  return importResult.value.parsed_at_bats.at_bats.map((ab, idx) => {
-    const scoreBefore = `${visitorScore}-${homeScore}`
-    const rs = ab.runs_scored ?? 0
-    if (rs > 0) {
-      if (ab.top_bottom === 'top') {
-        visitorScore += rs
-      } else {
-        homeScore += rs
-      }
-    }
-    const scoreAfter = `${visitorScore}-${homeScore}`
-    const evs = getEditableEvents(idx)
-    const scored = rs > 0
-    return {
-      ...ab,
-      index: idx,
-      runners: `${formatRunners(ab.runners_before)}→${formatRunners(ab.runners_after)}`,
-      outs_after: formatOuts(ab.outs_after),
-      events_str: formatEvents(evs),
-      score_before: scoreBefore,
-      score_after: scoreAfter,
-      score_change: scored ? `★ ${scoreBefore}→${scoreAfter}` : scoreAfter,
-      scored,
-    }
-  })
-})
-
-function rowProps(item: { item: PreviewItem }) {
-  return item.item.scored ? { class: 'bg-green-lighten-5' } : {}
-}
-
-// Editable events helpers
-function getEditableEvents(idx: number): AtBatEvent[] {
-  return editableEvents.value.get(idx) ?? []
-}
-
-function addEvent(idx: number) {
-  const evs = editableEvents.value.get(idx) ?? []
-  editableEvents.value.set(idx, [...evs, { type: 'note', speaker: '', text: '' }])
-  editableEvents.value = new Map(editableEvents.value)
-}
-
-function removeEvent(idx: number, evIdx: number) {
-  const evs = editableEvents.value.get(idx) ?? []
-  editableEvents.value.set(
-    idx,
-    evs.filter((_, i) => i !== evIdx),
-  )
-  editableEvents.value = new Map(editableEvents.value)
-}
-
-function updateEventText(idx: number, evIdx: number, text: string) {
-  const evs = editableEvents.value.get(idx) ?? []
-  const updated = evs.map((ev, i) => (i === evIdx ? { ...ev, text } : ev))
-  editableEvents.value.set(idx, updated)
-  editableEvents.value = new Map(editableEvents.value)
-}
-
-async function confirmGame() {
-  if (!importResult.value) return
-  errorMessage.value = ''
-  loading.value = true
-  try {
-    await axios.post(`/games/${importResult.value.game.id}/confirm`)
-    successMessage.value = `取り込み完了！試合ID: ${importResult.value.game.id}`
-    showSnackbar(`取り込み完了！試合ID: ${importResult.value.game.id}`, 'success')
-    resetAll()
-  } catch {
-    errorMessage.value = '確定処理に失敗しました'
-    showSnackbar('確定処理に失敗しました', 'error')
-  } finally {
-    loading.value = false
-  }
-}
-
 function resetAll() {
   currentStep.value = 1
   logText.value = ''
   importResult.value = null
   rawAtBats.value = null
   errorMessage.value = ''
-  expandedRows.value = []
-  editableEvents.value = new Map()
   pregameForm.value = {
     venue: '',
     home_team: '',

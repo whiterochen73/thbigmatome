@@ -139,7 +139,7 @@ const routes: RouteRecordRaw[] = [
         path: '/games/import',
         name: 'ログ取り込み',
         component: () => import('@/views/GameImportView.vue'),
-        meta: { requiresAuth: true, title: 'IRCログ取り込み' },
+        meta: { requiresAuth: true, title: '試合インポート' },
       },
       {
         path: '/games/:id',

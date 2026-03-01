@@ -3,6 +3,7 @@ import { mount, flushPromises } from '@vue/test-utils'
 import { createVuetify } from 'vuetify'
 import * as components from 'vuetify/components'
 import * as directives from 'vuetify/directives'
+import { createRouter, createMemoryHistory } from 'vue-router'
 import GameImportView from '../GameImportView.vue'
 
 vi.mock('axios', () => {
@@ -38,6 +39,16 @@ import axios from 'axios'
 const mockedAxios = vi.mocked(axios)
 
 const vuetify = createVuetify({ components, directives })
+
+function createTestRouter() {
+  return createRouter({
+    history: createMemoryHistory(),
+    routes: [
+      { path: '/', component: { template: '<div/>' } },
+      { path: '/game-records/:id', component: { template: '<div/>' } },
+    ],
+  })
+}
 
 const mockCompetitions = [
   { id: 1, name: 'テストリーグ', year: 2024, competition_type: 'league_pennant', entry_count: 4 },
@@ -77,19 +88,22 @@ describe('GameImportView', () => {
   })
 
   it('mounts successfully', async () => {
-    const wrapper = mount(GameImportView, { global: { plugins: [vuetify] } })
+    const router = createTestRouter()
+    const wrapper = mount(GameImportView, { global: { plugins: [vuetify, router] } })
     await flushPromises()
     expect(wrapper.exists()).toBe(true)
   })
 
   it('displays import form header', async () => {
-    const wrapper = mount(GameImportView, { global: { plugins: [vuetify] } })
+    const router = createTestRouter()
+    const wrapper = mount(GameImportView, { global: { plugins: [vuetify, router] } })
     await flushPromises()
     expect(wrapper.text()).toContain('IRCログ取り込み')
   })
 
   it('Step 1 shows only log textarea and analyze button', async () => {
-    const wrapper = mount(GameImportView, { global: { plugins: [vuetify] } })
+    const router = createTestRouter()
+    const wrapper = mount(GameImportView, { global: { plugins: [vuetify, router] } })
     await flushPromises()
     expect(wrapper.text()).toContain('Step 1')
     expect(wrapper.text()).toContain('ログ入力')
@@ -99,14 +113,16 @@ describe('GameImportView', () => {
 
   it('shows error message when master data fetch fails on mount', async () => {
     mockedAxios.get = vi.fn().mockRejectedValue(new Error('Network Error'))
-    const wrapper = mount(GameImportView, { global: { plugins: [vuetify] } })
+    const router = createTestRouter()
+    const wrapper = mount(GameImportView, { global: { plugins: [vuetify, router] } })
     await flushPromises()
     expect(wrapper.text()).toContain('データの取得に失敗しました')
   })
 
   it('analyze button calls parse_log API', async () => {
     mockedAxios.post = vi.fn().mockResolvedValue({ data: mockParseResponse })
-    const wrapper = mount(GameImportView, { global: { plugins: [vuetify] } })
+    const router = createTestRouter()
+    const wrapper = mount(GameImportView, { global: { plugins: [vuetify, router] } })
     await flushPromises()
 
     const textarea = wrapper.find('textarea')
@@ -122,7 +138,8 @@ describe('GameImportView', () => {
 
   it('after analyze, advances to Step 2 with pregame info', async () => {
     mockedAxios.post = vi.fn().mockResolvedValue({ data: mockParseResponse })
-    const wrapper = mount(GameImportView, { global: { plugins: [vuetify] } })
+    const router = createTestRouter()
+    const wrapper = mount(GameImportView, { global: { plugins: [vuetify, router] } })
     await flushPromises()
 
     const textarea = wrapper.find('textarea')
@@ -143,12 +160,12 @@ describe('GameImportView', () => {
       .mockResolvedValueOnce({
         data: {
           game: { id: 42, status: 'draft' },
-          parsed_at_bats: { at_bats: [], innings: 9 },
           at_bat_count: 27,
           imported_count: 0,
         },
       })
-    const wrapper = mount(GameImportView, { global: { plugins: [vuetify] } })
+    const router = createTestRouter()
+    const wrapper = mount(GameImportView, { global: { plugins: [vuetify, router] } })
     await flushPromises()
 
     const textarea = wrapper.find('textarea')
@@ -180,69 +197,57 @@ describe('GameImportView', () => {
   })
 
   it('fetches competitions on mount', async () => {
-    const wrapper = mount(GameImportView, { global: { plugins: [vuetify] } })
+    const router = createTestRouter()
+    const wrapper = mount(GameImportView, { global: { plugins: [vuetify, router] } })
     await flushPromises()
     expect(mockedAxios.get).toHaveBeenCalledWith('/competitions')
     expect(wrapper.exists()).toBe(true)
   })
 
-  describe('Step 3: preview features', () => {
-    const mockAtBats = [
-      {
-        inning: 1,
-        top_bottom: 'top',
-        order: 1,
-        batter: '打者A',
-        pitcher: '投手X',
-        result_code: 'H7',
-        runners_before: [],
-        outs_after: 0,
-        runners_after: [1],
-        score: null,
-        runs_scored: 1,
-        wild_pitch: false,
-        wild_pitch_type: null,
-        events: [],
-      },
-      {
-        inning: 1,
-        top_bottom: 'bottom',
-        order: 1,
-        batter: '打者B',
-        pitcher: '投手Y',
-        result_code: 'K',
-        runners_before: [],
-        outs_after: 1,
-        runners_after: [],
-        score: null,
-        runs_scored: 0,
-        wild_pitch: false,
-        wild_pitch_type: null,
-        events: [{ type: 'pitcher_change', speaker: 'GM', text: '投手交代' }],
-      },
-      {
-        inning: 2,
-        top_bottom: 'bottom',
-        order: 1,
-        batter: '打者C',
-        pitcher: '投手Z',
-        result_code: 'BB',
-        runners_before: [],
-        outs_after: 0,
-        runners_after: [1],
-        score: null,
-        runs_scored: 2,
-        wild_pitch: true,
-        wild_pitch_type: '3-19',
-        events: [],
-      },
-    ]
+  it('redirects to game-records when game_record_id is present', async () => {
+    mockedAxios.post = vi
+      .fn()
+      .mockResolvedValueOnce({ data: mockParseResponse })
+      .mockResolvedValueOnce({
+        data: {
+          game: { id: 42, status: 'imported' },
+          at_bat_count: 27,
+          imported_count: 27,
+          game_record_id: 99,
+        },
+      })
+    const router = createTestRouter()
+    const pushSpy = vi.spyOn(router, 'push').mockResolvedValue(undefined)
+    const wrapper = mount(GameImportView, { global: { plugins: [vuetify, router] } })
+    await flushPromises()
 
+    const textarea = wrapper.find('textarea')
+    await textarea.setValue('テストIRCログ')
+    const analyzeBtn = wrapper.findAll('.v-btn').find((b) => b.text().includes('解析する'))
+    await analyzeBtn!.trigger('click')
+    await flushPromises()
+
+    const vm = wrapper.vm as unknown as {
+      formData: { competition_id: number; home_team_id: number; visitor_team_id: number }
+    }
+    vm.formData.competition_id = 1
+    vm.formData.home_team_id = 10
+    vm.formData.visitor_team_id = 20
+    await wrapper.vm.$nextTick()
+
+    const importBtn = wrapper.findAll('.v-btn').find((b) => b.text().includes('インポート'))
+    await importBtn!.trigger('click')
+    await flushPromises()
+
+    expect(pushSpy).toHaveBeenCalledWith('/game-records/99')
+  })
+
+  describe('Step 3: fallback (no game_record_id)', () => {
     const mockImportResponse = {
       game: { id: 42, status: 'draft' },
-      parsed_at_bats: { at_bats: mockAtBats, innings: 4 },
       at_bat_count: 3,
       imported_count: 3,
+      // no game_record_id → goes to Step 3 fallback
     }
 
     async function mountToStep3() {
@@ -250,7 +255,8 @@ describe('GameImportView', () => {
         .fn()
         .mockResolvedValueOnce({ data: mockParseResponse })
         .mockResolvedValueOnce({ data: mockImportResponse })
-      const wrapper = mount(GameImportView, { global: { plugins: [vuetify] } })
+      const router = createTestRouter()
+      const wrapper = mount(GameImportView, { global: { plugins: [vuetify, router] } })
       await flushPromises()
 
       const textarea = wrapper.find('textarea')
@@ -274,53 +280,31 @@ describe('GameImportView', () => {
       return wrapper
     }
 
-    it('shows Step 3 preview after import', async () => {
+    it('shows Step 3 fallback after import without game_record_id', async () => {
       const wrapper = await mountToStep3()
       expect(wrapper.text()).toContain('Step 3')
-      expect(wrapper.text()).toContain('解析結果プレビュー')
+      expect(wrapper.text()).toContain('インポート完了')
     })
 
-    it('shows line score section', async () => {
+    it('shows game id and at_bat_count in Step 3 fallback', async () => {
       const wrapper = await mountToStep3()
-      expect(wrapper.text()).toContain('ラインスコア')
-      expect(wrapper.text()).toContain('ビジター')
-      expect(wrapper.text()).toContain('ホーム')
+      expect(wrapper.text()).toContain('試合ID: 42')
+      expect(wrapper.text()).toContain('打席数: 3件')
     })
 
-    it('shows pitcher summary section', async () => {
+    it('shows reset button in Step 3 fallback', async () => {
       const wrapper = await mountToStep3()
-      expect(wrapper.text()).toContain('投手サマリー')
-      expect(wrapper.text()).toContain('投手X')
-      expect(wrapper.text()).toContain('投手Y')
-      expect(wrapper.text()).toContain('投手Z')
+      const resetBtn = wrapper.findAll('.v-btn').find((b) => b.text().includes('やり直し'))
+      expect(resetBtn).toBeTruthy()
     })
 
-    it('shows at-bat list', async () => {
+    it('reset button returns to Step 1', async () => {
       const wrapper = await mountToStep3()
-      expect(wrapper.text()).toContain('打席一覧')
-      expect(wrapper.text()).toContain('打者A')
-      expect(wrapper.text()).toContain('打者B')
-    })
-
-    it('pitcher summary shows starter chip for first pitcher', async () => {
-      const wrapper = await mountToStep3()
-      expect(wrapper.text()).toContain('先発')
-    })
-
-    it('shows confirm and reset buttons in Step 3', async () => {
-      const wrapper = await mountToStep3()
-      expect(wrapper.text()).toContain('確定してDB保存')
-      expect(wrapper.text()).toContain('やり直し')
-    })
-
-    it('wild_pitch event is shown in editable events', async () => {
-      const wrapper = await mountToStep3()
-      // 暴投がある at-bat (index 2) の editableEvents に wild_pitch が含まれること
-      const vm = wrapper.vm as unknown as {
-        editableEvents: Map<number, Array<{ type: string; text: string }>>
-      }
-      const evs2 = vm.editableEvents.get(2) ?? []
-      expect(evs2.some((e) => e.type === 'wild_pitch')).toBe(true)
+      const resetBtn = wrapper.findAll('.v-btn').find((b) => b.text().includes('やり直し'))
+      await resetBtn!.trigger('click')
+      await wrapper.vm.$nextTick()
+      expect(wrapper.text()).toContain('Step 1')
+      expect(wrapper.text()).toContain('ログ入力')
     })
   })
 })

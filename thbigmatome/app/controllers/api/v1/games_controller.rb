@@ -3,7 +3,7 @@ require "tempfile"
 
 class Api::V1::GamesController < Api::V1::BaseController
   def index
-    games = Game.all.order(id: :desc)
+    games = Game.includes(:game_record).order(id: :desc)
     games = games.where(competition_id: params[:competition_id]) if params[:competition_id].present?
     if params[:from].present? && params[:to].present?
       games = games.where(real_date: params[:from]..params[:to])
@@ -142,15 +142,35 @@ class Api::V1::GamesController < Api::V1::BaseController
     }
 
     game = Game.new(game_params_for_import)
-    unless game.save
+    unless game.valid?
       return render json: { errors: game.errors.full_messages }, status: :unprocessable_content
     end
 
-    # 再import対処: draft at_batsのみ削除（confirmedは保護）
-    game.at_bats.draft.destroy_all
+    game_record = nil
+    imported_count = 0
 
-    # パーサー結果からat_batsを作成
-    imported_count = create_draft_at_bats(game, parsed)
+    ActiveRecord::Base.transaction do
+      game.save!
+
+      # 再import対処: draft at_batsのみ削除（confirmedは保護）
+      game.at_bats.draft.destroy_all
+
+      # パーサー結果からat_batsを作成
+      imported_count = create_draft_at_bats(game, parsed)
+
+      # GameRecord作成（game_id紐付け）
+      game_record = GameRecord.create!(
+        game_id: game.id,
+        team_id: params[:home_team_id],
+        game_date: params[:real_date],
+        source_log: log_text,
+        parsed_at: Time.current,
+        status: "draft"
+      )
+
+      # AtBatRecords作成
+      create_import_at_bat_records(game_record, parsed)
+    end
 
     all_at_bats = (parsed["innings"] || []).flat_map do |inn|
       (inn["at_bats"] || []).map do |ab|
@@ -175,6 +195,7 @@ class Api::V1::GamesController < Api::V1::BaseController
     innings_count = (parsed["innings"] || []).length
     render json: {
       game: GameSerializer.new(game).as_json,
+      game_record_id: game_record.id,
       parsed_at_bats: {
         at_bats: all_at_bats,
         innings: innings_count
@@ -182,6 +203,8 @@ class Api::V1::GamesController < Api::V1::BaseController
       at_bat_count: all_at_bats.length,
       imported_count: imported_count
     }, status: :created
+  rescue ActiveRecord::RecordInvalid => e
+    render json: { errors: e.record.errors.full_messages }, status: :unprocessable_content
   rescue JSON::ParserError => e
     render json: { error: "JSON parse error: #{e.message}" }, status: :unprocessable_content
   end
@@ -190,6 +213,39 @@ class Api::V1::GamesController < Api::V1::BaseController
 
   def game_params
     params.require(:game).permit(:competition_id, :home_team_id, :visitor_team_id, :real_date, :stadium_id, :status, :source)
+  end
+
+  def create_import_at_bat_records(game_record, parsed)
+    ab_num = 0
+    (parsed["innings"] || []).each do |inning_data|
+      inning_num = inning_data["inning"].to_i
+      half = inning_data["half"].to_s
+      (inning_data["at_bats"] || []).each do |ab|
+        ab_num += 1
+        ab_hash = ab.with_indifferent_access
+        attrs = {
+          inning: inning_num,
+          half: half,
+          ab_num: ab_num,
+          batter_name: ab_hash[:batter_name],
+          pitcher_name: ab_hash[:pitcher_name],
+          pitch_roll: ab_hash[:pitch_roll],
+          pitch_result: ab_hash[:pitch_result],
+          bat_roll: ab_hash[:bat_roll],
+          bat_result: ab_hash[:bat_result],
+          result_code: ab_hash[:bat_result].presence || ab_hash[:pitch_result] || "?",
+          outs_before: ab_hash[:outs_before],
+          outs_after: ab_hash[:outs_after],
+          runs_scored: ab_hash[:runs_scored] || 0,
+          runners_before: ab_hash[:runners_before] || [],
+          runners_after: ab_hash[:runners_after] || []
+        }
+        attrs[:source_events] = AtBatRecordBuilder.build_source_events(ab_hash)
+        raw_disc = ab_hash[:discrepancies]
+        attrs[:discrepancies] = AtBatRecordBuilder.normalize_discrepancies(raw_disc) if raw_disc.present?
+        game_record.at_bat_records.create!(attrs)
+      end
+    end
   end
 
   def create_draft_at_bats(game, parsed)

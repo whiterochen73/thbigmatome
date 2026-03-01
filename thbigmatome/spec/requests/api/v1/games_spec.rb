@@ -22,6 +22,28 @@ RSpec.describe "Api::V1::GamesController", type: :request do
       expect(json.map { |g| g["id"] }).to eq(games.map(&:id).sort.reverse)
     end
 
+    it "returns game_record_id when game_record exists" do
+      game = create(:game)
+      game_record = create(:game_record, game: game)
+
+      get "/api/v1/games", as: :json
+
+      expect(response).to have_http_status(:ok)
+      json = response.parsed_body
+      game_json = json.find { |g| g["id"] == game.id }
+      expect(game_json["game_record_id"]).to eq(game_record.id)
+    end
+
+    it "returns null game_record_id when no game_record" do
+      create(:game)
+
+      get "/api/v1/games", as: :json
+
+      expect(response).to have_http_status(:ok)
+      json = response.parsed_body
+      expect(json.first["game_record_id"]).to be_nil
+    end
+
     it "filters by competition_id" do
       competition1 = create(:competition)
       competition2 = create(:competition)
@@ -229,6 +251,28 @@ RSpec.describe "Api::V1::GamesController", type: :request do
       expect(at_bat.batter).to eq(batter)
       expect(at_bat.pitcher).to eq(pitcher)
       expect(at_bat.result_code).to eq("1B")
+    end
+
+    it "import_log成功: GameRecordとAtBatRecordsが同一トランザクションで作成されること" do
+      expect {
+        post "/api/v1/games/import_log", params: import_params, as: :json
+      }.to change(GameRecord, :count).by(1).and change(AtBatRecord, :count).by(1)
+
+      expect(response).to have_http_status(:created)
+      json = response.parsed_body
+      expect(json["game_record_id"]).to be_present
+
+      game_record = GameRecord.find(json["game_record_id"])
+      expect(game_record.game_id).to eq(json["game"]["id"])
+      expect(game_record.team_id).to eq(home_team.id)
+      expect(game_record.status).to eq("draft")
+
+      at_bat_record = game_record.at_bat_records.first
+      expect(at_bat_record.batter_name).to eq(batter.name)
+      expect(at_bat_record.pitcher_name).to eq(pitcher.name)
+      expect(at_bat_record.result_code).to eq("1B")
+      expect(at_bat_record.inning).to eq(1)
+      expect(at_bat_record.half).to eq("top")
     end
 
     it "再import_log: 既存のdraft at_batsが削除されて新しいdraftが作成されること" do

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_02_28_045801) do
+ActiveRecord::Schema[8.1].define(version: 2026_03_01_072122) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -58,6 +58,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_02_28_045801) do
     t.string "batter_id"
     t.string "batter_name"
     t.datetime "created_at", null: false
+    t.jsonb "discrepancies", default: [], null: false
     t.jsonb "extra_data", default: {}
     t.bigint "game_record_id", null: false
     t.string "half"

@@ -41,7 +41,10 @@ class Api::V1::GameRecordsController < Api::V1::BaseController
 
       if params[:at_bat_records].present?
         params[:at_bat_records].each do |ab_params|
-          game_record.at_bat_records.create!(at_bat_record_create_params(ab_params))
+          attrs = at_bat_record_create_params(ab_params).to_h
+          raw_disc = ab_params[:discrepancies] || ab_params["discrepancies"]
+          attrs[:discrepancies] = normalize_discrepancies(raw_disc) if raw_disc.present?
+          game_record.at_bat_records.create!(attrs)
         end
       end
     end
@@ -87,6 +90,20 @@ class Api::V1::GameRecordsController < Api::V1::BaseController
       :outs_before, :outs_after, :runs_scored, :play_description,
       runners_before: {}, runners_after: {}, extra_data: {}
     )
+  end
+
+  # パーサー出力形式 { field, text, gsm } → DB格納形式 { field, text_value, gsm_value, cause, resolution } に変換
+  def normalize_discrepancies(raw_discrepancies)
+    Array(raw_discrepancies).map do |d|
+      {
+        "field" => d[:field] || d["field"],
+        "text_value" => d[:text] || d["text"],
+        "gsm_value" => d[:gsm] || d["gsm"],
+        "cause" => d[:cause] || d["cause"] || "unknown",
+        "resolution" => d[:resolution] || d["resolution"],
+        "note" => d[:note] || d["note"]
+      }.compact
+    end
   end
 
   def serialize_game_record(game_record, include_at_bats: false)
@@ -143,6 +160,7 @@ class Api::V1::GameRecordsController < Api::V1::BaseController
       modified_fields: ab.modified_fields,
       play_description: ab.play_description,
       extra_data: ab.extra_data,
+      discrepancies: ab.discrepancies,
       created_at: ab.created_at,
       updated_at: ab.updated_at
     }

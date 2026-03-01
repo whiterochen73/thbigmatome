@@ -64,6 +64,7 @@ class Api::V1::AtBatRecordsController < Api::V1::BaseController
       modified_fields: ab.modified_fields,
       play_description: ab.play_description,
       extra_data: ab.extra_data,
+      discrepancies: ab.discrepancies,
       created_at: ab.created_at,
       updated_at: ab.updated_at
     }

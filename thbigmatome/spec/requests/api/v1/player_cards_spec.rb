@@ -29,6 +29,26 @@ RSpec.describe "Api::V1::PlayerCards", type: :request do
       expect(json["card_type"]).to eq(card.card_type)
     end
 
+    it "includes cost from the player's latest cost_player record" do
+      cost = create(:cost)
+      card = create(:player_card)
+      create(:cost_player, cost: cost, player: card.player, normal_cost: 7)
+
+      get "/api/v1/player_cards"
+
+      json = response.parsed_body["player_cards"].first
+      expect(json["cost"]).to eq(7)
+    end
+
+    it "returns null cost when player has no cost_player record" do
+      create(:player_card)
+
+      get "/api/v1/player_cards"
+
+      json = response.parsed_body["player_cards"].first
+      expect(json["cost"]).to be_nil
+    end
+
     it "filters by card_set_id" do
       card_set1 = create(:card_set)
       card_set2 = create(:card_set)

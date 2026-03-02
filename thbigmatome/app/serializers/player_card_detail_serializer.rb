@@ -57,9 +57,7 @@ class PlayerCardDetailSerializer < ActiveModel::Serializer
   end
 
   attribute :cost do
-    current_cost = Cost.current_cost
-    next nil unless current_cost
-    cp = object.player.cost_players.find { |c| c.cost_id == current_cost.id }
+    cp = object.player.cost_players.max_by(&:cost_id)
     cp&.normal_cost
   end
 

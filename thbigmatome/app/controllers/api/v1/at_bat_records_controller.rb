@@ -45,10 +45,21 @@ class Api::V1::AtBatRecordsController < Api::V1::BaseController
       :strategy, :play_description, :is_reviewed, :review_notes,
       extra_data: {}
     )
-    # runners はArray形式 [1,2,3] またはHash形式を受け付ける (JSONB)
-    permitted[:runners_before] = params[:runners_before] if params.key?(:runners_before)
-    permitted[:runners_after] = params[:runners_after] if params.key?(:runners_after)
+    # runners はArray形式 [1,2,3] を受け付ける (JSONB)。要素は1-3の整数のみ許可。
+    if params.key?(:runners_before)
+      val = params[:runners_before]
+      permitted[:runners_before] = sanitize_runners(val)
+    end
+    if params.key?(:runners_after)
+      val = params[:runners_after]
+      permitted[:runners_after] = sanitize_runners(val)
+    end
     permitted
+  end
+
+  def sanitize_runners(val)
+    return [] unless val.is_a?(Array)
+    val.filter_map { |n| Integer(n) rescue nil }.select { |n| [ 1, 2, 3 ].include?(n) }.uniq
   end
 
   def recalculate_discrepancies(existing_discrepancies, changed_fields)

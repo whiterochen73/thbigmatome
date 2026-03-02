@@ -297,54 +297,7 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import axios from '@/plugins/axios'
-
-interface SourceEvent {
-  seq?: number
-  type: 'declaration' | 'dice' | 'auto' | 'skip'
-  dice_type?: string
-  action?: string
-  text?: string
-  roll?: number | number[]
-  result?: string
-  reason?: string
-  from?: string
-  to?: string
-  [key: string]: unknown
-}
-
-interface Discrepancy {
-  field: string
-  text_value: unknown
-  gsm_value: unknown
-  cause: 'parser_misread' | 'human_error' | 'gsm_limitation' | 'ambiguous' | 'unknown'
-  resolution: 'gsm' | 'text' | 'manual' | null
-  resolution_value?: unknown
-  note?: string
-}
-
-interface AtBatRecord {
-  id: number
-  game_record_id: number
-  inning: number
-  half: 'top' | 'bottom'
-  ab_num: number
-  batter_name: string
-  pitcher_name: string
-  result_code: string | null
-  runs_scored: number | null
-  runners_before: unknown
-  runners_after: unknown
-  outs_before: number | null
-  outs_after: number | null
-  strategy: string | null
-  play_description: string | null
-  is_modified: boolean
-  is_reviewed: boolean
-  review_notes: string | null
-  modified_fields: unknown
-  discrepancies: Discrepancy[]
-  source_events: SourceEvent[] | null
-}
+import type { SourceEvent, Discrepancy, AtBatRecord } from '@/types/game-record'
 
 const props = defineProps<{
   ab: AtBatRecord
@@ -354,6 +307,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   updated: [ab: AtBatRecord]
+  error: [message: string]
 }>()
 
 const collapsed = ref(false)
@@ -443,6 +397,8 @@ async function saveEdit() {
     const response = await axios.patch<AtBatRecord>(`/at_bat_records/${props.ab.id}`, payload)
     emit('updated', response.data)
     isEditing.value = false
+  } catch {
+    emit('error', '保存に失敗しました')
   } finally {
     saving.value = false
   }

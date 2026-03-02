@@ -5,7 +5,7 @@
       <div class="card-image-container">
         <v-img
           v-if="card.card_image_path"
-          :src="`http://localhost:3000${card.card_image_path}`"
+          :src="imageBaseUrl + card.card_image_path"
           class="card-image"
           cover
         ></v-img>
@@ -74,31 +74,9 @@
 </template>
 
 <script setup lang="ts">
-interface Defense {
-  id?: number
-  position: string
-  range_value?: number
-  error_rank?: string
-  throwing?: string | null
-}
-
-interface PlayerCard {
-  id: number
-  card_set_id: number
-  player_id: number
-  card_type: 'pitcher' | 'batter'
-  player_name: string
-  player_number: string
-  card_set_name: string
-  speed: number
-  steal_start: number
-  steal_end: number
-  injury_rate: number
-  card_image_path: string | null
-  cost?: number | null
-  defenses?: Defense[]
-  unique_traits?: string | null
-}
+import { computed } from 'vue'
+import axios from '@/plugins/axios'
+import type { PlayerCard } from '@/types/game-record'
 
 interface Props {
   card: PlayerCard
@@ -108,6 +86,11 @@ defineProps<Props>()
 const emit = defineEmits<{
   click: []
 }>()
+
+const imageBaseUrl = computed(() => {
+  const base = axios.defaults.baseURL ?? ''
+  return base.replace(/\/api\/v1\/?$/, '')
+})
 </script>
 
 <style scoped>

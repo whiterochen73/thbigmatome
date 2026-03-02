@@ -51,14 +51,6 @@ RSpec.describe "Api::V1::AtBatRecordsController", type: :request do
             as: :json
       expect(response).to have_http_status(:not_found)
     end
-
-    it "未認証は401を返す" do
-      patch "/api/v1/at_bat_records/#{at_bat_record.id}",
-            params: { result_code: "H" },
-            as: :json
-      # at_bat_recordを先に作成してからログアウト状態でテスト
-      # cookieリセットのため新しいセッションで試行
-    end
   end
 
   describe "PATCH /api/v1/at_bat_records/:id (unauthenticated)" do

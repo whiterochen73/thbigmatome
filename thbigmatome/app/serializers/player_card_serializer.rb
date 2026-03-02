@@ -20,4 +20,8 @@ class PlayerCardSerializer < ActiveModel::Serializer
   attribute :card_set_name do
     object.card_set.name
   end
+
+  attribute :primary_position do
+    object.player_card_defenses.first&.position
+  end
 end

@@ -103,6 +103,7 @@
             <th class="ctr" style="width: 70px">背番号</th>
             <th>選手名</th>
             <th class="ctr" style="width: 90px">種別</th>
+            <th class="ctr" style="width: 80px">ポジション</th>
             <th class="ctr" style="width: 60px">走力</th>
             <th class="ctr" style="width: 110px">カードセット</th>
           </tr>
@@ -117,7 +118,7 @@
             <td>
               <v-img
                 v-if="card.card_image_path"
-                :src="`http://localhost:3000${card.card_image_path}`"
+                :src="imageBaseUrl + card.card_image_path"
                 width="28"
                 height="40"
                 cover
@@ -132,6 +133,7 @@
                 {{ card.card_type === 'pitcher' ? '投手' : '野手' }}
               </span>
             </td>
+            <td class="ctr" style="font-size: 0.85em">{{ card.primary_position ?? '—' }}</td>
             <td class="ctr speed-val">{{ card.speed }}</td>
             <td class="ctr" style="font-size: 0.78em; color: #888">{{ card.card_set_name }}</td>
           </tr>
@@ -185,6 +187,7 @@ interface PlayerCard {
   steal_end: number
   injury_rate: number
   card_image_path: string | null
+  primary_position: string | null
 }
 
 const router = useRouter()
@@ -202,6 +205,10 @@ const filterName = ref('')
 const viewMode = ref<'table' | 'grid'>('table')
 
 const totalPages = computed(() => Math.ceil(totalCount.value / perPage) || 1)
+
+const imageBaseUrl = computed(() => {
+  return axios.defaults.baseURL?.replace(/\/api\/v1\/?$/, '') || ''
+})
 
 onMounted(() => {
   fetchCardSets()

@@ -40,6 +40,13 @@
       <span class="d-flex align-center ga-1">
         <span class="legend-swatch bg-purple-lighten-4"></span>UP
       </span>
+      <span class="d-flex align-center ga-1">
+        <span
+          class="legend-swatch"
+          style="background: linear-gradient(135deg, #ffe0b2 50%, #ffcdd2 50%)"
+        ></span
+        >スラッシュ（2色）
+      </span>
     </div>
   </div>
 </template>

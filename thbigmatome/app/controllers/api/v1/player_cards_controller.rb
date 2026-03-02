@@ -1,6 +1,6 @@
 class Api::V1::PlayerCardsController < Api::V1::BaseController
   def index
-    player_cards = PlayerCard.includes(:player, :card_set).order(:id)
+    player_cards = PlayerCard.includes(:player, :card_set, :player_card_defenses).order(:id)
     player_cards = player_cards.where(card_set_id: params[:card_set_id]) if params[:card_set_id].present?
     player_cards = player_cards.where(card_type: params[:card_type]) if params[:card_type].present?
     if params[:name].present?

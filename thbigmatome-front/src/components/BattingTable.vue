@@ -9,7 +9,7 @@
       </thead>
       <tbody>
         <tr v-for="(row, rowIdx) in table" :key="rowIdx">
-          <td class="text-center text-caption font-weight-bold">{{ rowIdx + 1 }}</td>
+          <td class="text-center text-caption font-weight-bold">{{ rowIdx + 2 }}</td>
           <td
             v-for="(cell, colIdx) in row"
             :key="colIdx"

@@ -35,6 +35,19 @@ onMounted(async () => {
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&family=Shippori+Mincho:wght@400;700&display=swap');
 
+/* 和色パレット */
+:root {
+  --ai: #1b3a6b;
+  --ai-light: #2a5298;
+  --shu: #b33333;
+  --moegi: #5a8a00;
+  --kohaku: #c87a10;
+  --fuji: #6b4c8a;
+  --usuiro: #d4c5a9;
+  --shiro: #fafaf5;
+  --kake: #f5f0e8;
+}
+
 /* グローバルスタイル */
 html {
   overflow-y: auto;

@@ -1,14 +1,5 @@
 <template>
-  <v-container>
-    <v-row>
-      <v-col cols="12" class="d-flex align-center">
-        <v-btn icon variant="text" @click="router.back()">
-          <v-icon>mdi-arrow-left</v-icon>
-        </v-btn>
-        <h1 class="text-h5 ml-2">選手カード詳細</h1>
-      </v-col>
-    </v-row>
-
+  <v-container style="max-width: 1080px">
     <v-progress-linear
       v-if="loading"
       indeterminate
@@ -27,275 +18,243 @@
       {{ errorMessage }}
     </v-alert>
 
+    <!-- 戻るボタン -->
+    <button class="detail-back-btn" @click="router.back()">← 一覧に戻る</button>
+
     <template v-if="card">
-      <!-- カード画像 + 基本情報 -->
-      <v-row>
-        <!-- カード画像（大きく表示） -->
-        <v-col cols="12" sm="4" class="text-center">
-          <v-img
-            v-if="card.image_url || card.card_image_path"
-            :src="card.image_url || `http://localhost:3000${card.card_image_path}`"
-            max-width="400"
-            class="mx-auto rounded elevation-2"
-          ></v-img>
-          <v-card v-else width="240" class="mx-auto" variant="outlined" height="340">
-            <v-card-text class="d-flex align-center justify-center fill-height text-grey">
-              <v-icon size="80">mdi-card-account-details</v-icon>
-            </v-card-text>
-          </v-card>
-        </v-col>
+      <div class="detail-wrap">
+        <!-- カードヘッダー (藍色帯) -->
+        <div class="detail-card-header">
+          <div>
+            <div class="detail-player-name">#{{ card.player?.number }} {{ card.player?.name }}</div>
+            <div class="detail-player-sub">{{ card.card_set?.name }} ／ {{ card.handedness }}</div>
+          </div>
+          <span class="type-chip-header" :class="card.card_type">
+            {{ card.card_type === 'pitcher' ? '投手' : '野手' }}
+          </span>
+          <div style="flex: 1"></div>
+          <span class="header-badge">選手カード詳細</span>
+        </div>
 
-        <!-- 基本情報 -->
-        <v-col cols="12" sm="8">
-          <v-card variant="outlined">
-            <v-card-title class="text-subtitle-1 d-flex align-center">
-              基本情報
-              <v-spacer></v-spacer>
-              <v-btn
-                size="small"
-                color="primary"
-                variant="text"
-                prepend-icon="mdi-pencil"
-                @click="openBasicEditDialog"
-                >編集</v-btn
-              >
-            </v-card-title>
-            <v-card-text>
-              <v-row dense>
-                <v-col cols="6" sm="4">
-                  <div class="text-caption text-grey">選手名</div>
-                  <div>{{ card.player?.name }}</div>
-                </v-col>
-                <v-col cols="6" sm="4">
-                  <div class="text-caption text-grey">背番号</div>
-                  <div>{{ card.player?.number }}</div>
-                </v-col>
-                <v-col cols="6" sm="4">
-                  <div class="text-caption text-grey">カードセット</div>
-                  <div>{{ card.card_set?.name }}</div>
-                </v-col>
-                <v-col cols="6" sm="4">
-                  <div class="text-caption text-grey">種別</div>
-                  <v-chip
-                    :color="card.card_type === 'pitcher' ? 'blue' : 'green'"
-                    size="small"
-                    label
-                  >
-                    {{ card.card_type === 'pitcher' ? '投手' : '野手' }}
-                  </v-chip>
-                </v-col>
-                <v-col cols="6" sm="4">
-                  <div class="text-caption text-grey">利き腕/打席</div>
-                  <div>{{ card.handedness || '-' }}</div>
-                </v-col>
-                <v-col cols="6" sm="4">
-                  <div class="text-caption text-grey">走力</div>
-                  <div>{{ card.speed }}</div>
-                </v-col>
-                <v-col cols="6" sm="4">
-                  <div class="text-caption text-grey">バント</div>
-                  <div>{{ card.bunt }}</div>
-                </v-col>
-                <v-col cols="6" sm="4">
-                  <div class="text-caption text-grey">盗塁開始</div>
-                  <div>{{ card.steal_start }}</div>
-                </v-col>
-                <v-col cols="6" sm="4">
-                  <div class="text-caption text-grey">盗塁終了</div>
-                  <div>{{ card.steal_end }}</div>
-                </v-col>
-                <v-col cols="6" sm="4">
-                  <div class="text-caption text-grey">怪我レベル</div>
-                  <div>{{ card.injury_rate }}</div>
-                </v-col>
-                <v-col cols="6" sm="4" v-if="card.biorhythm_period">
-                  <div class="text-caption text-grey">バイオリズム</div>
-                  <div>{{ card.biorhythm_period }}</div>
-                </v-col>
-                <v-col cols="6" sm="4" v-if="card.card_type === 'pitcher'">
-                  <div class="text-caption text-grey">先発スタミナ</div>
-                  <div>{{ card.starter_stamina ?? '-' }}</div>
-                </v-col>
-                <v-col cols="6" sm="4" v-if="card.card_type === 'pitcher'">
-                  <div class="text-caption text-grey">リリーフスタミナ</div>
-                  <div>{{ card.relief_stamina ?? '-' }}</div>
-                </v-col>
-                <v-col cols="12" class="d-flex gap-2 flex-wrap mt-1">
-                  <v-chip v-if="card.is_closer" color="orange" size="small" label
-                    >クローザー</v-chip
-                  >
-                  <v-chip v-if="card.is_relief_only" color="purple" size="small" label
-                    >リリーフ専任</v-chip
-                  >
-                  <v-chip v-if="card.is_switch_hitter" color="teal" size="small" label
-                    >スイッチ</v-chip
-                  >
-                  <v-chip v-if="card.is_dual_wielder" color="deep-orange" size="small" label
-                    >二刀流</v-chip
-                  >
-                </v-col>
-              </v-row>
-            </v-card-text>
-          </v-card>
-        </v-col>
-      </v-row>
+        <div class="detail-body">
+          <!-- 基本情報セクションヘッダー -->
+          <div class="section-header-row">
+            <span class="section-header-title">基本情報</span>
+            <v-btn
+              size="x-small"
+              variant="outlined"
+              prepend-icon="mdi-pencil"
+              @click="openBasicEditDialog"
+              >編集</v-btn
+            >
+          </div>
 
-      <v-row class="mt-2">
-        <!-- 守備値 -->
-        <v-col cols="12" sm="6">
-          <v-card variant="outlined">
-            <v-card-title class="text-subtitle-1 d-flex align-center">
-              守備値
-              <v-spacer></v-spacer>
-              <v-btn
-                size="small"
-                color="primary"
-                variant="text"
-                prepend-icon="mdi-pencil"
-                @click="openDefenseEditDialog"
-                >編集</v-btn
-              >
-            </v-card-title>
-            <v-card-text class="pa-0" v-if="card.defenses && card.defenses.length > 0">
-              <v-table density="compact">
-                <thead>
-                  <tr>
-                    <th>ポジション</th>
-                    <th>範囲</th>
-                    <th>エラー</th>
-                    <th>送球</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr v-for="d in card.defenses" :key="d.id">
-                    <td>{{ d.position }}</td>
-                    <td>{{ d.range_value }}</td>
-                    <td>{{ d.error_rank }}</td>
-                    <td>{{ d.throwing ?? '-' }}</td>
-                  </tr>
-                </tbody>
-              </v-table>
-            </v-card-text>
-            <v-card-text v-else class="text-grey text-caption">守備値なし</v-card-text>
-          </v-card>
-        </v-col>
+          <!-- 上段: 画像 + 基本情報グリッド -->
+          <div class="detail-top">
+            <!-- カード画像 -->
+            <div class="card-img-wrap">
+              <v-img
+                v-if="card.image_url || card.card_image_path"
+                :src="card.image_url || `http://localhost:3000${card.card_image_path}`"
+                width="108"
+                height="150"
+                cover
+                class="rounded"
+              ></v-img>
+              <div v-else class="card-img-placeholder">
+                <v-icon size="36" color="#9a8060">mdi-card-account-details</v-icon>
+                <span>カード画像</span>
+              </div>
+            </div>
 
-        <!-- 特徴 -->
-        <v-col cols="12" sm="6">
-          <v-card variant="outlined">
-            <v-card-title class="text-subtitle-1 d-flex align-center">
-              特徴・能力
-              <v-spacer></v-spacer>
-              <v-btn
-                size="small"
-                color="primary"
-                variant="text"
-                prepend-icon="mdi-pencil"
-                @click="openTraitEditDialog"
-                >編集</v-btn
-              >
-            </v-card-title>
-            <v-card-text>
-              <div v-if="card.trait_list && card.trait_list.length > 0" class="mb-2">
-                <div class="text-caption text-grey mb-1">特徴</div>
-                <div class="d-flex flex-wrap gap-1">
-                  <v-chip
-                    v-for="t in card.trait_list"
-                    :key="t.id"
-                    class="mr-1 mb-1"
-                    size="small"
-                    :title="traitTooltip(t)"
-                  >
-                    <template v-if="t.condition_name">
-                      <span class="text-grey-darken-1">{{ t.condition_name }}/</span>
-                    </template>
-                    {{ t.name }}
-                  </v-chip>
+            <!-- 基本情報グリッド -->
+            <div class="basic-info-grid">
+              <div class="info-item">
+                <div class="info-label">走力</div>
+                <div class="info-val">{{ card.speed }}</div>
+              </div>
+              <div class="info-item">
+                <div class="info-label">バント</div>
+                <div class="info-val">{{ card.bunt }}</div>
+              </div>
+              <div class="info-item">
+                <div class="info-label">盗塁開始</div>
+                <div class="info-val">{{ card.steal_start }}</div>
+              </div>
+              <div class="info-item">
+                <div class="info-label">盗塁終了</div>
+                <div class="info-val">{{ card.steal_end }}</div>
+              </div>
+              <div class="info-item">
+                <div class="info-label">怪我レベル</div>
+                <div class="info-val">{{ card.injury_rate }}</div>
+              </div>
+              <div class="info-item">
+                <div class="info-label">利き腕/打席</div>
+                <div class="info-val">{{ card.handedness || '—' }}</div>
+              </div>
+              <template v-if="card.card_type === 'pitcher'">
+                <div class="info-item">
+                  <div class="info-label">先発スタミナ</div>
+                  <div class="info-val">{{ card.starter_stamina ?? '—' }}</div>
                 </div>
-              </div>
-              <div v-if="card.ability_list && card.ability_list.length > 0">
-                <div class="text-caption text-grey mb-1">能力</div>
-                <div class="d-flex flex-wrap gap-1">
-                  <v-chip
-                    v-for="a in card.ability_list"
-                    :key="a.id"
-                    class="mr-1 mb-1"
-                    size="small"
-                    color="blue-grey"
-                    variant="tonal"
-                    :title="a.description ?? ''"
-                  >
-                    <template v-if="a.condition_name">
-                      <span class="text-grey-darken-1">{{ a.condition_name }}/</span>
-                    </template>
-                    {{ a.name }}
-                  </v-chip>
+                <div class="info-item">
+                  <div class="info-label">リリーフ</div>
+                  <div class="info-val">{{ card.relief_stamina ?? '—' }}</div>
                 </div>
-              </div>
-              <div
-                v-if="
-                  (!card.trait_list || card.trait_list.length === 0) &&
-                  (!card.ability_list || card.ability_list.length === 0)
-                "
-                class="text-grey text-caption"
-              >
-                特徴・能力なし
-              </div>
-              <!-- 固有特徴 -->
-              <template v-if="card.unique_traits">
-                <v-divider class="my-2"></v-divider>
-                <div class="text-caption text-grey mb-1">固有特徴</div>
-                <pre class="text-body-2 text-wrap">{{ card.unique_traits }}</pre>
               </template>
-              <!-- 怪我特徴 -->
-              <template v-if="card.injury_traits">
-                <v-divider class="my-2"></v-divider>
-                <div class="text-caption text-grey mb-1">怪我特徴</div>
-                <pre class="text-body-2 text-wrap">{{
-                  JSON.stringify(card.injury_traits, null, 2)
-                }}</pre>
-              </template>
-            </v-card-text>
-          </v-card>
-        </v-col>
-      </v-row>
+              <div class="info-item" v-if="card.biorhythm_period">
+                <div class="info-label">バイオリズム</div>
+                <div class="info-val">{{ card.biorhythm_period }}</div>
+              </div>
 
-      <!-- 投球P列 -->
-      <v-row class="mt-0" v-if="card.pitching_table && card.pitching_table.length > 0">
-        <v-col cols="12">
-          <v-card variant="outlined">
-            <v-card-title class="text-subtitle-1">投球P列</v-card-title>
-            <v-card-text>
-              <div class="d-flex flex-wrap gap-1">
-                <v-chip
+              <!-- フラグチップ -->
+              <div class="flag-row">
+                <span v-if="card.is_closer" class="flag-chip chip-closer">クローザー</span>
+                <span v-if="card.is_relief_only" class="flag-chip chip-relief">リリーフ専任</span>
+                <span v-if="card.is_switch_hitter" class="flag-chip chip-switch">スイッチ</span>
+                <span v-if="card.is_dual_wielder" class="flag-chip chip-dual">二刀流</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- 中段: 守備値 + 特徴・能力 -->
+          <div class="detail-mid">
+            <!-- 守備値 -->
+            <div class="section-box defense-box">
+              <div class="section-title-bar">
+                🏟 守備値
+                <v-btn size="x-small" variant="text" @click="openDefenseEditDialog" class="ml-auto"
+                  >編集</v-btn
+                >
+              </div>
+              <div v-if="card.defenses && card.defenses.length > 0" class="section-body pa-1">
+                <table class="def-table">
+                  <thead>
+                    <tr>
+                      <th>ポジション</th>
+                      <th>範囲</th>
+                      <th>エラー</th>
+                      <th>送球</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr v-for="d in card.defenses" :key="d.id">
+                      <td>{{ d.position }}</td>
+                      <td>{{ d.range_value }}</td>
+                      <td>{{ d.error_rank }}</td>
+                      <td>{{ d.throwing ?? '—' }}</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+              <div v-else class="section-body text-grey text-caption pa-2">守備値なし</div>
+            </div>
+
+            <!-- 特徴・能力 -->
+            <div class="section-box">
+              <div class="section-title-bar">
+                ✨ 特徴・能力
+                <v-btn size="x-small" variant="text" @click="openTraitEditDialog" class="ml-auto"
+                  >編集</v-btn
+                >
+              </div>
+              <div class="section-body">
+                <template v-if="card.trait_list && card.trait_list.length > 0">
+                  <span class="chip-section-label">特徴</span>
+                  <div class="trait-chips">
+                    <span
+                      v-for="t in card.trait_list"
+                      :key="t.id"
+                      class="trait-chip"
+                      :title="traitTooltip(t)"
+                    >
+                      <template v-if="t.condition_name">
+                        <span class="condition-text">{{ t.condition_name }}/</span>
+                      </template>
+                      {{ t.name }}
+                    </span>
+                  </div>
+                </template>
+                <template v-if="card.ability_list && card.ability_list.length > 0">
+                  <span class="chip-section-label">能力</span>
+                  <div class="trait-chips mt-1">
+                    <span
+                      v-for="a in card.ability_list"
+                      :key="a.id"
+                      class="ability-chip"
+                      :title="a.description ?? ''"
+                    >
+                      <template v-if="a.condition_name">
+                        <span class="condition-text">{{ a.condition_name }}/</span>
+                      </template>
+                      {{ a.name }}
+                    </span>
+                  </div>
+                </template>
+                <div
+                  v-if="
+                    (!card.trait_list || !card.trait_list.length) &&
+                    (!card.ability_list || !card.ability_list.length)
+                  "
+                  class="text-grey text-caption"
+                >
+                  特徴・能力なし
+                </div>
+                <template v-if="card.unique_traits">
+                  <div class="unique-traits-box mt-2">{{ card.unique_traits }}</div>
+                </template>
+                <template v-if="card.injury_traits">
+                  <div class="chip-section-label mt-2">怪我特徴</div>
+                  <pre class="text-caption text-wrap">{{
+                    JSON.stringify(card.injury_traits, null, 2)
+                  }}</pre>
+                </template>
+              </div>
+            </div>
+          </div>
+
+          <!-- 投球P列 (投手のみ) -->
+          <div
+            v-if="
+              card.card_type === 'pitcher' && card.pitching_table && card.pitching_table.length > 0
+            "
+            class="section-box mb-2"
+          >
+            <div class="section-title-bar">
+              🎯 投球P列（{{ card.pitching_table.length }}スロット）
+            </div>
+            <div class="section-body">
+              <div class="pitch-bar">
+                <div
                   v-for="(p, idx) in card.pitching_table"
                   :key="idx"
-                  size="x-small"
-                  :color="pitchingCellColor(String(p))"
-                  variant="tonal"
-                  class="font-weight-bold"
+                  class="pitch-cell"
+                  :class="pitchCellClass(String(p))"
                 >
-                  {{ idx + 1 }}: {{ p }}
-                </v-chip>
+                  <span class="p-idx">P{{ idx + 1 }}</span>
+                  {{ p }}
+                </div>
               </div>
-            </v-card-text>
-          </v-card>
-        </v-col>
-      </v-row>
+            </div>
+          </div>
 
-      <!-- 打撃結果表 -->
-      <v-row class="mt-0" v-if="card.batting_table && card.batting_table.length > 0">
-        <v-col cols="12">
-          <v-card variant="outlined">
-            <v-card-title class="text-subtitle-1">打撃結果表</v-card-title>
-            <v-card-text class="pa-0">
+          <!-- 打撃結果表 -->
+          <div v-if="card.batting_table && card.batting_table.length > 0" class="section-box">
+            <div class="section-title-bar">
+              🎲 打撃結果表（{{ card.batting_table.length }}行 ×
+              {{ card.batting_table[0].length }}列）
+            </div>
+            <div class="section-body pa-1">
               <div class="overflow-x-auto">
                 <BattingTable :table="card.batting_table" />
               </div>
-            </v-card-text>
-          </v-card>
-        </v-col>
-      </v-row>
+            </div>
+          </div>
+        </div>
+        <!-- /detail-body -->
+      </div>
+      <!-- /detail-wrap -->
     </template>
 
     <!-- ■ 基本情報編集ダイアログ -->
@@ -596,7 +555,7 @@
 
           <v-divider class="my-3"></v-divider>
 
-          <!-- 固有特徴（テキストエリア） -->
+          <!-- 固有特徴 -->
           <div class="text-subtitle-2 mb-2">固有特徴 (unique_traits)</div>
           <v-textarea
             v-model="uniqueTraitsForm"
@@ -755,11 +714,12 @@ function traitTooltip(t: TraitItem): string {
   return parts.join('\n')
 }
 
-// ---- Pitching table color ----
-function pitchingCellColor(val: string): string {
-  if (val.includes('*')) return 'orange'
-  if (val.includes('P')) return 'red'
-  return 'default'
+// ---- Pitching cell class (prototype準拠) ----
+function pitchCellClass(val: string): string {
+  if (val.includes('*')) return 'p-cell-wp'
+  const n = parseInt(val)
+  if (n >= 1 && n <= 5) return `p-cell-${n}`
+  return 'p-cell-6'
 }
 
 // ---- Basic info ----
@@ -961,5 +921,368 @@ function extractErrorMessage(error: unknown): string {
 </script>
 
 <style scoped>
-/* Component styles */
+/* ── 戻るボタン ── */
+.detail-back-btn {
+  background: none;
+  border: 1px solid #bbb;
+  padding: 3px 10px;
+  border-radius: 3px;
+  cursor: pointer;
+  font-size: 0.79em;
+  margin-bottom: 8px;
+  color: #555;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.detail-back-btn:hover {
+  background: #e8e0d4;
+  border-color: #999;
+}
+
+/* ── 詳細ラッパー ── */
+.detail-wrap {
+  background: white;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  overflow: hidden;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* ── カードヘッダー (藍色帯) ── */
+.detail-card-header {
+  background: var(--ai);
+  color: white;
+  padding: 7px 14px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.detail-player-name {
+  font-size: 1.05em;
+  font-weight: bold;
+}
+
+.detail-player-sub {
+  font-size: 0.76em;
+  opacity: 0.75;
+  margin-top: 1px;
+}
+
+.header-badge {
+  font-size: 0.72em;
+  opacity: 0.6;
+}
+
+.type-chip-header {
+  padding: 2px 9px;
+  border-radius: 10px;
+  font-size: 0.75em;
+  font-weight: bold;
+  display: inline-block;
+}
+
+.type-chip-header.pitcher {
+  background: rgba(219, 234, 254, 0.85);
+  color: #1e40af;
+}
+
+.type-chip-header.batter {
+  background: rgba(220, 252, 231, 0.85);
+  color: #166534;
+}
+
+/* ── デタイルボディ ── */
+.detail-body {
+  padding: 10px 14px;
+}
+
+/* ── セクションヘッダー行 ── */
+.section-header-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.section-header-title {
+  font-size: 0.85em;
+  font-weight: bold;
+  color: #5a3e20;
+  background: #ece4d8;
+  padding: 3px 10px;
+  border-radius: 3px;
+}
+
+/* ── 上段: 画像 + 基本情報 ── */
+.detail-top {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.card-img-wrap {
+  flex-shrink: 0;
+  width: 108px;
+}
+
+.card-img-placeholder {
+  width: 108px;
+  height: 150px;
+  background: linear-gradient(160deg, #e8e0d4 0%, #d0c0a8 100%);
+  border: 2px solid var(--usuiro);
+  border-radius: 4px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: #9a8060;
+  font-size: 0.73em;
+  text-align: center;
+  gap: 4px;
+}
+
+.basic-info-grid {
+  flex: 1;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 4px 10px;
+  align-content: start;
+}
+
+.info-item {
+}
+
+.info-label {
+  font-size: 0.68em;
+  color: #999;
+  line-height: 1.2;
+}
+
+.info-val {
+  font-size: 0.9em;
+  font-weight: bold;
+  color: #222;
+}
+
+.flag-row {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 4px;
+}
+
+.flag-chip {
+  padding: 1px 7px;
+  border-radius: 8px;
+  font-size: 0.71em;
+  font-weight: bold;
+}
+
+.chip-closer {
+  background: #fed7aa;
+  color: #9a3412;
+  border: 1px solid #fdba74;
+}
+
+.chip-relief {
+  background: #e9d5ff;
+  color: #6b21a8;
+  border: 1px solid #d8b4fe;
+}
+
+.chip-switch {
+  background: #ccfbf1;
+  color: #0f766e;
+  border: 1px solid #99f6e4;
+}
+
+.chip-dual {
+  background: #ffedd5;
+  color: #c2410c;
+  border: 1px solid #fed7aa;
+}
+
+/* ── 中段: 守備値 + 特徴 ── */
+.detail-mid {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.section-box {
+  border: 1px solid #e0d8cc;
+  border-radius: 4px;
+  overflow: hidden;
+  flex: 1;
+}
+
+.defense-box {
+  flex: 0 0 260px;
+}
+
+.section-title-bar {
+  background: #ece4d8;
+  color: #5a3e20;
+  padding: 4px 10px;
+  font-size: 0.74em;
+  font-weight: bold;
+  letter-spacing: 0.04em;
+  border-bottom: 1px solid #d4c5a9;
+  display: flex;
+  align-items: center;
+}
+
+.section-body {
+  padding: 6px 8px;
+}
+
+/* ── 守備テーブル ── */
+.def-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.8em;
+}
+
+.def-table th {
+  padding: 2px 6px;
+  text-align: center;
+  color: #999;
+  font-size: 0.82em;
+  font-weight: normal;
+  border-bottom: 1px solid #eee;
+  white-space: nowrap;
+}
+
+.def-table th:first-child {
+  text-align: left;
+}
+
+.def-table td {
+  padding: 2px 6px;
+  text-align: center;
+  border-bottom: 1px solid #f4f0ea;
+}
+
+.def-table td:first-child {
+  text-align: left;
+  font-weight: bold;
+}
+
+.def-table tr:last-child td {
+  border-bottom: none;
+}
+
+/* ── 特徴チップ ── */
+.trait-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+}
+
+.trait-chip {
+  background: #f0e8d8;
+  border: 1px solid var(--usuiro);
+  padding: 2px 7px;
+  border-radius: 3px;
+  font-size: 0.75em;
+  color: #4a3010;
+  cursor: default;
+}
+
+.ability-chip {
+  background: #ede9f4;
+  border: 1px solid #c5b8d9;
+  padding: 2px 7px;
+  border-radius: 3px;
+  font-size: 0.75em;
+  color: #4a2a6a;
+}
+
+.chip-section-label {
+  font-size: 0.67em;
+  color: #aaa;
+  display: block;
+  margin: 4px 0 2px;
+}
+
+.condition-text {
+  color: #888;
+}
+
+.unique-traits-box {
+  font-size: 0.76em;
+  color: #6a4a20;
+  background: #faf5ec;
+  border: 1px solid #e0d4bc;
+  border-radius: 3px;
+  padding: 4px 7px;
+}
+
+/* ── 投球P列 ── */
+.pitch-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+  padding: 4px 0;
+}
+
+.pitch-cell {
+  min-width: 34px;
+  padding: 2px 4px;
+  text-align: center;
+  border-radius: 3px;
+  font-size: 0.76em;
+  font-weight: bold;
+  border: 1px solid;
+  position: relative;
+}
+
+.p-idx {
+  font-size: 0.62em;
+  color: #aaa;
+  display: block;
+  line-height: 1;
+  margin-bottom: 1px;
+}
+
+.p-cell-1 {
+  background: #dbeafe;
+  border-color: #93c5fd;
+  color: #1e40af;
+}
+.p-cell-2 {
+  background: #d1fae5;
+  border-color: #6ee7b7;
+  color: #065f46;
+}
+.p-cell-3 {
+  background: #fef9c3;
+  border-color: #fde047;
+  color: #713f12;
+}
+.p-cell-4 {
+  background: #ffe4e6;
+  border-color: #fda4af;
+  color: #9f1239;
+}
+.p-cell-5 {
+  background: #f3e8ff;
+  border-color: #d8b4fe;
+  color: #6b21a8;
+}
+.p-cell-6 {
+  background: #ffedd5;
+  border-color: #fdba74;
+  color: #9a3412;
+}
+.p-cell-wp {
+  background: #fed7aa;
+  border-color: #fb923c;
+  color: #9a3412;
+  font-style: italic;
+}
 </style>

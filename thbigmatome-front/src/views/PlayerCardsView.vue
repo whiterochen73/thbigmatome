@@ -105,6 +105,7 @@
             <th class="ctr" style="width: 90px">種別</th>
             <th class="ctr" style="width: 80px">ポジション</th>
             <th class="ctr" style="width: 60px">走力</th>
+            <th class="ctr" style="width: 80px">コスト</th>
             <th class="ctr" style="width: 110px">カードセット</th>
           </tr>
         </thead>
@@ -135,6 +136,7 @@
             </td>
             <td class="ctr" style="font-size: 0.85em">{{ card.primary_position ?? '—' }}</td>
             <td class="ctr speed-val">{{ card.speed }}</td>
+            <td class="ctr" style="font-size: 0.86em">{{ card.cost ?? '—' }}</td>
             <td class="ctr" style="font-size: 0.78em; color: #888">{{ card.card_set_name }}</td>
           </tr>
         </tbody>
@@ -188,6 +190,7 @@ interface PlayerCard {
   injury_rate: number
   card_image_path: string | null
   primary_position: string | null
+  cost?: number | null
 }
 
 const router = useRouter()

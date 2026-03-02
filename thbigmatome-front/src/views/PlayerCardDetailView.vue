@@ -90,6 +90,10 @@
                 <div class="info-val">{{ card.injury_rate }}</div>
               </div>
               <div class="info-item">
+                <div class="info-label">コスト</div>
+                <div class="info-val">{{ card.cost ?? '—' }}</div>
+              </div>
+              <div class="info-item">
                 <div class="info-label">利き腕/打席</div>
                 <div class="info-val">{{ card.handedness || '—' }}</div>
               </div>
@@ -641,6 +645,7 @@ interface PlayerCardDetail {
   ability_list: AbilityItem[]
   batting_table: string[][]
   pitching_table: string[]
+  cost?: number | null
 }
 
 const imageBaseUrl = computed(() => {

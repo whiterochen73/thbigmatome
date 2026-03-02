@@ -56,6 +56,13 @@ class PlayerCardDetailSerializer < ActiveModel::Serializer
     end
   end
 
+  attribute :cost do
+    current_cost = Cost.current_cost
+    next nil unless current_cost
+    cp = object.player.cost_players.find { |c| c.cost_id == current_cost.id }
+    cp&.normal_cost
+  end
+
   def image_url
     return nil unless object.card_image.attached?
 

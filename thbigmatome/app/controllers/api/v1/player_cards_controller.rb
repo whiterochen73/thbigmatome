@@ -1,6 +1,6 @@
 class Api::V1::PlayerCardsController < Api::V1::BaseController
   def index
-    player_cards = PlayerCard.includes(:player, :card_set, :player_card_defenses).order(:id)
+    player_cards = PlayerCard.includes({ player: :cost_players }, :card_set, :player_card_defenses).order(:id)
     player_cards = player_cards.where(card_set_id: params[:card_set_id]) if params[:card_set_id].present?
     player_cards = player_cards.where(card_type: params[:card_type]) if params[:card_type].present?
     if params[:name].present?
@@ -20,10 +20,10 @@ class Api::V1::PlayerCardsController < Api::V1::BaseController
 
   def show
     player_card = PlayerCard.includes(
-      :player, :card_set,
+      { player: :cost_players }, :card_set,
       :player_card_defenses,
-      player_card_traits: [ :trait_definition, :condition ],
-      player_card_abilities: [ :ability_definition, :condition ]
+      { player_card_traits: [ :trait_definition, :condition ] },
+      { player_card_abilities: [ :ability_definition, :condition ] }
     ).find(params[:id])
     render json: player_card, serializer: PlayerCardDetailSerializer
   end

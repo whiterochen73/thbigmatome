@@ -53,12 +53,18 @@ const mockAtBatRecords = [
     pitcher_name: '霧雨魔理沙',
     result_code: 'K',
     runs_scored: 0,
-    runners_before: '---',
-    runners_after: '---',
+    runners_before: [],
+    runners_after: [],
+    outs_before: 0,
+    outs_after: 1,
     strategy: null,
     play_description: '三振',
     is_modified: false,
+    is_reviewed: false,
+    review_notes: null,
     modified_fields: [],
+    discrepancies: [],
+    source_events: null,
   },
   {
     id: 2,
@@ -70,12 +76,18 @@ const mockAtBatRecords = [
     pitcher_name: '霧雨魔理沙',
     result_code: 'HR',
     runs_scored: 1,
-    runners_before: '---',
-    runners_after: '---',
+    runners_before: [],
+    runners_after: [],
+    outs_before: 1,
+    outs_after: 1,
     strategy: null,
     play_description: '本塁打',
     is_modified: true,
+    is_reviewed: true,
+    review_notes: null,
     modified_fields: ['result_code'],
+    discrepancies: [],
+    source_events: null,
   },
 ]
 
@@ -91,10 +103,15 @@ const mockGameRecord = {
   at_bat_records: mockAtBatRecords,
 }
 
+// 各テストで汚染されないよう deep clone を返すヘルパー
+function cloneMock(overrides: object = {}) {
+  return JSON.parse(JSON.stringify({ ...mockGameRecord, ...overrides }))
+}
+
 describe('GameRecordDetailView', () => {
   beforeEach(() => {
-    vi.clearAllMocks()
-    vi.mocked(axios.get).mockResolvedValue({ data: mockGameRecord })
+    vi.resetAllMocks()
+    vi.mocked(axios.get).mockResolvedValue({ data: cloneMock() })
   })
 
   it('コンポーネントがマウントされること', async () => {
@@ -148,9 +165,7 @@ describe('GameRecordDetailView', () => {
   })
 
   it('confirmed状態では確定ボタンが表示されないこと', async () => {
-    vi.mocked(axios.get).mockResolvedValue({
-      data: { ...mockGameRecord, status: 'confirmed' },
-    })
+    vi.mocked(axios.get).mockResolvedValue({ data: cloneMock({ status: 'confirmed' }) })
     const router = createTestRouter()
     await router.isReady()
     const wrapper = mount(GameRecordDetailView, { global: { plugins: [vuetify, router] } })
@@ -167,7 +182,7 @@ describe('GameRecordDetailView', () => {
     expect(wrapper.text()).toContain('試合記録の取得に失敗しました')
   })
 
-  it('is_modified=trueの行は修正済みアイコンが表示されること', async () => {
+  it('is_modified=trueの打席には修正済みアイコンが表示されること', async () => {
     const router = createTestRouter()
     await router.isReady()
     const wrapper = mount(GameRecordDetailView, { global: { plugins: [vuetify, router] } })
@@ -186,11 +201,61 @@ describe('GameRecordDetailView', () => {
     await flushPromises()
 
     const btns = wrapper.findAll('button')
-    const confirmButton = btns.find((b) => b.text().includes('確定'))
+    const confirmButton = btns.find((b) => b.text().includes('このゲームを確定'))
     if (confirmButton) {
       await confirmButton.trigger('click')
       await flushPromises()
       expect(axios.post).toHaveBeenCalledWith('/game_records/1/confirm')
     }
+  })
+
+  it('レビュー進捗バーが表示されること', async () => {
+    vi.mocked(axios.get).mockResolvedValue({ data: cloneMock({ status: 'draft' }) })
+    const router = createTestRouter()
+    await router.isReady()
+    const wrapper = mount(GameRecordDetailView, { global: { plugins: [vuetify, router] } })
+    await flushPromises()
+    // is_reviewed=true が1件、合計2件
+    expect(wrapper.text()).toContain('1 / 2')
+  })
+
+  it('全打席確定ボタンが表示されること', async () => {
+    vi.mocked(axios.get).mockResolvedValue({ data: cloneMock({ status: 'draft' }) })
+    const router = createTestRouter()
+    await router.isReady()
+    const wrapper = mount(GameRecordDetailView, { global: { plugins: [vuetify, router] } })
+    await flushPromises()
+    expect(wrapper.text()).toContain('全打席確定')
+  })
+
+  it('全打席確定ボタンクリックでダイアログが開くこと', async () => {
+    vi.mocked(axios.get).mockResolvedValue({ data: cloneMock({ status: 'draft' }) })
+    const router = createTestRouter()
+    await router.isReady()
+    // v-dialog は teleport で body に描画されるため attachTo: document.body が必要
+    const wrapper = mount(GameRecordDetailView, {
+      global: { plugins: [vuetify, router] },
+      attachTo: document.body,
+    })
+    await flushPromises()
+
+    const btns = wrapper.findAll('button')
+    const bulkBtn = btns.find((b) => b.text().includes('全打席確定'))
+    if (bulkBtn) {
+      await bulkBtn.trigger('click')
+      await flushPromises()
+      expect(document.body.textContent).toContain('全打席を確認済みにする')
+    }
+    wrapper.unmount()
+  })
+
+  it('confirmed状態では全打席確定・確定ボタンが表示されないこと', async () => {
+    vi.mocked(axios.get).mockResolvedValue({ data: cloneMock({ status: 'confirmed' }) })
+    const router = createTestRouter()
+    await router.isReady()
+    const wrapper = mount(GameRecordDetailView, { global: { plugins: [vuetify, router] } })
+    await flushPromises()
+    expect(wrapper.text()).not.toContain('全打席確定')
+    expect(wrapper.text()).not.toContain('このゲームを確定')
   })
 })

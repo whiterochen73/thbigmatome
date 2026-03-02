@@ -63,7 +63,10 @@ class Api::V1::GameRecordsController < Api::V1::BaseController
       return render json: { error: "Game record is not in draft status" }, status: :unprocessable_content
     end
 
-    @game_record.update!(status: "confirmed", confirmed_at: Time.current)
+    GameRecord.transaction do
+      @game_record.update!(status: "confirmed", confirmed_at: Time.current)
+      @game_record.at_bat_records.update_all(is_reviewed: true)
+    end
     render json: serialize_game_record(@game_record, include_at_bats: false)
   rescue ActiveRecord::RecordInvalid => e
     render json: { errors: e.record.errors.full_messages }, status: :unprocessable_content
@@ -145,6 +148,8 @@ class Api::V1::GameRecordsController < Api::V1::BaseController
       runs_scored: ab.runs_scored,
       is_modified: ab.is_modified,
       modified_fields: ab.modified_fields,
+      is_reviewed: ab.is_reviewed,
+      review_notes: ab.review_notes,
       play_description: ab.play_description,
       extra_data: ab.extra_data,
       discrepancies: ab.discrepancies,

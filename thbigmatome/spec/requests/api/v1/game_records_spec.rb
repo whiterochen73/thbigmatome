@@ -156,6 +156,17 @@ RSpec.describe "Api::V1::GameRecordsController", type: :request do
       expect(json["confirmed_at"]).not_to be_nil
     end
 
+    it "confirm時に全打席のis_reviewedがtrueになる" do
+      game_record = create(:game_record, status: "draft")
+      ab1 = create(:at_bat_record, game_record: game_record, ab_num: 1, is_reviewed: false)
+      ab2 = create(:at_bat_record, game_record: game_record, ab_num: 2, is_reviewed: false)
+
+      post "/api/v1/game_records/#{game_record.id}/confirm", as: :json
+      expect(response).to have_http_status(:ok)
+      expect(ab1.reload.is_reviewed).to be true
+      expect(ab2.reload.is_reviewed).to be true
+    end
+
     it "既にconfirmedのときはエラー" do
       game_record = create(:game_record, :confirmed)
       post "/api/v1/game_records/#{game_record.id}/confirm", as: :json

@@ -3,8 +3,10 @@ class Api::V1::AtBatRecordsController < Api::V1::BaseController
 
   # PATCH /api/v1/at_bat_records/:id
   def update
+    permitted = at_bat_params
+
     changed_fields = {}
-    at_bat_params.each do |key, value|
+    permitted.each do |key, value|
       if @at_bat_record.send(key) != value
         changed_fields[key] = { from: @at_bat_record.send(key), to: value }
       end
@@ -13,7 +15,14 @@ class Api::V1::AtBatRecordsController < Api::V1::BaseController
     modified_fields = @at_bat_record.modified_fields || {}
     modified_fields.merge!(changed_fields)
 
-    if @at_bat_record.update(at_bat_params.merge(is_modified: true, modified_fields: modified_fields))
+    recalculated_disc = recalculate_discrepancies(@at_bat_record.discrepancies, changed_fields)
+    attrs = permitted.to_h.merge(
+      is_modified: true,
+      modified_fields: modified_fields,
+      discrepancies: recalculated_disc
+    )
+
+    if @at_bat_record.update(attrs)
       render json: serialize_at_bat_record(@at_bat_record)
     else
       render json: { errors: @at_bat_record.errors.full_messages }, status: :unprocessable_content
@@ -29,13 +38,30 @@ class Api::V1::AtBatRecordsController < Api::V1::BaseController
   end
 
   def at_bat_params
-    params.permit(
+    permitted = params.permit(
       :result_code, :runs_scored, :outs_before, :outs_after,
       :pitcher_name, :pitcher_id, :batter_name, :batter_id,
       :pitch_roll, :pitch_result, :bat_roll, :bat_result,
-      :strategy, :play_description,
-      runners_before: {}, runners_after: {}, extra_data: {}
+      :strategy, :play_description, :is_reviewed, :review_notes,
+      extra_data: {}
     )
+    # runners はArray形式 [1,2,3] またはHash形式を受け付ける (JSONB)
+    permitted[:runners_before] = params[:runners_before] if params.key?(:runners_before)
+    permitted[:runners_after] = params[:runners_after] if params.key?(:runners_after)
+    permitted
+  end
+
+  def recalculate_discrepancies(existing_discrepancies, changed_fields)
+    return existing_discrepancies if existing_discrepancies.blank? || changed_fields.blank?
+
+    existing_discrepancies.map do |d|
+      field = d["field"].to_s
+      if changed_fields.key?(field)
+        d.merge("resolution" => "manual", "resolution_value" => changed_fields[field][:to])
+      else
+        d
+      end
+    end
   end
 
   def serialize_at_bat_record(ab)
@@ -62,6 +88,8 @@ class Api::V1::AtBatRecordsController < Api::V1::BaseController
       runs_scored: ab.runs_scored,
       is_modified: ab.is_modified,
       modified_fields: ab.modified_fields,
+      is_reviewed: ab.is_reviewed,
+      review_notes: ab.review_notes,
       play_description: ab.play_description,
       extra_data: ab.extra_data,
       discrepancies: ab.discrepancies,

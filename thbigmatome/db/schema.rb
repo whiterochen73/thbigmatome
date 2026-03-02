@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_03_01_140155) do
+ActiveRecord::Schema[8.1].define(version: 2026_03_02_114440) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -64,6 +64,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_01_140155) do
     t.string "half"
     t.integer "inning"
     t.boolean "is_modified", default: false, null: false
+    t.boolean "is_reviewed", default: false, null: false
     t.jsonb "modified_fields"
     t.integer "outs_after"
     t.integer "outs_before"
@@ -73,6 +74,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_01_140155) do
     t.string "pitcher_name"
     t.text "play_description"
     t.string "result_code"
+    t.text "review_notes"
     t.jsonb "runners_after", default: {}
     t.jsonb "runners_before", default: {}
     t.integer "runs_scored", default: 0, null: false

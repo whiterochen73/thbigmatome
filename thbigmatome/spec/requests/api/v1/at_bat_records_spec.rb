@@ -71,4 +71,54 @@ RSpec.describe "Api::V1::AtBatRecordsController", type: :request do
       expect(response).to have_http_status(:unauthorized)
     end
   end
+
+  describe "PATCH /api/v1/at_bat_records/:id (is_reviewed / review_notes)" do
+    include_context "authenticated user"
+
+    let(:game_record) { create(:game_record) }
+    let(:at_bat_record) { create(:at_bat_record, game_record: game_record) }
+
+    it "is_reviewed を true にできる" do
+      patch "/api/v1/at_bat_records/#{at_bat_record.id}",
+            params: { is_reviewed: true },
+            as: :json
+      expect(response).to have_http_status(:ok)
+      json = response.parsed_body
+      expect(json["is_reviewed"]).to be true
+    end
+
+    it "review_notes を保存できる" do
+      patch "/api/v1/at_bat_records/#{at_bat_record.id}",
+            params: { review_notes: "確認済。エンドラン補正漏れ疑い。" },
+            as: :json
+      expect(response).to have_http_status(:ok)
+      json = response.parsed_body
+      expect(json["review_notes"]).to eq("確認済。エンドラン補正漏れ疑い。")
+    end
+
+    it "discrepancyがあるフィールドを更新するとresolutionがmanualになる" do
+      ab_with_disc = create(:at_bat_record, game_record: game_record,
+        discrepancies: [
+          { "field" => "runners_after", "text_value" => [ 1 ], "gsm_value" => [ 2, 3 ], "cause" => "unknown", "resolution" => nil }
+        ])
+
+      patch "/api/v1/at_bat_records/#{ab_with_disc.id}",
+            params: { runners_after: [ 2, 3 ] },
+            as: :json
+      expect(response).to have_http_status(:ok)
+      json = response.parsed_body
+      disc = json["discrepancies"].first
+      expect(disc["resolution"]).to eq("manual")
+    end
+
+    it "runners_before/runners_after を配列で更新できる" do
+      patch "/api/v1/at_bat_records/#{at_bat_record.id}",
+            params: { runners_before: [ 1 ], runners_after: [ 2, 3 ] },
+            as: :json
+      expect(response).to have_http_status(:ok)
+      json = response.parsed_body
+      expect(json["runners_before"]).to include(1)
+      expect(json["runners_after"]).to include(2, 3)
+    end
+  end
 end

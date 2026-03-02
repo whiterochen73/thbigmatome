@@ -1,8 +1,13 @@
 <template>
   <v-container>
     <v-row>
-      <v-col cols="12" class="d-flex align-center">
+      <v-col cols="12" class="d-flex align-center justify-space-between">
         <h1 class="text-h4">選手カード一覧</h1>
+        <!-- 表示切り替えボタン -->
+        <v-btn-toggle v-model="viewMode" mandatory dense rounded="sm" color="primary">
+          <v-btn value="table" prepend-icon="mdi-table">テーブル</v-btn>
+          <v-btn value="grid" prepend-icon="mdi-view-grid">グリッド</v-btn>
+        </v-btn-toggle>
       </v-col>
     </v-row>
 
@@ -26,7 +31,7 @@
           <v-btn value="batter">野手</v-btn>
         </v-btn-toggle>
       </v-col>
-      <v-col cols="12" sm="4">
+      <v-col cols="12" sm="3">
         <v-text-field
           v-model="filterName"
           label="選手名"
@@ -35,12 +40,14 @@
           @keyup.enter="fetchPlayerCards"
         ></v-text-field>
       </v-col>
-      <v-col cols="12" sm="2" class="d-flex align-center">
-        <v-btn color="primary" @click="fetchPlayerCards" :loading="loading">検索</v-btn>
+      <v-col cols="12" sm="3" class="d-flex align-center gap-2">
+        <v-btn color="primary" @click="fetchPlayerCards" :loading="loading" class="flex-grow-1"
+          >検索</v-btn
+        >
       </v-col>
     </v-row>
 
-    <!-- テーブル -->
+    <!-- テーブル/グリッド表示 -->
     <v-row>
       <v-col cols="12">
         <v-alert
@@ -54,7 +61,9 @@
           {{ errorMessage }}
         </v-alert>
 
+        <!-- テーブル表示 -->
         <v-data-table
+          v-if="viewMode === 'table'"
           :headers="headers"
           :items="playerCards"
           :loading="loading"
@@ -83,6 +92,13 @@
           </template>
         </v-data-table>
 
+        <!-- グリッド表示 -->
+        <v-row v-else-if="viewMode === 'grid'" class="mt-0">
+          <v-col v-for="card in playerCards" :key="card.id" cols="12" sm="6" md="4" lg="3">
+            <PlayerCardItem :card="card" @click="navigateToDetail(card.id)" />
+          </v-col>
+        </v-row>
+
         <!-- ページネーション -->
         <div class="d-flex align-center justify-end mt-2">
           <span class="text-caption mr-3">全{{ totalCount }}件</span>
@@ -103,6 +119,7 @@
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import axios from '@/plugins/axios'
+import PlayerCardItem from '@/components/PlayerCardItem.vue'
 
 interface CardSet {
   id: number
@@ -137,6 +154,7 @@ const perPage = 50
 const filterCardSetId = ref<number | null>(null)
 const filterCardType = ref('')
 const filterName = ref('')
+const viewMode = ref<'table' | 'grid'>('table')
 
 const totalPages = computed(() => Math.ceil(totalCount.value / perPage) || 1)
 

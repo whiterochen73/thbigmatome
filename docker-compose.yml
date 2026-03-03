@@ -37,7 +37,9 @@ services:
       DB_USERNAME: morinaga
       RAILS_ENV: development
       RAILS_MASTER_KEY: ${RAILS_MASTER_KEY}
-      THBIG_IRC_PARSER_PYTHON: /app-parser/.venv/bin/python
+      # Docker環境ではゲームインポートAPI非対応（将来タスクで対応予定）
+      # /app-parser/ のvolumeマウントが存在しないためコメントアウト
+      # THBIG_IRC_PARSER_PYTHON: /app-parser/.venv/bin/python
     command: bin/rails server -b 0.0.0.0
 
   frontend:
@@ -51,7 +53,7 @@ services:
       - /app/node_modules
     environment:
       VITE_API_BASE_URL: http://localhost:3000/api/v1
-    command: npm run dev -- --host 0.0.0.0
+    command: yarn dev -- --host 0.0.0.0
 
   parser:
     build:

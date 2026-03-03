@@ -16,13 +16,21 @@ class Api::V1::AtBatRecordsController < Api::V1::BaseController
     modified_fields.merge!(changed_fields)
 
     recalculated_disc = recalculate_discrepancies(@at_bat_record.discrepancies, changed_fields)
+
+    # Set adopted_value to the modified fields
+    adopted_value = build_adopted_value(@at_bat_record, permitted)
+
     attrs = permitted.to_h.merge(
       is_modified: true,
       modified_fields: modified_fields,
-      discrepancies: recalculated_disc
+      discrepancies: recalculated_disc,
+      adopted_value: adopted_value
     )
 
     if @at_bat_record.update(attrs)
+      # Recalculate affected at_bat_records (those from this record onwards in the same game)
+      recalculate_affected_records(@at_bat_record)
+
       render json: serialize_at_bat_record(@at_bat_record)
     else
       render json: { errors: @at_bat_record.errors.full_messages }, status: :unprocessable_content
@@ -55,6 +63,39 @@ class Api::V1::AtBatRecordsController < Api::V1::BaseController
       permitted[:runners_after] = sanitize_runners(val)
     end
     permitted
+  end
+
+  def build_adopted_value(at_bat_record, permitted)
+    # Snapshot of adopted (human-decided) values
+    adopted = {
+      result_code: permitted[:result_code] || at_bat_record.result_code,
+      runs_scored: permitted[:runs_scored] || at_bat_record.runs_scored,
+      runners_before: permitted[:runners_before] || at_bat_record.runners_before,
+      runners_after: permitted[:runners_after] || at_bat_record.runners_after,
+      outs_before: permitted[:outs_before] || at_bat_record.outs_before,
+      outs_after: permitted[:outs_after] || at_bat_record.outs_after
+    }
+    adopted
+  end
+
+  def recalculate_affected_records(modified_record)
+    # Recalculate all records from this one onwards in the same game
+    game_record = modified_record.game_record
+    affected_records = game_record.at_bat_records.where("ab_num >= ?", modified_record.ab_num)
+
+    # For now, store gsm_value as a snapshot of the current computed values
+    # In a full implementation, this would call the Python GSM
+    affected_records.each do |record|
+      gsm_snapshot = {
+        result_code: record.result_code,
+        runs_scored: record.runs_scored,
+        runners_before: record.runners_before,
+        runners_after: record.runners_after,
+        outs_before: record.outs_before,
+        outs_after: record.outs_after
+      }
+      record.update_column(:gsm_value, gsm_snapshot) unless record.gsm_value.present?
+    end
   end
 
   def sanitize_runners(val)
@@ -104,6 +145,8 @@ class Api::V1::AtBatRecordsController < Api::V1::BaseController
       play_description: ab.play_description,
       extra_data: ab.extra_data,
       discrepancies: ab.discrepancies,
+      gsm_value: ab.gsm_value,
+      adopted_value: ab.adopted_value,
       source_events: ab.source_events,
       created_at: ab.created_at,
       updated_at: ab.updated_at

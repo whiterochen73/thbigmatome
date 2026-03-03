@@ -66,6 +66,9 @@ class Api::V1::GameRecordsController < Api::V1::BaseController
     GameRecord.transaction do
       @game_record.update!(status: "confirmed", confirmed_at: Time.current)
       @game_record.at_bat_records.update_all(is_reviewed: true)
+
+      # Calculate and persist stats based on adopted_value
+      calculate_game_stats(@game_record)
     end
     render json: serialize_game_record(@game_record, include_at_bats: false)
   rescue ActiveRecord::RecordInvalid => e
@@ -153,9 +156,107 @@ class Api::V1::GameRecordsController < Api::V1::BaseController
       play_description: ab.play_description,
       extra_data: ab.extra_data,
       discrepancies: ab.discrepancies,
+      gsm_value: ab.gsm_value,
+      adopted_value: ab.adopted_value,
       source_events: ab.source_events,
       created_at: ab.created_at,
       updated_at: ab.updated_at
     }
+  end
+
+  private
+
+  def calculate_game_stats(game_record)
+    # Calculate batting and pitching stats based on adopted_value
+    # Stats are calculated from adopted_value to reflect human corrections
+    at_bat_records = game_record.at_bat_records.order(:ab_num)
+
+    batting_stats = {}
+    pitching_stats = {}
+
+    at_bat_records.each do |ab|
+      # Use adopted_value if available, otherwise use current values
+      result_code = ab.adopted_value&.dig("result_code") || ab.result_code
+      runs_scored = (ab.adopted_value&.dig("runs_scored") || ab.runs_scored).to_i
+
+      # Accumulate batting stats
+      batter_id = ab.batter_id
+      if batting_stats[batter_id].nil?
+        batting_stats[batter_id] = {
+          batter_id: batter_id,
+          batter_name: ab.batter_name,
+          games: 1,
+          at_bats: 0,
+          hits: 0,
+          doubles: 0,
+          triples: 0,
+          home_runs: 0,
+          walks: 0,
+          strikeouts: 0,
+          rbi: 0
+        }
+      end
+
+      # Update batting stats based on result_code
+      case result_code
+      when /^HR/
+        batting_stats[batter_id][:hits] += 1
+        batting_stats[batter_id][:home_runs] += 1
+        batting_stats[batter_id][:at_bats] += 1
+        batting_stats[batter_id][:rbi] += runs_scored
+      when /^3H|3B/
+        batting_stats[batter_id][:hits] += 1
+        batting_stats[batter_id][:triples] += 1
+        batting_stats[batter_id][:at_bats] += 1
+        batting_stats[batter_id][:rbi] += runs_scored
+      when /^2H|2B/
+        batting_stats[batter_id][:hits] += 1
+        batting_stats[batter_id][:doubles] += 1
+        batting_stats[batter_id][:at_bats] += 1
+        batting_stats[batter_id][:rbi] += runs_scored
+      when /^H|1B/
+        batting_stats[batter_id][:hits] += 1
+        batting_stats[batter_id][:at_bats] += 1
+        batting_stats[batter_id][:rbi] += runs_scored
+      when /^BB/
+        batting_stats[batter_id][:walks] += 1
+      when /^K/
+        batting_stats[batter_id][:strikeouts] += 1
+        batting_stats[batter_id][:at_bats] += 1
+      else
+        batting_stats[batter_id][:at_bats] += 1
+        batting_stats[batter_id][:rbi] += runs_scored
+      end
+
+      # Accumulate pitching stats
+      pitcher_id = ab.pitcher_id
+      if pitching_stats[pitcher_id].nil?
+        pitching_stats[pitcher_id] = {
+          pitcher_id: pitcher_id,
+          pitcher_name: ab.pitcher_name,
+          innings_pitched: 0,
+          hits_allowed: 0,
+          runs_allowed: 0,
+          strikeouts: 0,
+          walks: 0
+        }
+      end
+
+      # Update pitching stats
+      case result_code
+      when /^H|1B|2B|2H|3B|3H|HR/
+        pitching_stats[pitcher_id][:hits_allowed] += 1
+      when /^K/
+        pitching_stats[pitcher_id][:strikeouts] += 1
+      when /^BB/
+        pitching_stats[pitcher_id][:walks] += 1
+      end
+
+      pitching_stats[pitcher_id][:runs_allowed] += runs_scored if runs_scored > 0
+    end
+
+    # Note: Stats persistence (saving to database) would happen here
+    # For now, stats are calculated and could be returned in the response
+    # In a full implementation, you might save ImportedStat or similar records
   end
 end

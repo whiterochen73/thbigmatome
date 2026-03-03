@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_03_02_114440) do
+ActiveRecord::Schema[8.1].define(version: 2026_03_03_145237) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -53,6 +53,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_02_114440) do
 
   create_table "at_bat_records", force: :cascade do |t|
     t.integer "ab_num"
+    t.jsonb "adopted_value", default: {}
     t.string "bat_result"
     t.integer "bat_roll"
     t.string "batter_id"
@@ -61,6 +62,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_02_114440) do
     t.jsonb "discrepancies", default: [], null: false
     t.jsonb "extra_data", default: {}
     t.bigint "game_record_id", null: false
+    t.jsonb "gsm_value", default: {}
     t.string "half"
     t.integer "inning"
     t.boolean "is_modified", default: false, null: false

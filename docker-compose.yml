@@ -1,11 +1,12 @@
 # Docker Compose for thbigmatome development environment
 # Usage:
-#   docker compose up            # db + rails + frontend
-#   docker compose --profile tools run parser pytest
+#   docker compose up                        # db + rails + frontend + parser
+#   docker compose run --rm parser pytest    # run parser tests
 #   docker compose --profile irc up irc
 
 services:
   db:
+    restart: unless-stopped
     image: postgres:16-alpine
     ports:
       - "5433:5432"   # ホストPG(5432)との競合回避
@@ -22,6 +23,7 @@ services:
       retries: 10
 
   rails:
+    restart: unless-stopped
     build:
       context: ./thbigmatome
       dockerfile: Dockerfile.dev
@@ -37,12 +39,11 @@ services:
       DB_USERNAME: morinaga
       RAILS_ENV: development
       RAILS_MASTER_KEY: ${RAILS_MASTER_KEY}
-      # Docker環境ではゲームインポートAPI非対応（将来タスクで対応予定）
-      # /app-parser/ のvolumeマウントが存在しないためコメントアウト
-      # THBIG_IRC_PARSER_PYTHON: /app-parser/.venv/bin/python
+      PARSER_API_URL: http://parser:5000
     command: bin/rails server -b 0.0.0.0
 
   frontend:
+    restart: unless-stopped
     build:
       context: ./thbigmatome-front
       dockerfile: Dockerfile.dev
@@ -59,6 +60,8 @@ services:
     build:
       context: ./thbig-irc-parser
       dockerfile: Dockerfile.dev
+    ports:
+      - "5000:5000"
     volumes:
       # テストコードがハードコードされたホストパスを参照するため同一パスでマウント
       - /home/morinaga/projects/thbig-irc-parser:/home/morinaga/projects/thbig-irc-parser
@@ -67,12 +70,15 @@ services:
     working_dir: /home/morinaga/projects/thbig-irc-parser
     depends_on:
       - db
-    profiles:
-      - tools
     environment:
       DB_HOST: db
       DB_USERNAME: morinaga
-    command: sleep infinity
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:5000/health')"]
+      interval: 5s
+      timeout: 10s
+      retries: 12
+      start_period: 15s
 
   irc:
     build:

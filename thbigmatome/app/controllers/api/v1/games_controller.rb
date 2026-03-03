@@ -1,7 +1,11 @@
 require "open3"
 require "tempfile"
+require "net/http"
+require "json"
 
 class Api::V1::GamesController < Api::V1::BaseController
+  class ParserError < StandardError; end
+
   def index
     games = Game.includes(:game_record).order(id: :desc)
     games = games.where(competition_id: params[:competition_id]) if params[:competition_id].present?
@@ -46,23 +50,7 @@ class Api::V1::GamesController < Api::V1::BaseController
     log_text = params[:log]
     return render json: { error: "log parameter required" }, status: :bad_request if log_text.blank?
 
-    python_path = ENV.fetch("THBIG_IRC_PARSER_PYTHON", "/home/morinaga/projects/thbig-irc-parser/.venv/bin/python")
-    stdout, stderr, status = Tempfile.create([ "irc_log", ".txt" ]) do |tmp|
-      tmp.write(log_text)
-      tmp.flush
-      Open3.capture3(python_path, "-m", "thbig_irc_parser.parse_game_full", tmp.path)
-    end
-
-    unless status.success?
-      error_message = if stderr.include?("ModuleNotFoundError") || stderr.include?("No module named")
-        "パーサーが見つかりません。thbig_irc_parser のセットアップを確認してください。"
-      else
-        "Parser error: #{stderr.truncate(200)}"
-      end
-      return render json: { error: error_message }, status: :unprocessable_content
-    end
-
-    result = JSON.parse(stdout)
+    result = invoke_game_full_parser(log_text)
     at_bats_data = result["at_bats"]
     pregame_info = result["pregame_info"]
 
@@ -96,6 +84,8 @@ class Api::V1::GamesController < Api::V1::BaseController
       at_bat_count: all_at_bats.length,
       raw_at_bats: at_bats_data
     }
+  rescue ParserError => e
+    render json: { error: e.message }, status: :unprocessable_content
   rescue JSON::ParserError => e
     render json: { error: "JSON parse error: #{e.message}" }, status: :unprocessable_content
   end
@@ -108,25 +98,7 @@ class Api::V1::GamesController < Api::V1::BaseController
     parsed = if params[:raw_at_bats].present?
       JSON.parse(params[:raw_at_bats])
     else
-      # パーサー呼び出し
-      python_path = ENV.fetch("THBIG_IRC_PARSER_PYTHON", "/home/morinaga/projects/thbig-irc-parser/.venv/bin/python")
-      stdout, stderr, status = Tempfile.create([ "irc_log", ".txt" ]) do |tmp|
-        tmp.write(log_text)
-        tmp.flush
-        line_count = log_text.lines.count
-        Open3.capture3(python_path, "-m", "thbig_irc_parser.log_parser", tmp.path, "1", line_count.to_s)
-      end
-
-      unless status.success?
-        error_message = if stderr.include?("ModuleNotFoundError") || stderr.include?("No module named")
-          "パーサーが見つかりません。thbig_irc_parser のセットアップを確認してください。"
-        else
-          "Parser error: #{stderr.truncate(200)}"
-        end
-        return render json: { error: error_message }, status: :unprocessable_content
-      end
-
-      JSON.parse(stdout)
+      invoke_log_parser(log_text)
     end
 
     # draft Gameを作成（raw_logを保存）
@@ -203,6 +175,8 @@ class Api::V1::GamesController < Api::V1::BaseController
       at_bat_count: all_at_bats.length,
       imported_count: imported_count
     }, status: :created
+  rescue ParserError => e
+    render json: { error: e.message }, status: :unprocessable_content
   rescue ActiveRecord::RecordInvalid => e
     render json: { errors: e.record.errors.full_messages }, status: :unprocessable_content
   rescue JSON::ParserError => e
@@ -213,6 +187,58 @@ class Api::V1::GamesController < Api::V1::BaseController
 
   def game_params
     params.require(:game).permit(:competition_id, :home_team_id, :visitor_team_id, :real_date, :stadium_id, :status, :source)
+  end
+
+  def invoke_game_full_parser(log_text)
+    if ENV["PARSER_API_URL"].present?
+      invoke_via_api("#{ENV["PARSER_API_URL"]}/parse_game_full", { log: log_text })
+    else
+      invoke_via_cli(log_text, "thbig_irc_parser.parse_game_full")
+    end
+  end
+
+  def invoke_log_parser(log_text)
+    line_count = log_text.lines.count
+    if ENV["PARSER_API_URL"].present?
+      invoke_via_api("#{ENV["PARSER_API_URL"]}/parse_log", { log: log_text, start_line: 1, end_line: line_count })
+    else
+      invoke_via_cli(log_text, "thbig_irc_parser.log_parser", "1", line_count.to_s)
+    end
+  end
+
+  def invoke_via_api(url, payload)
+    uri = URI(url)
+    http = Net::HTTP.new(uri.hostname, uri.port)
+    http.open_timeout = 10
+    http.read_timeout = 120
+    req = Net::HTTP::Post.new(uri.path, "Content-Type" => "application/json")
+    req.body = payload.to_json
+    response = http.request(req)
+    unless response.is_a?(Net::HTTPSuccess)
+      body = JSON.parse(response.body) rescue {}
+      raise ParserError, body["error"] || "Parser API error: HTTP #{response.code}"
+    end
+    JSON.parse(response.body)
+  rescue Errno::ECONNREFUSED, Errno::ETIMEDOUT, SocketError => e
+    raise ParserError, "パーサーAPIに接続できません: #{e.message}"
+  end
+
+  def invoke_via_cli(log_text, module_name, *extra_args)
+    python_path = ENV.fetch("THBIG_IRC_PARSER_PYTHON", "/home/morinaga/projects/thbig-irc-parser/.venv/bin/python")
+    stdout, stderr, status = Tempfile.create([ "irc_log", ".txt" ]) do |tmp|
+      tmp.write(log_text)
+      tmp.flush
+      Open3.capture3(python_path, "-m", module_name, tmp.path, *extra_args)
+    end
+    unless status.success?
+      error_message = if stderr.include?("ModuleNotFoundError") || stderr.include?("No module named")
+        "パーサーが見つかりません。thbig_irc_parser のセットアップを確認してください。"
+      else
+        "Parser error: #{stderr.truncate(200)}"
+      end
+      raise ParserError, error_message
+    end
+    JSON.parse(stdout)
   end
 
   def create_import_at_bat_records(game_record, parsed)

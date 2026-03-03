@@ -1,0 +1,30 @@
+# Development Dockerfile for thbigmatome (Rails API)
+# Ruby 3.4.4 with hot-reload support
+FROM ruby:3.4.4-slim
+
+WORKDIR /app
+
+# Install system dependencies
+RUN apt-get update -qq && \
+    apt-get install --no-install-recommends -y \
+      build-essential \
+      git \
+      curl \
+      libvips \
+      libpq-dev \
+      libjemalloc2 \
+      libyaml-dev \
+      pkg-config \
+      postgresql-client \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install gems (cached layer)
+COPY Gemfile Gemfile.lock ./
+RUN bundle install
+
+# Copy application code (bind mount in development)
+COPY . .
+
+EXPOSE 3000
+
+CMD ["bin/rails", "server", "-b", "0.0.0.0"]

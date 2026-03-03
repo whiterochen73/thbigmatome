@@ -114,6 +114,8 @@ class Api::V1::GameRecordsController < Api::V1::BaseController
       parser_version: game_record.parser_version,
       parsed_at: game_record.parsed_at,
       confirmed_at: game_record.confirmed_at,
+      batting_stats: game_record.batting_stats,
+      pitching_stats: game_record.pitching_stats,
       created_at: game_record.created_at,
       updated_at: game_record.updated_at
     }
@@ -199,27 +201,28 @@ class Api::V1::GameRecordsController < Api::V1::BaseController
 
       # Update batting stats based on result_code
       case result_code
+      when /^(?:H|1B|IH)/     # 単打・内野安打
+        batting_stats[batter_id][:hits] += 1
+        batting_stats[batter_id][:at_bats] += 1
+        batting_stats[batter_id][:rbi] += runs_scored
+      when /^2[BH]/            # 二塁打
+        batting_stats[batter_id][:hits] += 1
+        batting_stats[batter_id][:doubles] += 1
+        batting_stats[batter_id][:at_bats] += 1
+        batting_stats[batter_id][:rbi] += runs_scored
+      when /^3[BH]/            # 三塁打
+        batting_stats[batter_id][:hits] += 1
+        batting_stats[batter_id][:triples] += 1
+        batting_stats[batter_id][:at_bats] += 1
+        batting_stats[batter_id][:rbi] += runs_scored
       when /^HR/
         batting_stats[batter_id][:hits] += 1
         batting_stats[batter_id][:home_runs] += 1
         batting_stats[batter_id][:at_bats] += 1
         batting_stats[batter_id][:rbi] += runs_scored
-      when /^3H|3B/
-        batting_stats[batter_id][:hits] += 1
-        batting_stats[batter_id][:triples] += 1
-        batting_stats[batter_id][:at_bats] += 1
-        batting_stats[batter_id][:rbi] += runs_scored
-      when /^2H|2B/
-        batting_stats[batter_id][:hits] += 1
-        batting_stats[batter_id][:doubles] += 1
-        batting_stats[batter_id][:at_bats] += 1
-        batting_stats[batter_id][:rbi] += runs_scored
-      when /^H|1B/
-        batting_stats[batter_id][:hits] += 1
-        batting_stats[batter_id][:at_bats] += 1
-        batting_stats[batter_id][:rbi] += runs_scored
-      when /^BB/
-        batting_stats[batter_id][:walks] += 1
+      when /^(?:BB|DB|SAC|SF)/ # 打数に含めない
+        # at_bats 加算なし
+        batting_stats[batter_id][:walks] += 1 if /^BB/.match?(result_code)
       when /^K/
         batting_stats[batter_id][:strikeouts] += 1
         batting_stats[batter_id][:at_bats] += 1
@@ -244,19 +247,21 @@ class Api::V1::GameRecordsController < Api::V1::BaseController
 
       # Update pitching stats
       case result_code
-      when /^H|1B|2B|2H|3B|3H|HR/
+      when /^(?:H|1B|IH|2B|2H|3B|3H|HR)/ # すべての安打（IH含む）
         pitching_stats[pitcher_id][:hits_allowed] += 1
       when /^K/
         pitching_stats[pitcher_id][:strikeouts] += 1
-      when /^BB/
-        pitching_stats[pitcher_id][:walks] += 1
+      when /^(?:BB|DB|SAC|SF)/ # 打数に含めない結果
+        pitching_stats[pitcher_id][:walks] += 1 if /^BB/.match?(result_code)
       end
 
       pitching_stats[pitcher_id][:runs_allowed] += runs_scored if runs_scored > 0
     end
 
-    # Note: Stats persistence (saving to database) would happen here
-    # For now, stats are calculated and could be returned in the response
-    # In a full implementation, you might save ImportedStat or similar records
+    # Save stats to game_record
+    game_record.update!(
+      batting_stats: batting_stats,
+      pitching_stats: pitching_stats
+    )
   end
 end

@@ -112,5 +112,46 @@ RSpec.describe "Api::V1::AtBatRecordsController", type: :request do
       expect(json["runners_before"]).to include(1)
       expect(json["runners_after"]).to include(2, 3)
     end
+
+    # C1回帰テスト: || バグ修正確認
+    it "runs_scored=0 を送ると adopted_value.runs_scored=0 になること（C1回帰テスト）" do
+      ab = create(:at_bat_record, game_record: game_record, result_code: "K", runs_scored: 1)
+
+      patch "/api/v1/at_bat_records/#{ab.id}",
+            params: { runs_scored: 0 },
+            as: :json
+      expect(response).to have_http_status(:ok)
+      json = response.parsed_body
+      expect(json["adopted_value"]).to be_present
+      expect(json["adopted_value"]["runs_scored"]).to eq(0)
+    end
+
+    it "outs_before=0 を送ると adopted_value.outs_before=0 になること（C1回帰テスト）" do
+      ab = create(:at_bat_record, game_record: game_record, outs_before: 1)
+
+      patch "/api/v1/at_bat_records/#{ab.id}",
+            params: { outs_before: 0 },
+            as: :json
+      expect(response).to have_http_status(:ok)
+      json = response.parsed_body
+      expect(json["adopted_value"]).to be_present
+      expect(json["adopted_value"]["outs_before"]).to eq(0)
+    end
+
+    it "PATCH後に adopted_value が正しく保存される" do
+      ab = create(:at_bat_record, game_record: game_record, result_code: "K")
+
+      patch "/api/v1/at_bat_records/#{ab.id}",
+            params: { result_code: "H", runs_scored: 1, outs_before: 0, outs_after: 1 },
+            as: :json
+      expect(response).to have_http_status(:ok)
+      json = response.parsed_body
+      expect(json["adopted_value"]).to include(
+        "result_code" => "H",
+        "runs_scored" => 1,
+        "outs_before" => 0,
+        "outs_after" => 1
+      )
+    end
   end
 end

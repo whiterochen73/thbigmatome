@@ -177,5 +177,42 @@ RSpec.describe "Api::V1::GameRecordsController", type: :request do
       post "/api/v1/game_records/9999999/confirm", as: :json
       expect(response).to have_http_status(:not_found)
     end
+
+    # C3確認テスト: stats永続化
+    it "POST confirm後に game_record.batting_stats が保存される" do
+      game_record = create(:game_record, status: "draft")
+      batter = create(:player)
+      pitcher = create(:player)
+      create(:at_bat_record, game_record: game_record, ab_num: 1,
+             batter_id: batter.id, batter_name: batter.name,
+             pitcher_id: pitcher.id, pitcher_name: pitcher.name,
+             result_code: "H", runs_scored: 1, adopted_value: nil)
+
+      post "/api/v1/game_records/#{game_record.id}/confirm", as: :json
+      expect(response).to have_http_status(:ok)
+
+      game_record.reload
+      json = response.parsed_body
+      expect(json["batting_stats"]).to be_present
+      expect(json["batting_stats"]).to be_a(Hash)
+    end
+
+    it "POST confirm後に game_record.pitching_stats が保存される" do
+      game_record = create(:game_record, status: "draft")
+      batter = create(:player)
+      pitcher = create(:player)
+      create(:at_bat_record, game_record: game_record, ab_num: 1,
+             batter_id: batter.id, batter_name: batter.name,
+             pitcher_id: pitcher.id, pitcher_name: pitcher.name,
+             result_code: "K", runs_scored: 0, adopted_value: nil)
+
+      post "/api/v1/game_records/#{game_record.id}/confirm", as: :json
+      expect(response).to have_http_status(:ok)
+
+      game_record.reload
+      json = response.parsed_body
+      expect(json["pitching_stats"]).to be_present
+      expect(json["pitching_stats"]).to be_a(Hash)
+    end
   end
 end

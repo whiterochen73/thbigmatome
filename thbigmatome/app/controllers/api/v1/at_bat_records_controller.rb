@@ -68,12 +68,12 @@ class Api::V1::AtBatRecordsController < Api::V1::BaseController
   def build_adopted_value(at_bat_record, permitted)
     # Snapshot of adopted (human-decided) values
     adopted = {
-      result_code: permitted[:result_code] || at_bat_record.result_code,
-      runs_scored: permitted[:runs_scored] || at_bat_record.runs_scored,
-      runners_before: permitted[:runners_before] || at_bat_record.runners_before,
-      runners_after: permitted[:runners_after] || at_bat_record.runners_after,
-      outs_before: permitted[:outs_before] || at_bat_record.outs_before,
-      outs_after: permitted[:outs_after] || at_bat_record.outs_after
+      result_code: permitted.key?(:result_code) ? permitted[:result_code] : at_bat_record.result_code,
+      runs_scored: permitted.key?(:runs_scored) ? permitted[:runs_scored] : at_bat_record.runs_scored,
+      runners_before: permitted.key?(:runners_before) ? permitted[:runners_before] : at_bat_record.runners_before,
+      runners_after: permitted.key?(:runners_after) ? permitted[:runners_after] : at_bat_record.runners_after,
+      outs_before: permitted.key?(:outs_before) ? permitted[:outs_before] : at_bat_record.outs_before,
+      outs_after: permitted.key?(:outs_after) ? permitted[:outs_after] : at_bat_record.outs_after
     }
     adopted
   end

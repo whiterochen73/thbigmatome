@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_03_03_145237) do
+ActiveRecord::Schema[8.1].define(version: 2026_03_03_150521) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -249,6 +249,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_03_145237) do
   end
 
   create_table "game_records", force: :cascade do |t|
+    t.jsonb "batting_stats"
     t.datetime "confirmed_at"
     t.datetime "created_at", null: false
     t.date "game_date"
@@ -256,6 +257,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_03_145237) do
     t.string "opponent_team_name"
     t.datetime "parsed_at"
     t.string "parser_version"
+    t.jsonb "pitching_stats"
     t.datetime "played_at"
     t.string "result"
     t.integer "score_away"

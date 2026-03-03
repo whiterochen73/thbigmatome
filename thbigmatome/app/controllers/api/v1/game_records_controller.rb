@@ -201,32 +201,32 @@ class Api::V1::GameRecordsController < Api::V1::BaseController
 
       # Update batting stats based on result_code
       case result_code
-      when /^(?:H|1B|IH)/     # 単打・内野安打
-        batting_stats[batter_id][:hits] += 1
-        batting_stats[batter_id][:at_bats] += 1
-        batting_stats[batter_id][:rbi] += runs_scored
-      when /^2[BH]/            # 二塁打
-        batting_stats[batter_id][:hits] += 1
-        batting_stats[batter_id][:doubles] += 1
-        batting_stats[batter_id][:at_bats] += 1
-        batting_stats[batter_id][:rbi] += runs_scored
-      when /^3[BH]/            # 三塁打
-        batting_stats[batter_id][:hits] += 1
-        batting_stats[batter_id][:triples] += 1
-        batting_stats[batter_id][:at_bats] += 1
-        batting_stats[batter_id][:rbi] += runs_scored
-      when /^HR/
+      when /^HR/               # 1. 本塁打（HRで始まる → 最初に評価）
         batting_stats[batter_id][:hits] += 1
         batting_stats[batter_id][:home_runs] += 1
         batting_stats[batter_id][:at_bats] += 1
         batting_stats[batter_id][:rbi] += runs_scored
-      when /^(?:BB|DB|SAC|SF)/ # 打数に含めない
+      when /^3[BH]/            # 2. 三塁打
+        batting_stats[batter_id][:hits] += 1
+        batting_stats[batter_id][:triples] += 1
+        batting_stats[batter_id][:at_bats] += 1
+        batting_stats[batter_id][:rbi] += runs_scored
+      when /^2[BH]/            # 3. 二塁打
+        batting_stats[batter_id][:hits] += 1
+        batting_stats[batter_id][:doubles] += 1
+        batting_stats[batter_id][:at_bats] += 1
+        batting_stats[batter_id][:rbi] += runs_scored
+      when /^(?:H|1B|IH)/     # 4. 単打・内野安打（Hで始まるが非HR）
+        batting_stats[batter_id][:hits] += 1
+        batting_stats[batter_id][:at_bats] += 1
+        batting_stats[batter_id][:rbi] += runs_scored
+      when /^(?:BB|DB|SAC|SF)/ # 5. 打数不算入
         # at_bats 加算なし
         batting_stats[batter_id][:walks] += 1 if /^BB/.match?(result_code)
-      when /^K/
+      when /^K/                # 6. 三振
         batting_stats[batter_id][:strikeouts] += 1
         batting_stats[batter_id][:at_bats] += 1
-      else
+      else                     # 7. その他
         batting_stats[batter_id][:at_bats] += 1
         batting_stats[batter_id][:rbi] += runs_scored
       end

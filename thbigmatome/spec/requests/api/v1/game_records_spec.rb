@@ -214,5 +214,59 @@ RSpec.describe "Api::V1::GameRecordsController", type: :request do
       expect(json["pitching_stats"]).to be_present
       expect(json["pitching_stats"]).to be_a(Hash)
     end
+
+    it "HR コードが home_runs にカウントされる" do
+      game_record = create(:game_record, status: "draft")
+      batter = create(:player)
+      pitcher = create(:player)
+      create(:at_bat_record, game_record: game_record, ab_num: 1,
+             batter_id: batter.id, batter_name: batter.name,
+             pitcher_id: pitcher.id, pitcher_name: pitcher.name,
+             result_code: "HR7", runs_scored: 1, adopted_value: nil)
+
+      post "/api/v1/game_records/#{game_record.id}/confirm", as: :json
+      expect(response).to have_http_status(:ok)
+
+      json = response.parsed_body
+      batter_stats = json["batting_stats"][batter.id.to_s]
+      expect(batter_stats["home_runs"]).to eq(1)
+    end
+
+    it "HR コードが hits にカウントされる" do
+      game_record = create(:game_record, status: "draft")
+      batter = create(:player)
+      pitcher = create(:player)
+      create(:at_bat_record, game_record: game_record, ab_num: 1,
+             batter_id: batter.id, batter_name: batter.name,
+             pitcher_id: pitcher.id, pitcher_name: pitcher.name,
+             result_code: "HR7", runs_scored: 1, adopted_value: nil)
+
+      post "/api/v1/game_records/#{game_record.id}/confirm", as: :json
+      expect(response).to have_http_status(:ok)
+
+      json = response.parsed_body
+      batter_stats = json["batting_stats"][batter.id.to_s]
+      expect(batter_stats["hits"]).to eq(1)
+    end
+
+    it "HR コードが hits のみ（単打扱いにならない）" do
+      game_record = create(:game_record, status: "draft")
+      batter = create(:player)
+      pitcher = create(:player)
+      create(:at_bat_record, game_record: game_record, ab_num: 1,
+             batter_id: batter.id, batter_name: batter.name,
+             pitcher_id: pitcher.id, pitcher_name: pitcher.name,
+             result_code: "HR7", runs_scored: 1, adopted_value: nil)
+
+      post "/api/v1/game_records/#{game_record.id}/confirm", as: :json
+      expect(response).to have_http_status(:ok)
+
+      json = response.parsed_body
+      batter_stats = json["batting_stats"][batter.id.to_s]
+      # HR は home_runs としてカウントされ、hits は1のみ（単打として重複しない）
+      expect(batter_stats["home_runs"]).to eq(1)
+      expect(batter_stats["hits"]).to eq(1)
+      expect(batter_stats["at_bats"]).to eq(1)
+    end
   end
 end

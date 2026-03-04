@@ -6,6 +6,7 @@ import * as components from 'vuetify/components'
 import * as directives from 'vuetify/directives'
 import { createI18n } from 'vue-i18n'
 import { createRouter, createMemoryHistory } from 'vue-router'
+import { createPinia } from 'pinia'
 import DefaultLayout from '../DefaultLayout.vue'
 
 // Mock axios with full defaults/interceptors support
@@ -105,9 +106,10 @@ function createTestRouter() {
 
 function mountDefaultLayout(options = {}) {
   const router = createTestRouter()
+  const pinia = createPinia()
   return mount(DefaultLayout, {
     global: {
-      plugins: [vuetify, i18n, router],
+      plugins: [vuetify, i18n, router, pinia],
     },
     slots: {
       default: '<div class="test-content">Test Content</div>',
@@ -255,9 +257,9 @@ describe('DefaultLayout.vue', () => {
       await flushPromises()
 
       expect(wrapper.text()).toContain('ホーム')
-      expect(wrapper.text()).toContain('チーム編成')
-      expect(wrapper.text()).toContain('試合記録')
-      expect(wrapper.text()).toContain('成績まとめ')
+      expect(wrapper.text()).toContain('試合ログ')
+      expect(wrapper.text()).toContain('試合一覧')
+      expect(wrapper.text()).toContain('成績')
     })
 
     it('does not display commissioner menu for regular users', async () => {

@@ -16,6 +16,14 @@
         :to="item.to"
         link
       />
+      <v-list-item
+        v-if="teamSelectionStore.selectedTeamId"
+        prepend-icon="mdi-calendar-star"
+        :title="'シーズン'"
+        value="season"
+        :to="`/teams/${teamSelectionStore.selectedTeamId}/season`"
+        link
+      />
     </v-list>
 
     <template v-if="isCommissioner">
@@ -64,6 +72,7 @@
 
 <script setup lang="ts">
 import { useAuth } from '@/composables/useAuth'
+import { useTeamSelectionStore } from '@/stores/teamSelection'
 
 const props = defineProps<{
   modelValue: boolean
@@ -76,12 +85,14 @@ const emit = defineEmits<{
 }>()
 
 const { isCommissioner } = useAuth()
+const teamSelectionStore = useTeamSelectionStore()
 
 const mainMenuItems = [
   { title: 'ホーム', icon: 'mdi-home', value: 'dashboard', to: '/' },
-  { title: '試合記録', icon: 'mdi-scoreboard', value: 'games', to: '/games' },
-  { title: '成績まとめ', icon: 'mdi-chart-bar', value: 'stats', to: '/stats' },
-  { title: 'チーム編成', icon: 'mdi-account-group', value: 'teams', to: '/teams' },
+  { title: '試合ログ', icon: 'mdi-file-import', value: 'gameImport', to: '/games/import' },
+  { title: 'レビュー', icon: 'mdi-clipboard-check', value: 'gameRecords', to: '/game-records' },
+  { title: '試合一覧', icon: 'mdi-scoreboard', value: 'games', to: '/games' },
+  { title: '成績', icon: 'mdi-chart-bar', value: 'stats', to: '/stats' },
   {
     title: '選手カード',
     icon: 'mdi-card-account-details',

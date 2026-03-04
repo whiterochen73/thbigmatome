@@ -1,4 +1,5 @@
 import { createApp } from 'vue'
+import { createPinia } from 'pinia'
 import App from './App.vue'
 import router from '@/router/index'
 import i18n from '@/plugins/i18n'
@@ -6,6 +7,7 @@ import '@/plugins/axios'
 import vuetify from './plugins/vuetify'
 
 const app = createApp(App)
+app.use(createPinia())
 app.use(router)
 app.use(vuetify)
 app.use(i18n)

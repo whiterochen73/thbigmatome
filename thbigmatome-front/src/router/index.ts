@@ -24,12 +24,13 @@ const routes: RouteRecordRaw[] = [
       {
         path: '',
         name: 'ホーム',
-        component: () => import('@/views/HomeView.vue'),
+        component: () => import('@/views/HomePortalView.vue'),
         meta: { requiresAuth: true, title: 'ホーム' },
       },
       {
         path: 'home',
-        redirect: '/',
+        component: () => import('@/views/HomeView.vue'),
+        meta: { requiresAuth: true, title: 'ホーム（旧）' },
       },
       {
         path: 'managers',

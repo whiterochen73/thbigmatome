@@ -37,7 +37,7 @@ const tabs = computed(() => [
     routeName: 'SeasonRoster',
     label: t('teamNavigation.activeRoster'),
     icon: 'mdi-clipboard-list',
-    to: { name: 'SeasonRoster', params: { teamId: props.teamId } },
+    to: { name: 'SeasonPortal', params: { teamId: props.teamId }, query: { tab: 'roster' } },
   },
   {
     routeName: 'SeasonPortal',
@@ -49,11 +49,16 @@ const tabs = computed(() => [
     routeName: 'PlayerAbsenceHistory',
     label: t('teamNavigation.playerAbsenceHistory'),
     icon: 'mdi-account-off',
-    to: { name: 'PlayerAbsenceHistory', params: { teamId: props.teamId } },
+    to: { name: 'SeasonPortal', params: { teamId: props.teamId }, query: { tab: 'absences' } },
   },
 ])
 
 const activeTab = computed(() => {
+  if (route.name === 'SeasonPortal') {
+    const tab = route.query.tab
+    if (tab === 'roster') return 'SeasonRoster'
+    if (tab === 'absences') return 'PlayerAbsenceHistory'
+  }
   return route.name as string
 })
 </script>

@@ -57,6 +57,58 @@ export interface Defense {
   throwing?: string | null
 }
 
+// === Pregame / GameImport types ===
+
+export interface LineupEntry {
+  order: number
+  position: string
+  name: string
+}
+
+export interface BenchEntry {
+  name: string
+  role: 'pitcher' | 'fielder' | 'unknown'
+}
+
+export interface StarterInfo {
+  name: string
+  jersey?: number
+  rest_days?: number
+  fatigue?: number
+  wins?: number
+  losses?: number
+  era?: number
+  appearances?: number
+}
+
+export interface InjuryCheck {
+  player: string
+  roll: number
+  injured: boolean
+  injury_days?: number
+  injury_level?: number
+  note?: string
+}
+
+export interface PregameInfo {
+  venue: string | null
+  venue_code_1112: string | null
+  venue_code_1314: string | null
+  dh_enabled: boolean | null
+  home_team: string | null
+  visitor_team: string | null
+  rain_canceled: boolean
+  home_lineup: LineupEntry[]
+  visitor_lineup: LineupEntry[]
+  home_bench: BenchEntry[]
+  visitor_bench: BenchEntry[]
+  home_starter: string | null
+  visitor_starter: string | null
+  home_starter_info: StarterInfo | null
+  visitor_starter_info: StarterInfo | null
+  injury_check_result: InjuryCheck | null
+}
+
 export interface PlayerCard {
   id: number
   card_set_id: number

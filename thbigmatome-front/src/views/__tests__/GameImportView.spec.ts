@@ -63,10 +63,15 @@ const mockTeams = [
 const mockParseResponse = {
   pregame_info: {
     venue: 'テスト球場',
+    venue_code_1112: 'HR9',
+    venue_code_1314: 'F8a',
+    dh_enabled: true,
     home_team: 'ホームチーム',
     visitor_team: 'ビジターチーム',
     home_starter: '先発A',
     visitor_starter: '先発B',
+    home_starter_info: null,
+    visitor_starter_info: null,
     rain_canceled: false,
     home_lineup: [],
     visitor_lineup: [],
@@ -150,7 +155,7 @@ describe('GameImportView', () => {
     await flushPromises()
 
     expect(wrapper.text()).toContain('Step 2')
-    expect(wrapper.text()).toContain('自動検出情報')
+    expect(wrapper.text()).toContain('試合設定')
   })
 
   it('Step 2 import button calls import_log API', async () => {

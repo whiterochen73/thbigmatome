@@ -29,6 +29,14 @@
             <v-icon
               size="small"
               class="mr-2"
+              @click="navigateToSeason(item)"
+              title="シーズンポータル"
+            >
+              mdi-calendar-star
+            </v-icon>
+            <v-icon
+              size="small"
+              class="mr-2"
               @click="navigateToMembers(item.id)"
               title="メンバー編集"
             >
@@ -58,9 +66,11 @@ import { useSnackbar } from '@/composables/useSnackbar'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
 import { type Team } from '@/types/team'
 import TeamDialog from '@/components/TeamDialog.vue'
+import { useTeamSelectionStore } from '@/stores/teamSelection'
 
 const { t } = useI18n()
 const router = useRouter()
+const teamSelectionStore = useTeamSelectionStore()
 
 // v-data-tableのヘッダー定義
 const headers = computed(() => [
@@ -136,6 +146,15 @@ const openDialog = (team: Team | null = null) => {
  */
 const navigateToMembers = (teamId: number) => {
   router.push(`/teams/${teamId}/members`)
+}
+
+/**
+ * シーズンポータルへ遷移する
+ * @param team チームデータ
+ */
+const navigateToSeason = (team: Team) => {
+  teamSelectionStore.selectTeam(team.id, team.name)
+  router.push(`/teams/${team.id}/season`)
 }
 
 // コンポーネントがマウントされた時にTeam一覧を取得

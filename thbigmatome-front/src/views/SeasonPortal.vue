@@ -199,15 +199,18 @@ import axios from 'axios'
 import { useI18n } from 'vue-i18n'
 import type { SeasonDetail } from '@/types/seasonDetail'
 import type { SeasonSchedule } from '@/types/seasonSchedule'
+import type { Team } from '@/types/team'
 import AbsenceInfo from '@/components/AbsenceInfo.vue'
 import PlayerAbsenceFormDialog from '@/components/PlayerAbsenceFormDialog.vue'
 import TeamNavigation from '@/components/TeamNavigation.vue'
 import SeasonRosterTab from '@/components/season/SeasonRosterTab.vue'
 import SeasonAbsenceTab from '@/components/season/SeasonAbsenceTab.vue'
+import { useTeamSelectionStore } from '@/stores/teamSelection'
 
 const { t } = useI18n()
 const route = useRoute()
 const router = useRouter()
+const teamSelectionStore = useTeamSelectionStore()
 const season = ref<SeasonDetail | null>(null)
 const currentDate = ref(new Date())
 const formattedCurrentDate = computed(() => currentDate.value.toISOString().split('T')[0])
@@ -481,6 +484,12 @@ const getResultIcon = (result: string) => {
 
 onMounted(async () => {
   await fetchSeason()
+  try {
+    const response = await axios.get<Team>(`/teams/${teamId}`)
+    teamSelectionStore.selectTeam(teamId, response.data.name)
+  } catch {
+    teamSelectionStore.selectTeam(teamId, '')
+  }
 })
 </script>
 

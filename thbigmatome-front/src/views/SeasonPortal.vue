@@ -17,6 +17,15 @@
       >
         {{ t('seasonPortal.registerAbsence') }}
       </v-btn>
+      <v-btn
+        class="mx-2"
+        color="secondary"
+        variant="outlined"
+        prepend-icon="mdi-chart-bar"
+        :to="{ name: '成績集計' }"
+      >
+        {{ t('seasonPortal.goToStats') }}
+      </v-btn>
       <template #append>
         <v-btn icon variant="text" @click="prevDay" :disabled="isPrevDayDisabled">
           <v-icon>mdi-chevron-left</v-icon>
@@ -28,122 +37,150 @@
       </template>
     </v-toolbar>
 
-    <v-row class="mt-2">
-      <v-col>
-        <AbsenceInfo
-          :season-id="season?.id || null"
-          :current-date="formattedCurrentDate"
-          ref="absenceInfo"
-          class="mb-4"
-        />
+    <v-tabs v-model="activeTab" class="mt-2">
+      <v-tab value="calendar">{{ t('seasonPortal.tabs.calendar') }}</v-tab>
+      <v-tab value="roster">{{ t('seasonPortal.tabs.roster') }}</v-tab>
+      <v-tab value="absences">{{ t('seasonPortal.tabs.absences') }}</v-tab>
+    </v-tabs>
 
-        <v-card variant="outlined" class="pa-4">
-          <div class="d-flex justify-space-between align-center mb-4">
-            <v-btn icon variant="outlined" @click="prevMonth">
-              <v-icon>mdi-chevron-left</v-icon>
-            </v-btn>
-            <h2 class="text-h5">{{ monthStr }}</h2>
-            <v-btn icon variant="outlined" @click="nextMonth">
-              <v-icon>mdi-chevron-right</v-icon>
-            </v-btn>
-          </div>
+    <v-tabs-window v-model="activeTab">
+      <!-- タブ1: カレンダー -->
+      <v-tabs-window-item value="calendar">
+        <v-row class="mt-2">
+          <v-col>
+            <AbsenceInfo
+              :season-id="season?.id || null"
+              :current-date="formattedCurrentDate"
+              ref="absenceInfo"
+              class="mb-4"
+            />
 
-          <div class="calendar-grid">
-            <div v-for="day in weekdays" :key="day" class="text-center font-weight-bold">
-              {{ day }}
-            </div>
-            <div
-              v-for="day in calendarDays"
-              :key="day.date.toISOString()"
-              :class="[
-                'day-cell',
-                {
-                  'is-current-day': day.isCurrentDay,
-                  'not-current-month': !day.isCurrentMonth,
-                  saturday: day.dayOfWeek === 6 && day.isCurrentMonth,
-                  sunday: day.dayOfWeek === 0 && day.isCurrentMonth,
-                },
-              ]"
-            >
-              <div class="day-number">{{ day.date.getDate() }}</div>
-              <div v-if="day.schedule">
-                <v-menu>
-                  <template #activator="{ props }">
+            <v-card variant="outlined" class="pa-4">
+              <div class="d-flex justify-space-between align-center mb-4">
+                <v-btn icon variant="outlined" @click="prevMonth">
+                  <v-icon>mdi-chevron-left</v-icon>
+                </v-btn>
+                <h2 class="text-h5">{{ monthStr }}</h2>
+                <v-btn icon variant="outlined" @click="nextMonth">
+                  <v-icon>mdi-chevron-right</v-icon>
+                </v-btn>
+              </div>
+
+              <div class="calendar-grid">
+                <div v-for="day in weekdays" :key="day" class="text-center font-weight-bold">
+                  {{ day }}
+                </div>
+                <div
+                  v-for="day in calendarDays"
+                  :key="day.date.toISOString()"
+                  :class="[
+                    'day-cell',
+                    {
+                      'is-current-day': day.isCurrentDay,
+                      'not-current-month': !day.isCurrentMonth,
+                      saturday: day.dayOfWeek === 6 && day.isCurrentMonth,
+                      sunday: day.dayOfWeek === 0 && day.isCurrentMonth,
+                    },
+                  ]"
+                >
+                  <div class="day-number">{{ day.date.getDate() }}</div>
+                  <div v-if="day.schedule">
+                    <v-menu>
+                      <template #activator="{ props }">
+                        <v-btn
+                          :color="getScheduleColor(day.schedule.date_type)"
+                          v-bind="props"
+                          :disabled="isDateBeforeCurrent(day.date)"
+                          block
+                          density="compact"
+                        >
+                          {{ t(`settings.schedule.dateTypes.${day.schedule.date_type}`) }}
+                        </v-btn>
+                      </template>
+                      <v-list>
+                        <v-list-item
+                          v-for="dateType in dateTypes"
+                          :key="dateType"
+                          @click="updateSchedule(day.schedule, dateType)"
+                        >
+                          <v-list-item-title>{{
+                            t(`settings.schedule.dateTypes.${dateType}`)
+                          }}</v-list-item-title>
+                        </v-list-item>
+                      </v-list>
+                    </v-menu>
                     <v-btn
-                      :color="getScheduleColor(day.schedule.date_type)"
-                      v-bind="props"
-                      :disabled="isDateBeforeCurrent(day.date)"
+                      color="primary"
                       block
                       density="compact"
+                      v-if="
+                        ['game_day', 'interleague_game_day', 'playoff_day', 'no_game'].includes(
+                          day.schedule.date_type,
+                        )
+                      "
+                      :to="{
+                        name: 'GameResult',
+                        params: { teamId: teamId, scheduleId: day.schedule.id },
+                      }"
                     >
-                      {{ t(`settings.schedule.dateTypes.${day.schedule.date_type}`) }}
+                      {{ t('seasonPortal.gameResultInput') }}
                     </v-btn>
-                  </template>
-                  <v-list>
-                    <v-list-item
-                      v-for="dateType in dateTypes"
-                      :key="dateType"
-                      @click="updateSchedule(day.schedule, dateType)"
+                    <div
+                      v-if="
+                        ['game_day', 'interleague_game_day', 'playoff_day'].includes(
+                          day.schedule.date_type,
+                        ) && day.schedule.game_result
+                      "
+                      class="text-center text-caption mt-1"
                     >
-                      <v-list-item-title>{{
-                        t(`settings.schedule.dateTypes.${dateType}`)
-                      }}</v-list-item-title>
-                    </v-list-item>
-                  </v-list>
-                </v-menu>
-                <v-btn
-                  color="primary"
-                  block
-                  density="compact"
-                  v-if="
-                    ['game_day', 'interleague_game_day', 'playoff_day', 'no_game'].includes(
-                      day.schedule.date_type,
-                    )
-                  "
-                  :to="{
-                    name: 'GameResult',
-                    params: { teamId: teamId, scheduleId: day.schedule.id },
-                  }"
-                >
-                  {{ t('seasonPortal.gameResultInput') }}
-                </v-btn>
-                <div
-                  v-if="
-                    ['game_day', 'interleague_game_day', 'playoff_day'].includes(
-                      day.schedule.date_type,
-                    ) && day.schedule.game_result
-                  "
-                  class="text-center text-caption mt-1"
-                >
-                  vs. {{ day.schedule.game_result.opponent_short_name }}
-                  {{ day.schedule.game_result.score }}
-                  <v-chip
-                    :color="getResultColor(day.schedule.game_result.result)"
-                    size="x-small"
-                    class="ml-1"
-                    variant="elevated"
-                  >
-                    <v-icon start :icon="getResultIcon(day.schedule.game_result.result)"></v-icon>
-                    {{ t(`seasonPortal.gameResult.${day.schedule.game_result.result}`) }}
-                  </v-chip>
-                </div>
-                <div
-                  v-else-if="
-                    ['game_day', 'interleague_game_day', 'playoff_day'].includes(
-                      day.schedule.date_type,
-                    ) && day.schedule.announced_starter
-                  "
-                  class="text-center text-caption mt-1"
-                >
-                  {{ t('seasonPortal.announcedPitcher') }}:
-                  {{ day.schedule.announced_starter.name }}
+                      vs. {{ day.schedule.game_result.opponent_short_name }}
+                      {{ day.schedule.game_result.score }}
+                      <v-chip
+                        :color="getResultColor(day.schedule.game_result.result)"
+                        size="x-small"
+                        class="ml-1"
+                        variant="elevated"
+                      >
+                        <v-icon
+                          start
+                          :icon="getResultIcon(day.schedule.game_result.result)"
+                        ></v-icon>
+                        {{ t(`seasonPortal.gameResult.${day.schedule.game_result.result}`) }}
+                      </v-chip>
+                    </div>
+                    <div
+                      v-else-if="
+                        ['game_day', 'interleague_game_day', 'playoff_day'].includes(
+                          day.schedule.date_type,
+                        ) && day.schedule.announced_starter
+                      "
+                      class="text-center text-caption mt-1"
+                    >
+                      {{ t('seasonPortal.announcedPitcher') }}:
+                      {{ day.schedule.announced_starter.name }}
+                    </div>
+                  </div>
                 </div>
               </div>
-            </div>
-          </div>
-        </v-card>
-      </v-col>
-    </v-row>
+            </v-card>
+          </v-col>
+        </v-row>
+      </v-tabs-window-item>
+
+      <!-- タブ2: ロスター -->
+      <v-tabs-window-item value="roster">
+        <div class="mt-2">
+          <SeasonRosterTab :team-id="teamId" />
+        </div>
+      </v-tabs-window-item>
+
+      <!-- タブ3: 離脱者 -->
+      <v-tabs-window-item value="absences">
+        <div class="mt-2">
+          <SeasonAbsenceTab :team-id="teamId" />
+        </div>
+      </v-tabs-window-item>
+    </v-tabs-window>
   </v-container>
 
   <PlayerAbsenceFormDialog
@@ -156,8 +193,8 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, computed, useTemplateRef } from 'vue'
-import { useRoute } from 'vue-router'
+import { ref, onMounted, computed, watch, useTemplateRef } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import axios from 'axios'
 import { useI18n } from 'vue-i18n'
 import type { SeasonDetail } from '@/types/seasonDetail'
@@ -165,9 +202,12 @@ import type { SeasonSchedule } from '@/types/seasonSchedule'
 import AbsenceInfo from '@/components/AbsenceInfo.vue'
 import PlayerAbsenceFormDialog from '@/components/PlayerAbsenceFormDialog.vue'
 import TeamNavigation from '@/components/TeamNavigation.vue'
+import SeasonRosterTab from '@/components/season/SeasonRosterTab.vue'
+import SeasonAbsenceTab from '@/components/season/SeasonAbsenceTab.vue'
 
 const { t } = useI18n()
 const route = useRoute()
+const router = useRouter()
 const season = ref<SeasonDetail | null>(null)
 const currentDate = ref(new Date())
 const formattedCurrentDate = computed(() => currentDate.value.toISOString().split('T')[0])
@@ -175,6 +215,22 @@ const absenceInfo = useTemplateRef('absenceInfo')
 const isDialogOpen = ref(false)
 
 const teamId = parseInt(<string>route.params.teamId, 10)
+
+// タブ状態をURLクエリパラメータで管理
+const activeTab = ref((route.query.tab as string) || 'calendar')
+
+watch(activeTab, (newTab) => {
+  router.replace({ query: { ...route.query, tab: newTab } })
+})
+
+watch(
+  () => route.query.tab,
+  (newTab) => {
+    if (newTab && newTab !== activeTab.value) {
+      activeTab.value = newTab as string
+    }
+  },
+)
 
 const fetchSeason = async () => {
   try {
@@ -191,7 +247,7 @@ const fetchSeason = async () => {
 const updateSeasonCurrentDate = async (date: Date) => {
   try {
     if (!season.value) return
-    const formattedDate = date.toISOString().split('T')[0] // YYYY-MM-DD
+    const formattedDate = date.toISOString().split('T')[0]
     await axios.patch(`/teams/${teamId}/season`, { season: { current_date: formattedDate } })
     await fetchSeason()
   } catch (error) {
@@ -241,9 +297,8 @@ const nextDay = () => {
 
 const weekdays = computed(() => {
   const format = new Intl.DateTimeFormat('ja-JP', { weekday: 'short' })
-  // Start from Monday (2021-06-07 was a Monday)
   return [...Array(7).keys()].map((day) => {
-    const date = new Date(Date.UTC(2021, 5, 7)) // A Monday
+    const date = new Date(Date.UTC(2021, 5, 7))
     date.setDate(date.getDate() + day)
     return format.format(date)
   })
@@ -258,8 +313,7 @@ const calendarDays = computed(() => {
   const endDate = new Date(year, month + 1, 0)
 
   const days = []
-  // Adjust startDayOfWeek for Monday start
-  const startDayOfWeek = (startDate.getDay() + 6) % 7 // 0 for Monday, 6 for Sunday
+  const startDayOfWeek = (startDate.getDay() + 6) % 7
 
   for (let i = startDayOfWeek; i > 0; i--) {
     const date = new Date(startDate)
@@ -280,8 +334,8 @@ const calendarDays = computed(() => {
       date.getFullYear() === currentDate.value.getFullYear() &&
       date.getMonth() === currentDate.value.getMonth() &&
       date.getDate() === currentDate.value.getDate()
-    const dayOfWeek = date.getDay() // 0 for Sunday, 6 for Saturday
-    const isWeekend = dayOfWeek === 0 || dayOfWeek === 6 // Sunday or Saturday
+    const dayOfWeek = date.getDay()
+    const isWeekend = dayOfWeek === 0 || dayOfWeek === 6
 
     const schedule = season.value.season_schedules.find((s) => {
       const scheduleDate = new Date(s.date)
@@ -294,7 +348,7 @@ const calendarDays = computed(() => {
     days.push({ date, isCurrentMonth: true, isCurrentDay, isWeekend, dayOfWeek, schedule })
   }
 
-  const endDayOfWeek = (endDate.getDay() + 6) % 7 // 0 for Monday, 6 for Sunday
+  const endDayOfWeek = (endDate.getDay() + 6) % 7
   for (let i = 1; i < 7 - endDayOfWeek; i++) {
     const date = new Date(endDate)
     date.setDate(date.getDate() + i)
@@ -349,7 +403,6 @@ const getScheduleColor = (dateType: string) => {
 const isDateBeforeCurrent = (date: Date) => {
   if (!season.value || !season.value.current_date) return false
   const current = new Date(season.value.current_date)
-  // Set hours, minutes, seconds, milliseconds to 0 for accurate date comparison
   date.setHours(0, 0, 0, 0)
   current.setHours(0, 0, 0, 0)
   return date < current
@@ -360,7 +413,6 @@ const updateSchedule = async (schedule: SeasonSchedule, newDateType: string) => 
     await axios.patch(`/teams/${teamId}/season/season_schedules/${schedule.id}`, {
       season_schedule: { date_type: newDateType },
     })
-    // Update the local schedule object to reflect the change
     if (season.value) {
       const index = season.value.season_schedules.findIndex((s) => s.id === schedule.id)
       if (index !== -1) {
@@ -474,6 +526,6 @@ onMounted(async () => {
 
 .is-current-day {
   background-color: #fffde7;
-  border: 2px solid #ffeb3b; /* Blue border for current-day */
+  border: 2px solid #ffeb3b;
 }
 </style>

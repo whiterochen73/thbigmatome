@@ -50,8 +50,14 @@
     },
     "teamMembers": "メンバー管理",
     "registerAbsence": "離脱者登録",
+    "goToStats": "成績集計",
     "absenceInfo": "離脱者情報",
-    "noAbsenceInfo": "離脱者情報はありません。"
+    "noAbsenceInfo": "離脱者情報はありません。",
+    "tabs": {
+      "calendar": "カレンダー",
+      "roster": "ロスター",
+      "absences": "離脱者"
+    }
   },
   "playerAbsenceHistory": {
     "title": "離脱者履歴",

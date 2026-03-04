@@ -107,9 +107,7 @@ const routes: RouteRecordRaw[] = [
       },
       {
         path: '/teams/:teamId/roster',
-        name: 'SeasonRoster',
-        component: () => import('@/views/ActiveRoster.vue'),
-        meta: { requiresAuth: true, title: '出場選手登録' },
+        redirect: (to) => ({ path: `/teams/${to.params.teamId}/season`, query: { tab: 'roster' } }),
       },
       {
         path: '/teams/:teamId/season/games/:scheduleId',
@@ -125,9 +123,10 @@ const routes: RouteRecordRaw[] = [
       },
       {
         path: '/teams/:teamId/season/player_absences',
-        name: 'PlayerAbsenceHistory',
-        component: () => import('@/views/PlayerAbsenceHistory.vue'),
-        meta: { requiresAuth: true, title: '離脱者履歴' },
+        redirect: (to) => ({
+          path: `/teams/${to.params.teamId}/season`,
+          query: { tab: 'absences' },
+        }),
       },
       {
         path: '/games',

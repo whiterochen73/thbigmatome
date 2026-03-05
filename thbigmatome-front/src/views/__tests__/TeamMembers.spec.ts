@@ -36,11 +36,6 @@ vi.mock('@/composables/useSnackbar', () => ({
 import axios from '@/plugins/axios'
 
 // Stub child components
-const CostListSelectStub = {
-  template: '<div class="cost-list-select-stub"><slot /></div>',
-  props: ['modelValue', 'label'],
-  emits: ['update:modelValue'],
-}
 const TeamNavigationStub = {
   template: '<div class="team-nav-stub" />',
   props: ['teamId'],
@@ -188,6 +183,11 @@ function setupDefaultMocks(teamPlayers: Record<string, unknown>[] = []) {
         ],
       })
     }
+    if (url === '/costs') {
+      return Promise.resolve({
+        data: [{ id: 100, name: 'コスト表1', start_date: '2020-01-01', end_date: null }],
+      })
+    }
     return Promise.resolve({ data: {} })
   })
 }
@@ -201,7 +201,6 @@ async function mountTeamMembers(teamPlayers: Record<string, unknown>[] = []) {
     global: {
       plugins: [vuetify, i18n, router],
       stubs: {
-        CostListSelect: CostListSelectStub,
         TeamNavigation: TeamNavigationStub,
       },
     },
@@ -239,7 +238,7 @@ describe('TeamMembers.vue', () => {
       makeTeamPlayer({ id: 1, name: '選手A', number: '1' }),
       makeTeamPlayer({ id: 2, name: '選手B', number: '2' }),
     ]
-    // Simulate that CostListSelect triggers a watch by manually rendering with data
+    // コスト表はonMounted内で自動選択される（/costsエンドポイント経由）
     setupDefaultMocks(players)
     const router = createTestRouter()
     router.push('/teams/1/members')
@@ -249,21 +248,10 @@ describe('TeamMembers.vue', () => {
       global: {
         plugins: [vuetify, i18n, router],
         stubs: {
-          CostListSelect: {
-            template:
-              '<div class="cost-list-select-stub" @click="$emit(\'update:modelValue\', {id: 100, name: \'コスト表1\'})" />',
-            props: ['modelValue', 'label'],
-            emits: ['update:modelValue'],
-          },
           TeamNavigation: TeamNavigationStub,
         },
       },
     })
-    await flushPromises()
-
-    // Trigger cost list selection to load team players
-    const costListStub = wrapper.find('.cost-list-select-stub')
-    await costListStub.trigger('click')
     await flushPromises()
 
     // Should display total count (合計人数: 2 / 50人)
@@ -306,6 +294,7 @@ describe('TeamMembers.vue', () => {
         ],
       }),
     ]
+    // コスト表はonMounted内で自動選択される（/costsエンドポイント経由）
     setupDefaultMocks(players)
     const router = createTestRouter()
     router.push('/teams/1/members')
@@ -315,20 +304,10 @@ describe('TeamMembers.vue', () => {
       global: {
         plugins: [vuetify, i18n, router],
         stubs: {
-          CostListSelect: {
-            template:
-              '<div class="cost-list-select-stub" @click="$emit(\'update:modelValue\', {id: 100, name: \'コスト表1\'})" />',
-            props: ['modelValue', 'label'],
-            emits: ['update:modelValue'],
-          },
           TeamNavigation: TeamNavigationStub,
         },
       },
     })
-    await flushPromises()
-
-    // Trigger cost list selection
-    await wrapper.find('.cost-list-select-stub').trigger('click')
     await flushPromises()
 
     // Should display total cost and max (合計コスト: X / 200)
@@ -338,6 +317,7 @@ describe('TeamMembers.vue', () => {
 
   it('excluded_from_team_totalチェックボックスが存在する', async () => {
     const players = [makeTeamPlayer({ id: 1, name: '選手A' })]
+    // コスト表はonMounted内で自動選択される（/costsエンドポイント経由）
     setupDefaultMocks(players)
     const router = createTestRouter()
     router.push('/teams/1/members')
@@ -347,20 +327,10 @@ describe('TeamMembers.vue', () => {
       global: {
         plugins: [vuetify, i18n, router],
         stubs: {
-          CostListSelect: {
-            template:
-              '<div class="cost-list-select-stub" @click="$emit(\'update:modelValue\', {id: 100, name: \'コスト表1\'})" />',
-            props: ['modelValue', 'label'],
-            emits: ['update:modelValue'],
-          },
           TeamNavigation: TeamNavigationStub,
         },
       },
     })
-    await flushPromises()
-
-    // Trigger cost list selection to load players
-    await wrapper.find('.cost-list-select-stub').trigger('click')
     await flushPromises()
 
     // The "除外" header should exist

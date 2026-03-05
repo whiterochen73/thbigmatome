@@ -7,32 +7,82 @@
       </template>
     </v-toolbar>
 
-    <!-- Cost List & Player Selection -->
+    <!-- Player Selection -->
     <v-row class="mb-4">
-      <v-col cols="12" md="4">
-        <CostListSelect v-model="selectedCost" :label="t('teamMembers.selectCostList')" />
-      </v-col>
-      <v-col cols="12" md="6">
-        <v-autocomplete
-          v-model="selectedPlayer"
-          :items="availablePlayers"
-          :item-title="(player) => `${player.number} ${player.name}`"
-          item-value="id"
-          :label="t('teamMembers.selectPlayer')"
-          return-object
-          clearable
-          :disabled="!selectedCostListId"
-        />
-      </v-col>
-      <v-col cols="12" md="2">
-        <v-btn
-          color="primary"
-          variant="outlined"
-          @click="addPlayer"
-          :disabled="!selectedPlayer || !selectedCostListId"
-        >
-          {{ t('teamMembers.addPlayer') }}
-        </v-btn>
+      <v-col cols="12">
+        <!-- ポジションフィルタ（追加候補） -->
+        <div class="d-flex flex-wrap ga-2 mb-2 align-center">
+          <span class="text-caption text-medium-emphasis">追加候補:</span>
+          <v-btn
+            v-for="f in addPlayerPositionFilters"
+            :key="f.value"
+            size="x-small"
+            :variant="addPlayerPositionFilter === f.value ? 'elevated' : 'outlined'"
+            :color="addPlayerPositionFilter === f.value ? 'secondary' : undefined"
+            rounded
+            @click="addPlayerPositionFilter = f.value"
+          >
+            {{ f.label }}
+          </v-btn>
+        </div>
+        <v-row align="center">
+          <v-col cols="12" md="9">
+            <v-autocomplete
+              v-model="selectedPlayer"
+              :items="filteredAvailablePlayers"
+              :item-title="(player) => `${player.number} ${player.name}`"
+              item-value="id"
+              :label="t('teamMembers.selectPlayer')"
+              return-object
+              clearable
+              :disabled="!selectedCostListId"
+              :no-data-text="
+                !selectedCostListId ? 'コスト一覧表を読み込み中...' : '該当する選手がいません'
+              "
+              :custom-filter="
+                (value, query, item) => {
+                  if (!query) return true
+                  const q = query.toLowerCase()
+                  const raw = item?.raw
+                  if (!raw) return false
+                  return (
+                    raw.name.toLowerCase().includes(q) ||
+                    raw.number.toLowerCase().includes(q) ||
+                    (raw.short_name ?? '').toLowerCase().includes(q)
+                  )
+                }
+              "
+            >
+              <template #item="{ props, item }">
+                <v-list-item v-bind="props">
+                  <template #prepend>
+                    <v-chip
+                      size="x-small"
+                      :color="item.raw.position === 'pitcher' ? 'blue' : 'green'"
+                      variant="tonal"
+                      class="mr-2"
+                    >
+                      {{ t(`baseball.positions.${item.raw.position}`) }}
+                    </v-chip>
+                  </template>
+                  <template #subtitle>
+                    {{ getPlayerCostLabel(item.raw) }}
+                  </template>
+                </v-list-item>
+              </template>
+            </v-autocomplete>
+          </v-col>
+          <v-col cols="12" md="3">
+            <v-btn
+              color="primary"
+              variant="outlined"
+              @click="addPlayer"
+              :disabled="!selectedPlayer || !selectedCostListId"
+            >
+              {{ t('teamMembers.addPlayer') }}
+            </v-btn>
+          </v-col>
+        </v-row>
       </v-col>
     </v-row>
 
@@ -216,7 +266,6 @@ import { useSnackbar } from '@/composables/useSnackbar'
 import type { Player } from '@/types/player'
 import type { Team } from '@/types/team'
 import type { CostList } from '@/types/costList'
-import CostListSelect from '@/components/shared/CostListSelect.vue'
 import TeamNavigation from '@/components/TeamNavigation.vue'
 import type { PlayerType } from '@/types/playerType'
 
@@ -322,16 +371,53 @@ const filteredTeamPlayers = computed(() => {
 
 const availablePlayers = computed(() => {
   if (!selectedCostListId.value) return []
-  // 選択されたコスト一覧表にnormal_costが設定されている選手のみをフィルタリング
+  // 選択されたコスト一覧表にいずれかのコストが設定されている選手をフィルタリング
   return allPlayers.value.filter((p) => {
     const costPlayer = p.cost_players.find((cp) => cp.cost_id === selectedCostListId.value)
+    if (!costPlayer) return false
+    if (teamPlayers.value.some((tp) => tp.id === p.id)) return false
+    // いずれかのコストタイプが設定されていれば追加候補に含める
     return (
-      costPlayer &&
-      costPlayer.normal_cost !== null &&
-      !teamPlayers.value.some((tp) => tp.id === p.id)
+      costPlayer.normal_cost !== null ||
+      costPlayer.relief_only_cost !== null ||
+      costPlayer.pitcher_only_cost !== null ||
+      costPlayer.fielder_only_cost !== null ||
+      costPlayer.two_way_cost !== null
     )
   })
 })
+
+// 追加候補のポジションフィルタ
+const addPlayerPositionFilter = ref<'all' | 'pitcher' | 'fielder'>('all')
+const addPlayerPositionFilters = [
+  { value: 'all', label: '全て' },
+  { value: 'pitcher', label: '投手' },
+  { value: 'fielder', label: '野手' },
+] as const
+
+const filteredAvailablePlayers = computed(() => {
+  if (addPlayerPositionFilter.value === 'pitcher') {
+    return availablePlayers.value.filter((p) => p.position === 'pitcher')
+  }
+  if (addPlayerPositionFilter.value === 'fielder') {
+    return availablePlayers.value.filter((p) => p.position !== 'pitcher')
+  }
+  return availablePlayers.value
+})
+
+const getPlayerCostLabel = (player: Player): string => {
+  if (!selectedCostListId.value) return ''
+  const costPlayer = player.cost_players.find((cp) => cp.cost_id === selectedCostListId.value)
+  if (!costPlayer) return 'コストデータなし'
+
+  const parts: string[] = []
+  if (costPlayer.normal_cost !== null) parts.push(`通常: ${costPlayer.normal_cost}`)
+  if (costPlayer.relief_only_cost !== null) parts.push(`リリーフ: ${costPlayer.relief_only_cost}`)
+  if (costPlayer.pitcher_only_cost !== null) parts.push(`投手専念: ${costPlayer.pitcher_only_cost}`)
+  if (costPlayer.fielder_only_cost !== null) parts.push(`野手専念: ${costPlayer.fielder_only_cost}`)
+  if (costPlayer.two_way_cost !== null) parts.push(`二刀流: ${costPlayer.two_way_cost}`)
+  return parts.length > 0 ? `コスト: ${parts.join(' / ')}` : 'コストデータなし'
+}
 
 const positionCounts = computed(() => {
   const counts: Record<string, number> = {
@@ -491,8 +577,19 @@ const addPlayer = () => {
   const costPlayerForSelectedList = selectedPlayer.value.cost_players.find(
     (cp) => cp.cost_id === selectedCostListId.value,
   )
-  const initialCostType: CostType = 'normal_cost'
-  const initialCost = costPlayerForSelectedList ? (costPlayerForSelectedList.normal_cost ?? 0) : 0
+
+  // 有効なコストタイプを優先順で決定
+  let initialCostType: CostType = 'normal_cost'
+  let initialCost = 0
+
+  if (costPlayerForSelectedList) {
+    const availableOptions = getAvailableCostTypes(selectedPlayer.value)
+    if (availableOptions.length > 0) {
+      initialCostType = availableOptions[0].value
+      initialCost =
+        (costPlayerForSelectedList as Record<CostType, number | null>)[initialCostType] ?? 0
+    }
+  }
 
   const newPlayer: TeamPlayer = {
     ...selectedPlayer.value,
@@ -554,5 +651,19 @@ const goBack = () => {
 
 onMounted(async () => {
   await fetchTeam()
+  // コスト表を自動選択（選択UIなし: 現在日時に対応するコスト表 or 最初の1件）
+  try {
+    const response = await axios.get<CostList[]>('/costs')
+    const costLists = response.data
+    const now = new Date()
+    const currentCost = costLists.find((cost) => {
+      const startDate = new Date(cost.start_date || '')
+      const endDate = new Date(cost.end_date || '')
+      return startDate <= now && (endDate >= now || !cost.end_date)
+    })
+    selectedCost.value = currentCost ?? costLists[0] ?? null
+  } catch (error) {
+    console.error('Failed to fetch cost lists:', error)
+  }
 })
 </script>

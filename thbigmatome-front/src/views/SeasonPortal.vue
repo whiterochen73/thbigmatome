@@ -1,6 +1,5 @@
 <template>
   <v-container>
-    <TeamNavigation :team-id="teamId" />
     <v-toolbar color="primary">
       <template #prepend>
         <h1 class="text-h5 mx-4">{{ season?.name }}</h1>
@@ -63,13 +62,6 @@
       <v-tabs-window-item value="calendar">
         <v-row class="mt-2">
           <v-col>
-            <AbsenceInfo
-              :season-id="season?.id || null"
-              :current-date="formattedCurrentDate"
-              ref="absenceInfo"
-              class="mb-4"
-            />
-
             <v-card variant="outlined" class="pa-4">
               <!-- ツールバー: 月ナビ + ビュー切替 -->
               <div class="cal-toolbar mb-4">
@@ -174,7 +166,12 @@
 
                         <!-- 試合情報 -->
                         <template v-if="isGameType(day.schedule.date_type)">
-                          <div v-if="day.schedule.game_result" class="game-info">
+                          <div
+                            v-if="
+                              day.schedule.game_result && !isCancelledType(day.schedule.date_type)
+                            "
+                            class="game-info"
+                          >
                             <span class="opponent-text"
                               >vs {{ day.schedule.game_result.opponent_short_name }}</span
                             >
@@ -276,7 +273,11 @@
                           <span v-else class="text-disabled">—</span>
                         </td>
                         <td data-label="対戦相手">
-                          <template v-if="row.schedule?.game_result">
+                          <template
+                            v-if="
+                              row.schedule?.game_result && !isCancelledType(row.schedule.date_type)
+                            "
+                          >
                             {{ row.schedule.game_result.opponent_short_name }}
                           </template>
                           <span v-else class="text-disabled">—</span>
@@ -293,10 +294,19 @@
                           </template>
                           <span v-else class="text-disabled">—</span>
                         </td>
-                        <td data-label="スコア">{{ row.schedule?.game_result?.score ?? '—' }}</td>
+                        <td data-label="スコア">
+                          {{
+                            !isCancelledType(row.schedule?.date_type) &&
+                            row.schedule?.game_result?.score
+                              ? row.schedule.game_result.score
+                              : '—'
+                          }}
+                        </td>
                         <td data-label="勝敗">
                           <span
-                            v-if="row.schedule?.game_result"
+                            v-if="
+                              row.schedule?.game_result && !isCancelledType(row.schedule.date_type)
+                            "
                             class="result-badge"
                             :class="`result-${row.schedule.game_result.result}`"
                           >
@@ -370,7 +380,11 @@
             </span>
           </div>
           <template v-if="isGameType(selectedDay.schedule.date_type)">
-            <template v-if="selectedDay.schedule.game_result">
+            <template
+              v-if="
+                selectedDay.schedule.game_result && !isCancelledType(selectedDay.schedule.date_type)
+              "
+            >
               <div class="mb-1">
                 <span class="text-caption text-medium-emphasis">対戦相手&ensp;</span>
                 vs {{ selectedDay.schedule.game_result.opponent_short_name }}
@@ -429,21 +443,18 @@
     :team-id="teamId || 0"
     :season-id="season?.id || 0"
     :initial-start-date="formattedCurrentDate"
-    @saved="handleAbsenceSaved"
   />
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, computed, watch, useTemplateRef } from 'vue'
+import { ref, onMounted, computed, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import axios from 'axios'
 import { useI18n } from 'vue-i18n'
 import type { SeasonDetail } from '@/types/seasonDetail'
 import type { SeasonSchedule } from '@/types/seasonSchedule'
 import type { Team } from '@/types/team'
-import AbsenceInfo from '@/components/AbsenceInfo.vue'
 import PlayerAbsenceFormDialog from '@/components/PlayerAbsenceFormDialog.vue'
-import TeamNavigation from '@/components/TeamNavigation.vue'
 import SeasonRosterTab from '@/components/season/SeasonRosterTab.vue'
 import SeasonAbsenceTab from '@/components/season/SeasonAbsenceTab.vue'
 import EmptyState from '@/components/EmptyState.vue'
@@ -456,7 +467,6 @@ const teamSelectionStore = useTeamSelectionStore()
 const season = ref<SeasonDetail | null>(null)
 const currentDate = ref(new Date())
 const formattedCurrentDate = computed(() => currentDate.value.toISOString().split('T')[0])
-const absenceInfo = useTemplateRef('absenceInfo')
 const isDialogOpen = ref(false)
 
 const teamId = parseInt(<string>route.params.teamId, 10)
@@ -525,10 +535,6 @@ const updateSeasonCurrentDate = async (date: Date) => {
   } catch (error) {
     console.error('Failed to update season current date:', error)
   }
-}
-
-const handleAbsenceSaved = () => {
-  absenceInfo.value?.fetchPlayerAbsences()
 }
 
 const currentDateStr = computed(() => {
@@ -677,6 +683,12 @@ const getTypeCategory = (dateType?: string) => {
   if (['travel_day', 'interleague_reserve_day'].includes(dateType)) return 'travel'
   if (['reserve_day'].includes(dateType)) return 'reserve'
   return 'off'
+}
+
+// 雨天中止等のキャンセル系date_typeか判定
+const isCancelledType = (dateType?: string) => {
+  if (!dateType) return false
+  return ['no_game', 'postponed'].includes(dateType)
 }
 
 // 試合系date_typeか判定

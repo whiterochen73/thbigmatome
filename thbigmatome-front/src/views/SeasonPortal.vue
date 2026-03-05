@@ -1011,7 +1011,7 @@ onMounted(async () => {
   align-items: center;
   gap: 4px;
   font-size: 0.8rem;
-  color: rgb(var(--v-theme-on-surface-variant));
+  color: rgb(var(--v-theme-on-surface));
 }
 .legend-dot {
   width: 14px;

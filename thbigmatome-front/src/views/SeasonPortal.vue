@@ -359,6 +359,13 @@
           <SeasonAbsenceTab :team-id="teamId" />
         </div>
       </v-tabs-window-item>
+
+      <!-- タブ4: チーム編成 -->
+      <v-tabs-window-item value="members">
+        <div class="mt-2">
+          <TeamMembers />
+        </div>
+      </v-tabs-window-item>
     </v-tabs-window>
   </v-container>
 
@@ -462,6 +469,7 @@ import PlayerAbsenceFormDialog from '@/components/PlayerAbsenceFormDialog.vue'
 import SeasonRosterTab from '@/components/season/SeasonRosterTab.vue'
 import SeasonAbsenceTab from '@/components/season/SeasonAbsenceTab.vue'
 import EmptyState from '@/components/EmptyState.vue'
+import TeamMembers from '@/views/TeamMembers.vue'
 import { useTeamSelectionStore } from '@/stores/teamSelection'
 
 const { t } = useI18n()
@@ -479,10 +487,6 @@ const teamId = parseInt(<string>route.params.teamId, 10)
 const activeTab = ref((route.query.tab as string) || 'calendar')
 
 watch(activeTab, (newTab) => {
-  if (newTab === 'members') {
-    router.push({ name: 'TeamMembers', params: { teamId } })
-    return
-  }
   router.replace({ query: { ...route.query, tab: newTab } })
 })
 

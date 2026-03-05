@@ -671,9 +671,9 @@ const legendItems = [
 // 日程種別カテゴリ (チップ/バッジのスタイルに使用)
 const getTypeCategory = (dateType?: string) => {
   if (!dateType) return 'empty'
-  if (['game_day', 'interleague_game_day', 'playoff_day'].includes(dateType)) return 'game'
   if (['interleague_game_day'].includes(dateType)) return 'inter'
   if (['playoff_day'].includes(dateType)) return 'playoff'
+  if (['game_day'].includes(dateType)) return 'game'
   if (['travel_day', 'interleague_reserve_day'].includes(dateType)) return 'travel'
   if (['reserve_day'].includes(dateType)) return 'reserve'
   return 'off'

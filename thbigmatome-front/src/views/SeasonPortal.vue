@@ -43,10 +43,19 @@
       message="シーズンデータが見つかりません"
     />
 
-    <v-tabs v-if="season" v-model="activeTab" class="mt-2">
-      <v-tab value="calendar">{{ t('seasonPortal.tabs.calendar') }}</v-tab>
-      <v-tab value="roster">{{ t('seasonPortal.tabs.roster') }}</v-tab>
-      <v-tab value="absences">{{ t('seasonPortal.tabs.absences') }}</v-tab>
+    <v-tabs v-if="season" v-model="activeTab" color="primary" class="mt-2">
+      <v-tab value="calendar">
+        <v-icon start>mdi-calendar</v-icon>
+        {{ t('seasonPortal.tabs.calendar') }}
+      </v-tab>
+      <v-tab value="roster">
+        <v-icon start>mdi-account-group</v-icon>
+        {{ t('seasonPortal.tabs.roster') }}
+      </v-tab>
+      <v-tab value="absences">
+        <v-icon start>mdi-account-off</v-icon>
+        {{ t('seasonPortal.tabs.absences') }}
+      </v-tab>
     </v-tabs>
 
     <v-tabs-window v-if="season" v-model="activeTab">
@@ -73,7 +82,11 @@
               </div>
 
               <div class="calendar-grid">
-                <div v-for="day in weekdays" :key="day" class="text-center font-weight-bold">
+                <div
+                  v-for="day in weekdays"
+                  :key="day"
+                  class="weekday-header text-center font-weight-bold"
+                >
                   {{ day }}
                 </div>
                 <div
@@ -167,6 +180,20 @@
                     </div>
                   </div>
                 </div>
+              </div>
+
+              <!-- 凡例 -->
+              <div class="calendar-legend mt-3">
+                <v-chip
+                  v-for="item in legendItems"
+                  :key="item.type"
+                  :color="item.color"
+                  size="x-small"
+                  variant="tonal"
+                  class="mr-1 mb-1"
+                >
+                  {{ t(`settings.schedule.dateTypes.${item.type}`) }}
+                </v-chip>
               </div>
             </v-card>
           </v-col>
@@ -395,19 +422,30 @@ const dateTypes = [
   'no_game',
 ]
 
+const legendItems = [
+  { type: 'game_day', color: 'primary' },
+  { type: 'interleague_game_day', color: 'info' },
+  { type: 'playoff_day', color: 'warning' },
+  { type: 'no_game_day', color: 'error' },
+  { type: 'postponed', color: 'accent' },
+  { type: 'travel_day', color: 'secondary' },
+  { type: 'reserve_day', color: 'secondary' },
+  { type: 'no_game', color: 'success' },
+]
+
 const getScheduleColor = (dateType: string) => {
   const colors: { [key: string]: string } = {
-    game_day: 'blue',
-    interleague_game_day: 'deep-purple',
-    playoff_day: 'pink',
-    travel_day: 'grey',
-    reserve_day: 'blue-grey',
-    interleague_reserve_day: 'brown',
-    no_game_day: 'red',
-    postponed: 'indigo',
-    no_game: 'indigo',
+    game_day: 'primary', // 藍色 — メインイベント
+    interleague_game_day: 'info', // 浅葱 — 交流戦
+    playoff_day: 'warning', // 山吹 — 特別
+    travel_day: 'secondary', // 千草 — 移動
+    reserve_day: 'secondary', // 千草 — 予備
+    interleague_reserve_day: 'secondary',
+    no_game_day: 'error', // 紅 — 試合なし
+    postponed: 'accent', // 朱色 — 延期
+    no_game: 'success', // 萌黄 — 休養
   }
-  return colors[dateType] || '#FFFFFF'
+  return colors[dateType] || 'surface-variant'
 }
 
 const isDateBeforeCurrent = (date: Date) => {
@@ -507,9 +545,16 @@ onMounted(async () => {
   gap: 4px;
 }
 
+.weekday-header {
+  background-color: rgb(var(--v-theme-surface-variant));
+  color: rgb(var(--v-theme-on-surface-variant));
+  padding: 4px 0;
+  border-radius: 4px;
+  font-size: 0.85em;
+}
+
 .day-cell {
-  /* X-8: カレンダー罫線はカレンダー専用UI。Vuetifyテーマ変数への移行は複雑なため現状維持 */
-  border: 1px solid #ccc;
+  border: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
   padding: 8px;
   min-height: 100px;
   position: relative;
@@ -517,13 +562,12 @@ onMounted(async () => {
 
 .day-number {
   font-size: 0.8em;
-  /* X-8: カレンダー日付色はカレンダー専用UI。現状維持 */
-  color: #555;
+  color: rgb(var(--v-theme-text-medium));
 }
 
 .not-current-month {
-  background-color: #f9f9f9;
-  color: #aaa;
+  background-color: rgb(var(--v-theme-surface-variant));
+  color: rgb(var(--v-theme-text-caption));
 }
 
 .schedule-type {
@@ -535,15 +579,50 @@ onMounted(async () => {
 }
 
 .saturday {
-  background-color: #e0f2f7; /* Light blue */
+  background-color: rgba(var(--v-theme-info), 0.1);
 }
 
 .sunday {
-  background-color: #ffebee; /* Light red */
+  background-color: rgba(var(--v-theme-error), 0.1);
 }
 
 .is-current-day {
-  background-color: #fffde7;
-  border: 2px solid #ffeb3b;
+  background-color: rgba(var(--v-theme-primary), 0.12);
+  border: 2px solid rgb(var(--v-theme-primary));
+}
+
+.calendar-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px;
+}
+
+/* タブレット: セル内テキスト省略 */
+@media (max-width: 960px) {
+  .day-cell {
+    padding: 4px;
+    min-height: 80px;
+  }
+}
+
+/* モバイル: 4列グリッドに縮小 */
+@media (max-width: 600px) {
+  .calendar-grid {
+    grid-template-columns: repeat(4, 1fr);
+    font-size: 0.75em;
+  }
+
+  .weekday-header:nth-child(n + 5) {
+    display: none;
+  }
+
+  .day-cell {
+    min-height: 60px;
+    padding: 3px;
+  }
+
+  .day-number {
+    font-size: 0.75em;
+  }
 }
 </style>

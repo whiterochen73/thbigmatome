@@ -55,6 +55,10 @@
         <v-icon start>mdi-account-off</v-icon>
         {{ t('seasonPortal.tabs.absences') }}
       </v-tab>
+      <v-tab value="members">
+        <v-icon start>mdi-account-cog</v-icon>
+        {{ t('seasonPortal.tabs.members') }}
+      </v-tab>
     </v-tabs>
 
     <v-tabs-window v-if="season" v-model="activeTab">
@@ -475,6 +479,10 @@ const teamId = parseInt(<string>route.params.teamId, 10)
 const activeTab = ref((route.query.tab as string) || 'calendar')
 
 watch(activeTab, (newTab) => {
+  if (newTab === 'members') {
+    router.push({ name: 'TeamMembers', params: { teamId } })
+    return
+  }
   router.replace({ query: { ...route.query, tab: newTab } })
 })
 

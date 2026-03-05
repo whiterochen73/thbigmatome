@@ -56,7 +56,8 @@
     "tabs": {
       "calendar": "カレンダー",
       "roster": "ロスター",
-      "absences": "離脱者"
+      "absences": "離脱者",
+      "members": "チーム編成"
     }
   },
   "playerAbsenceHistory": {

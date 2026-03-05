@@ -7,24 +7,6 @@
       <v-btn class="mx-2" variant="outlined" :to="gameResultRoute" :disabled="!isGameDayToday">
         {{ t('seasonPortal.goToGameResult') }}
       </v-btn>
-      <v-btn
-        class="mx-2"
-        color="secondary"
-        variant="outlined"
-        prepend-icon="mdi-hospital-box"
-        @click="isDialogOpen = true"
-      >
-        {{ t('seasonPortal.registerAbsence') }}
-      </v-btn>
-      <v-btn
-        class="mx-2"
-        color="secondary"
-        variant="outlined"
-        prepend-icon="mdi-chart-bar"
-        :to="{ name: '成績集計' }"
-      >
-        {{ t('seasonPortal.goToStats') }}
-      </v-btn>
       <template #append>
         <v-btn icon variant="text" @click="prevDay" :disabled="isPrevDayDisabled">
           <v-icon>mdi-chevron-left</v-icon>
@@ -58,6 +40,10 @@
       <v-tab value="members">
         <v-icon start>mdi-account-cog</v-icon>
         {{ t('seasonPortal.tabs.members') }}
+      </v-tab>
+      <v-tab value="stats">
+        <v-icon start>mdi-chart-bar</v-icon>
+        {{ t('seasonPortal.tabs.stats') }}
       </v-tab>
     </v-tabs>
 
@@ -448,13 +434,6 @@
       </v-card-text>
     </v-card>
   </v-dialog>
-
-  <PlayerAbsenceFormDialog
-    v-model="isDialogOpen"
-    :team-id="teamId || 0"
-    :season-id="season?.id || 0"
-    :initial-start-date="formattedCurrentDate"
-  />
 </template>
 
 <script setup lang="ts">
@@ -465,7 +444,6 @@ import { useI18n } from 'vue-i18n'
 import type { SeasonDetail } from '@/types/seasonDetail'
 import type { SeasonSchedule } from '@/types/seasonSchedule'
 import type { Team } from '@/types/team'
-import PlayerAbsenceFormDialog from '@/components/PlayerAbsenceFormDialog.vue'
 import SeasonRosterTab from '@/components/season/SeasonRosterTab.vue'
 import SeasonAbsenceTab from '@/components/season/SeasonAbsenceTab.vue'
 import EmptyState from '@/components/EmptyState.vue'
@@ -478,8 +456,6 @@ const router = useRouter()
 const teamSelectionStore = useTeamSelectionStore()
 const season = ref<SeasonDetail | null>(null)
 const currentDate = ref(new Date())
-const formattedCurrentDate = computed(() => currentDate.value.toISOString().split('T')[0])
-const isDialogOpen = ref(false)
 
 const teamId = parseInt(<string>route.params.teamId, 10)
 
@@ -487,6 +463,10 @@ const teamId = parseInt(<string>route.params.teamId, 10)
 const activeTab = ref((route.query.tab as string) || 'calendar')
 
 watch(activeTab, (newTab) => {
+  if (newTab === 'stats') {
+    router.push({ name: '成績集計' })
+    return
+  }
   router.replace({ query: { ...route.query, tab: newTab } })
 })
 

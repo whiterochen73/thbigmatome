@@ -55,7 +55,7 @@
       </v-col>
     </v-row>
 
-    <!-- 1軍制限サマリー -->
+    <!-- 1軍制限サマリー alerts -->
     <v-row class="mt-2">
       <v-col cols="12">
         <v-alert
@@ -95,277 +95,407 @@
       </v-col>
     </v-row>
 
-    <v-row class="mt-4" align="start">
+    <!-- コストバー -->
+    <v-row class="mt-1 mb-1">
+      <v-col cols="12">
+        <div class="d-flex justify-space-between align-center mb-1 text-body-2">
+          <span>
+            <strong>1軍コスト: </strong>
+            <span
+              :class="{
+                'text-error font-weight-bold': costBarColor === 'error',
+                'text-warning font-weight-bold': costBarColor === 'warning',
+              }"
+            >
+              {{ firstSquadTotalCost }} / {{ firstSquadCostLimit ?? '-' }}
+            </span>
+          </span>
+          <span class="text-caption text-medium-emphasis">
+            {{ firstSquadPlayers.length }}/{{ MAX_FIRST_SQUAD_PLAYERS }}人 &nbsp;
+            <span :class="{ 'text-error': outsideWorldFirstSquadCount > OUTSIDE_WORLD_LIMIT }">
+              {{
+                t('activeRoster.outsideWorldCount', {
+                  count: outsideWorldFirstSquadCount,
+                  max: OUTSIDE_WORLD_LIMIT,
+                })
+              }}
+            </span>
+          </span>
+        </div>
+        <v-progress-linear
+          v-if="firstSquadCostLimit"
+          :model-value="costBarValue"
+          :color="costBarColor"
+          height="8"
+          rounded
+        />
+      </v-col>
+    </v-row>
+
+    <!-- 凡例 -->
+    <v-row class="mb-2">
+      <v-col cols="12">
+        <div class="d-flex flex-wrap ga-2">
+          <v-chip size="small" variant="tonal" color="deep-purple" prepend-icon="mdi-lock"
+            >特例</v-chip
+          >
+          <v-chip size="small" variant="tonal" color="red" prepend-icon="mdi-hospital-box">
+            {{ t('activeRoster.legend.injury') }}
+          </v-chip>
+          <v-chip size="small" variant="tonal" color="orange" prepend-icon="mdi-gavel">
+            {{ t('activeRoster.legend.suspension') }}
+          </v-chip>
+          <v-chip size="small" variant="tonal" color="blue-grey" prepend-icon="mdi-wrench">
+            {{ t('activeRoster.legend.reconditioning') }}
+          </v-chip>
+          <v-chip size="small" variant="tonal" color="amber" prepend-icon="mdi-timer-sand">
+            {{ t('activeRoster.legend.cooldown') }}
+          </v-chip>
+          <v-chip size="small" variant="tonal" color="purple">外の世界</v-chip>
+        </div>
+      </v-col>
+    </v-row>
+
+    <!-- 1軍 / 2軍 2カラム -->
+    <v-row align="start">
+      <!-- 1軍 -->
       <v-col cols="12" md="6">
         <v-card variant="outlined">
           <v-card-title>
-            <div class="d-flex justify-space-between align-center">
-              <h2 class="text-h5">{{ t('activeRoster.firstSquad') }}</h2>
-              <div class="text-right">
-                <div>
-                  <span class="text-h6 mx-4"
-                    >{{ t('activeRoster.firstSquadCount') }}: {{ firstSquadPlayers.length }} /
-                    {{ MAX_FIRST_SQUAD_PLAYERS }}</span
-                  >
-                  <span
-                    class="text-h6"
-                    :class="{
-                      'text-error':
-                        firstSquadCostLimit !== null && firstSquadTotalCost > firstSquadCostLimit,
-                    }"
-                    >{{ t('activeRoster.firstSquadCost') }}: {{ firstSquadTotalCost }} /
-                    {{ firstSquadCostLimit ?? '-' }}</span
-                  >
-                </div>
-                <div>
-                  <span
-                    v-for="(count, type) in firstSquadPlayerTypeCounts"
-                    :key="type"
-                    class="text-body-2 mx-2"
-                  >
-                    {{ type }}: {{ count }}
-                  </span>
-                  <span
-                    class="text-body-2 mx-2"
-                    :class="{ 'text-error': outsideWorldFirstSquadCount > OUTSIDE_WORLD_LIMIT }"
-                  >
-                    {{
-                      t('activeRoster.outsideWorldCount', {
-                        count: outsideWorldFirstSquadCount,
-                        max: OUTSIDE_WORLD_LIMIT,
-                      })
-                    }}
-                  </span>
-                </div>
-              </div>
+            <div class="d-flex align-center">
+              <v-icon class="mr-1" color="primary">mdi-star</v-icon>
+              {{ t('activeRoster.firstSquad') }}
+              <v-spacer />
+              <span class="text-body-2 text-medium-emphasis">
+                {{ firstSquadPlayers.length }}/{{ MAX_FIRST_SQUAD_PLAYERS }}
+              </span>
             </div>
           </v-card-title>
-          <v-card-text>
-            <v-data-table
-              density="compact"
-              :headers="firstHeaders"
-              :items="firstSquadPlayers"
-              hide-default-footer
-              items-per-page="-1"
-              :row-props="getFirstSquadRowProps"
-            >
-              <template #item.actions="{ item }">
-                <!-- 特例選手: v-chip -->
-                <v-tooltip
-                  v-if="isKeyPlayer(item)"
-                  :text="t('activeRoster.keyPlayerLocked')"
-                  location="top"
-                >
-                  <template #activator="{ props }">
-                    <v-chip
-                      v-bind="props"
-                      size="small"
-                      color="deep-purple"
-                      variant="tonal"
-                      prepend-icon="mdi-lock"
-                    >
-                      {{ t('activeRoster.chip.special') }}
-                    </v-chip>
-                  </template>
-                </v-tooltip>
-                <!-- 離脱中(負傷/出場停止): 降格ボタン有効+ツールチップ -->
-                <v-tooltip
-                  v-else-if="item.is_absent && item.absence_info"
-                  :text="getAbsenceDetailTooltip(item)"
-                  location="top"
-                >
-                  <template #activator="{ props }">
-                    <v-btn
-                      v-bind="props"
-                      size="small"
-                      :color="getAbsenceColor(item)"
-                      variant="elevated"
-                      rounded
-                      class="demote-btn"
-                      @click="movePlayer(item, 'second')"
-                    >
-                      <v-icon start>mdi-arrow-down</v-icon>
-                      {{ t('activeRoster.demoteButton') }}
-                    </v-btn>
-                  </template>
-                </v-tooltip>
-                <!-- 通常: 降格ボタン -->
-                <v-btn
-                  v-else
-                  size="small"
-                  color="blue-grey"
-                  variant="elevated"
-                  rounded
-                  class="demote-btn"
-                  @click="movePlayer(item, 'second')"
-                >
-                  <v-icon start>mdi-arrow-down</v-icon>
-                  {{ t('activeRoster.demoteButton') }}
-                </v-btn>
-              </template>
-              <template #item.player_name="{ item }">
-                <span>{{ item.player_name }}</span>
-                <v-icon v-if="isKeyPlayer(item)" color="deep-purple" size="small" class="ml-1"
-                  >mdi-star</v-icon
-                >
-              </template>
-              <template #item.player_types="{ item }">
-                <v-chip
-                  v-for="player_type in item.player_types"
-                  :key="player_type"
-                  density="compact"
-                  size="small"
-                >
-                  {{ player_type }}
-                </v-chip>
-              </template>
-              <template #item.position="{ item }">
-                {{ t(`baseball.shortPositions.${item.position}`) }}
-              </template>
-              <template #item.throwing_hand="{ item }">
-                {{ t(`baseball.throwingHands.${item.throwing_hand}`) }}
-              </template>
-              <template #item.batting_hand="{ item }">
-                {{ t(`baseball.battingHands.${item.batting_hand}`) }}
-              </template>
-              <template #item.selected_cost_type="{ item }">
-                {{ t(`baseball.construction.${item.selected_cost_type}`) }}
-              </template>
-            </v-data-table>
+          <v-card-text class="pa-0">
+            <v-table density="compact" class="roster-table">
+              <thead>
+                <tr>
+                  <th class="text-left">#</th>
+                  <th class="text-left">{{ t('activeRoster.headers.name') }}</th>
+                  <th class="text-left">{{ t('activeRoster.headers.position') }}</th>
+                  <th class="text-left">{{ t('activeRoster.headers.cost_type') }}</th>
+                  <th class="text-right">{{ t('activeRoster.headers.cost') }}</th>
+                  <th class="text-left">状態</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                <template v-for="group in firstSquadGroups" :key="group.label">
+                  <tr class="group-header-row">
+                    <td colspan="7">{{ group.label }}</td>
+                  </tr>
+                  <tr
+                    v-for="item in group.players"
+                    :key="item.team_membership_id"
+                    :class="getFirstSquadRowClass(item)"
+                  >
+                    <td class="text-caption">{{ item.number }}</td>
+                    <td>
+                      <div class="d-flex flex-column">
+                        <div class="d-flex align-center flex-wrap ga-1">
+                          <span class="text-body-2">{{ item.player_name }}</span>
+                          <v-icon v-if="isKeyPlayer(item)" color="deep-purple" size="x-small"
+                            >mdi-star</v-icon
+                          >
+                          <v-chip
+                            v-if="item.is_outside_world"
+                            size="x-small"
+                            color="purple"
+                            variant="tonal"
+                            >外</v-chip
+                          >
+                        </div>
+                        <div
+                          v-if="item.player_types && item.player_types.length"
+                          class="d-flex flex-wrap ga-1 mt-1"
+                        >
+                          <v-chip
+                            v-for="pt in item.player_types"
+                            :key="pt"
+                            size="x-small"
+                            variant="outlined"
+                            density="compact"
+                            >{{ pt }}</v-chip
+                          >
+                        </div>
+                      </div>
+                    </td>
+                    <td class="text-caption">
+                      {{ t(`baseball.shortPositions.${item.position}`) }}
+                    </td>
+                    <td>
+                      <v-chip
+                        v-if="item.selected_cost_type && item.selected_cost_type !== 'normal_cost'"
+                        size="x-small"
+                        variant="tonal"
+                        :color="contractChipColor(item.selected_cost_type)"
+                      >
+                        {{ t(`baseball.construction.${item.selected_cost_type}`) }}
+                      </v-chip>
+                    </td>
+                    <td class="text-right text-caption font-weight-bold">{{ item.cost }}</td>
+                    <td>
+                      <v-tooltip
+                        v-if="isKeyPlayer(item)"
+                        :text="t('activeRoster.keyPlayerLocked')"
+                        location="top"
+                      >
+                        <template #activator="{ props }">
+                          <v-chip
+                            v-bind="props"
+                            size="x-small"
+                            color="deep-purple"
+                            variant="tonal"
+                            prepend-icon="mdi-lock"
+                          >
+                            {{ t('activeRoster.chip.special') }}
+                          </v-chip>
+                        </template>
+                      </v-tooltip>
+                      <v-tooltip
+                        v-else-if="item.is_absent && item.absence_info"
+                        :text="getAbsenceDetailTooltip(item)"
+                        location="top"
+                      >
+                        <template #activator="{ props }">
+                          <v-chip
+                            v-bind="props"
+                            size="x-small"
+                            :color="getAbsenceColor(item)"
+                            variant="tonal"
+                          >
+                            {{ absenceStatusLabel(item) }}
+                          </v-chip>
+                        </template>
+                      </v-tooltip>
+                    </td>
+                    <td>
+                      <!-- 特例選手: 降格不可 -->
+                      <v-tooltip
+                        v-if="isKeyPlayer(item)"
+                        :text="t('activeRoster.keyPlayerLocked')"
+                        location="top"
+                      >
+                        <template #activator="{ props }">
+                          <span v-bind="props">
+                            <v-btn
+                              size="x-small"
+                              color="blue-grey"
+                              variant="elevated"
+                              rounded
+                              disabled
+                              class="demote-btn"
+                            >
+                              <v-icon>mdi-arrow-down</v-icon>
+                            </v-btn>
+                          </span>
+                        </template>
+                      </v-tooltip>
+                      <!-- 離脱中: 降格ボタン有効+ツールチップ -->
+                      <v-tooltip
+                        v-else-if="item.is_absent && item.absence_info"
+                        :text="getAbsenceDetailTooltip(item)"
+                        location="top"
+                      >
+                        <template #activator="{ props }">
+                          <v-btn
+                            v-bind="props"
+                            size="x-small"
+                            :color="getAbsenceColor(item)"
+                            variant="elevated"
+                            rounded
+                            class="demote-btn"
+                            @click="movePlayer(item, 'second')"
+                          >
+                            <v-icon>mdi-arrow-down</v-icon>
+                          </v-btn>
+                        </template>
+                      </v-tooltip>
+                      <!-- 通常: 降格ボタン -->
+                      <v-btn
+                        v-else
+                        size="x-small"
+                        color="blue-grey"
+                        variant="elevated"
+                        rounded
+                        class="demote-btn"
+                        @click="movePlayer(item, 'second')"
+                      >
+                        <v-icon>mdi-arrow-down</v-icon>
+                      </v-btn>
+                    </td>
+                  </tr>
+                </template>
+              </tbody>
+            </v-table>
           </v-card-text>
         </v-card>
       </v-col>
+
+      <!-- 2軍 -->
       <v-col cols="12" md="6">
         <v-card variant="outlined">
           <v-card-title>
-            <h2 class="text-h5">{{ t('activeRoster.secondSquad') }}</h2>
-          </v-card-title>
-          <v-card-text>
-            <!-- 凡例 -->
-            <div class="d-flex flex-wrap ga-2 mb-2">
-              <v-chip size="small" variant="tonal" color="amber" prepend-icon="mdi-timer-sand">
-                {{ t('activeRoster.legend.cooldown') }}
-              </v-chip>
-              <v-chip size="small" variant="tonal" color="red" prepend-icon="mdi-hospital-box">
-                {{ t('activeRoster.legend.injury') }}
-              </v-chip>
-              <v-chip size="small" variant="tonal" color="orange" prepend-icon="mdi-gavel">
-                {{ t('activeRoster.legend.suspension') }}
-              </v-chip>
-              <v-chip size="small" variant="tonal" color="blue-grey" prepend-icon="mdi-wrench">
-                {{ t('activeRoster.legend.reconditioning') }}
-              </v-chip>
+            <div class="d-flex align-center">
+              <v-icon class="mr-1">mdi-account-multiple</v-icon>
+              {{ t('activeRoster.secondSquad') }}
             </div>
-            <v-data-table
-              density="compact"
-              :headers="secondHeaders"
-              :items="secondSquadPlayers"
-              hide-default-footer
-              items-per-page="-1"
-              :row-props="getSecondSquadRowProps"
-            >
-              <template #item.actions="{ item }">
-                <!-- 再調整中: v-chip (1軍昇格不可) -->
-                <v-tooltip
-                  v-if="
-                    item.is_absent &&
-                    item.absence_info &&
-                    item.absence_info.absence_type === 'reconditioning'
-                  "
-                  :text="t('activeRoster.reconditioningBlocked')"
-                  location="top"
+          </v-card-title>
+          <v-card-text class="pa-0">
+            <v-table density="compact" class="roster-table">
+              <thead>
+                <tr>
+                  <th></th>
+                  <th class="text-left">#</th>
+                  <th class="text-left">{{ t('activeRoster.headers.name') }}</th>
+                  <th class="text-left">{{ t('activeRoster.headers.position') }}</th>
+                  <th class="text-left">{{ t('activeRoster.headers.cost_type') }}</th>
+                  <th class="text-right">{{ t('activeRoster.headers.cost') }}</th>
+                  <th class="text-left">状態</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr
+                  v-for="item in secondSquadPlayers"
+                  :key="item.team_membership_id"
+                  :class="getSecondSquadRowClass(item)"
                 >
-                  <template #activator="{ props }">
-                    <v-chip
-                      v-bind="props"
-                      size="small"
-                      color="blue-grey"
-                      variant="tonal"
-                      prepend-icon="mdi-wrench"
+                  <td>
+                    <!-- 再調整中: 昇格不可 -->
+                    <v-tooltip
+                      v-if="
+                        item.is_absent &&
+                        item.absence_info &&
+                        item.absence_info.absence_type === 'reconditioning'
+                      "
+                      :text="t('activeRoster.reconditioningBlocked')"
+                      location="top"
                     >
-                      {{ t('activeRoster.chip.reconditioning') }}
-                    </v-chip>
-                  </template>
-                </v-tooltip>
-                <!-- 昇格クールダウン中: v-chip -->
-                <v-tooltip
-                  v-else-if="isPlayerOnCooldown(item)"
-                  :text="getCooldownTooltip(item)"
-                  location="top"
-                >
-                  <template #activator="{ props }">
-                    <v-chip
-                      v-bind="props"
-                      size="small"
-                      color="amber"
-                      variant="tonal"
-                      prepend-icon="mdi-timer-sand"
+                      <template #activator="{ props }">
+                        <v-chip
+                          v-bind="props"
+                          size="x-small"
+                          color="blue-grey"
+                          variant="tonal"
+                          prepend-icon="mdi-wrench"
+                        >
+                          {{ t('activeRoster.chip.reconditioning') }}
+                        </v-chip>
+                      </template>
+                    </v-tooltip>
+                    <!-- 昇格クールダウン中 -->
+                    <v-tooltip
+                      v-else-if="isPlayerOnCooldown(item)"
+                      :text="getCooldownTooltip(item)"
+                      location="top"
                     >
-                      {{ t('activeRoster.chip.cooldown') }}
-                    </v-chip>
-                  </template>
-                </v-tooltip>
-                <!-- 離脱中(負傷/出場停止): 昇格ボタン有効+ツールチップ -->
-                <v-tooltip
-                  v-else-if="item.is_absent && item.absence_info"
-                  :text="getAbsenceDetailTooltip(item)"
-                  location="top"
-                >
-                  <template #activator="{ props }">
+                      <template #activator="{ props }">
+                        <v-chip
+                          v-bind="props"
+                          size="x-small"
+                          color="amber"
+                          variant="tonal"
+                          prepend-icon="mdi-timer-sand"
+                        >
+                          {{ t('activeRoster.chip.cooldown') }}
+                        </v-chip>
+                      </template>
+                    </v-tooltip>
+                    <!-- 離脱中(負傷/出場停止): 昇格ボタン有効+ツールチップ -->
+                    <v-tooltip
+                      v-else-if="item.is_absent && item.absence_info"
+                      :text="getAbsenceDetailTooltip(item)"
+                      location="top"
+                    >
+                      <template #activator="{ props }">
+                        <v-btn
+                          v-bind="props"
+                          size="x-small"
+                          :color="getAbsenceColor(item)"
+                          variant="elevated"
+                          rounded
+                          class="promote-btn"
+                          @click="handlePromotePlayer(item)"
+                        >
+                          <v-icon>mdi-arrow-up</v-icon>
+                        </v-btn>
+                      </template>
+                    </v-tooltip>
+                    <!-- 通常: 昇格ボタン -->
                     <v-btn
-                      v-bind="props"
-                      size="small"
-                      :color="getAbsenceColor(item)"
+                      v-else
+                      size="x-small"
+                      color="primary"
                       variant="elevated"
                       rounded
                       class="promote-btn"
                       @click="handlePromotePlayer(item)"
                     >
-                      <v-icon start>mdi-arrow-up</v-icon>
-                      {{ t('activeRoster.promoteButton') }}
+                      <v-icon>mdi-arrow-up</v-icon>
                     </v-btn>
-                  </template>
-                </v-tooltip>
-                <!-- 通常: 昇格ボタン -->
-                <v-btn
-                  v-else
-                  size="small"
-                  color="primary"
-                  variant="elevated"
-                  rounded
-                  class="promote-btn"
-                  @click="handlePromotePlayer(item)"
-                >
-                  <v-icon start>mdi-arrow-up</v-icon>
-                  {{ t('activeRoster.promoteButton') }}
-                </v-btn>
-              </template>
-              <template #item.player_name="{ item }">
-                <span>{{ item.player_name }}</span>
-              </template>
-              <template #item.player_types="{ item }">
-                <v-chip
-                  v-for="player_type in item.player_types"
-                  :key="player_type"
-                  density="compact"
-                  size="small"
-                >
-                  {{ player_type }}
-                </v-chip>
-              </template>
-              <template #item.position="{ item }">
-                {{ t(`baseball.shortPositions.${item.position}`) }}
-              </template>
-              <template #item.throwing_hand="{ item }">
-                {{ t(`baseball.throwingHands.${item.throwing_hand}`) }}
-              </template>
-              <template #item.batting_hand="{ item }">
-                {{ t(`baseball.battingHands.${item.batting_hand}`) }}
-              </template>
-              <template #item.selected_cost_type="{ item }">
-                {{ t(`baseball.construction.${item.selected_cost_type}`) }}
-              </template>
-            </v-data-table>
+                  </td>
+                  <td class="text-caption">{{ item.number }}</td>
+                  <td>
+                    <div class="d-flex flex-column">
+                      <div class="d-flex align-center flex-wrap ga-1">
+                        <span class="text-body-2">{{ item.player_name }}</span>
+                        <v-chip
+                          v-if="item.is_outside_world"
+                          size="x-small"
+                          color="purple"
+                          variant="tonal"
+                          >外</v-chip
+                        >
+                      </div>
+                      <div
+                        v-if="item.player_types && item.player_types.length"
+                        class="d-flex flex-wrap ga-1 mt-1"
+                      >
+                        <v-chip
+                          v-for="pt in item.player_types"
+                          :key="pt"
+                          size="x-small"
+                          variant="outlined"
+                          density="compact"
+                          >{{ pt }}</v-chip
+                        >
+                      </div>
+                    </div>
+                  </td>
+                  <td class="text-caption">{{ t(`baseball.shortPositions.${item.position}`) }}</td>
+                  <td>
+                    <v-chip
+                      v-if="item.selected_cost_type && item.selected_cost_type !== 'normal_cost'"
+                      size="x-small"
+                      variant="tonal"
+                      :color="contractChipColor(item.selected_cost_type)"
+                    >
+                      {{ t(`baseball.construction.${item.selected_cost_type}`) }}
+                    </v-chip>
+                  </td>
+                  <td class="text-right text-caption font-weight-bold">{{ item.cost }}</td>
+                  <td>
+                    <v-chip
+                      v-if="
+                        item.is_absent &&
+                        item.absence_info &&
+                        item.absence_info.absence_type !== 'reconditioning'
+                      "
+                      size="x-small"
+                      :color="getAbsenceColor(item)"
+                      variant="tonal"
+                    >
+                      {{ absenceStatusLabel(item) }}
+                    </v-chip>
+                  </td>
+                </tr>
+              </tbody>
+            </v-table>
           </v-card-text>
         </v-card>
       </v-col>
@@ -441,26 +571,6 @@ const currentDateFormatted = computed(() => currentDate.value.toISOString().spli
 const seasonStartDate = ref<Date | null>(null)
 const selectedKeyPlayerId = ref<number | null>(null)
 
-const headers = [
-  { title: t('activeRoster.headers.number'), key: 'number' },
-  { title: t('activeRoster.headers.name'), key: 'player_name' },
-  { title: t('activeRoster.headers.player_types'), key: 'player_types' },
-  { title: t('activeRoster.headers.position'), key: 'position' },
-  { title: t('activeRoster.headers.throws'), key: 'throwing_hand' },
-  { title: t('activeRoster.headers.bats'), key: 'batting_hand' },
-  { title: t('activeRoster.headers.cost_type'), value: 'selected_cost_type' },
-  { title: t('activeRoster.headers.cost'), key: 'cost' },
-]
-const firstHeaders = [
-  ...headers,
-  { title: t('activeRoster.headers.actions'), sortable: false, key: 'actions' },
-]
-
-const secondHeaders = [
-  { title: t('activeRoster.headers.actions'), sortable: false, key: 'actions' },
-  ...headers,
-]
-
 const fetchRoster = async () => {
   try {
     const response = await axios.get(`/teams/${props.teamId}/roster`)
@@ -513,15 +623,95 @@ const outsideWorldFirstSquadCount = computed(() => {
   return firstSquadPlayers.value.filter((p) => p.is_outside_world).length
 })
 
-const firstSquadPlayerTypeCounts = computed(() => {
-  const counts: { [key: string]: number } = {}
-  firstSquadPlayers.value.forEach((player) => {
-    player.player_types.forEach((type) => {
-      counts[type] = (counts[type] || 0) + 1
-    })
-  })
-  return counts
+// 投手グルーピング: selected_cost_type='relief_only_cost' → 中継ぎ/クローザー, others → 先発
+const firstSquadGroups = computed(() => {
+  const pitchers = firstSquadPlayers.value.filter((p) => p.position === 'pitcher')
+  const fielders = firstSquadPlayers.value.filter((p) => p.position !== 'pitcher')
+  const spPitchers = pitchers.filter((p) => p.selected_cost_type !== 'relief_only_cost')
+  const rpPitchers = pitchers.filter((p) => p.selected_cost_type === 'relief_only_cost')
+  return [
+    { label: '★ 先発ローテーション', players: spPitchers },
+    { label: '◎ 中継ぎ / クローザー', players: rpPitchers },
+    { label: '野手', players: fielders },
+  ].filter((g) => g.players.length > 0)
 })
+
+// コストバー
+const costBarValue = computed(() => {
+  if (!firstSquadCostLimit.value) return 0
+  return Math.min((firstSquadTotalCost.value / firstSquadCostLimit.value) * 100, 100)
+})
+
+const costBarColor = computed((): string => {
+  if (!firstSquadCostLimit.value) return 'grey'
+  const ratio = firstSquadTotalCost.value / firstSquadCostLimit.value
+  if (ratio >= 1) return 'error'
+  if (ratio >= 0.9) return 'warning'
+  return 'success'
+})
+
+// 行ハイライト (カスタムテーブル用)
+const getFirstSquadRowClass = (item: RosterPlayer): string => {
+  if (isKeyPlayer(item)) return 'bg-deep-purple-lighten-5'
+  if (item.is_absent && item.absence_info) {
+    switch (item.absence_info.absence_type) {
+      case 'injury':
+        return 'bg-red-lighten-5'
+      case 'suspension':
+        return 'bg-orange-lighten-5'
+      case 'reconditioning':
+        return 'bg-blue-grey-lighten-5'
+    }
+  }
+  return ''
+}
+
+const getSecondSquadRowClass = (item: RosterPlayer): string => {
+  if (isPlayerOnCooldown(item)) return 'bg-amber-lighten-5'
+  if (item.is_absent && item.absence_info) {
+    switch (item.absence_info.absence_type) {
+      case 'injury':
+        return 'bg-red-lighten-5'
+      case 'suspension':
+        return 'bg-orange-lighten-5'
+      case 'reconditioning':
+        return 'bg-blue-grey-lighten-5'
+    }
+  }
+  return ''
+}
+
+// 離脱状態ラベル (ロスタービュー用)
+const absenceStatusLabel = (player: RosterPlayer): string => {
+  if (!player.absence_info) return ''
+  const days = player.absence_info.remaining_days
+  switch (player.absence_info.absence_type) {
+    case 'injury':
+      return days != null ? `負傷 残${days}` : '負傷'
+    case 'suspension':
+      return days != null ? `停止 残${days}` : '出場停止'
+    case 'reconditioning':
+      return '再調整'
+    default:
+      return ''
+  }
+}
+
+// 契約状態チップ色
+const contractChipColor = (costType: string): string => {
+  switch (costType) {
+    case 'relief_only_cost':
+      return 'indigo'
+    case 'pitcher_only_cost':
+      return 'blue'
+    case 'fielder_only_cost':
+      return 'teal'
+    case 'two_way_cost':
+      return 'cyan'
+    default:
+      return ''
+  }
+}
 
 const isSeasonStartDate = computed(() => {
   if (!seasonStartDate.value) return false
@@ -550,40 +740,6 @@ const getAbsenceColor = (player: RosterPlayer): string => {
     default:
       return 'blue-grey'
   }
-}
-
-const getFirstSquadRowProps = ({ item }: { item: RosterPlayer }) => {
-  if (isKeyPlayer(item)) {
-    return { class: 'bg-deep-purple-lighten-5' }
-  }
-  if (item.is_absent && item.absence_info) {
-    switch (item.absence_info.absence_type) {
-      case 'injury':
-        return { class: 'bg-red-lighten-5' }
-      case 'suspension':
-        return { class: 'bg-orange-lighten-5' }
-      case 'reconditioning':
-        return { class: 'bg-blue-grey-lighten-5' }
-    }
-  }
-  return {}
-}
-
-const getSecondSquadRowProps = ({ item }: { item: RosterPlayer }) => {
-  if (isPlayerOnCooldown(item)) {
-    return { class: 'bg-amber-lighten-5' }
-  }
-  if (item.is_absent && item.absence_info) {
-    switch (item.absence_info.absence_type) {
-      case 'injury':
-        return { class: 'bg-red-lighten-5' }
-      case 'suspension':
-        return { class: 'bg-orange-lighten-5' }
-      case 'reconditioning':
-        return { class: 'bg-blue-grey-lighten-5' }
-    }
-  }
-  return {}
 }
 
 const getCooldownTooltip = (player: RosterPlayer): string => {
@@ -706,9 +862,26 @@ onMounted(fetchRoster)
 .promote-btn,
 .demote-btn {
   transition: box-shadow 0.2s ease;
+  min-width: 32px !important;
 }
 .promote-btn:hover:not(:disabled),
 .demote-btn:hover:not(:disabled) {
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3) !important;
+}
+
+/* 投手グループヘッダー行 */
+.group-header-row td {
+  background-color: #ede7f6 !important;
+  color: #7b1fa2;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  padding: 4px 12px !important;
+}
+
+/* テーブルセルの余白調整 */
+.roster-table :deep(td),
+.roster-table :deep(th) {
+  padding: 4px 8px !important;
 }
 </style>

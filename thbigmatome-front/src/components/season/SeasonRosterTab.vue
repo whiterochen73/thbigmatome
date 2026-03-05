@@ -96,7 +96,7 @@
     </v-row>
 
     <v-row class="mt-4" align="start">
-      <v-col cols="6">
+      <v-col cols="12" md="6">
         <v-card variant="outlined">
           <v-card-title>
             <div class="d-flex justify-space-between align-center">
@@ -235,7 +235,7 @@
           </v-card-text>
         </v-card>
       </v-col>
-      <v-col cols="6">
+      <v-col cols="12" md="6">
         <v-card variant="outlined">
           <v-card-title>
             <h2 class="text-h5">{{ t('activeRoster.secondSquad') }}</h2>

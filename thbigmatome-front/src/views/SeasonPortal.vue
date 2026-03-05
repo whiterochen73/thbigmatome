@@ -10,7 +10,7 @@
       </v-btn>
       <v-btn
         class="mx-2"
-        color="teal"
+        color="secondary"
         variant="outlined"
         prepend-icon="mdi-hospital-box"
         @click="isDialogOpen = true"

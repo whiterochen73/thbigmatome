@@ -1,6 +1,6 @@
 <template>
   <v-container>
-    <v-toolbar color="green">
+    <v-toolbar color="primary">
       <template #prepend>
         <span class="text-h5 mx-4">{{ gameData.team_name }}</span>
         <span class="text-h6 mx-4">{{ t('gameResult.game') }}: {{ gameData.game_number }}</span>
@@ -14,7 +14,7 @@
           <span class="ml-2">( {{ gameResult }} )</span>
         </span>
       </template>
-      <v-btn :to="gameResultRoute" color="light" variant="flat">
+      <v-btn :to="gameResultRoute" variant="text">
         {{ t('scoreSheet.backToGameResult') }}
       </v-btn>
       <template #append>

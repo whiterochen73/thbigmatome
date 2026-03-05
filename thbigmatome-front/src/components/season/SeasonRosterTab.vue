@@ -100,7 +100,7 @@
       <v-col cols="12">
         <div class="d-flex justify-space-between align-center mb-1 text-body-2">
           <span>
-            <strong>1軍コスト: </strong>
+            <strong>{{ t('seasonRosterTab.firstSquadCostLabel') }}: </strong>
             <span
               :class="{
                 'text-error font-weight-bold': costBarColor === 'error',
@@ -136,9 +136,9 @@
     <v-row class="mb-2">
       <v-col cols="12">
         <div class="d-flex flex-wrap ga-2">
-          <v-chip size="small" variant="tonal" color="deep-purple" prepend-icon="mdi-lock"
-            >特例</v-chip
-          >
+          <v-chip size="small" variant="tonal" color="deep-purple" prepend-icon="mdi-lock">{{
+            t('seasonRosterTab.specialLabel')
+          }}</v-chip>
           <v-chip size="small" variant="tonal" color="red" prepend-icon="mdi-hospital-box">
             {{ t('activeRoster.legend.injury') }}
           </v-chip>
@@ -151,7 +151,9 @@
           <v-chip size="small" variant="tonal" color="amber" prepend-icon="mdi-timer-sand">
             {{ t('activeRoster.legend.cooldown') }}
           </v-chip>
-          <v-chip size="small" variant="tonal" color="purple">外の世界</v-chip>
+          <v-chip size="small" variant="tonal" color="purple">{{
+            t('seasonRosterTab.outsideWorldLabel')
+          }}</v-chip>
         </div>
       </v-col>
     </v-row>
@@ -180,7 +182,7 @@
                   <th class="text-left">{{ t('activeRoster.headers.position') }}</th>
                   <th class="text-left">{{ t('activeRoster.headers.cost_type') }}</th>
                   <th class="text-right">{{ t('activeRoster.headers.cost') }}</th>
-                  <th class="text-left">状態</th>
+                  <th class="text-left">{{ t('seasonRosterTab.statusHeader') }}</th>
                   <th></th>
                 </tr>
               </thead>
@@ -207,7 +209,7 @@
                             size="x-small"
                             color="purple"
                             variant="tonal"
-                            >外</v-chip
+                            >{{ t('seasonRosterTab.outsideWorldShort') }}</v-chip
                           >
                         </div>
                         <div
@@ -356,7 +358,7 @@
                   <th class="text-left">{{ t('activeRoster.headers.position') }}</th>
                   <th class="text-left">{{ t('activeRoster.headers.cost_type') }}</th>
                   <th class="text-right">{{ t('activeRoster.headers.cost') }}</th>
-                  <th class="text-left">状態</th>
+                  <th class="text-left">{{ t('seasonRosterTab.statusHeader') }}</th>
                 </tr>
               </thead>
               <tbody>
@@ -449,7 +451,7 @@
                           size="x-small"
                           color="purple"
                           variant="tonal"
-                          >外</v-chip
+                          >{{ t('seasonRosterTab.outsideWorldShort') }}</v-chip
                         >
                       </div>
                       <div
@@ -630,9 +632,9 @@ const firstSquadGroups = computed(() => {
   const spPitchers = pitchers.filter((p) => p.selected_cost_type !== 'relief_only_cost')
   const rpPitchers = pitchers.filter((p) => p.selected_cost_type === 'relief_only_cost')
   return [
-    { label: '★ 先発ローテーション', players: spPitchers },
-    { label: '◎ 中継ぎ / クローザー', players: rpPitchers },
-    { label: '野手', players: fielders },
+    { label: t('seasonRosterTab.groups.starter'), players: spPitchers },
+    { label: t('seasonRosterTab.groups.reliever'), players: rpPitchers },
+    { label: t('seasonRosterTab.groups.fielder'), players: fielders },
   ].filter((g) => g.players.length > 0)
 })
 
@@ -687,11 +689,15 @@ const absenceStatusLabel = (player: RosterPlayer): string => {
   const days = player.absence_info.remaining_days
   switch (player.absence_info.absence_type) {
     case 'injury':
-      return days != null ? `負傷 残${days}` : '負傷'
+      return days != null
+        ? t('seasonRosterTab.absenceLabel.injuryWithDays', { days })
+        : t('seasonRosterTab.absenceLabel.injury')
     case 'suspension':
-      return days != null ? `停止 残${days}` : '出場停止'
+      return days != null
+        ? t('seasonRosterTab.absenceLabel.suspensionWithDays', { days })
+        : t('seasonRosterTab.absenceLabel.suspension')
     case 'reconditioning':
-      return '再調整'
+      return t('seasonRosterTab.absenceLabel.reconditioning')
     default:
       return ''
   }

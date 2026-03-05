@@ -64,6 +64,7 @@ const i18n = createI18n({
           player_types: '選手タイプ',
           cost: 'コスト',
           excluded: '除外',
+          costExcluded: 'コスト除外',
           actions: '操作',
         },
         teamMembersTitle: 'チームメンバー',
@@ -326,8 +327,8 @@ describe('TeamMembers.vue', () => {
     })
     await flushPromises()
 
-    // The "除外" header should exist
-    expect(wrapper.text()).toContain('除外')
+    // The "コスト除外" header should exist
+    expect(wrapper.text()).toContain('コスト除外')
 
     // Checkbox should exist in the table
     const checkboxes = wrapper.findAll('.v-checkbox')

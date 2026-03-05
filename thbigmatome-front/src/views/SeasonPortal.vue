@@ -21,7 +21,7 @@
     <EmptyState
       v-if="!season"
       icon="mdi-calendar-blank-outline"
-      message="シーズンデータが見つかりません"
+      :message="t('seasonPortal.noSeasonData')"
     />
 
     <v-tabs v-if="season" v-model="activeTab" color="primary" class="mt-2">
@@ -173,7 +173,8 @@
                           </div>
                           <div v-else class="game-info">
                             <span v-if="day.schedule.announced_starter" class="starter-text">
-                              先発: {{ day.schedule.announced_starter.name }}
+                              {{ t('seasonPortal.announcedStarterPrefix') }}:
+                              {{ day.schedule.announced_starter.name }}
                             </span>
                           </div>
                           <v-btn
@@ -205,9 +206,12 @@
                       {{ t(`settings.schedule.dateTypes.${item.type}`) }}
                     </span>
                     <span class="legend-results ml-auto">
-                      <span class="result-mark result-win">○</span>勝&nbsp;
-                      <span class="result-mark result-lose">●</span>負&nbsp;
-                      <span class="result-mark result-draw">△</span>分
+                      <span class="result-mark result-win">○</span
+                      >{{ t('seasonPortal.legendWin') }}&nbsp;
+                      <span class="result-mark result-lose">●</span
+                      >{{ t('seasonPortal.legendLose') }}&nbsp;
+                      <span class="result-mark result-draw">△</span
+                      >{{ t('seasonPortal.legendDraw') }}
                     </span>
                   </div>
                 </div>
@@ -216,7 +220,9 @@
               <!-- 表形式ビュー -->
               <template v-else>
                 <div class="d-flex align-center mb-3 flex-wrap" style="gap: 8px">
-                  <span class="text-caption text-medium-emphasis">表示：</span>
+                  <span class="text-caption text-medium-emphasis"
+                    >{{ t('seasonPortal.viewLabel') }}：</span
+                  >
                   <v-btn-toggle
                     v-model="tableFilter"
                     mandatory
@@ -224,21 +230,21 @@
                     variant="outlined"
                     size="small"
                   >
-                    <v-btn value="all">全日程</v-btn>
-                    <v-btn value="game">試合日のみ</v-btn>
+                    <v-btn value="all">{{ t('seasonPortal.viewAll') }}</v-btn>
+                    <v-btn value="game">{{ t('seasonPortal.viewGameOnly') }}</v-btn>
                   </v-btn-toggle>
                 </div>
                 <div class="table-wrapper">
                   <table class="schedule-table">
                     <thead>
                       <tr>
-                        <th>日付</th>
-                        <th>曜日</th>
-                        <th>種別</th>
-                        <th>対戦相手</th>
-                        <th>先発投手</th>
-                        <th>スコア</th>
-                        <th>勝敗</th>
+                        <th>{{ t('seasonPortal.tableHeaders.date') }}</th>
+                        <th>{{ t('seasonPortal.tableHeaders.dow') }}</th>
+                        <th>{{ t('seasonPortal.tableHeaders.type') }}</th>
+                        <th>{{ t('seasonPortal.tableHeaders.opponent') }}</th>
+                        <th>{{ t('seasonPortal.tableHeaders.starter') }}</th>
+                        <th>{{ t('seasonPortal.tableHeaders.score') }}</th>
+                        <th>{{ t('seasonPortal.tableHeaders.result') }}</th>
                         <th></th>
                       </tr>
                     </thead>
@@ -248,11 +254,17 @@
                         :key="row.date.toISOString()"
                         :class="{ 'today-row': row.isCurrentDay }"
                       >
-                        <td data-label="日付" class="date-cell">{{ formatTableDate(row.date) }}</td>
-                        <td data-label="曜日" class="dow-cell" :class="getDowClass(row.dayOfWeek)">
+                        <td :data-label="t('seasonPortal.tableHeaders.date')" class="date-cell">
+                          {{ formatTableDate(row.date) }}
+                        </td>
+                        <td
+                          :data-label="t('seasonPortal.tableHeaders.dow')"
+                          class="dow-cell"
+                          :class="getDowClass(row.dayOfWeek)"
+                        >
                           {{ getDowLabel(row.dayOfWeek) }}
                         </td>
-                        <td data-label="種別">
+                        <td :data-label="t('seasonPortal.tableHeaders.type')">
                           <span
                             v-if="row.schedule"
                             class="type-badge"
@@ -262,7 +274,7 @@
                           </span>
                           <span v-else class="text-disabled">—</span>
                         </td>
-                        <td data-label="対戦相手">
+                        <td :data-label="t('seasonPortal.tableHeaders.opponent')">
                           <template
                             v-if="
                               row.schedule?.game_result && !isCancelledType(row.schedule.date_type)
@@ -272,7 +284,7 @@
                           </template>
                           <span v-else class="text-disabled">—</span>
                         </td>
-                        <td data-label="先発投手">
+                        <td :data-label="t('seasonPortal.tableHeaders.starter')">
                           <template
                             v-if="
                               row.schedule &&
@@ -284,7 +296,7 @@
                           </template>
                           <span v-else class="text-disabled">—</span>
                         </td>
-                        <td data-label="スコア">
+                        <td :data-label="t('seasonPortal.tableHeaders.score')">
                           {{
                             !isCancelledType(row.schedule?.date_type) &&
                             row.schedule?.game_result?.score
@@ -292,7 +304,7 @@
                               : '—'
                           }}
                         </td>
-                        <td data-label="勝敗">
+                        <td :data-label="t('seasonPortal.tableHeaders.result')">
                           <span
                             v-if="
                               row.schedule?.game_result && !isCancelledType(row.schedule.date_type)
@@ -319,7 +331,7 @@
                               params: { teamId, scheduleId: row.schedule.id },
                             }"
                           >
-                            入力
+                            {{ t('seasonPortal.gameResultInput') }}
                           </v-btn>
                         </td>
                       </tr>
@@ -368,7 +380,9 @@
       <v-card-text class="pt-2">
         <div v-if="selectedDay.schedule">
           <div class="mb-3">
-            <span class="text-caption text-medium-emphasis">種別&ensp;</span>
+            <span class="text-caption text-medium-emphasis"
+              >{{ t('seasonPortal.detailDialog.type') }}&ensp;</span
+            >
             <span
               class="type-badge"
               :class="`badge-${getTypeCategory(selectedDay.schedule.date_type)}`"
@@ -383,15 +397,21 @@
               "
             >
               <div class="mb-1">
-                <span class="text-caption text-medium-emphasis">対戦相手&ensp;</span>
+                <span class="text-caption text-medium-emphasis"
+                  >{{ t('seasonPortal.detailDialog.opponent') }}&ensp;</span
+                >
                 vs {{ selectedDay.schedule.game_result.opponent_short_name }}
               </div>
               <div class="mb-1">
-                <span class="text-caption text-medium-emphasis">スコア&ensp;</span>
+                <span class="text-caption text-medium-emphasis"
+                  >{{ t('seasonPortal.detailDialog.score') }}&ensp;</span
+                >
                 {{ selectedDay.schedule.game_result.score }}
               </div>
               <div class="mb-2">
-                <span class="text-caption text-medium-emphasis">結果&ensp;</span>
+                <span class="text-caption text-medium-emphasis"
+                  >{{ t('seasonPortal.detailDialog.result') }}&ensp;</span
+                >
                 <span
                   :class="`result-mark result-${selectedDay.schedule.game_result.result}`"
                   style="font-size: 1.1rem"
@@ -399,16 +419,18 @@
                 >
                 {{
                   selectedDay.schedule.game_result.result === 'win'
-                    ? '勝ち'
+                    ? t('seasonPortal.detailDialog.win')
                     : selectedDay.schedule.game_result.result === 'lose'
-                      ? '負け'
-                      : '引分'
+                      ? t('seasonPortal.detailDialog.lose')
+                      : t('seasonPortal.detailDialog.draw')
                 }}
               </div>
             </template>
             <template v-else>
               <div v-if="selectedDay.schedule.announced_starter" class="mb-2">
-                <span class="text-caption text-medium-emphasis">先発投手&ensp;</span>
+                <span class="text-caption text-medium-emphasis"
+                  >{{ t('seasonPortal.detailDialog.starter') }}&ensp;</span
+                >
                 {{ selectedDay.schedule.announced_starter.name }}
               </div>
             </template>
@@ -429,7 +451,7 @@
           </template>
         </div>
         <div v-else class="text-center text-caption text-medium-emphasis py-4">
-          スケジュールなし
+          {{ t('seasonPortal.noSchedule') }}
         </div>
       </v-card-text>
     </v-card>

@@ -11,7 +11,7 @@
     <v-card variant="outlined" class="mb-4">
       <v-card-title class="text-subtitle-1">
         <v-icon class="mr-2" size="small">mdi-account-off</v-icon>
-        現在の離脱者
+        {{ t('seasonAbsenceTab.currentAbsences') }}
       </v-card-title>
       <v-card-text class="pa-0">
         <v-data-table
@@ -47,7 +47,9 @@
                 }}{{ t(`enums.player_absence.duration_unit.${item.duration_unit}`) }}
               </v-chip>
             </template>
-            <span v-else class="text-caption text-medium-emphasis">未定</span>
+            <span v-else class="text-caption text-medium-emphasis">{{
+              t('seasonAbsenceTab.unknownRemaining')
+            }}</span>
           </template>
           <template v-slot:item.actions="{ item }">
             <v-btn icon size="small" variant="text" @click="editAbsence(item)">
@@ -66,7 +68,7 @@
       <v-expansion-panel>
         <v-expansion-panel-title>
           <v-icon class="mr-2" size="small">mdi-history</v-icon>
-          過去の離脱履歴（{{ pastAbsences.length }}件）
+          {{ t('seasonAbsenceTab.pastAbsences', { count: pastAbsences.length }) }}
         </v-expansion-panel-title>
         <v-expansion-panel-text class="pa-0">
           <v-data-table
@@ -85,7 +87,11 @@
               </v-chip>
             </template>
             <template v-slot:item.effective_end_date="{ item }">
-              {{ item.effective_end_date ? formatDate(item.effective_end_date) : '未定' }}
+              {{
+                item.effective_end_date
+                  ? formatDate(item.effective_end_date)
+                  : t('seasonAbsenceTab.unknownEndDate')
+              }}
             </template>
             <template v-slot:item.duration="{ item }">
               {{ item.duration }}{{ t(`enums.player_absence.duration_unit.${item.duration_unit}`) }}
@@ -130,7 +136,7 @@ const activeHeaders = computed(() => [
   { title: t('playerAbsenceHistory.tableHeaders.absenceType'), key: 'absence_type' },
   { title: t('playerAbsenceHistory.tableHeaders.reason'), key: 'reason' },
   { title: t('playerAbsenceHistory.tableHeaders.startDate'), key: 'start_date' },
-  { title: '残り', key: 'remaining', sortable: false },
+  { title: t('seasonAbsenceTab.headers.remaining'), key: 'remaining', sortable: false },
   { title: t('playerAbsenceHistory.tableHeaders.actions'), key: 'actions', sortable: false },
 ])
 
@@ -139,8 +145,8 @@ const pastHeaders = computed(() => [
   { title: t('playerAbsenceHistory.tableHeaders.absenceType'), key: 'absence_type' },
   { title: t('playerAbsenceHistory.tableHeaders.reason'), key: 'reason' },
   { title: t('playerAbsenceHistory.tableHeaders.startDate'), key: 'start_date' },
-  { title: '復帰日', key: 'effective_end_date' },
-  { title: '期間', key: 'duration' },
+  { title: t('seasonAbsenceTab.headers.returnDate'), key: 'effective_end_date' },
+  { title: t('seasonAbsenceTab.headers.duration'), key: 'duration' },
 ])
 
 const initialStartDateForDialog = computed(() => {

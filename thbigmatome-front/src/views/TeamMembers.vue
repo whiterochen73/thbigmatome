@@ -5,7 +5,9 @@
       <v-col cols="12">
         <!-- ポジションフィルタ（追加候補） -->
         <div class="d-flex flex-wrap ga-2 mb-2 align-center">
-          <span class="text-caption text-medium-emphasis">追加候補:</span>
+          <span class="text-caption text-medium-emphasis"
+            >{{ t('teamMembers.addCandidateLabel') }}:</span
+          >
           <v-btn
             v-for="f in addPlayerPositionFilters"
             :key="f.value"
@@ -30,7 +32,9 @@
               clearable
               :disabled="!selectedCostListId"
               :no-data-text="
-                !selectedCostListId ? 'コスト一覧表を読み込み中...' : '該当する選手がいません'
+                !selectedCostListId
+                  ? t('teamMembers.loadingCostList')
+                  : t('teamMembers.noMatchingPlayers')
               "
               :custom-filter="
                 (value, query, item) => {
@@ -104,7 +108,9 @@
             <!-- コスト全体ゲージ -->
             <div class="mb-3">
               <div class="d-flex justify-space-between align-center mb-1">
-                <span class="text-body-2 font-weight-medium">チーム全体コスト</span>
+                <span class="text-body-2 font-weight-medium">{{
+                  t('teamMembers.totalCostLabel')
+                }}</span>
                 <span
                   class="text-body-2 font-weight-bold"
                   :class="
@@ -158,7 +164,9 @@
 
             <!-- フィルタ -->
             <div class="d-flex flex-wrap ga-2 mb-3 align-center">
-              <span class="text-caption text-medium-emphasis">ポジション:</span>
+              <span class="text-caption text-medium-emphasis"
+                >{{ t('teamMembers.positionFilterLabel') }}:</span
+              >
               <v-btn
                 v-for="f in positionFilters"
                 :key="f.value"
@@ -302,7 +310,7 @@ const headers = computed(() => [
   { title: t('teamMembers.headers.bats'), key: 'bats' },
   { title: t('teamMembers.headers.cost'), value: 'cost' },
   {
-    title: 'コスト除外',
+    title: t('teamMembers.headers.costExcluded'),
     key: 'excluded_from_team_total',
     sortable: false,
     width: '80px',
@@ -343,11 +351,11 @@ const costGaugeColor = computed(() => {
 
 // フィルタ
 const positionFilter = ref<'all' | 'pitcher' | 'fielder'>('all')
-const positionFilters = [
-  { value: 'all', label: '全て' },
-  { value: 'pitcher', label: '投手' },
-  { value: 'fielder', label: '野手' },
-] as const
+const positionFilters = computed(() => [
+  { value: 'all' as const, label: t('teamMembers.positionAll') },
+  { value: 'pitcher' as const, label: t('teamMembers.positionPitcher') },
+  { value: 'fielder' as const, label: t('teamMembers.positionFielder') },
+])
 
 const filteredTeamPlayers = computed(() => {
   if (positionFilter.value === 'pitcher') {
@@ -379,11 +387,11 @@ const availablePlayers = computed(() => {
 
 // 追加候補のポジションフィルタ
 const addPlayerPositionFilter = ref<'all' | 'pitcher' | 'fielder'>('all')
-const addPlayerPositionFilters = [
-  { value: 'all', label: '全て' },
-  { value: 'pitcher', label: '投手' },
-  { value: 'fielder', label: '野手' },
-] as const
+const addPlayerPositionFilters = computed(() => [
+  { value: 'all' as const, label: t('teamMembers.positionAll') },
+  { value: 'pitcher' as const, label: t('teamMembers.positionPitcher') },
+  { value: 'fielder' as const, label: t('teamMembers.positionFielder') },
+])
 
 const filteredAvailablePlayers = computed(() => {
   if (addPlayerPositionFilter.value === 'pitcher') {
@@ -398,15 +406,28 @@ const filteredAvailablePlayers = computed(() => {
 const getPlayerCostLabel = (player: Player): string => {
   if (!selectedCostListId.value) return ''
   const costPlayer = player.cost_players.find((cp) => cp.cost_id === selectedCostListId.value)
-  if (!costPlayer) return 'コストデータなし'
+  if (!costPlayer) return t('teamMembers.costDisplayLabels.noData')
 
   const parts: string[] = []
-  if (costPlayer.normal_cost !== null) parts.push(`通常: ${costPlayer.normal_cost}`)
-  if (costPlayer.relief_only_cost !== null) parts.push(`リリーフ: ${costPlayer.relief_only_cost}`)
-  if (costPlayer.pitcher_only_cost !== null) parts.push(`投手専念: ${costPlayer.pitcher_only_cost}`)
-  if (costPlayer.fielder_only_cost !== null) parts.push(`野手専念: ${costPlayer.fielder_only_cost}`)
-  if (costPlayer.two_way_cost !== null) parts.push(`二刀流: ${costPlayer.two_way_cost}`)
-  return parts.length > 0 ? `コスト: ${parts.join(' / ')}` : 'コストデータなし'
+  if (costPlayer.normal_cost !== null)
+    parts.push(`${t('teamMembers.costDisplayLabels.normal_cost')}: ${costPlayer.normal_cost}`)
+  if (costPlayer.relief_only_cost !== null)
+    parts.push(
+      `${t('teamMembers.costDisplayLabels.relief_only_cost')}: ${costPlayer.relief_only_cost}`,
+    )
+  if (costPlayer.pitcher_only_cost !== null)
+    parts.push(
+      `${t('teamMembers.costDisplayLabels.pitcher_only_cost')}: ${costPlayer.pitcher_only_cost}`,
+    )
+  if (costPlayer.fielder_only_cost !== null)
+    parts.push(
+      `${t('teamMembers.costDisplayLabels.fielder_only_cost')}: ${costPlayer.fielder_only_cost}`,
+    )
+  if (costPlayer.two_way_cost !== null)
+    parts.push(`${t('teamMembers.costDisplayLabels.two_way_cost')}: ${costPlayer.two_way_cost}`)
+  return parts.length > 0
+    ? `${t('teamMembers.costDisplayLabels.prefix')}: ${parts.join(' / ')}`
+    : t('teamMembers.costDisplayLabels.noData')
 }
 
 const positionCounts = computed(() => {

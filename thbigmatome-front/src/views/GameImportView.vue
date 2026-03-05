@@ -66,7 +66,9 @@
             ></v-textarea>
             <v-row class="mt-2">
               <v-col>
-                <v-btn color="primary" :loading="loading" @click="analyzeLog">解析する</v-btn>
+                <v-btn color="primary" variant="tonal" :loading="loading" @click="analyzeLog"
+                  >解析する</v-btn
+                >
               </v-col>
             </v-row>
           </v-card-text>
@@ -426,6 +428,7 @@
                   <v-btn variant="outlined" class="mr-2" @click="backToStep1">戻る</v-btn>
                   <v-btn
                     color="primary"
+                    variant="tonal"
                     :loading="loading"
                     :disabled="!canImport"
                     @click="importLog"
@@ -740,7 +743,7 @@ function resetAll() {
 
 <style scoped>
 .parse-summary-card {
-  border-left: 4px solid #1b3a6b;
+  border-left: 4px solid var(--color-visitor);
 }
 
 .game-settings-card {
@@ -753,11 +756,11 @@ function resetAll() {
 }
 
 .team-card__header--home {
-  background: #2c5f2e;
+  background: var(--color-home);
 }
 
 .team-card__header--visitor {
-  background: #1b3a6b;
+  background: var(--color-visitor);
 }
 
 .starter-info {

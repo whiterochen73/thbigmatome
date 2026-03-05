@@ -37,13 +37,19 @@
       </template>
     </v-toolbar>
 
-    <v-tabs v-model="activeTab" class="mt-2">
+    <EmptyState
+      v-if="!season"
+      icon="mdi-calendar-blank-outline"
+      message="シーズンデータが見つかりません"
+    />
+
+    <v-tabs v-if="season" v-model="activeTab" class="mt-2">
       <v-tab value="calendar">{{ t('seasonPortal.tabs.calendar') }}</v-tab>
       <v-tab value="roster">{{ t('seasonPortal.tabs.roster') }}</v-tab>
       <v-tab value="absences">{{ t('seasonPortal.tabs.absences') }}</v-tab>
     </v-tabs>
 
-    <v-tabs-window v-model="activeTab">
+    <v-tabs-window v-if="season" v-model="activeTab">
       <!-- タブ1: カレンダー -->
       <v-tabs-window-item value="calendar">
         <v-row class="mt-2">
@@ -205,6 +211,7 @@ import PlayerAbsenceFormDialog from '@/components/PlayerAbsenceFormDialog.vue'
 import TeamNavigation from '@/components/TeamNavigation.vue'
 import SeasonRosterTab from '@/components/season/SeasonRosterTab.vue'
 import SeasonAbsenceTab from '@/components/season/SeasonAbsenceTab.vue'
+import EmptyState from '@/components/EmptyState.vue'
 import { useTeamSelectionStore } from '@/stores/teamSelection'
 
 const { t } = useI18n()
@@ -501,6 +508,7 @@ onMounted(async () => {
 }
 
 .day-cell {
+  /* X-8: カレンダー罫線はカレンダー専用UI。Vuetifyテーマ変数への移行は複雑なため現状維持 */
   border: 1px solid #ccc;
   padding: 8px;
   min-height: 100px;
@@ -509,6 +517,7 @@ onMounted(async () => {
 
 .day-number {
   font-size: 0.8em;
+  /* X-8: カレンダー日付色はカレンダー専用UI。現状維持 */
   color: #555;
 }
 

@@ -67,7 +67,13 @@
       :initial-opponent-lineup="initialOpponentLineupForDialog"
       @save="handleSaveStartingMembers"
     />
-    <v-table v-if="startingMembers.length > 0" class="batting-record-table mt-6">
+    <EmptyState
+      v-if="startingMembers.length === 0"
+      icon="mdi-account-group-outline"
+      message="スタメンが登録されていません"
+      class="mt-6"
+    />
+    <v-table v-else class="batting-record-table mt-6">
       <thead>
         <tr>
           <th>{{ t('scoreSheet.order') }}</th>
@@ -111,6 +117,7 @@ import type { Player } from '@/types/player'
 import type { Team } from '@/types/team'
 import type { StartingMember } from '@/types/startingMember'
 import StartingMemberDialog from '@/components/StartingMemberDialog.vue'
+import EmptyState from '@/components/EmptyState.vue'
 
 const { t } = useI18n()
 const route = useRoute()
@@ -466,6 +473,7 @@ onMounted(async () => {
 </script>
 
 <style scoped>
+/* X-8: スコアボードの色はスポーツスコア特有のUI表示用途。Vuetifyテーマ変数への移行は現状維持 */
 .scoreboard-table {
   margin-top: 24px;
   border: 1px solid #e0e0e0;

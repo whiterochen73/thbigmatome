@@ -71,7 +71,7 @@
       </v-row>
 
       <!-- 成功通知 -->
-      <v-snackbar v-model="snackbar" :color="snackbarColor" timeout="2000" location="top">
+      <v-snackbar v-model="snackbar" :color="snackbarColor" timeout="3000" location="bottom">
         {{ snackbarMessage }}
       </v-snackbar>
 
@@ -151,7 +151,7 @@
           </v-btn>
           <v-btn
             color="success"
-            variant="elevated"
+            variant="tonal"
             :loading="confirming"
             prepend-icon="mdi-check-circle"
             @click="confirmGameRecord"
@@ -163,9 +163,7 @@
     </template>
 
     <!-- not found -->
-    <v-row v-else-if="!loading">
-      <v-col class="text-center py-8 text-grey"> 試合記録が見つかりません </v-col>
-    </v-row>
+    <EmptyState v-else-if="!loading" icon="mdi-baseball-bat" message="試合記録が見つかりません" />
 
     <!-- 全打席確定ダイアログ -->
     <v-dialog v-model="bulkConfirmDialog" max-width="400">
@@ -180,7 +178,7 @@
           <v-btn variant="text" @click="bulkConfirmDialog = false">キャンセル</v-btn>
           <v-btn
             color="amber-darken-2"
-            variant="elevated"
+            variant="tonal"
             :loading="bulkConfirming"
             @click="bulkMarkReviewed"
           >
@@ -197,6 +195,7 @@ import { ref, computed, onMounted, reactive } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import axios from '@/plugins/axios'
 import AtBatCard from '@/components/AtBatCard.vue'
+import EmptyState from '@/components/EmptyState.vue'
 import type { AtBatRecord } from '@/types/game-record'
 
 interface GameRecord {
@@ -398,12 +397,12 @@ onMounted(async () => {
 }
 
 .top-header {
-  background: #1b3a6b;
+  background: var(--color-visitor);
   color: white;
 }
 
 .bot-header {
-  background: #2c5f2e;
+  background: var(--color-home);
   color: white;
 }
 

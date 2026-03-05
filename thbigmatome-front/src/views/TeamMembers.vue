@@ -40,7 +40,7 @@
     <v-row>
       <v-col cols="12">
         <v-card variant="outlined">
-          <v-card-title class="d-flex justify-space-between">
+          <v-card-title class="d-flex justify-space-between flex-wrap ga-2">
             <span>{{ t('teamMembers.teamMembersTitle') }}</span>
             <div class="text-subtitle-1">
               <span
@@ -58,6 +58,39 @@
             </div>
           </v-card-title>
           <v-card-text>
+            <!-- コスト全体ゲージ -->
+            <div class="mb-3">
+              <div class="d-flex justify-space-between align-center mb-1">
+                <span class="text-body-2 font-weight-medium">チーム全体コスト</span>
+                <span
+                  class="text-body-2 font-weight-bold"
+                  :class="
+                    isCostOverLimit
+                      ? 'text-error'
+                      : costRatio >= 0.85
+                        ? 'text-warning'
+                        : 'text-success'
+                  "
+                >
+                  {{ totalTeamCost }} / {{ TEAM_TOTAL_MAX_COST }}
+                </span>
+              </div>
+              <v-progress-linear
+                :model-value="Math.min(costRatio * 100, 100)"
+                height="12"
+                rounded
+                :color="costGaugeColor"
+                bg-color="grey-lighten-3"
+              />
+              <div class="d-flex justify-space-between mt-1">
+                <span class="text-caption text-disabled">0</span>
+                <span class="text-caption text-disabled">50</span>
+                <span class="text-caption text-disabled">100</span>
+                <span class="text-caption text-disabled">150</span>
+                <span class="text-caption text-disabled">200</span>
+              </div>
+            </div>
+
             <v-alert v-if="isCostOverLimit" type="warning" density="compact" class="mb-2">
               {{
                 t('teamMembers.notifications.costLimitExceeded', {
@@ -66,15 +99,40 @@
                 })
               }}
             </v-alert>
-            <v-chip-group column>
-              <v-chip v-for="(count, position) in positionCounts" :key="position" class="mr-2">
+
+            <!-- ポジション内訳バッジ -->
+            <div class="d-flex flex-wrap ga-2 mb-3">
+              <v-chip
+                v-for="(count, position) in positionCounts"
+                :key="position"
+                size="small"
+                variant="tonal"
+                color="primary"
+              >
                 {{ t(`baseball.positions.${position}`) }}: {{ count }}
               </v-chip>
-            </v-chip-group>
+            </div>
+
+            <!-- フィルタ -->
+            <div class="d-flex flex-wrap ga-2 mb-3 align-center">
+              <span class="text-caption text-medium-emphasis">ポジション:</span>
+              <v-btn
+                v-for="f in positionFilters"
+                :key="f.value"
+                size="x-small"
+                :variant="positionFilter === f.value ? 'elevated' : 'outlined'"
+                :color="positionFilter === f.value ? 'primary' : undefined"
+                rounded
+                @click="positionFilter = f.value"
+              >
+                {{ f.label }}
+              </v-btn>
+            </div>
+
             <!-- eslint-disable vue/valid-v-slot -->
             <v-data-table
               :headers="headers"
-              :items="teamPlayers"
+              :items="filteredTeamPlayers"
               :no-data-text="t('teamMembers.noData')"
               density="compact"
               items-per-page="-1"
@@ -205,7 +263,7 @@ const headers = computed(() => [
   { title: t('teamMembers.headers.bats'), key: 'bats' },
   { title: t('teamMembers.headers.cost'), value: 'cost' },
   {
-    title: t('teamMembers.headers.excluded'),
+    title: 'コスト除外',
     key: 'excluded_from_team_total',
     sortable: false,
     width: '80px',
@@ -233,6 +291,33 @@ const totalTeamCost = computed(() => {
 // コスト上限超過の警告（チーム全体: 200固定）
 const isCostOverLimit = computed(() => {
   return totalTeamCost.value > TEAM_TOTAL_MAX_COST
+})
+
+const costRatio = computed(() => Math.min(totalTeamCost.value / TEAM_TOTAL_MAX_COST, 1))
+
+const costGaugeColor = computed(() => {
+  const r = costRatio.value
+  if (r >= 0.95) return 'error'
+  if (r >= 0.85) return 'warning'
+  return 'success'
+})
+
+// フィルタ
+const positionFilter = ref<'all' | 'pitcher' | 'fielder'>('all')
+const positionFilters = [
+  { value: 'all', label: '全て' },
+  { value: 'pitcher', label: '投手' },
+  { value: 'fielder', label: '野手' },
+] as const
+
+const filteredTeamPlayers = computed(() => {
+  if (positionFilter.value === 'pitcher') {
+    return teamPlayers.value.filter((p) => p.position === 'pitcher')
+  }
+  if (positionFilter.value === 'fielder') {
+    return teamPlayers.value.filter((p) => p.position !== 'pitcher')
+  }
+  return teamPlayers.value
 })
 
 const availablePlayers = computed(() => {

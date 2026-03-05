@@ -7,34 +7,93 @@
       </v-btn>
     </div>
 
-    <v-card variant="outlined">
-      <v-card-text>
-        <v-data-table :headers="headers" :items="playerAbsences" item-key="id" class="elevation-1">
+    <!-- 現在の離脱者 -->
+    <v-card variant="outlined" class="mb-4">
+      <v-card-title class="text-subtitle-1">
+        <v-icon class="mr-2" size="small">mdi-account-off</v-icon>
+        現在の離脱者
+      </v-card-title>
+      <v-card-text class="pa-0">
+        <v-data-table
+          :headers="activeHeaders"
+          :items="activeAbsences"
+          item-key="id"
+          density="compact"
+          hide-default-footer
+          items-per-page="-1"
+          :row-props="getRowProps"
+        >
           <template v-slot:item.start_date="{ item }">
-            {{
-              new Date(item.start_date).toLocaleDateString('ja-JP', {
-                month: 'long',
-                day: 'numeric',
-              })
-            }}
+            {{ formatDate(item.start_date) }}
           </template>
           <template v-slot:item.absence_type="{ item }">
-            {{ t(`enums.player_absence.absence_type.${item.absence_type}`) }}
+            <v-chip
+              :color="getAbsenceColor(item.absence_type)"
+              size="small"
+              variant="tonal"
+              :prepend-icon="getAbsenceIcon(item.absence_type)"
+            >
+              {{ t(`enums.player_absence.absence_type.${item.absence_type}`) }}
+            </v-chip>
           </template>
-          <template v-slot:item.duration_unit="{ item }">
-            {{ t(`enums.player_absence.duration_unit.${item.duration_unit}`) }}
+          <template v-slot:item.remaining="{ item }">
+            <template v-if="getRemainingCount(item) !== null">
+              <v-chip
+                :color="getRemainingCount(item)! <= 2 ? 'green-darken-1' : undefined"
+                :variant="getRemainingCount(item)! <= 2 ? 'tonal' : 'text'"
+                size="small"
+              >
+                {{ getRemainingCount(item)
+                }}{{ t(`enums.player_absence.duration_unit.${item.duration_unit}`) }}
+              </v-chip>
+            </template>
+            <span v-else class="text-caption text-medium-emphasis">未定</span>
           </template>
           <template v-slot:item.actions="{ item }">
-            <v-btn icon size="small" variant="text" class="mr-2" @click="editAbsence(item)">
+            <v-btn icon size="small" variant="text" @click="editAbsence(item)">
               <v-icon size="small">mdi-pencil</v-icon>
             </v-btn>
-            <v-btn icon size="small" variant="text" @click="deleteAbsence(item)">
+            <v-btn icon size="small" variant="text" color="error" @click="deleteAbsence(item)">
               <v-icon size="small">mdi-delete</v-icon>
             </v-btn>
           </template>
         </v-data-table>
       </v-card-text>
     </v-card>
+
+    <!-- 過去の離脱履歴（折りたたみ） -->
+    <v-expansion-panels variant="accordion">
+      <v-expansion-panel>
+        <v-expansion-panel-title>
+          <v-icon class="mr-2" size="small">mdi-history</v-icon>
+          過去の離脱履歴（{{ pastAbsences.length }}件）
+        </v-expansion-panel-title>
+        <v-expansion-panel-text class="pa-0">
+          <v-data-table
+            :headers="pastHeaders"
+            :items="pastAbsences"
+            density="compact"
+            hide-default-footer
+            items-per-page="-1"
+          >
+            <template v-slot:item.start_date="{ item }">
+              {{ formatDate(item.start_date) }}
+            </template>
+            <template v-slot:item.absence_type="{ item }">
+              <v-chip :color="getAbsenceColor(item.absence_type)" size="small" variant="tonal">
+                {{ t(`enums.player_absence.absence_type.${item.absence_type}`) }}
+              </v-chip>
+            </template>
+            <template v-slot:item.effective_end_date="{ item }">
+              {{ item.effective_end_date ? formatDate(item.effective_end_date) : '未定' }}
+            </template>
+            <template v-slot:item.duration="{ item }">
+              {{ item.duration }}{{ t(`enums.player_absence.duration_unit.${item.duration_unit}`) }}
+            </template>
+          </v-data-table>
+        </v-expansion-panel-text>
+      </v-expansion-panel>
+    </v-expansion-panels>
 
     <PlayerAbsenceFormDialog
       v-model="isDialogOpen"
@@ -66,20 +125,93 @@ const playerAbsences = ref<PlayerAbsence[]>([])
 const isDialogOpen = ref(false)
 const selectedAbsence = ref<PlayerAbsence | null>(null)
 
-const headers = computed(() => [
-  { title: t('playerAbsenceHistory.tableHeaders.startDate'), key: 'start_date' },
+const activeHeaders = computed(() => [
   { title: t('playerAbsenceHistory.tableHeaders.playerName'), key: 'player_name' },
   { title: t('playerAbsenceHistory.tableHeaders.absenceType'), key: 'absence_type' },
   { title: t('playerAbsenceHistory.tableHeaders.reason'), key: 'reason' },
-  { title: t('playerAbsenceHistory.tableHeaders.duration'), key: 'duration' },
-  { title: t('playerAbsenceHistory.tableHeaders.durationUnit'), key: 'duration_unit' },
+  { title: t('playerAbsenceHistory.tableHeaders.startDate'), key: 'start_date' },
+  { title: '残り', key: 'remaining', sortable: false },
   { title: t('playerAbsenceHistory.tableHeaders.actions'), key: 'actions', sortable: false },
+])
+
+const pastHeaders = computed(() => [
+  { title: t('playerAbsenceHistory.tableHeaders.playerName'), key: 'player_name' },
+  { title: t('playerAbsenceHistory.tableHeaders.absenceType'), key: 'absence_type' },
+  { title: t('playerAbsenceHistory.tableHeaders.reason'), key: 'reason' },
+  { title: t('playerAbsenceHistory.tableHeaders.startDate'), key: 'start_date' },
+  { title: '復帰日', key: 'effective_end_date' },
+  { title: '期間', key: 'duration' },
 ])
 
 const initialStartDateForDialog = computed(() => {
   if (!season.value) return new Date().toISOString().split('T')[0]
   return new Date(season.value?.current_date).toISOString().split('T')[0]
 })
+
+const currentSeasonDate = computed(() => {
+  return season.value?.current_date ? new Date(season.value.current_date) : new Date()
+})
+
+const activeAbsences = computed(() => {
+  const now = currentSeasonDate.value
+  return playerAbsences.value.filter((a) => {
+    if (!a.effective_end_date) return true
+    return new Date(a.effective_end_date) >= now
+  })
+})
+
+const pastAbsences = computed(() => {
+  const now = currentSeasonDate.value
+  return playerAbsences.value.filter((a) => {
+    if (!a.effective_end_date) return false
+    return new Date(a.effective_end_date) < now
+  })
+})
+
+const getRemainingCount = (absence: PlayerAbsence): number | null => {
+  if (!absence.effective_end_date) return null
+  const endDate = new Date(absence.effective_end_date)
+  const diffMs = endDate.getTime() - currentSeasonDate.value.getTime()
+  return Math.max(0, Math.ceil(diffMs / (1000 * 60 * 60 * 24)))
+}
+
+const getRowProps = ({ item }: { item: PlayerAbsence }) => {
+  const remaining = getRemainingCount(item)
+  if (remaining !== null && remaining <= 2) {
+    return { class: 'bg-green-lighten-4' }
+  }
+  return {}
+}
+
+const getAbsenceColor = (type: string) => {
+  switch (type) {
+    case 'injury':
+      return 'red'
+    case 'suspension':
+      return 'orange'
+    case 'reconditioning':
+      return 'blue-grey'
+    default:
+      return 'grey'
+  }
+}
+
+const getAbsenceIcon = (type: string) => {
+  switch (type) {
+    case 'injury':
+      return 'mdi-hospital-box'
+    case 'suspension':
+      return 'mdi-gavel'
+    case 'reconditioning':
+      return 'mdi-wrench'
+    default:
+      return 'mdi-alert'
+  }
+}
+
+const formatDate = (dateStr: string) => {
+  return new Date(dateStr).toLocaleDateString('ja-JP', { month: 'long', day: 'numeric' })
+}
 
 const fetchSeason = async () => {
   try {

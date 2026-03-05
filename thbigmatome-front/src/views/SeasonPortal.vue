@@ -660,7 +660,7 @@ const legendItems = [
   { type: 'interleague_game_day', color: 'info' },
   { type: 'playoff_day', color: 'warning' },
   { type: 'travel_day', color: 'secondary' },
-  { type: 'reserve_day', color: 'secondary' },
+  { type: 'reserve_day', color: 'warning' },
   { type: 'no_game_day', color: 'error' },
   { type: 'postponed', color: 'accent' },
   { type: 'no_game', color: 'success' },
@@ -1149,9 +1149,9 @@ onMounted(async () => {
   .entry-btn {
     display: none !important;
   }
+  /* 曜日ヘッダーは非表示（日付一覧モード） */
   .weekday-header {
-    font-size: 0.72rem;
-    padding: 4px 1px;
+    display: none;
   }
   .month-label {
     font-size: 1rem;

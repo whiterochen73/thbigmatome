@@ -1,12 +1,5 @@
 <template>
   <v-container>
-    <TeamNavigation :team-id="teamId" />
-    <v-toolbar color="primary">
-      <template #prepend>
-        <h1 class="text-h5">{{ t('teamMembers.title', { teamName: team.name }) }}</h1>
-      </template>
-    </v-toolbar>
-
     <!-- Player Selection -->
     <v-row class="mb-4">
       <v-col cols="12">
@@ -264,9 +257,7 @@ import { useRoute, useRouter } from 'vue-router'
 import axios from '@/plugins/axios'
 import { useSnackbar } from '@/composables/useSnackbar'
 import type { Player } from '@/types/player'
-import type { Team } from '@/types/team'
 import type { CostList } from '@/types/costList'
-import TeamNavigation from '@/components/TeamNavigation.vue'
 import type { PlayerType } from '@/types/playerType'
 
 type CostType =
@@ -288,7 +279,6 @@ const route = useRoute()
 const router = useRouter()
 const { showSnackbar } = useSnackbar()
 
-const team = ref<Partial<Team>>({})
 const allPlayers = ref<Player[]>([])
 const teamPlayers = ref<TeamPlayer[]>([])
 const selectedCost = ref<CostList | null>(null)
@@ -435,16 +425,6 @@ const positionCounts = computed(() => {
 })
 
 // --- API Calls ---
-const fetchTeam = async () => {
-  try {
-    const response = await axios.get<Team>(`/teams/${teamId.value}`)
-    team.value = response.data
-  } catch (error) {
-    showSnackbar(t('teamMembers.notifications.fetchTeamFailed'), 'error')
-    console.error('Failed to fetch team:', error)
-  }
-}
-
 const fetchAllPlayers = async () => {
   try {
     const response = await axios.get<Player[]>('/team_registration_players')
@@ -650,7 +630,6 @@ const goBack = () => {
 }
 
 onMounted(async () => {
-  await fetchTeam()
   // コスト表を自動選択（選択UIなし: 現在日時に対応するコスト表 or 最初の1件）
   try {
     const response = await axios.get<CostList[]>('/costs')

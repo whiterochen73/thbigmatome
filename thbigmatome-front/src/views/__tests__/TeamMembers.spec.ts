@@ -220,13 +220,6 @@ describe('TeamMembers.vue', () => {
     expect(wrapper.text()).toContain('チームメンバー')
   })
 
-  it('チーム名がタイトルに表示される', async () => {
-    const wrapper = await mountTeamMembers()
-
-    // Team name fetched from API should be in the title
-    expect(wrapper.text()).toContain('紅魔館')
-  })
-
   it('選手がいない場合にnoDataメッセージが表示される', async () => {
     const wrapper = await mountTeamMembers([])
 

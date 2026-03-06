@@ -1040,5 +1040,46 @@
     "gameResult": "試合結果入力",
     "scoreSheet": "スコアシート",
     "playerAbsenceHistory": "離脱者履歴"
+  },
+  "squadTextSettings": {
+    "title": "スカッドテキスト書式設定",
+    "positionFormat": "ポジション表記",
+    "positionFormatEnglish": "英語略称（RF, 3B）",
+    "positionFormatJapanese": "漢字略称（右, 三）",
+    "handednessFormat": "投打表記",
+    "handednessFormatAlphabet": "アルファベット（RR, LL）",
+    "handednessFormatKanji": "漢字（右右, 左左）",
+    "dateFormat": "登板履歴日付",
+    "dateFormatAbsolute": "絶対日付（MM/DD）",
+    "dateFormatRelative": "相対日付（N日前）",
+    "sectionHeaderFormat": "セクションヘッダー",
+    "sectionHeaderFormatBracket": "括弧付き（＜控え野手＞）",
+    "sectionHeaderFormatNone": "無印（控え野手）",
+    "showNumberPrefix": "背番号接頭辞",
+    "show": "表示する",
+    "hide": "表示しない",
+    "battingStatsItems": "打者成績項目",
+    "pitchingStatsItems": "投手成績項目",
+    "battingStats": {
+      "avg": "打率",
+      "hr": "本塁打",
+      "rbi": "打点",
+      "sb": "盗塁",
+      "obp": "出塁率",
+      "ops": "OPS"
+    },
+    "pitchingStats": {
+      "w_l": "勝敗",
+      "games": "登板数",
+      "era": "防御率",
+      "so": "奪三振",
+      "ip": "投球回",
+      "hold": "ホールド",
+      "save": "セーブ"
+    },
+    "save": "保存",
+    "saved": "保存しました",
+    "saveError": "保存に失敗しました",
+    "loadError": "設定の読み込みに失敗しました"
   }
 }

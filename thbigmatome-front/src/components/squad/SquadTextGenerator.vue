@@ -182,9 +182,11 @@ function patternLabel(dhEnabled: boolean, hand: 'left' | 'right') {
 
 async function fetchRosterData() {
   try {
-    const res = await axios.get<RosterPlayer[]>(`/teams/${props.teamId}/roster`)
-    firstSquadMembers.value = res.data.filter((p) => p.squad === 'first' && !p.is_absent)
-    absentPlayers.value = res.data.filter((p) => p.is_absent)
+    const res = await axios.get<{ roster: RosterPlayer[] }>(`/teams/${props.teamId}/roster`)
+    firstSquadMembers.value = (res.data.roster || []).filter(
+      (p: RosterPlayer) => p.squad === 'first' && !p.is_absent,
+    )
+    absentPlayers.value = (res.data.roster || []).filter((p: RosterPlayer) => p.is_absent)
   } catch (e) {
     console.error('Failed to fetch roster:', e)
   }

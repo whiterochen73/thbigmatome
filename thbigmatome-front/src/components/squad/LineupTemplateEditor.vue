@@ -273,8 +273,8 @@ async function fetchTemplates() {
 
 async function fetchFirstSquad() {
   try {
-    const res = await axios.get<RosterPlayer[]>(`/teams/${props.teamId}/roster`)
-    firstSquad.value = res.data.filter((p) => p.squad === 'first')
+    const res = await axios.get<{ roster: RosterPlayer[] }>(`/teams/${props.teamId}/roster`)
+    firstSquad.value = (res.data.roster || []).filter((p: RosterPlayer) => p.squad === 'first')
   } catch (e) {
     console.error('Failed to fetch roster:', e)
   }

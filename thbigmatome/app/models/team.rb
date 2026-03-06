@@ -18,6 +18,10 @@ class Team < ApplicationRecord
   has_many :pitcher_game_states, dependent: :destroy
   has_many :imported_stats, dependent: :destroy
 
+  has_many :lineup_templates, dependent: :destroy
+  has_one :squad_text_setting, dependent: :destroy
+  has_one :game_lineup, dependent: :destroy
+
   has_many :team_managers, dependent: :destroy
   has_one :director_team_manager, -> { where(role: :director) }, class_name: "TeamManager", dependent: :destroy
   has_one :director, through: :director_team_manager, source: :manager

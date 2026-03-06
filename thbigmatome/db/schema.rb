@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_03_03_150521) do
+ActiveRecord::Schema[8.1].define(version: 2026_03_07_001003) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -248,6 +248,14 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_03_150521) do
     t.index [ "player_card_id" ], name: "index_game_lineup_entries_on_player_card_id"
   end
 
+  create_table "game_lineups", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.jsonb "lineup_data", default: {}, null: false
+    t.bigint "team_id", null: false
+    t.datetime "updated_at", null: false
+    t.index [ "team_id" ], name: "index_game_lineups_on_team_id", unique: true
+  end
+
   create_table "game_records", force: :cascade do |t|
     t.jsonb "batting_stats"
     t.datetime "confirmed_at"
@@ -367,6 +375,28 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_03_150521) do
     t.integer "num_games", default: 30, null: false
     t.integer "num_teams", default: 6, null: false
     t.datetime "updated_at", null: false
+  end
+
+  create_table "lineup_template_entries", force: :cascade do |t|
+    t.integer "batting_order", null: false
+    t.datetime "created_at", null: false
+    t.bigint "lineup_template_id", null: false
+    t.bigint "player_id", null: false
+    t.string "position", null: false
+    t.datetime "updated_at", null: false
+    t.index [ "lineup_template_id", "batting_order" ], name: "index_lineup_template_entries_on_template_and_order", unique: true
+    t.index [ "lineup_template_id" ], name: "index_lineup_template_entries_on_lineup_template_id"
+    t.index [ "player_id" ], name: "index_lineup_template_entries_on_player_id"
+  end
+
+  create_table "lineup_templates", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.boolean "dh_enabled", null: false
+    t.string "opponent_pitcher_hand", null: false
+    t.bigint "team_id", null: false
+    t.datetime "updated_at", null: false
+    t.index [ "team_id", "dh_enabled", "opponent_pitcher_hand" ], name: "index_lineup_templates_uniqueness", unique: true
+    t.index [ "team_id" ], name: "index_lineup_templates_on_team_id"
   end
 
   create_table "managers", force: :cascade do |t|
@@ -703,6 +733,20 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_03_150521) do
     t.index [ "team_id" ], name: "index_seasons_on_team_id"
   end
 
+  create_table "squad_text_settings", force: :cascade do |t|
+    t.jsonb "batting_stats_config", default: {}
+    t.datetime "created_at", null: false
+    t.string "date_format", default: "absolute"
+    t.string "handedness_format", default: "alphabet"
+    t.jsonb "pitching_stats_config", default: {}
+    t.string "position_format", default: "english"
+    t.string "section_header_format", default: "bracket"
+    t.boolean "show_number_prefix", default: true
+    t.bigint "team_id", null: false
+    t.datetime "updated_at", null: false
+    t.index [ "team_id" ], name: "index_squad_text_settings_on_team_id", unique: true
+  end
+
   create_table "stadiums", force: :cascade do |t|
     t.string "code", null: false
     t.datetime "created_at", null: false
@@ -790,6 +834,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_03_150521) do
   add_foreign_key "cost_players", "costs"
   add_foreign_key "cost_players", "players"
   add_foreign_key "game_events", "games"
+  add_foreign_key "game_lineups", "teams"
   add_foreign_key "game_records", "games", on_delete: :nullify
   add_foreign_key "game_records", "teams"
   add_foreign_key "games", "competitions"
@@ -807,6 +852,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_03_150521) do
   add_foreign_key "league_pool_players", "league_seasons"
   add_foreign_key "league_pool_players", "players"
   add_foreign_key "league_seasons", "leagues"
+  add_foreign_key "lineup_template_entries", "lineup_templates"
+  add_foreign_key "lineup_template_entries", "players"
+  add_foreign_key "lineup_templates", "teams"
   add_foreign_key "pitcher_game_states", "competitions"
   add_foreign_key "pitcher_game_states", "games"
   add_foreign_key "pitcher_game_states", "players", column: "pitcher_id"
@@ -854,6 +902,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_03_150521) do
   add_foreign_key "season_schedules", "teams", column: "opponent_team_id"
   add_foreign_key "seasons", "team_memberships", column: "key_player_id"
   add_foreign_key "seasons", "teams"
+  add_foreign_key "squad_text_settings", "teams"
   add_foreign_key "team_managers", "managers"
   add_foreign_key "team_managers", "teams"
   add_foreign_key "team_memberships", "players"

@@ -372,7 +372,24 @@
       <!-- タブ5: オーダー -->
       <v-tabs-window-item value="lineup">
         <div class="mt-2">
-          <LineupTemplateEditor :team-id="teamId" />
+          <v-tabs v-model="lineupSubTab" color="primary" density="compact" class="mb-2">
+            <v-tab value="template">
+              <v-icon start size="small">mdi-pencil</v-icon>
+              テンプレート編集
+            </v-tab>
+            <v-tab value="generate">
+              <v-icon start size="small">mdi-text-box-edit</v-icon>
+              テキスト生成
+            </v-tab>
+          </v-tabs>
+          <v-tabs-window v-model="lineupSubTab">
+            <v-tabs-window-item value="template">
+              <LineupTemplateEditor :team-id="teamId" />
+            </v-tabs-window-item>
+            <v-tabs-window-item value="generate">
+              <SquadTextGenerator :team-id="teamId" />
+            </v-tabs-window-item>
+          </v-tabs-window>
         </div>
       </v-tabs-window-item>
     </v-tabs-window>
@@ -482,6 +499,7 @@ import SeasonAbsenceTab from '@/components/season/SeasonAbsenceTab.vue'
 import EmptyState from '@/components/EmptyState.vue'
 import TeamMembers from '@/views/TeamMembers.vue'
 import LineupTemplateEditor from '@/components/squad/LineupTemplateEditor.vue'
+import SquadTextGenerator from '@/components/squad/SquadTextGenerator.vue'
 import { useTeamSelectionStore } from '@/stores/teamSelection'
 
 const { t } = useI18n()
@@ -495,6 +513,9 @@ const teamId = parseInt(<string>route.params.teamId, 10)
 
 // タブ状態をURLクエリパラメータで管理
 const activeTab = ref((route.query.tab as string) || 'calendar')
+
+// オーダータブのサブタブ
+const lineupSubTab = ref('template')
 
 watch(activeTab, (newTab) => {
   if (newTab === 'stats') {

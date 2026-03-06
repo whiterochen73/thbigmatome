@@ -41,6 +41,10 @@
         <v-icon start>mdi-account-cog</v-icon>
         {{ t('seasonPortal.tabs.members') }}
       </v-tab>
+      <v-tab value="lineup">
+        <v-icon start>mdi-format-list-numbered</v-icon>
+        {{ t('seasonPortal.tabs.lineup') }}
+      </v-tab>
       <v-tab value="stats">
         <v-icon start>mdi-chart-bar</v-icon>
         {{ t('seasonPortal.tabs.stats') }}
@@ -364,6 +368,13 @@
           <TeamMembers />
         </div>
       </v-tabs-window-item>
+
+      <!-- タブ5: オーダー -->
+      <v-tabs-window-item value="lineup">
+        <div class="mt-2">
+          <LineupTemplateEditor :team-id="teamId" />
+        </div>
+      </v-tabs-window-item>
     </v-tabs-window>
   </v-container>
 
@@ -470,6 +481,7 @@ import SeasonRosterTab from '@/components/season/SeasonRosterTab.vue'
 import SeasonAbsenceTab from '@/components/season/SeasonAbsenceTab.vue'
 import EmptyState from '@/components/EmptyState.vue'
 import TeamMembers from '@/views/TeamMembers.vue'
+import LineupTemplateEditor from '@/components/squad/LineupTemplateEditor.vue'
 import { useTeamSelectionStore } from '@/stores/teamSelection'
 
 const { t } = useI18n()

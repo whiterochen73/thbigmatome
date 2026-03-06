@@ -53,13 +53,62 @@
     "goToStats": "成績集計",
     "absenceInfo": "離脱者情報",
     "noAbsenceInfo": "離脱者情報はありません。",
+    "noSeasonData": "シーズンデータが見つかりません",
+    "announcedStarterPrefix": "先発",
+    "viewLabel": "表示",
+    "viewAll": "全日程",
+    "viewGameOnly": "試合日のみ",
+    "legendWin": "勝",
+    "legendLose": "負",
+    "legendDraw": "分",
+    "noSchedule": "スケジュールなし",
+    "tableHeaders": {
+      "date": "日付",
+      "dow": "曜日",
+      "type": "種別",
+      "opponent": "対戦相手",
+      "starter": "先発投手",
+      "score": "スコア",
+      "result": "勝敗"
+    },
+    "detailDialog": {
+      "type": "種別",
+      "opponent": "対戦相手",
+      "score": "スコア",
+      "result": "結果",
+      "starter": "先発投手",
+      "win": "勝ち",
+      "lose": "負け",
+      "draw": "引分"
+    },
     "tabs": {
       "calendar": "カレンダー",
       "roster": "ロスター",
       "absences": "離脱者",
       "members": "チーム編成",
+      "lineup": "オーダー",
       "stats": "成績集計"
     }
+  },
+  "lineupTemplate": {
+    "title": "打順テンプレート",
+    "patterns": {
+      "dhRight": "DH有・対右",
+      "dhLeft": "DH有・対左",
+      "noDhRight": "DH無・対右",
+      "noDhLeft": "DH無・対左"
+    },
+    "battingOrder": "打順",
+    "position": "ポジション",
+    "player": "選手",
+    "save": "保存",
+    "delete": "削除",
+    "saved": "テンプレートを保存しました",
+    "deleted": "テンプレートを削除しました",
+    "saveError": "保存に失敗しました",
+    "deleteError": "削除に失敗しました",
+    "noFirstSquad": "1軍メンバーが登録されていません",
+    "confirmDelete": "このテンプレートを削除しますか？"
   },
   "playerAbsenceHistory": {
     "title": "離脱者履歴",
@@ -108,6 +157,7 @@
     "firstSquadCost": "1軍コスト",
     "keyPlayerSelection": "特例選手選択",
     "selectKeyPlayer": "特例選手を選択",
+    "selectKeyPlayerHint": "シーズン開始日のみ変更可能",
     "saveKeyPlayer": "特例選手を保存",
     "keyPlayerRestriction": "特例選手はシーズン開始日にのみ設定可能です。",
     "keyPlayerLocked": "特例選手（抹消不可）",
@@ -651,6 +701,24 @@
     "selectPlayer": "選手を選択して追加",
     "addPlayer": "追加",
     "noData": "選手が登録されていません。",
+    "addCandidateLabel": "追加候補",
+    "loadingCostList": "コスト一覧表を読み込み中...",
+    "noMatchingPlayers": "該当する選手がいません",
+    "totalCostLabel": "チーム全体コスト",
+    "positionFilterLabel": "ポジション",
+    "positionAll": "全て",
+    "positionPitcher": "投手",
+    "positionFielder": "野手",
+    "unknownType": "不明",
+    "costDisplayLabels": {
+      "normal_cost": "通常",
+      "relief_only_cost": "リリーフ",
+      "pitcher_only_cost": "投手専念",
+      "fielder_only_cost": "野手専念",
+      "two_way_cost": "二刀流",
+      "noData": "コストデータなし",
+      "prefix": "コスト"
+    },
     "headers": {
       "number": "背番号",
       "name": "名前",
@@ -661,6 +729,7 @@
       "player_types": "選手タイプ",
       "cost": "コスト",
       "excluded": "除外",
+      "costExcluded": "コスト除外",
       "actions": "操作"
     },
     "teamMembersTitle": "チームメンバー",
@@ -927,6 +996,36 @@
     "activeRoster": "1軍登録",
     "seasonPortal": "シーズン",
     "playerAbsenceHistory": "離脱者履歴"
+  },
+  "seasonRosterTab": {
+    "firstSquadCostLabel": "1軍コスト",
+    "statusHeader": "状態",
+    "outsideWorldShort": "外",
+    "outsideWorldLabel": "外の世界",
+    "specialLabel": "特例",
+    "groups": {
+      "starter": "★ 先発ローテーション",
+      "reliever": "◎ 中継ぎ / クローザー",
+      "fielder": "野手"
+    },
+    "absenceLabel": {
+      "injuryWithDays": "負傷 残{days}",
+      "injury": "負傷",
+      "suspensionWithDays": "停止 残{days}",
+      "suspension": "出場停止",
+      "reconditioning": "再調整"
+    }
+  },
+  "seasonAbsenceTab": {
+    "currentAbsences": "現在の離脱者",
+    "pastAbsences": "過去の離脱履歴（{count}件）",
+    "unknownRemaining": "未定",
+    "unknownEndDate": "未定",
+    "headers": {
+      "remaining": "残り",
+      "returnDate": "復帰日",
+      "duration": "期間"
+    }
   },
   "routes": {
     "dashboard": "ダッシュボード",

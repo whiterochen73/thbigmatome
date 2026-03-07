@@ -113,6 +113,62 @@ RSpec.describe "Api::V1::TeamRosters", type: :request do
       end
     end
 
+    context "pitcher fields (is_starter_pitcher / is_relief_only)" do
+      it "returns is_starter_pitcher=true when pitcher has player_card with starter_stamina >= 4" do
+        player = create(:player, :pitcher)
+        create(:team_membership, team: team, player: player, squad: "first", selected_cost_type: "normal_cost")
+        create(:cost_player, cost: cost, player: player, normal_cost: 5)
+        create(:player_card, player: player, starter_stamina: 5, is_relief_only: false)
+
+        get "/api/v1/teams/#{team.id}/roster", as: :json
+
+        json = response.parsed_body
+        entry = json["roster"].find { |r| r["player_id"] == player.id }
+        expect(entry["is_starter_pitcher"]).to be true
+        expect(entry["is_relief_only"]).to be false
+      end
+
+      it "returns is_starter_pitcher=false when pitcher has no player_card" do
+        player = create(:player, :pitcher)
+        create(:team_membership, team: team, player: player, squad: "first", selected_cost_type: "normal_cost")
+        create(:cost_player, cost: cost, player: player, normal_cost: 5)
+        # no player_card created → player_cards.first == nil
+
+        get "/api/v1/teams/#{team.id}/roster", as: :json
+
+        json = response.parsed_body
+        entry = json["roster"].find { |r| r["player_id"] == player.id }
+        expect(entry["is_starter_pitcher"]).to be false
+      end
+
+      it "returns is_relief_only=true when player_card.is_relief_only is true" do
+        player = create(:player, :pitcher)
+        create(:team_membership, team: team, player: player, squad: "first", selected_cost_type: "normal_cost")
+        create(:cost_player, cost: cost, player: player, normal_cost: 5)
+        create(:player_card, player: player, is_relief_only: true, starter_stamina: nil)
+
+        get "/api/v1/teams/#{team.id}/roster", as: :json
+
+        json = response.parsed_body
+        entry = json["roster"].find { |r| r["player_id"] == player.id }
+        expect(entry["is_relief_only"]).to be true
+        expect(entry["is_starter_pitcher"]).to be false
+      end
+
+      it "returns is_starter_pitcher=false and is_relief_only=false for non-pitcher" do
+        player = create(:player, :fielder)
+        create(:team_membership, team: team, player: player, squad: "first", selected_cost_type: "normal_cost")
+        create(:cost_player, cost: cost, player: player, normal_cost: 5)
+
+        get "/api/v1/teams/#{team.id}/roster", as: :json
+
+        json = response.parsed_body
+        entry = json["roster"].find { |r| r["player_id"] == player.id }
+        expect(entry["is_starter_pitcher"]).to be false
+        expect(entry["is_relief_only"]).to be false
+      end
+    end
+
     context "when team does not exist" do
       it "returns 404" do
         get "/api/v1/teams/999999/roster", as: :json

@@ -24,8 +24,8 @@ function makePlayer(overrides: Partial<RosterPlayer>): RosterPlayer {
     cost: 0,
     selected_cost_type: 'normal',
     position: 'RF',
-    throwing_hand: 'right',
-    batting_hand: 'right',
+    throwing_hand: 'right_throw',
+    batting_hand: 'right_bat',
     player_types: [],
     is_absent: false,
     ...overrides,
@@ -102,8 +102,8 @@ describe('useSquadTextGenerator', () => {
         number: 'F72',
         player_name: '志摩リン',
         position: 'RF',
-        throwing_hand: 'right',
-        batting_hand: 'right',
+        throwing_hand: 'right_throw',
+        batting_hand: 'right_bat',
       })
       store.startingLineup = [{ battingOrder: 1, playerId: 42, position: 'RF' }]
 
@@ -227,8 +227,8 @@ describe('useSquadTextGenerator', () => {
         player_id: 1,
         number: 'F01',
         player_name: '選手C',
-        throwing_hand: 'left',
-        batting_hand: 'right',
+        throwing_hand: 'left_throw',
+        batting_hand: 'right_bat',
       })
       store.startingLineup = [{ battingOrder: 1, playerId: 1, position: 'CF' }]
 
@@ -254,8 +254,8 @@ describe('useSquadTextGenerator', () => {
         number: 'F10',
         player_name: '夢美',
         position: '1B',
-        throwing_hand: 'right',
-        batting_hand: 'left',
+        throwing_hand: 'right_throw',
+        batting_hand: 'left_bat',
       })
       store.benchPlayers = [10]
 
@@ -283,8 +283,8 @@ describe('useSquadTextGenerator', () => {
         player_name: '水着投手',
         position: 'P',
         player_types: ['中継ぎ契約'],
-        throwing_hand: 'right',
-        batting_hand: 'right',
+        throwing_hand: 'right_throw',
+        batting_hand: 'right_bat',
       })
       store.reliefPitcherIds = [20]
 
@@ -303,8 +303,8 @@ describe('useSquadTextGenerator', () => {
         player_name: '先発投手',
         position: 'P',
         player_types: [],
-        throwing_hand: 'right',
-        batting_hand: 'right',
+        throwing_hand: 'right_throw',
+        batting_hand: 'right_bat',
       })
       store.reliefPitcherIds = [21]
 
@@ -324,8 +324,8 @@ describe('useSquadTextGenerator', () => {
         number: 'F30',
         player_name: '先発A',
         position: 'P',
-        throwing_hand: 'right',
-        batting_hand: 'right',
+        throwing_hand: 'right_throw',
+        batting_hand: 'right_bat',
       })
       store.starterBenchPitcherIds = [30]
 
@@ -345,8 +345,8 @@ describe('useSquadTextGenerator', () => {
         number: 'F40',
         player_name: 'オフ野手',
         position: '3B',
-        throwing_hand: 'right',
-        batting_hand: 'right',
+        throwing_hand: 'right_throw',
+        batting_hand: 'right_bat',
       })
       store.offPlayers = [40]
 
@@ -422,6 +422,83 @@ describe('useSquadTextGenerator', () => {
       const today = new Date()
       const year = today.getFullYear()
       expect(headerText.value).toContain(String(year))
+    })
+  })
+
+  describe('init: 投手初期振り分け', () => {
+    it('is_starter_pitcher=trueの投手はstarterBenchPitcherIdsに振り分けられる', async () => {
+      const starterPitcher = makePlayer({
+        player_id: 50,
+        position: 'pitcher',
+        is_starter_pitcher: true,
+      })
+      const reliefPitcher = makePlayer({
+        player_id: 51,
+        position: 'pitcher',
+        is_starter_pitcher: false,
+      })
+
+      const teamId = ref(5)
+      const { init } = useSquadTextGenerator(teamId)
+      await init([starterPitcher, reliefPitcher])
+
+      expect(store.starterBenchPitcherIds).toContain(50)
+      expect(store.reliefPitcherIds).not.toContain(50)
+      expect(store.reliefPitcherIds).toContain(51)
+      expect(store.starterBenchPitcherIds).not.toContain(51)
+    })
+
+    it('position=pitcherでない選手は振り分け対象外', async () => {
+      const hitter = makePlayer({ player_id: 60, position: 'RF' })
+
+      const teamId = ref(5)
+      const { init } = useSquadTextGenerator(teamId)
+      await init([hitter])
+
+      expect(store.reliefPitcherIds).not.toContain(60)
+      expect(store.starterBenchPitcherIds).not.toContain(60)
+    })
+
+    it('既に振り分け済みの場合は初期化しない', async () => {
+      store.reliefPitcherIds = [99]
+      const pitcher = makePlayer({ player_id: 50, position: 'pitcher', is_starter_pitcher: true })
+
+      const teamId = ref(5)
+      const { init } = useSquadTextGenerator(teamId)
+      await init([pitcher])
+
+      // 既存の振り分けは保持される（初期化されない）
+      expect(store.reliefPitcherIds).toContain(99)
+      expect(store.starterBenchPitcherIds).not.toContain(50)
+    })
+  })
+
+  describe('offText: 投手のstatライン判定', () => {
+    it('position=pitcherの選手はpitchingLineを使用する', async () => {
+      vi.mocked(axios.get).mockImplementation((url: string) => {
+        if ((url as string).includes('pitcher_game_states')) {
+          return Promise.resolve({
+            data: [{ player_id: 70, stats: { era: 2.5, so: 30 } }],
+          })
+        }
+        return Promise.reject(new Error('Not found'))
+      })
+
+      const pitcher = makePlayer({
+        player_id: 70,
+        number: 'F70',
+        player_name: '投手テスト',
+        position: 'pitcher',
+        throwing_hand: 'right_throw',
+        batting_hand: 'right_bat',
+      })
+      store.offPlayers = [70]
+
+      const teamId = ref(5)
+      const { offText, init } = useSquadTextGenerator(teamId)
+      await init([pitcher])
+
+      expect(offText.value).toContain('F70 投手テスト')
     })
   })
 

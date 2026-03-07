@@ -380,15 +380,20 @@ async function copyAndSave() {
 
 async function fetchRosterData() {
   try {
-    const res = await axios.get<{ roster: RosterPlayer[]; season_id?: number }>(
-      `/teams/${props.teamId}/roster`,
-    )
+    const res = await axios.get<{
+      roster: RosterPlayer[]
+      season_id?: number
+      previous_game_date?: string | null
+    }>(`/teams/${props.teamId}/roster`)
     firstSquadMembers.value = (res.data.roster || []).filter(
       (p: RosterPlayer) => p.squad === 'first' && !p.is_absent,
     )
     absentPlayers.value = (res.data.roster || []).filter((p: RosterPlayer) => p.is_absent)
     if (res.data.season_id) {
       currentSeasonId.value = res.data.season_id
+    }
+    if (res.data.previous_game_date) {
+      sinceDate.value = res.data.previous_game_date
     }
   } catch (e) {
     console.error('Failed to fetch roster:', e)

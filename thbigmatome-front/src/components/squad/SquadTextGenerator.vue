@@ -61,81 +61,181 @@
         </v-expand-transition>
       </template>
 
-      <!-- 読み込み済み: バリデーション警告 + 打順リスト -->
+      <!-- 読み込み済み: 2カラムレイアウト -->
       <template v-else>
-        <!-- バリデーション警告 -->
-        <v-alert
-          v-if="hasValidationWarnings"
-          type="warning"
-          variant="tonal"
-          density="compact"
-          class="mb-4"
-          icon="mdi-alert"
-        >
-          使用できない選手が含まれています。確認して差し替えてください。
-        </v-alert>
+        <v-row>
+          <!-- 左カラム: 打順・ベンチ振り分け -->
+          <v-col cols="12" lg="6">
+            <!-- バリデーション警告 -->
+            <v-alert
+              v-if="hasValidationWarnings"
+              type="warning"
+              variant="tonal"
+              density="compact"
+              class="mb-4"
+              icon="mdi-alert"
+            >
+              使用できない選手が含まれています。確認して差し替えてください。
+            </v-alert>
 
-        <!-- 打順リスト -->
-        <div class="lineup-table-wrapper mb-4">
-          <table class="lineup-table">
-            <thead>
-              <tr>
-                <th class="order-col">打順</th>
-                <th class="pos-col">ポジション</th>
-                <th class="player-col">選手</th>
-                <th class="status-col"></th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr
-                v-for="entry in store.startingLineup"
-                :key="entry.battingOrder"
-                :class="{ 'row-warning': getValidationStatus(entry.battingOrder) !== 'ok' }"
+            <!-- 打順リスト -->
+            <div class="lineup-table-wrapper mb-4">
+              <table class="lineup-table">
+                <thead>
+                  <tr>
+                    <th class="order-col">打順</th>
+                    <th class="pos-col">ポジション</th>
+                    <th class="player-col">選手</th>
+                    <th class="status-col"></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr
+                    v-for="entry in store.startingLineup"
+                    :key="entry.battingOrder"
+                    :class="{ 'row-warning': getValidationStatus(entry.battingOrder) !== 'ok' }"
+                  >
+                    <td class="order-col text-center font-weight-bold">{{ entry.battingOrder }}</td>
+                    <td class="pos-col">{{ entry.position }}</td>
+                    <td class="player-col">
+                      <span>{{ entry.playerName || `#${entry.playerId}` }}</span>
+                      <span v-if="entry.playerNumber" class="text-caption text-medium-emphasis ml-1"
+                        >({{ entry.playerNumber }})</span
+                      >
+                    </td>
+                    <td class="status-col">
+                      <v-chip
+                        v-if="getValidationStatus(entry.battingOrder) !== 'ok'"
+                        size="x-small"
+                        color="warning"
+                        variant="tonal"
+                      >
+                        {{ getValidationReason(entry.battingOrder) }}
+                      </v-chip>
+                      <v-icon v-else size="small" color="success">mdi-check-circle</v-icon>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <!-- ベンチ振り分け -->
+            <div class="mb-4">
+              <div class="text-subtitle-1 font-weight-medium mb-3">ベンチ振り分け</div>
+
+              <!-- 野手 -->
+              <div v-if="nonStarterHitters.length > 0" class="mb-4">
+                <div class="text-subtitle-2 text-medium-emphasis mb-2">野手</div>
+                <div
+                  v-for="p in nonStarterHitters"
+                  :key="p.player_id"
+                  class="d-flex align-center ga-2 mb-2 flex-wrap"
+                >
+                  <span class="player-label text-body-2"> {{ p.number }} {{ p.player_name }} </span>
+                  <v-btn-toggle
+                    :model-value="getHitterCategory(p.player_id)"
+                    density="compact"
+                    color="primary"
+                    variant="outlined"
+                    @update:model-value="
+                      (v: 'bench' | 'off' | null) => setHitterCategory(p.player_id, v)
+                    "
+                  >
+                    <v-btn value="bench" size="small">ベンチ</v-btn>
+                    <v-btn value="off" size="small">オフ</v-btn>
+                  </v-btn-toggle>
+                </div>
+              </div>
+
+              <!-- 投手 -->
+              <div v-if="nonStarterPitchers.length > 0">
+                <div class="text-subtitle-2 text-medium-emphasis mb-2">投手</div>
+                <div
+                  v-for="p in nonStarterPitchers"
+                  :key="p.player_id"
+                  class="d-flex align-center ga-2 mb-2 flex-wrap"
+                >
+                  <span class="player-label text-body-2"> {{ p.number }} {{ p.player_name }} </span>
+                  <v-btn-toggle
+                    :model-value="getPitcherCategory(p.player_id)"
+                    density="compact"
+                    color="primary"
+                    variant="outlined"
+                    @update:model-value="
+                      (v: 'relief' | 'starter_bench' | 'off' | null) =>
+                        setPitcherCategory(p.player_id, v)
+                    "
+                  >
+                    <v-btn value="relief" size="small">中継ぎ</v-btn>
+                    <v-btn value="starter_bench" size="small">先発ベンチ</v-btn>
+                    <v-btn value="off" size="small">オフ</v-btn>
+                  </v-btn-toggle>
+                </div>
+              </div>
+
+              <div
+                v-if="nonStarterHitters.length === 0 && nonStarterPitchers.length === 0"
+                class="text-body-2 text-medium-emphasis"
               >
-                <td class="order-col text-center font-weight-bold">{{ entry.battingOrder }}</td>
-                <td class="pos-col">{{ entry.position }}</td>
-                <td class="player-col">
-                  <span>{{ entry.playerName || `#${entry.playerId}` }}</span>
-                  <span v-if="entry.playerNumber" class="text-caption text-medium-emphasis ml-1"
-                    >({{ entry.playerNumber }})</span
-                  >
-                </td>
-                <td class="status-col">
-                  <v-chip
-                    v-if="getValidationStatus(entry.battingOrder) !== 'ok'"
-                    size="x-small"
-                    color="warning"
-                    variant="tonal"
-                  >
-                    {{ getValidationReason(entry.battingOrder) }}
-                  </v-chip>
-                  <v-icon v-else size="small" color="success">mdi-check-circle</v-icon>
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
+                スタメン以外の1軍メンバーがいません。
+              </div>
+            </div>
 
-        <!-- リセットボタン -->
-        <v-btn
-          variant="text"
-          color="error"
-          size="small"
-          prepend-icon="mdi-restart"
-          @click="resetAndRestart"
-        >
-          最初からやり直す
-        </v-btn>
+            <!-- リセットボタン -->
+            <v-btn
+              variant="text"
+              color="error"
+              size="small"
+              prepend-icon="mdi-restart"
+              @click="resetAndRestart"
+            >
+              最初からやり直す
+            </v-btn>
+          </v-col>
+
+          <!-- 右カラム: プレビュー -->
+          <v-col cols="12" lg="6">
+            <div class="text-subtitle-2 font-weight-medium mb-2">プレビュー</div>
+            <v-progress-circular
+              v-if="generatorLoading"
+              indeterminate
+              color="primary"
+              size="24"
+              class="mb-2"
+            />
+            <pre v-else class="preview-text">{{ generatedText }}</pre>
+
+            <div class="d-flex align-center ga-2 mt-3">
+              <v-btn
+                color="primary"
+                variant="elevated"
+                prepend-icon="mdi-content-copy"
+                :loading="copying"
+                :disabled="!generatedText"
+                @click="copyAndSave"
+              >
+                コピー
+              </v-btn>
+              <span v-if="copySuccess" class="text-success text-caption"> コピーしました </span>
+            </div>
+          </v-col>
+        </v-row>
       </template>
     </v-card-text>
+
+    <!-- Snackbar: 保存エラー -->
+    <v-snackbar v-model="saveError" color="error" timeout="4000">
+      自動保存に失敗しました
+    </v-snackbar>
   </v-card>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, toRef } from 'vue'
+import { ref, computed, onMounted, toRef, watch } from 'vue'
 import axios from 'axios'
 import { useSquadTextStore } from '@/stores/squadText'
 import { useLineupTemplate } from '@/composables/useLineupTemplate'
+import { useSquadTextGenerator } from '@/composables/useSquadTextGenerator'
 import type { RosterPlayer } from '@/types/rosterPlayer'
 
 const props = defineProps<{
@@ -146,12 +246,22 @@ const store = useSquadTextStore()
 const teamIdRef = toRef(props, 'teamId')
 const { loadFromTemplate, loadFromPrevious } = useLineupTemplate(teamIdRef)
 
+const {
+  loading: generatorLoading,
+  generatedText,
+  init: initGenerator,
+  saveAsGameLineup,
+} = useSquadTextGenerator(teamIdRef)
+
 const showTemplateSelect = ref(false)
 const selectedTemplateId = ref<number | null>(null)
 const loadingTemplate = ref(false)
 const loadingPrevious = ref(false)
 const hasPrevious = ref(false)
 const previousChecked = ref(false)
+const copying = ref(false)
+const copySuccess = ref(false)
+const saveError = ref(false)
 
 interface TemplateInfo {
   id: number
@@ -160,11 +270,23 @@ interface TemplateInfo {
 }
 const templates = ref<TemplateInfo[]>([])
 
-// 1軍メンバーと離脱者 (SeasonPortalから渡す想定だが、ここで独自取得)
 const firstSquadMembers = ref<RosterPlayer[]>([])
 const absentPlayers = ref<RosterPlayer[]>([])
 
 const hasValidationWarnings = computed(() => store.validationResults.some((r) => r.status !== 'ok'))
+
+// スタメンID
+const starterIds = computed(() => new Set(store.startingLineup.map((e) => e.playerId)))
+
+// スタメン以外の野手
+const nonStarterHitters = computed(() =>
+  firstSquadMembers.value.filter((p) => !starterIds.value.has(p.player_id) && p.position !== 'P'),
+)
+
+// スタメン以外の投手
+const nonStarterPitchers = computed(() =>
+  firstSquadMembers.value.filter((p) => !starterIds.value.has(p.player_id) && p.position === 'P'),
+)
 
 function getValidationStatus(battingOrder: number) {
   return store.validationResults.find((r) => r.battingOrder === battingOrder)?.status ?? 'ok'
@@ -178,6 +300,60 @@ function patternLabel(dhEnabled: boolean, hand: 'left' | 'right') {
   const dh = dhEnabled ? 'DH有' : 'DH無'
   const h = hand === 'right' ? '対右' : '対左'
   return `${dh}・${h}`
+}
+
+// 野手カテゴリ取得
+function getHitterCategory(playerId: number): 'bench' | 'off' | null {
+  if (store.benchPlayers.includes(playerId)) return 'bench'
+  if (store.offPlayers.includes(playerId)) return 'off'
+  return null
+}
+
+// 野手カテゴリ設定
+function setHitterCategory(playerId: number, category: 'bench' | 'off' | null) {
+  store.benchPlayers = store.benchPlayers.filter((id) => id !== playerId)
+  store.offPlayers = store.offPlayers.filter((id) => id !== playerId)
+  if (category === 'bench') store.benchPlayers = [...store.benchPlayers, playerId]
+  else if (category === 'off') store.offPlayers = [...store.offPlayers, playerId]
+}
+
+// 投手カテゴリ取得
+function getPitcherCategory(playerId: number): 'relief' | 'starter_bench' | 'off' | null {
+  if (store.reliefPitcherIds.includes(playerId)) return 'relief'
+  if (store.starterBenchPitcherIds.includes(playerId)) return 'starter_bench'
+  if (store.offPlayers.includes(playerId)) return 'off'
+  return null
+}
+
+// 投手カテゴリ設定
+function setPitcherCategory(playerId: number, category: 'relief' | 'starter_bench' | 'off' | null) {
+  store.reliefPitcherIds = store.reliefPitcherIds.filter((id) => id !== playerId)
+  store.starterBenchPitcherIds = store.starterBenchPitcherIds.filter((id) => id !== playerId)
+  store.offPlayers = store.offPlayers.filter((id) => id !== playerId)
+  if (category === 'relief') store.reliefPitcherIds = [...store.reliefPitcherIds, playerId]
+  else if (category === 'starter_bench')
+    store.starterBenchPitcherIds = [...store.starterBenchPitcherIds, playerId]
+  else if (category === 'off') store.offPlayers = [...store.offPlayers, playerId]
+}
+
+async function copyAndSave() {
+  const text = generatedText.value
+  if (!text) return
+  copying.value = true
+  try {
+    await navigator.clipboard.writeText(text)
+    copySuccess.value = true
+    setTimeout(() => {
+      copySuccess.value = false
+    }, 3000)
+    try {
+      await saveAsGameLineup()
+    } catch {
+      saveError.value = true
+    }
+  } finally {
+    copying.value = false
+  }
 }
 
 async function fetchRosterData() {
@@ -247,8 +423,22 @@ function resetAndRestart() {
   selectedTemplateId.value = null
 }
 
+// modeが設定されたらgeneratorを初期化
+watch(
+  () => store.mode,
+  (newMode) => {
+    if (newMode !== null && firstSquadMembers.value.length > 0) {
+      initGenerator(firstSquadMembers.value)
+    }
+  },
+)
+
 onMounted(async () => {
   await Promise.all([fetchRosterData(), fetchTemplates(), checkPreviousData()])
+  // 既にmodeが設定されている場合（前回データ復元など）も初期化
+  if (store.mode !== null) {
+    await initGenerator(firstSquadMembers.value)
+  }
 })
 </script>
 
@@ -296,5 +486,25 @@ onMounted(async () => {
 
 .row-warning td {
   background-color: rgba(var(--v-theme-warning), 0.08);
+}
+
+.player-label {
+  min-width: 120px;
+  flex-shrink: 0;
+}
+
+.preview-text {
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 0.8rem;
+  white-space: pre-wrap;
+  word-break: break-all;
+  background-color: rgba(var(--v-theme-surface-variant), 0.4);
+  border: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
+  border-radius: 4px;
+  padding: 12px;
+  min-height: 200px;
+  max-height: 480px;
+  overflow-y: auto;
+  line-height: 1.6;
 }
 </style>

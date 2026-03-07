@@ -181,6 +181,21 @@
               </div>
             </div>
 
+            <!-- 公示日付入力 -->
+            <div class="mb-4">
+              <div class="text-subtitle-2 text-medium-emphasis mb-1">
+                前回試合日（公示検出基準日）
+              </div>
+              <v-text-field
+                v-model="sinceDate"
+                type="date"
+                density="compact"
+                variant="outlined"
+                hide-details
+                style="max-width: 200px"
+              />
+            </div>
+
             <!-- リセットボタン -->
             <v-btn
               variant="text"
@@ -231,7 +246,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, toRef, watch } from 'vue'
+import { ref, computed, onMounted, toRef, watch, watchEffect } from 'vue'
 import axios from 'axios'
 import { useSquadTextStore } from '@/stores/squadText'
 import { useLineupTemplate } from '@/composables/useLineupTemplate'
@@ -251,6 +266,7 @@ const {
   generatedText,
   init: initGenerator,
   saveAsGameLineup,
+  fetchRosterChanges,
 } = useSquadTextGenerator(teamIdRef)
 
 const showTemplateSelect = ref(false)
@@ -262,6 +278,8 @@ const previousChecked = ref(false)
 const copying = ref(false)
 const copySuccess = ref(false)
 const saveError = ref(false)
+const sinceDate = ref('')
+const currentSeasonId = ref<number | null>(null)
 
 interface TemplateInfo {
   id: number
@@ -280,12 +298,16 @@ const starterIds = computed(() => new Set(store.startingLineup.map((e) => e.play
 
 // スタメン以外の野手
 const nonStarterHitters = computed(() =>
-  firstSquadMembers.value.filter((p) => !starterIds.value.has(p.player_id) && p.position !== 'P'),
+  firstSquadMembers.value.filter(
+    (p) => !starterIds.value.has(p.player_id) && p.position !== 'pitcher',
+  ),
 )
 
 // スタメン以外の投手
 const nonStarterPitchers = computed(() =>
-  firstSquadMembers.value.filter((p) => !starterIds.value.has(p.player_id) && p.position === 'P'),
+  firstSquadMembers.value.filter(
+    (p) => !starterIds.value.has(p.player_id) && p.position === 'pitcher',
+  ),
 )
 
 function getValidationStatus(battingOrder: number) {
@@ -358,11 +380,16 @@ async function copyAndSave() {
 
 async function fetchRosterData() {
   try {
-    const res = await axios.get<{ roster: RosterPlayer[] }>(`/teams/${props.teamId}/roster`)
+    const res = await axios.get<{ roster: RosterPlayer[]; season_id?: number }>(
+      `/teams/${props.teamId}/roster`,
+    )
     firstSquadMembers.value = (res.data.roster || []).filter(
       (p: RosterPlayer) => p.squad === 'first' && !p.is_absent,
     )
     absentPlayers.value = (res.data.roster || []).filter((p: RosterPlayer) => p.is_absent)
+    if (res.data.season_id) {
+      currentSeasonId.value = res.data.season_id
+    }
   } catch (e) {
     console.error('Failed to fetch roster:', e)
   }
@@ -432,6 +459,13 @@ watch(
     }
   },
 )
+
+// since日付またはseasonIdが変わったら公示テキストを再取得
+watchEffect(() => {
+  if (sinceDate.value && currentSeasonId.value) {
+    fetchRosterChanges(sinceDate.value, currentSeasonId.value)
+  }
+})
 
 onMounted(async () => {
   await Promise.all([fetchRosterData(), fetchTemplates(), checkPreviousData()])

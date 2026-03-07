@@ -502,6 +502,83 @@ describe('useSquadTextGenerator', () => {
     })
   })
 
+  describe('fetchRosterChanges: 公示テキスト取得', () => {
+    it('changesがある場合rosterChangesTextがセットされる', async () => {
+      vi.mocked(axios.get).mockImplementation((url: string) => {
+        if ((url as string).includes('roster_changes')) {
+          return Promise.resolve({
+            data: {
+              changes: [
+                {
+                  type: 'promote',
+                  player_id: 78,
+                  player_name: 'ユキ',
+                  number: '78',
+                  date: '2025-06-04',
+                },
+              ],
+              text: '登録：78 ユキ',
+            },
+          })
+        }
+        return Promise.reject(new Error('Not found'))
+      })
+
+      const teamId = ref(5)
+      const { rosterChangesText, fetchRosterChanges, init } = useSquadTextGenerator(teamId)
+      await init([])
+      await fetchRosterChanges('2025-06-01', 1)
+      expect(rosterChangesText.value).toBe('登録：78 ユキ')
+    })
+
+    it('changesなしの場合rosterChangesTextが空文字になる', async () => {
+      vi.mocked(axios.get).mockImplementation((url: string) => {
+        if ((url as string).includes('roster_changes')) {
+          return Promise.resolve({ data: { changes: [], text: '' } })
+        }
+        return Promise.reject(new Error('Not found'))
+      })
+
+      const teamId = ref(5)
+      const { rosterChangesText, fetchRosterChanges, init } = useSquadTextGenerator(teamId)
+      await init([])
+      await fetchRosterChanges('2025-06-01', 1)
+      expect(rosterChangesText.value).toBe('')
+    })
+
+    it('APIエラーの場合rosterChangesTextが空文字になる', async () => {
+      vi.mocked(axios.get).mockRejectedValue(new Error('Network Error'))
+
+      const teamId = ref(5)
+      const { rosterChangesText, fetchRosterChanges, init } = useSquadTextGenerator(teamId)
+      await init([])
+      await fetchRosterChanges('2025-06-01', 1)
+      expect(rosterChangesText.value).toBe('')
+    })
+
+    it('rosterChangesTextがgeneratedTextのheaderTextの次に挿入される', async () => {
+      vi.mocked(axios.get).mockImplementation((url: string) => {
+        if ((url as string).includes('roster_changes')) {
+          return Promise.resolve({ data: { changes: [], text: '登録：78 ユキ' } })
+        }
+        return Promise.reject(new Error('Not found'))
+      })
+
+      const player = makePlayer({ player_id: 1, number: 'F01', player_name: 'スタメン' })
+      store.startingLineup = [{ battingOrder: 1, playerId: 1, position: 'RF' }]
+
+      const teamId = ref(5)
+      const { generatedText, fetchRosterChanges, init } = useSquadTextGenerator(teamId)
+      await init([player])
+      await fetchRosterChanges('2025-06-01', 1)
+
+      const lines = generatedText.value.split('\n\n')
+      expect(lines[0]).toContain('/') // headerText (date)
+      expect(lines[1]).toContain('登録：78 ユキ') // rosterChangesText
+      expect(lines[2]).toContain('【スタメン】')
+    })
+  })
+
   describe('saveAsGameLineup: 自動保存', () => {
     it('PUT /game_lineup を正しく呼び出す', async () => {
       vi.mocked(axios.put).mockResolvedValue({ data: {} })

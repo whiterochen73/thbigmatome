@@ -3,6 +3,14 @@ import axios from 'axios'
 import { useSquadTextStore } from '@/stores/squadText'
 import type { RosterPlayer } from '@/types/rosterPlayer'
 
+interface RosterChange {
+  type: 'promote' | 'demote'
+  player_id: number
+  player_name: string
+  number: string
+  date: string
+}
+
 interface ImportedStatRecord {
   player_id: number
   stat_type: 'batting' | 'pitching'
@@ -46,8 +54,20 @@ const POSITION_MAP: Record<string, Record<string, string>> = {
 }
 
 const HANDEDNESS_MAP: Record<string, Record<string, string>> = {
-  alphabet: { right: 'R', left: 'L', switch: 'S' },
-  kanji: { right: '右', left: '左', switch: '両' },
+  alphabet: {
+    right_throw: 'R',
+    left_throw: 'L',
+    right_bat: 'R',
+    left_bat: 'L',
+    switch_hitter: 'S',
+  },
+  kanji: {
+    right_throw: '右',
+    left_throw: '左',
+    right_bat: '右',
+    left_bat: '左',
+    switch_hitter: '両',
+  },
 }
 
 const DEFAULT_SETTINGS: SquadTextSettingData = {
@@ -86,6 +106,7 @@ export function useSquadTextGenerator(teamId: Ref<number>) {
   })
   const rosterPlayers = ref<RosterPlayer[]>([])
   const loading = ref(false)
+  const rosterChangesText = ref<string>('')
 
   function getPlayer(playerId: number): RosterPlayer | undefined {
     return rosterPlayers.value.find((p) => p.player_id === playerId)
@@ -247,7 +268,7 @@ export function useSquadTextGenerator(teamId: Ref<number>) {
         p.player_name,
         formatHand(p.throwing_hand, p.batting_hand),
       ]
-      const statLine = p.position === 'P' ? pitchingLine(id) : battingLine(id)
+      const statLine = p.position === 'pitcher' ? pitchingLine(id) : battingLine(id)
       if (statLine) parts.push(statLine)
       lines.push(parts.join(' '))
     }
@@ -257,6 +278,7 @@ export function useSquadTextGenerator(teamId: Ref<number>) {
   const generatedText = computed(() => {
     return [
       headerText.value,
+      rosterChangesText.value,
       starterText.value,
       benchHitterText.value,
       reliefPitcherText.value,
@@ -314,6 +336,18 @@ export function useSquadTextGenerator(teamId: Ref<number>) {
     }
   }
 
+  async function fetchRosterChanges(sinceDate: string, seasonId: number) {
+    try {
+      const res = await axios.get<{ changes: RosterChange[]; text: string }>(
+        `/teams/${teamId.value}/roster_changes`,
+        { params: { since: sinceDate, season_id: seasonId } },
+      )
+      rosterChangesText.value = res.data.text ?? ''
+    } catch {
+      rosterChangesText.value = ''
+    }
+  }
+
   async function saveAsGameLineup() {
     const lineupData = {
       dh_enabled: store.dhEnabled,
@@ -337,9 +371,24 @@ export function useSquadTextGenerator(teamId: Ref<number>) {
     loading.value = true
     rosterPlayers.value = players
     const allIds = players.map((p) => p.player_id)
-    const pitcherIds = players.filter((p) => p.position === 'P').map((p) => p.player_id)
+    const pitcherIds = players.filter((p) => p.position === 'pitcher').map((p) => p.player_id)
     try {
       await Promise.all([fetchSettings(), fetchStats(allIds), fetchPitcherGameStates(pitcherIds)])
+      // 投手の初期振り分け（未設定時のみ）
+      if (store.reliefPitcherIds.length === 0 && store.starterBenchPitcherIds.length === 0) {
+        const reliefIds: number[] = []
+        const starterBenchIds: number[] = []
+        for (const p of players) {
+          if (p.position !== 'pitcher') continue
+          if (p.is_starter_pitcher) {
+            starterBenchIds.push(p.player_id)
+          } else {
+            reliefIds.push(p.player_id)
+          }
+        }
+        store.reliefPitcherIds = reliefIds
+        store.starterBenchPitcherIds = starterBenchIds
+      }
     } finally {
       loading.value = false
     }
@@ -350,6 +399,7 @@ export function useSquadTextGenerator(teamId: Ref<number>) {
     settings,
     generatedText,
     headerText,
+    rosterChangesText,
     starterText,
     benchHitterText,
     reliefPitcherText,
@@ -358,6 +408,7 @@ export function useSquadTextGenerator(teamId: Ref<number>) {
     fetchStats,
     fetchPitcherGameStates,
     fetchSettings,
+    fetchRosterChanges,
     saveAsGameLineup,
     init,
   }

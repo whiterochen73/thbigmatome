@@ -29,6 +29,7 @@ Rails.application.routes.draw do
         resources :lineup_templates, only: [ :index, :show, :create, :update, :destroy ]
         resource :game_lineup, only: [ :show, :update ]
         resource :squad_text_settings, only: [ :show, :update ]
+        resources :roster_changes, only: [ :index ]
       end
 
       resources :game, only: [ :show, :update ]

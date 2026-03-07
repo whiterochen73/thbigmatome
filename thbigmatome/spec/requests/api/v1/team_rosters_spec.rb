@@ -169,6 +169,41 @@ RSpec.describe "Api::V1::TeamRosters", type: :request do
       end
     end
 
+    context "previous_game_date field" do
+      it "returns the most recent schedule date before current_date" do
+        # season_schedule at 2026-04-01 already exists from outer let!
+        create(:season_schedule, season: season, date: Date.new(2026, 5, 12), date_type: "game_day")
+        create(:season_schedule, season: season, date: Date.new(2026, 5, 20), date_type: "game_day")
+
+        get "/api/v1/teams/#{team.id}/roster", as: :json
+
+        expect(response).to have_http_status(:ok)
+        json = response.parsed_body
+        expect(json["previous_game_date"]).to eq("2026-05-12")
+      end
+
+      it "returns previous_game_date when only older schedules exist" do
+        # season_schedule at 2026-04-01 from outer let! is the only one before current_date
+
+        get "/api/v1/teams/#{team.id}/roster", as: :json
+
+        expect(response).to have_http_status(:ok)
+        json = response.parsed_body
+        expect(json["previous_game_date"]).to eq("2026-04-01")
+      end
+
+      it "returns nil when no schedules exist before current_date" do
+        # Override season with a current_date before any schedule
+        season.update!(current_date: Date.new(2026, 3, 1))
+
+        get "/api/v1/teams/#{team.id}/roster", as: :json
+
+        expect(response).to have_http_status(:ok)
+        json = response.parsed_body
+        expect(json["previous_game_date"]).to be_nil
+      end
+    end
+
     context "when team does not exist" do
       it "returns 404" do
         get "/api/v1/teams/999999/roster", as: :json

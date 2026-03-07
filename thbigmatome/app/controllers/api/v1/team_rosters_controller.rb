@@ -15,7 +15,7 @@ module Api
         target_date = season.current_date
 
         # Fetch all team memberships for the team
-        team_memberships = team.team_memberships.preload(:season_rosters, :player_absences, player: [ :cost_players, :player_types ])
+        team_memberships = team.team_memberships.preload(:season_rosters, :player_absences, player: [ :cost_players, :player_types, :player_cards ])
         start_date = season.season_schedules.minimum(:date)
 
         # Determine current squad for each player based on the latest SeasonRoster entry
@@ -45,15 +45,24 @@ module Api
             cooldown_until: cooldown_info[:cooldown_until],
             same_day_exempt: cooldown_info[:same_day_exempt],
             is_outside_world: tm.player.player_types.any? { |pt| pt.category == "outside_world" },
+            is_starter_pitcher: tm.player.position == "pitcher" && tm.player.player_cards.first&.starter_stamina.present? && tm.player.player_cards.first&.starter_stamina >= 4,
+            is_relief_only: tm.player.position == "pitcher" && (tm.player.player_cards.first&.is_relief_only || false),
             **absence_info_for(tm, target_date)
           }
         end
+
+        previous_game_date = season.season_schedules
+          .where("date < ?", target_date)
+          .order(date: :desc)
+          .limit(1)
+          .pick(:date)
 
         render json: {
           season_id: season.id,
           current_date: target_date,
           season_start_date: start_date, # Assuming season has schedule association
           key_player_id: season.key_player_id,
+          previous_game_date: previous_game_date,
           roster: roster_data
         }, status: :ok
       rescue ActiveRecord::RecordNotFound

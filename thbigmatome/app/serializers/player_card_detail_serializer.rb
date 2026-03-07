@@ -1,5 +1,5 @@
 class PlayerCardDetailSerializer < ActiveModel::Serializer
-  attributes :id, :card_type, :handedness,
+  attributes :id, :card_type,
              :speed, :bunt, :steal_start, :steal_end, :injury_rate,
              :is_pitcher, :is_relief_only, :is_closer,
              :is_switch_hitter, :is_dual_wielder,
@@ -8,6 +8,10 @@ class PlayerCardDetailSerializer < ActiveModel::Serializer
              :abilities, :unique_traits, :injury_traits,
              :batting_table, :pitching_table,
              :card_image_path, :image_url
+
+  attribute :handedness do
+    object.handedness.presence || build_handedness_from_player
+  end
 
   attribute :player do
     { id: object.player.id, name: object.player.name, number: object.player.number }
@@ -65,5 +69,16 @@ class PlayerCardDetailSerializer < ActiveModel::Serializer
     return nil unless object.card_image.attached?
 
     Rails.application.routes.url_helpers.rails_blob_url(object.card_image, host: "localhost:3000")
+  end
+
+  private
+
+  def build_handedness_from_player
+    player = object.player
+    return nil unless player
+
+    throw_val = player.throwing_hand
+    bat_val = player.batting_hand
+    "#{throw_val}/#{bat_val}"
   end
 end

@@ -31,7 +31,12 @@ class Api::V1::PlayerCardsController < Api::V1::BaseController
   def update
     player_card = PlayerCard.find(params[:id])
     if player_card.update(player_card_params)
-      player_card.reload
+      player_card = PlayerCard.includes(
+        { player: :cost_players }, :card_set,
+        :player_card_defenses,
+        { player_card_traits: [ :trait_definition, :condition ] },
+        { player_card_abilities: [ :ability_definition, :condition ] }
+      ).find(player_card.id)
       render json: player_card, serializer: PlayerCardDetailSerializer
     else
       render json: { errors: player_card.errors.full_messages }, status: :unprocessable_content

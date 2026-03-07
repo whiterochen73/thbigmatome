@@ -114,4 +114,30 @@ describe('useSquadTextStore', () => {
     expect(store.reliefPitcherIds).toEqual([101])
     expect(store.starterBenchPitcherIds).toEqual([200])
   })
+
+  it('loadFromPrevious: firstSquadMembersからplayerName/playerNumberが補完される', () => {
+    const store = useSquadTextStore()
+    const player = makePlayer({
+      player_id: 10,
+      player_name: '山田太郎',
+      number: '7',
+      position: '1B',
+    })
+    const lineupData = {
+      starting_lineup: [{ batting_order: 1, player_id: 10, position: '1B' }],
+    }
+    store.loadFromPrevious(lineupData, [player], [])
+    expect(store.startingLineup[0].playerName).toBe('山田太郎')
+    expect(store.startingLineup[0].playerNumber).toBe('7')
+  })
+
+  it('loadFromPrevious: firstSquadMembersにいない選手はplayerName/playerNumberがundefined', () => {
+    const store = useSquadTextStore()
+    const lineupData = {
+      starting_lineup: [{ batting_order: 1, player_id: 99, position: 'RF' }],
+    }
+    store.loadFromPrevious(lineupData, [], [])
+    expect(store.startingLineup[0].playerName).toBeUndefined()
+    expect(store.startingLineup[0].playerNumber).toBeUndefined()
+  })
 })

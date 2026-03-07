@@ -68,11 +68,16 @@ export const useSquadTextStore = defineStore('squadText', () => {
     if (lineupData.opponent_pitcher_hand)
       opponentPitcherHand.value = lineupData.opponent_pitcher_hand
 
-    const entries: LineupEntry[] = (lineupData.starting_lineup ?? []).map((e) => ({
-      battingOrder: e.batting_order,
-      playerId: e.player_id,
-      position: e.position,
-    }))
+    const entries: LineupEntry[] = (lineupData.starting_lineup ?? []).map((e) => {
+      const member = firstSquadMembers.find((m) => m.player_id === e.player_id)
+      return {
+        battingOrder: e.batting_order,
+        playerId: e.player_id,
+        position: e.position,
+        playerName: member?.player_name,
+        playerNumber: member?.number,
+      }
+    })
     startingLineup.value = entries
     benchPlayers.value = lineupData.bench_players ?? []
     offPlayers.value = lineupData.off_players ?? []

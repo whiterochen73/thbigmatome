@@ -4,6 +4,8 @@ ENV['RAILS_ENV'] ||= 'test'
 require_relative '../config/environment'
 # Prevent database truncation if the environment is production
 abort("The Rails environment is running in production mode!") if Rails.env.production?
+# Prevent test suite from running against development DB (RAILS_ENV must be test)
+abort("ERROR: rspec must be run with RAILS_ENV=test. Current: #{Rails.env}") unless Rails.env.test?
 # Uncomment the line below in case you have `--require rails_helper` in the `.rspec` file
 # that will avoid rails generators crashing because migrations haven't been run yet
 # return unless Rails.env.test?

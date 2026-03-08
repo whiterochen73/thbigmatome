@@ -44,6 +44,11 @@ RSpec.configure do |config|
   config.include FactoryBot::Syntax::Methods
 
   config.before(:suite) do
+    # 2026-03-09 subtask_507b: devDB truncation incident調査
+    # 原因: RAILS_ENV=developmentで明示的にrspecを実行したか、ガード追加前の実行と推測。
+    # line 3の ||= はexport済みENVには無効 → 明示的RAILS_ENV=developmentで上書き可能。
+    # line 8のabortガードはこのrails_helper.rbがロードされる前にRAILS_ENVが確定している前提。
+    # 対策: 二重ガード（line 8 + この行）により、どちらかで必ず停止する。
     raise "DatabaseCleaner: RAILS_ENV must be 'test', got '#{Rails.env}'" unless Rails.env.test?
     DatabaseCleaner.clean_with(:truncation)
     DatabaseCleaner.strategy = :transaction

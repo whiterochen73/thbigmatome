@@ -44,6 +44,7 @@ RSpec.configure do |config|
   config.include FactoryBot::Syntax::Methods
 
   config.before(:suite) do
+    raise "DatabaseCleaner: RAILS_ENV must be 'test', got '#{Rails.env}'" unless Rails.env.test?
     DatabaseCleaner.clean_with(:truncation)
     DatabaseCleaner.strategy = :transaction
     # ActionController::API does not inherit allow_forgery_protection from

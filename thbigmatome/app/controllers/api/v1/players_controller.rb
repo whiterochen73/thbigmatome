@@ -37,9 +37,8 @@ class Api::V1::PlayersController < Api::V1::BaseController
 
   def player_params
     params.require(:player).permit(
-      :name, :number, :short_name, :bunt, :steal_start, :steal_end, :speed,
-      :special_throwing_c,
-      :injury_rate
+      :name, :number, :short_name,
+      :special_throwing_c
     )
   end
 end

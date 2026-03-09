@@ -3,11 +3,6 @@ FactoryBot.define do
     sequence(:name) { |n| "選手#{n}" }
     sequence(:short_name) { |n| "P#{n}" }
     sequence(:number) { |n| n.to_s }
-    speed { 3 }
-    bunt { 5 }
-    steal_start { 10 }
-    steal_end { 10 }
-    injury_rate { 3 }
 
     trait :pitcher do
     end

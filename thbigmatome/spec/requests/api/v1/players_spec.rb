@@ -23,8 +23,7 @@ RSpec.describe "Api::V1::PlayersController", type: :request do
     end
 
     it "includes detailed player attributes" do
-      player = create(:player, name: "テスト選手", short_name: "TS", number: "42",
-                       speed: 3, bunt: 5, steal_start: 10, steal_end: 10, injury_rate: 3)
+      player = create(:player, name: "テスト選手", short_name: "TS", number: "42")
 
       get "/api/v1/players", as: :json
 
@@ -33,10 +32,7 @@ RSpec.describe "Api::V1::PlayersController", type: :request do
         "id" => player.id,
         "name" => "テスト選手",
         "short_name" => "TS",
-        "number" => "42",
-        "speed" => 3,
-        "bunt" => 5,
-        "injury_rate" => 3
+        "number" => "42"
       )
     end
   end
@@ -67,8 +63,7 @@ RSpec.describe "Api::V1::PlayersController", type: :request do
     let(:valid_params) do
       {
         player: {
-          name: "新選手", short_name: "NP", number: "99",
-          speed: 3, bunt: 5, steal_start: 10, steal_end: 10, injury_rate: 3
+          name: "新選手", short_name: "NP", number: "99"
         }
       }
     end
@@ -82,7 +77,7 @@ RSpec.describe "Api::V1::PlayersController", type: :request do
     end
 
     it "returns 422 with invalid params" do
-      post "/api/v1/players", params: { player: { name: "不完全" } }, as: :json
+      post "/api/v1/players", params: { player: { name: "" } }, as: :json
 
       expect(response).to have_http_status(:unprocessable_content)
       json = response.parsed_body

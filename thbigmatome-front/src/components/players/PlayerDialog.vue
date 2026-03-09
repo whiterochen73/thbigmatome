@@ -82,11 +82,6 @@ const defaultItem: PlayerDetail = {
   player_type_ids: [],
   biorhythm_ids: [],
   batting_hand: null,
-  bunt: 1,
-  steal_start: 1,
-  steal_end: 1,
-  speed: 1,
-  injury_rate: 1,
   is_pitcher: false,
   is_relief_only: false,
   pitching_style_description: null,
@@ -117,14 +112,7 @@ const title = computed(() =>
 
 const isFormValid = computed(() => {
   const item = editableItem.value
-  return (
-    !!item.name &&
-    item.bunt != null &&
-    item.steal_start != null &&
-    item.steal_end != null &&
-    item.speed != null &&
-    item.injury_rate != null
-  )
+  return !!item.name
 })
 
 const closeDialog = () => {

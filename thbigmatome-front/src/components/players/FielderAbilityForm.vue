@@ -1,57 +1,5 @@
 <template>
   <div>
-    <v-row>
-      <v-col cols="12" sm="2">
-        <v-text-field
-          v-model.number="editableItem.steal_start"
-          :label="t('playerDialog.form.steal_start')"
-          type="number"
-          :rules="[rules.required]"
-          required
-          density="compact"
-        ></v-text-field>
-      </v-col>
-      <v-col cols="12" sm="2">
-        <v-text-field
-          v-model.number="editableItem.steal_end"
-          :label="t('playerDialog.form.steal_end')"
-          type="number"
-          :rules="[rules.required]"
-          required
-          density="compact"
-        ></v-text-field>
-      </v-col>
-      <v-col cols="12" sm="2">
-        <v-text-field
-          v-model.number="editableItem.bunt"
-          :label="t('playerDialog.form.bunt')"
-          type="number"
-          :rules="[rules.required]"
-          required
-          density="compact"
-        ></v-text-field>
-      </v-col>
-      <v-col cols="12" sm="2">
-        <v-text-field
-          v-model.number="editableItem.speed"
-          :label="t('playerDialog.form.speed')"
-          type="number"
-          :rules="[rules.required]"
-          required
-          density="compact"
-        ></v-text-field>
-      </v-col>
-      <v-col cols="12" sm="2">
-        <v-text-field
-          v-model.number="editableItem.injury_rate"
-          :label="t('playerDialog.form.injury_rate')"
-          type="number"
-          :rules="[rules.required]"
-          required
-          density="compact"
-        ></v-text-field>
-      </v-col>
-    </v-row>
     <v-row dense>
       <v-col cols="12" sm="3">
         <v-select
@@ -104,20 +52,20 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted } from 'vue'
 import axios from '@/plugins/axios'
 import { useSnackbar } from '@/composables/useSnackbar'
 import type { BattingStyle } from '@/types/battingStyle'
 import type { BattingSkill } from '@/types/battingSkill'
 import type { Biorhythm } from '@/types/biorhythm'
-import { useI18n } from 'vue-i18n';
+import { useI18n } from 'vue-i18n'
 import type { PlayerDetail } from '@/types/playerDetail'
 
 const editableItem = defineModel<PlayerDetail>({
   type: Object,
   required: true,
-});
-const { t } = useI18n();
+})
+const { t } = useI18n()
 const { showSnackbar } = useSnackbar()
 
 const battingStyles = ref<BattingStyle[]>([])
@@ -125,19 +73,17 @@ const battingSkills = ref<BattingSkill[]>([])
 const biorhythms = ref<Biorhythm[]>([])
 
 const isBiorhythmEnabled = computed(() => {
-  return editableItem.value.batting_skill_ids?.includes(3) ||
-         editableItem.value.pitching_skill_ids?.includes(10);
-});
-
-const rules = {
-  required: (value: string | number) => (value !== null && value !== '') || t('validation.required')
-};
+  return (
+    editableItem.value.batting_skill_ids?.includes(3) ||
+    editableItem.value.pitching_skill_ids?.includes(10)
+  )
+})
 
 const fetchBattingStyles = async () => {
   try {
     const response = await axios.get<BattingStyle[]>('/batting-styles')
     battingStyles.value = response.data
-  } catch (error) {
+  } catch {
     showSnackbar(t('playerDialog.notifications.fetchBattingStylesFailed'), 'error')
   }
 }
@@ -146,7 +92,7 @@ const fetchBattingSkills = async () => {
   try {
     const response = await axios.get<BattingSkill[]>('/batting-skills')
     battingSkills.value = response.data
-  } catch (error) {
+  } catch {
     showSnackbar(t('playerDialog.notifications.fetchBattingSkillsFailed'), 'error')
   }
 }
@@ -155,7 +101,7 @@ const fetchBiorhythms = async () => {
   try {
     const response = await axios.get<Biorhythm[]>('/biorhythms')
     biorhythms.value = response.data
-  } catch (error) {
+  } catch {
     showSnackbar(t('playerDialog.notifications.fetchBiorhythmsFailed'), 'error')
   }
 }
@@ -165,5 +111,4 @@ onMounted(() => {
   fetchBattingSkills()
   fetchBiorhythms()
 })
-
 </script>

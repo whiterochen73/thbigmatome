@@ -61,12 +61,7 @@ namespace :import do
       # Player
       player_name = row["name"]
       player = Player.find_or_create_by!(name: player_name) do |p|
-        p.number      = row["number"].presence || "?"
-        p.speed       = row["speed"].to_i
-        p.bunt        = row["bunt"].to_i
-        p.steal_start = row["steal_start"].to_i
-        p.steal_end   = row["steal_end"].to_i
-        p.injury_rate = row["injury_rate"].to_i
+        p.number = row["number"].presence || "?"
       end
 
       # Derive card_type from is_pitcher (CSV) or card_type column if available

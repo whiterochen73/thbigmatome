@@ -1,5 +1,5 @@
 class Player < ApplicationRecord
-  include BaseballCardValidations
+  validates :name, presence: true
 
   has_many :team_memberships, dependent: :destroy
   has_many :teams, through: :team_memberships

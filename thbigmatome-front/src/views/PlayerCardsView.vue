@@ -117,7 +117,10 @@
             @click="navigateToDetail(card.id)"
           >
             <td>
-              <div class="thumb-box">No<br />IMG</div>
+              <div class="thumb-box">
+                <v-img v-if="card.image_url" :src="card.image_url" width="28" height="40" cover />
+                <template v-else>No<br />IMG</template>
+              </div>
             </td>
             <td class="ctr" style="font-weight: bold">{{ card.player_number }}</td>
             <td style="font-weight: bold">{{ card.player_name }}</td>
@@ -182,6 +185,7 @@ interface PlayerCard {
   injury_rate: number
   primary_position: string | null
   cost?: number | null
+  image_url?: string | null
 }
 
 const router = useRouter()

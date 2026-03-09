@@ -3,7 +3,8 @@
     <v-card class="player-card" @click="emit('click')" :ripple="true" variant="outlined">
       <!-- カード画像 -->
       <div class="card-image-container">
-        <div class="no-image">
+        <v-img v-if="card.image_url" :src="card.image_url" class="card-image" cover />
+        <div v-else class="no-image">
           <v-icon size="large">mdi-card-account-details</v-icon>
         </div>
       </div>

@@ -124,4 +124,5 @@ export interface PlayerCard {
   cost?: number | null
   defenses?: Defense[]
   unique_traits?: string | null
+  image_url?: string | null
 }

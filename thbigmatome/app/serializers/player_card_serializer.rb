@@ -28,4 +28,9 @@ class PlayerCardSerializer < ActiveModel::Serializer
     cp = object.player.cost_players.max_by(&:cost_id)
     cp&.normal_cost
   end
+
+  attribute :image_url do
+    next nil unless object.card_image.attached?
+    Rails.application.routes.url_helpers.rails_blob_url(object.card_image, host: "localhost:3000")
+  end
 end

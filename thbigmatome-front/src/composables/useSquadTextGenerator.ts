@@ -120,7 +120,9 @@ export function useSquadTextGenerator(teamId: Ref<number>) {
     return POSITION_MAP[settings.value.position_format]?.[pos] ?? pos
   }
 
-  function formatHand(throwing: string, batting: string): string {
+  function formatHand(handedness: string | null | undefined): string {
+    if (!handedness) return ''
+    const [throwing, batting] = handedness.split('/')
     const map = HANDEDNESS_MAP[settings.value.handedness_format] ?? HANDEDNESS_MAP.alphabet
     return `${map[throwing] ?? throwing}${map[batting] ?? batting}`
   }
@@ -192,7 +194,7 @@ export function useSquadTextGenerator(teamId: Ref<number>) {
         formatPos(entry.position),
         formatNum(p.number),
         p.player_name,
-        formatHand(p.throwing_hand, p.batting_hand),
+        formatHand(p.handedness),
       ]
       const bLine = battingLine(entry.playerId)
       if (bLine) parts.push(bLine)
@@ -207,11 +209,7 @@ export function useSquadTextGenerator(teamId: Ref<number>) {
     for (const id of store.benchPlayers) {
       const p = getPlayer(id)
       if (!p) continue
-      const parts = [
-        formatNum(p.number),
-        p.player_name,
-        formatHand(p.throwing_hand, p.batting_hand),
-      ]
+      const parts = [formatNum(p.number), p.player_name, formatHand(p.handedness)]
       const bLine = battingLine(id)
       if (bLine) parts.push(bLine)
       lines.push(parts.join(' '))
@@ -227,11 +225,7 @@ export function useSquadTextGenerator(teamId: Ref<number>) {
       if (!p) continue
       const isRelief = p.player_types.some((t) => t.includes('中継'))
       const prefix = isRelief ? '(中継)' : ''
-      const parts = [
-        `${prefix}${formatNum(p.number)}`,
-        p.player_name,
-        formatHand(p.throwing_hand, p.batting_hand),
-      ]
+      const parts = [`${prefix}${formatNum(p.number)}`, p.player_name, formatHand(p.handedness)]
       const pLine = pitchingLine(id)
       if (pLine) parts.push(pLine)
       lines.push(parts.join(' '))
@@ -245,11 +239,7 @@ export function useSquadTextGenerator(teamId: Ref<number>) {
     for (const id of store.starterBenchPitcherIds) {
       const p = getPlayer(id)
       if (!p) continue
-      const parts = [
-        formatNum(p.number),
-        p.player_name,
-        formatHand(p.throwing_hand, p.batting_hand),
-      ]
+      const parts = [formatNum(p.number), p.player_name, formatHand(p.handedness)]
       const pLine = pitchingLine(id)
       if (pLine) parts.push(pLine)
       lines.push(parts.join(' '))
@@ -263,11 +253,7 @@ export function useSquadTextGenerator(teamId: Ref<number>) {
     for (const id of store.offPlayers) {
       const p = getPlayer(id)
       if (!p) continue
-      const parts = [
-        formatNum(p.number),
-        p.player_name,
-        formatHand(p.throwing_hand, p.batting_hand),
-      ]
+      const parts = [formatNum(p.number), p.player_name, formatHand(p.handedness)]
       const statLine = p.position === 'pitcher' ? pitchingLine(id) : battingLine(id)
       if (statLine) parts.push(statLine)
       lines.push(parts.join(' '))

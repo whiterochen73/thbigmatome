@@ -10,7 +10,7 @@ class PlayerCardDetailSerializer < ActiveModel::Serializer
              :image_url
 
   attribute :handedness do
-    object.handedness.presence || build_handedness_from_player
+    object.handedness
   end
 
   attribute :player do
@@ -69,16 +69,5 @@ class PlayerCardDetailSerializer < ActiveModel::Serializer
     return nil unless object.card_image.attached?
 
     Rails.application.routes.url_helpers.rails_blob_url(object.card_image, host: "localhost:3000")
-  end
-
-  private
-
-  def build_handedness_from_player
-    player = object.player
-    return nil unless player
-
-    throw_val = player.throwing_hand
-    bat_val = player.batting_hand
-    "#{throw_val}/#{bat_val}"
   end
 end

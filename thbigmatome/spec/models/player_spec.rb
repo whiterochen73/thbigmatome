@@ -4,24 +4,7 @@ RSpec.describe Player, type: :model do
   describe 'アソシエーション' do
     it { is_expected.to have_many(:team_memberships).dependent(:destroy) }
     it { is_expected.to have_many(:teams).through(:team_memberships) }
-    it { is_expected.to have_many(:player_batting_skills).dependent(:destroy) }
-    it { is_expected.to have_many(:batting_skills).through(:player_batting_skills) }
-    it { is_expected.to belong_to(:pinch_pitching_style).optional }
-    it { is_expected.to have_many(:player_pitching_skills).dependent(:destroy) }
-    it { is_expected.to have_many(:pitching_skills).through(:player_pitching_skills) }
-    it { is_expected.to have_many(:player_player_types).dependent(:destroy) }
-    it { is_expected.to have_many(:player_types).through(:player_player_types) }
-    it { is_expected.to have_many(:player_biorhythms).dependent(:destroy) }
-    it { is_expected.to have_many(:biorhythms).through(:player_biorhythms) }
     it { is_expected.to have_many(:cost_players).dependent(:destroy) }
-    it { is_expected.to have_many(:catchers_players).dependent(:destroy) }
-    it { is_expected.to have_many(:catchers).through(:catchers_players) }
-    it { is_expected.to belong_to(:catcher_pitching_style).optional }
-  end
-
-  describe 'enum' do
-    it { is_expected.to define_enum_for(:throwing_hand).backed_by_column_of_type(:string).with_values(right_throw: "right_throw", left_throw: "left_throw") }
-    it { is_expected.to define_enum_for(:batting_hand).backed_by_column_of_type(:string).with_values(right_bat: "right_bat", left_bat: "left_bat", switch_hitter: "switch_hitter") }
   end
 
   describe 'バリデーション' do

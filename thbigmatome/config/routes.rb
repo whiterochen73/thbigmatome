@@ -62,9 +62,7 @@ Rails.application.routes.draw do
       resources :card_sets, only: [ :index, :show ]
       resources :player_types, path: "player-types", only: [ :index, :create, :update, :destroy ]
       resources :pitching_styles, path: "pitching-styles", only: [ :index, :create, :update, :destroy ]
-      resources :pitching_skills, path: "pitching-skills", only: [ :index, :create, :update, :destroy ]
       resources :batting_styles, path: "batting-styles", only: [ :index, :create, :update, :destroy ]
-      resources :batting_skills, path: "batting-skills", only: [ :index, :create, :update, :destroy ]
       resources :biorhythms, only: [ :index, :create, :update, :destroy ]
       resources :costs, only: [ :index, :show, :create, :update, :destroy ] do
         post :duplicate, on: :member
@@ -115,23 +113,6 @@ Rails.application.routes.draw do
       resources :users, only: [ :index, :create ] do
         member do
           patch :reset_password
-        end
-      end
-
-      namespace :commissioner do
-        resources :leagues do
-          resources :league_memberships, only: [ :index, :create, :destroy ]
-          resources :league_seasons do
-            post "generate_schedule", on: :member
-            resources :league_games, only: [ :index, :show ]
-            resources :league_pool_players, only: [ :index, :create, :destroy ]
-          end
-          resources :teams do
-            resources :team_memberships, only: [ :index, :update, :destroy ] do
-              resources :player_absences, only: [ :index, :create, :update, :destroy ]
-            end
-            resources :team_managers, only: [ :index, :create, :update, :destroy ]
-          end
         end
       end
     end

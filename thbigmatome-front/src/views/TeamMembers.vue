@@ -212,10 +212,10 @@
                 {{ t(`baseball.positions.${item.position}`) }}
               </template>
               <template #item.throws="{ item }">
-                {{ t(`baseball.throwingHands.${item.throwing_hand}`) }}
+                {{ t(`baseball.throwingHands.${item.handedness?.split('/')[0]}`) }}
               </template>
               <template #item.bats="{ item }">
-                {{ t(`baseball.battingHands.${item.batting_hand}`) }}
+                {{ t(`baseball.battingHands.${item.handedness?.split('/')[1]}`) }}
               </template>
               <template #item.cost="{ item }">
                 <div class="d-flex align-center">

@@ -24,7 +24,6 @@ RSpec.describe "Api::V1::PlayersController", type: :request do
 
     it "includes detailed player attributes" do
       player = create(:player, name: "テスト選手", short_name: "TS", number: "42",
-                       throwing_hand: :right_throw, batting_hand: :left_bat,
                        speed: 3, bunt: 5, steal_start: 10, steal_end: 10, injury_rate: 3)
 
       get "/api/v1/players", as: :json
@@ -35,8 +34,6 @@ RSpec.describe "Api::V1::PlayersController", type: :request do
         "name" => "テスト選手",
         "short_name" => "TS",
         "number" => "42",
-        "throwing_hand" => "right_throw",
-        "batting_hand" => "left_bat",
         "speed" => 3,
         "bunt" => 5,
         "injury_rate" => 3
@@ -71,7 +68,6 @@ RSpec.describe "Api::V1::PlayersController", type: :request do
       {
         player: {
           name: "新選手", short_name: "NP", number: "99",
-          position: "catcher", throwing_hand: "right_throw", batting_hand: "right_bat",
           speed: 3, bunt: 5, steal_start: 10, steal_end: 10, injury_rate: 3
         }
       }

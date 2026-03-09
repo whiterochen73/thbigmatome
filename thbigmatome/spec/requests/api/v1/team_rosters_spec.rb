@@ -19,12 +19,6 @@ RSpec.describe "Api::V1::TeamRosters", type: :request do
     { player: player, membership: membership }
   end
 
-  # Helper: assign outside_world type to a player
-  def assign_outside_world_type(player)
-    ow_type = PlayerType.find_or_create_by!(name: "外の世界", category: "outside_world")
-    PlayerPlayerType.find_or_create_by!(player: player, player_type: ow_type)
-  end
-
   # ============================================================
   # GET /api/v1/teams/:team_id/roster
   # ============================================================
@@ -118,7 +112,7 @@ RSpec.describe "Api::V1::TeamRosters", type: :request do
         player = create(:player, :pitcher)
         create(:team_membership, team: team, player: player, squad: "first", selected_cost_type: "normal_cost")
         create(:cost_player, cost: cost, player: player, normal_cost: 5)
-        create(:player_card, player: player, starter_stamina: 5, is_relief_only: false)
+        create(:player_card, player: player, is_pitcher: true, starter_stamina: 5, is_relief_only: false)
 
         get "/api/v1/teams/#{team.id}/roster", as: :json
 
@@ -145,7 +139,7 @@ RSpec.describe "Api::V1::TeamRosters", type: :request do
         player = create(:player, :pitcher)
         create(:team_membership, team: team, player: player, squad: "first", selected_cost_type: "normal_cost")
         create(:cost_player, cost: cost, player: player, normal_cost: 5)
-        create(:player_card, player: player, is_relief_only: true, starter_stamina: nil)
+        create(:player_card, player: player, is_pitcher: true, is_relief_only: true, starter_stamina: nil)
 
         get "/api/v1/teams/#{team.id}/roster", as: :json
 
@@ -428,27 +422,7 @@ RSpec.describe "Api::V1::TeamRosters", type: :request do
         expect(response).to have_http_status(:ok)
       end
 
-      it "rejects promotion when outside world limit is exceeded" do
-        # 4 outside world players already in first squad (at limit)
-        4.times do
-          r = add_player_to_team(team: team, cost: cost, squad: "first", cost_value: 3, player_trait: :pitcher)
-          assign_outside_world_type(r[:player])
-        end
-        # Fill first squad to minimum (21 more touhou players)
-        21.times { add_player_to_team(team: team, cost: cost, squad: "first", cost_value: 3) }
-
-        # Try to promote a 5th outside world player
-        r = add_player_to_team(team: team, cost: cost, squad: "second", cost_value: 3, player_trait: :fielder)
-        assign_outside_world_type(r[:player])
-
-        post_roster_update(team.id, [
-          { team_membership_id: r[:membership].id, squad: "first" }
-        ])
-
-        expect(response).to have_http_status(:unprocessable_content)
-        json = response.parsed_body
-        expect(json["error"]).to be_present
-      end
+      # outside world limit test removed: player_player_types table dropped (cmd_511 Phase 2b)
     end
 
     # ============================================================

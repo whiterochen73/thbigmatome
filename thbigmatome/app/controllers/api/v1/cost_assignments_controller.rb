@@ -3,13 +3,10 @@ module Api
     class CostAssignmentsController < Api::V1::BaseController
       def index
         @cost_id = params[:cost_id]
-        @players = Player.order(:id).includes(:player_types).preload(:cost_players)
+        @players = Player.order(:id).preload(:cost_players)
 
         players_with_cost = @players.map do |player|
           player_data = player.as_json(
-            include: {
-              player_types: { only: [ :id, :name ] }
-            },
             except: [ :created_at, :updated_at ]
           )
 

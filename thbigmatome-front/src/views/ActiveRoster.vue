@@ -231,11 +231,10 @@
               <template #item.position="{ item }">
                 {{ t(`baseball.shortPositions.${item.position}`) }}
               </template>
-              <template #item.throwing_hand="{ item }">
-                {{ t(`baseball.throwingHands.${item.throwing_hand}`) }}
-              </template>
-              <template #item.batting_hand="{ item }">
-                {{ t(`baseball.battingHands.${item.batting_hand}`) }}
+              <template #item.handedness="{ item }">
+                {{ t(`baseball.throwingHands.${item.handedness?.split('/')[0]}`) }}/{{
+                  t(`baseball.battingHands.${item.handedness?.split('/')[1]}`)
+                }}
               </template>
               <template #item.selected_cost_type="{ item }">
                 {{ t(`baseball.construction.${item.selected_cost_type}`) }}
@@ -365,11 +364,10 @@
               <template #item.position="{ item }">
                 {{ t(`baseball.shortPositions.${item.position}`) }}
               </template>
-              <template #item.throwing_hand="{ item }">
-                {{ t(`baseball.throwingHands.${item.throwing_hand}`) }}
-              </template>
-              <template #item.batting_hand="{ item }">
-                {{ t(`baseball.battingHands.${item.batting_hand}`) }}
+              <template #item.handedness="{ item }">
+                {{ t(`baseball.throwingHands.${item.handedness?.split('/')[0]}`) }}/{{
+                  t(`baseball.battingHands.${item.handedness?.split('/')[1]}`)
+                }}
               </template>
               <template #item.selected_cost_type="{ item }">
                 {{ t(`baseball.construction.${item.selected_cost_type}`) }}
@@ -459,8 +457,7 @@ const headers = [
   { title: t('activeRoster.headers.name'), key: 'player_name' },
   { title: t('activeRoster.headers.player_types'), key: 'player_types' },
   { title: t('activeRoster.headers.position'), key: 'position' },
-  { title: t('activeRoster.headers.throws'), key: 'throwing_hand' },
-  { title: t('activeRoster.headers.bats'), key: 'batting_hand' },
+  { title: t('activeRoster.headers.handedness'), key: 'handedness' },
   { title: t('activeRoster.headers.cost_type'), value: 'selected_cost_type' },
   { title: t('activeRoster.headers.cost'), key: 'cost' },
 ]

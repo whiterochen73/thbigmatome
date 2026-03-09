@@ -18,24 +18,6 @@ RSpec.describe Team, type: :model do
     { player: player, membership: membership }
   end
 
-  # ヘルパー: 外の世界タイプを選手に付与
-  def assign_outside_world_type(player)
-    ow_type = PlayerType.find_or_create_by!(name: "外の世界", category: "outside_world")
-    PlayerPlayerType.create!(player: player, player_type: ow_type)
-  end
-
-  # ヘルパー: 東方タイプを選手に付与
-  def assign_touhou_type(player)
-    touhou_type = PlayerType.find_or_create_by!(name: "東方", category: "touhou")
-    PlayerPlayerType.create!(player: player, player_type: touhou_type)
-  end
-
-  # ヘルパー: 二刀流タイプを選手に付与
-  def assign_two_way_type(player)
-    two_way_type = PlayerType.find_or_create_by!(name: "二刀流")
-    PlayerPlayerType.create!(player: player, player_type: two_way_type)
-  end
-
   # ============================================================
   # user_id (optional)
   # ============================================================
@@ -177,10 +159,10 @@ RSpec.describe Team, type: :model do
     end
   end
 
-  # ============================================================
-  # 外の世界枠バリデーション
-  # ============================================================
+  # 外の世界枠バリデーション: player_player_typesテーブル廃止(cmd_511 Phase 2b)によりテスト削除
+end
 
+=begin REMOVED: outside_world validation tests - player_player_types table dropped (cmd_511 Phase 2b)
   describe "#validate_outside_world_limit" do
     context "人数制限" do
       it "外の世界選手が0人なら有効" do
@@ -405,4 +387,4 @@ RSpec.describe Team, type: :model do
       expect(result.first.player).to eq(ow_result[:player])
     end
   end
-end
+=end

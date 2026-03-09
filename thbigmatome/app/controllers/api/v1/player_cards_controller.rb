@@ -52,7 +52,7 @@ class Api::V1::PlayerCardsController < Api::V1::BaseController
       :is_relief_only, :is_closer, :is_switch_hitter, :is_dual_wielder,
       :starter_stamina, :relief_stamina,
       :biorhythm_period,
-      :unique_traits, :abilities, :injury_traits,
+      :unique_traits, :injury_traits,
       player_card_defenses_attributes: [
         :id, :position, :range_value, :error_rank, :throwing, :condition_id, :_destroy
       ],

@@ -15,7 +15,7 @@ module Api
         target_date = season.current_date
 
         # Fetch all team memberships for the team
-        team_memberships = team.team_memberships.preload(:season_rosters, :player_absences, player: [ :cost_players, :player_types, :player_cards ])
+        team_memberships = team.team_memberships.preload(:season_rosters, :player_absences, player: [ :cost_players, :player_cards ])
         start_date = season.season_schedules.minimum(:date)
 
         # Determine current squad for each player based on the latest SeasonRoster entry
@@ -34,18 +34,17 @@ module Api
             player_id: tm.player.id,
             number: tm.player.number,
             player_name: tm.player.short_name,
-            throwing_hand: tm.player.throwing_hand,
-            batting_hand: tm.player.batting_hand,
+            handedness: tm.player.player_cards.first&.handedness,
             squad: squad_status,
-            player_types: tm.player.player_types.pluck([ :name ]), # Add player types
+            player_types: [],
             selected_cost_type: tm.selected_cost_type, # Add selected cost type
             cost: tm.player.cost_players.find { |pc| pc.cost_id == current_cost_list.id }.send(tm.selected_cost_type), # Assuming player has cost methods
             # Add cooldown information if applicable
             cooldown_until: cooldown_info[:cooldown_until],
             same_day_exempt: cooldown_info[:same_day_exempt],
-            is_outside_world: tm.player.player_types.any? { |pt| pt.category == "outside_world" },
-            is_starter_pitcher: tm.player.is_pitcher && tm.player.player_cards.first&.starter_stamina.present? && tm.player.player_cards.first&.starter_stamina >= 4,
-            is_relief_only: tm.player.is_pitcher && (tm.player.player_cards.first&.is_relief_only || false),
+            is_outside_world: false,
+            is_starter_pitcher: (tm.player.player_cards.first&.is_pitcher && tm.player.player_cards.first&.starter_stamina.present? && tm.player.player_cards.first&.starter_stamina >= 4) || false,
+            is_relief_only: (tm.player.player_cards.first&.is_pitcher && tm.player.player_cards.first&.is_relief_only) || false,
             **absence_info_for(tm, target_date)
           }
         end

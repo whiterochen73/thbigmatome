@@ -1,6 +1,6 @@
 class Api::V1::PlayersController < Api::V1::BaseController
   def index
-    players = Player.eager_load(:player_batting_skills, :player_player_types, :player_biorhythms, :player_pitching_skills, :catchers_players, :partner_pitchers_players).all.order(:id)
+    players = Player.all.order(:id)
     render json: players, each_serializer: PlayerDetailSerializer
   end
 
@@ -37,10 +37,9 @@ class Api::V1::PlayersController < Api::V1::BaseController
 
   def player_params
     params.require(:player).permit(
-      :name, :number, :short_name, :throwing_hand, :batting_hand, :bunt, :steal_start, :steal_end, :speed,
-      :special_throwing_c, :is_relief_only,
-      :injury_rate, :pinch_pitching_style_id, :catcher_pitching_style_id,
-      batting_skill_ids: [], pitching_skill_ids: [], player_type_ids: [], biorhythm_ids: [], catcher_ids: [], partner_pitcher_ids: []
+      :name, :number, :short_name, :bunt, :steal_start, :steal_end, :speed,
+      :special_throwing_c,
+      :injury_rate
     )
   end
 end

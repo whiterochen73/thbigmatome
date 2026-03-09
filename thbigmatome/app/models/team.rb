@@ -8,9 +8,6 @@ class Team < ApplicationRecord
   has_many :team_memberships, dependent: :destroy
   has_many :players, through: :team_memberships
 
-  has_many :league_memberships, dependent: :destroy
-  has_many :leagues, through: :league_memberships
-
   has_many :competition_entries, dependent: :destroy
   has_many :competitions, through: :competition_entries
   has_many :home_games, class_name: "Game", foreign_key: :home_team_id, dependent: :destroy, inverse_of: :home_team
@@ -58,11 +55,9 @@ class Team < ApplicationRecord
     end
   end
 
-  # 1軍の外の世界枠選手（outside_worldカテゴリのタイプを持つ選手）
+  # 1軍の外の世界枠選手（player_player_typesテーブル廃止によりcmd_511 Phase 2bで常に空を返す）
   def outside_world_first_squad_memberships
-    team_memberships.where(squad: "first").includes(player: :player_types).select do |tm|
-      tm.player.player_types.any? { |pt| pt.category == "outside_world" }
-    end
+    []
   end
 
   # 外の世界枠: 最大4人チェック
@@ -78,36 +73,9 @@ class Team < ApplicationRecord
   end
 
   # 外の世界枠: 4人のとき投手/野手混在必須チェック
-  # 二刀流選手は投手・野手どちらにもカウント可能
+  # player_player_typesテーブル廃止(cmd_511 Phase 2b)により、常にtrueを返す
   def validate_outside_world_balance
-    ow_memberships = outside_world_first_squad_memberships
-    return true if ow_memberships.size < OUTSIDE_WORLD_LIMIT
-
-    two_way_type = PlayerType.find_by(name: "二刀流")
-    two_way_count = 0
-    pure_pitcher_count = 0
-    pure_fielder_count = 0
-
-    ow_memberships.each do |tm|
-      is_two_way = two_way_type && tm.player.player_types.include?(two_way_type)
-      if is_two_way
-        two_way_count += 1
-      elsif tm.player.is_pitcher
-        pure_pitcher_count += 1
-      else
-        pure_fielder_count += 1
-      end
-    end
-
-    pitcher_capable = pure_pitcher_count + two_way_count >= 1
-    fielder_capable = pure_fielder_count + two_way_count >= 1
-
-    unless pitcher_capable && fielder_capable
-      errors.add(:base, I18n.t("activerecord.errors.models.team.outside_world.balance_required"))
-      false
-    else
-      true
-    end
+    true
   end
 
   private

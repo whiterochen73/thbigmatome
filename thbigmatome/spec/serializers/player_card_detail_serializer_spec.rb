@@ -1,36 +1,26 @@
 require 'rails_helper'
 
 RSpec.describe PlayerCardDetailSerializer, type: :serializer do
-  let(:player) do
-    create(:player, throwing_hand: :right_throw, batting_hand: :right_bat)
-  end
+  let(:player) { create(:player) }
 
   subject(:serialized) do
     serializer = described_class.new(player_card)
     JSON.parse(serializer.to_json)
   end
 
-  context "when handedness is nil on player_card" do
-    let(:player_card) { create(:player_card, player: player, handedness: nil) }
+  context "when handedness is set on player_card" do
+    let(:player_card) { create(:player_card, player: player, handedness: "right_throw/right_bat") }
 
-    it "returns fallback from player throwing_hand/batting_hand" do
+    it "returns the stored handedness value" do
       expect(serialized["handedness"]).to eq("right_throw/right_bat")
-    end
-
-    context "when player has switch_hitter batting hand" do
-      let(:player) { create(:player, throwing_hand: :left_throw, batting_hand: :switch_hitter) }
-
-      it "returns fallback with switch_hitter" do
-        expect(serialized["handedness"]).to eq("left_throw/switch_hitter")
-      end
     end
   end
 
-  context "when handedness is set on player_card" do
-    let(:player_card) { create(:player_card, player: player, handedness: "right/right") }
+  context "when handedness is nil on player_card" do
+    let(:player_card) { create(:player_card, player: player, handedness: nil) }
 
-    it "returns the stored handedness value" do
-      expect(serialized["handedness"]).to eq("right/right")
+    it "returns nil" do
+      expect(serialized["handedness"]).to be_nil
     end
   end
 end

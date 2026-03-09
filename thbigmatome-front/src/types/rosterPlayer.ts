@@ -14,9 +14,8 @@ export interface RosterPlayer {
   squad: 'first' | 'second'
   cost: number
   selected_cost_type: string
-  throwing_hand: string
-  batting_hand: string
-  player_types: string[] // Added player_types (comma-separated string)
+  handedness: string | null
+  player_types: string[]
   cooldown_until?: string
   same_day_exempt?: boolean
   is_outside_world?: boolean

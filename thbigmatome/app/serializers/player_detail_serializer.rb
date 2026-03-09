@@ -1,27 +1,18 @@
 class PlayerDetailSerializer < ActiveModel::Serializer
-  attributes :id, :name, :short_name, :number, :throwing_hand, :batting_hand,
+  attributes :id, :name, :short_name, :number, :handedness,
               :speed, :bunt, :steal_start, :steal_end, :injury_rate,
               :is_pitcher, :is_relief_only,
-              :pinch_pitching_style_id, :catcher_pitching_style_id,
-              :pitching_style_description, :special_throwing_c, :biorhythm_ids, :batting_skill_ids,
-              :pitching_skill_ids, :player_type_ids, :catcher_ids, :partner_pitcher_ids
+              :pitching_style_description, :special_throwing_c
 
-  def pitching_skill_ids
-    object.player_pitching_skills.pluck(:pitching_skill_id)
+  def handedness
+    object.player_cards.first&.handedness
   end
-  def batting_skill_ids
-    object.player_batting_skills.pluck(:batting_skill_id)
+
+  def is_pitcher
+    object.player_cards.first&.is_pitcher || false
   end
-  def player_type_ids
-    object.player_player_types.pluck(:player_type_id)
-  end
-  def biorhythm_ids
-    object.player_biorhythms.pluck(:biorhythm_id)
-  end
-  def catcher_ids
-    object.catchers_players.pluck(:catcher_id)
-  end
-  def partner_pitchers_players
-    object.partner_pitchers_players.pluck(:player_id)
+
+  def is_relief_only
+    object.player_cards.first&.is_relief_only || false
   end
 end

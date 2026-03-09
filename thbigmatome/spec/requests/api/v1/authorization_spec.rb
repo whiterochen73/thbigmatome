@@ -60,56 +60,6 @@ RSpec.describe '認証・認可チェーン', type: :request do
     end
   end
 
-  describe '認可チェーン（Commissioner::BaseController）' do
-    let!(:league) { League.create!(name: 'テストリーグ', num_teams: 6, num_games: 30) }
-
-    context '未認証の場合' do
-      it 'GET /api/v1/commissioner/leagues で401を返す' do
-        get '/api/v1/commissioner/leagues'
-
-        expect(response).to have_http_status(:unauthorized)
-      end
-
-      it 'GET /api/v1/commissioner/leagues/:id で401を返す' do
-        get "/api/v1/commissioner/leagues/#{league.id}"
-
-        expect(response).to have_http_status(:unauthorized)
-      end
-    end
-
-    context '一般ユーザー（playerロール）の場合' do
-      before { login_as(player_user) }
-
-      it 'GET /api/v1/commissioner/leagues で403を返す' do
-        get '/api/v1/commissioner/leagues'
-
-        expect(response).to have_http_status(:forbidden)
-      end
-
-      it 'GET /api/v1/commissioner/leagues/:id で403を返す' do
-        get "/api/v1/commissioner/leagues/#{league.id}"
-
-        expect(response).to have_http_status(:forbidden)
-      end
-    end
-
-    context 'commissionerユーザーの場合' do
-      before { login_as(commissioner_user) }
-
-      it 'GET /api/v1/commissioner/leagues で200を返す' do
-        get '/api/v1/commissioner/leagues'
-
-        expect(response).to have_http_status(:ok)
-      end
-
-      it 'GET /api/v1/commissioner/leagues/:id で200を返す' do
-        get "/api/v1/commissioner/leagues/#{league.id}"
-
-        expect(response).to have_http_status(:ok)
-      end
-    end
-  end
-
   describe '認証チェーンの一貫性' do
     context 'ログイン→ログアウト→再アクセス' do
       it 'ログアウト後はAPIにアクセスできなくなる' do

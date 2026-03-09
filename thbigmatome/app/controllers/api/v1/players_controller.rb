@@ -1,6 +1,6 @@
 class Api::V1::PlayersController < Api::V1::BaseController
   def index
-    players = Player.all.order(:id)
+    players = Player.includes(player_cards: :card_set).all.order(:id)
     render json: players, each_serializer: PlayerDetailSerializer
   end
 

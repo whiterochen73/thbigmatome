@@ -42,32 +42,32 @@
 | パス | ルート名 | コンポーネント | パラメータ | 認証要否 |
 |------|---------|--------------|-----------|---------|
 | `/login` | `Login` | `LoginForm` | — | 不要 |
-| `/` | `HomePortal` | `HomePortalView` | — | 要（authGuard） |
-| `/home` | `Home` | `HomeView` | — | 要（authGuard） |
-| `/managers` | `ManagerList` | `ManagerList` | — | 要（authGuard） |
-| `/players` | `PlayerList` | `Players` | — | 要（authGuard） |
+| `/` | `ホーム` | `HomePortalView` | — | 要（authGuard） |
+| `/home` | — | `HomeView` | — | 要（authGuard） |
+| `/managers` | `監督一覧` | `ManagerList` | — | 要（authGuard） |
+| `/players` | `Players` | `Players` | — | 要（authGuard） |
 | `/players/:id` | `PlayerDetail` | `PlayerDetailView` | `id` | 要（authGuard） |
 | `/teams` | `TeamList` | `TeamList` | — | 要（authGuard） |
 | `/teams/:teamId/members` | `TeamMembers` | `TeamMembers` | `teamId` | 要（authGuard） |
 | `/cost_assignment` | `CostAssignment` | `CostAssignment` | — | 要（authGuard） |
-| `/settings` | `Settings` | `Settings` | — | 要（authGuard） |
+| `/settings` | `各種設定` | `Settings` | — | 要（authGuard） |
 | `/teams/:teamId/season` | `SeasonPortal` | `SeasonPortal` | `teamId` | 要（authGuard） |
 | `/teams/:teamId/season/games/:scheduleId` | `GameResult` | `GameResult` | `teamId`, `scheduleId` | 要（authGuard） |
 | `/teams/:teamId/season/games/:scheduleId/scoresheet` | `ScoreSheet` | `ScoreSheet` | `teamId`, `scheduleId` | 要（authGuard） |
-| `/games` | `Games` | `GamesView` | — | 要（authGuard） |
-| `/games/import` | `GameImport` | `GameImportView` | — | 要（authGuard） |
-| `/games/:id` | `GameDetail` | `GameDetailView` | `id` | 要（authGuard） |
+| `/games` | `試合記録` | `GamesView` | — | 要（authGuard） |
+| `/games/import` | `ログ取り込み` | `GameImportView` | — | 要（authGuard） |
+| `/games/:id` | `試合詳細` | `GameDetailView` | `id` | 要（authGuard） |
 | `/games/:id/lineup` | `GameLineup` | `GameLineupView` | `id` | 要（authGuard） |
-| `/stats` | `Stats` | `StatsView` | — | 要（authGuard） |
+| `/stats` | `成績集計` | `StatsView` | — | 要（authGuard） |
 | `/competitions/:id/roster/:teamId` | `CompetitionRoster` | `CompetitionRosterView` | `id`, `teamId` | 要（authGuard） |
 | `/player-cards` | `PlayerCards` | `PlayerCardsView` | — | 要（authGuard） |
 | `/player-cards/:id` | `PlayerCardDetail` | `PlayerCardDetailView` | `id` | 要（authGuard） |
 | `/game-records` | `GameRecordList` | `GameRecordListView` | — | 要（authGuard） |
 | `/game-records/:id` | `GameRecordDetail` | `GameRecordDetailView` | `id` | 要（authGuard） |
-| `commissioner/stadiums` | `CommissionerStadiums` | `StadiumsView` | — | 要（requiresCommissioner） |
-| `commissioner/card_sets` | `CommissionerCardSets` | `CardSetsView` | — | 要（requiresCommissioner） |
-| `commissioner/competitions` | `CommissionerCompetitions` | `CompetitionsView` | — | 要（requiresCommissioner） |
-| `commissioner/users` | `CommissionerUsers` | `UsersView` | — | 要（requiresCommissioner） |
+| `commissioner/stadiums` | `Stadiums` | `StadiumsView` | — | 要（requiresCommissioner） |
+| `commissioner/card_sets` | `CardSets` | `CardSetsView` | — | 要（requiresCommissioner） |
+| `commissioner/competitions` | `Competitions` | `CompetitionsView` | — | 要（requiresCommissioner） |
+| `commissioner/users` | `Users` | `UsersView` | — | 要（requiresCommissioner） |
 
 ### リダイレクトルート
 
@@ -163,7 +163,7 @@
 - **使用APIエンドポイント**:
   - GET `/players/:id`
   - PATCH `/players/:id`（PlayerDialog経由）
-- **主要なcomposable/store**: `useSnackbar`, `useI18n`
+- **主要なcomposable/store**: `useRoute`, `useRouter`
 - **画面構成**: 選手基本情報（名前・背番号）・選手カード一覧テーブル・PlayerDialogコンポーネント
 - **他画面への遷移先**: `/player-cards/:id`（PlayerCardDetailView）
 

@@ -37,6 +37,15 @@
 - `src/components/settings/BattingStyleSettings.vue`
 - `src/components/settings/PitchingStyleSettings.vue`
 - `src/components/settings/ScheduleSettings.vue`
+- `src/components/settings/BattingSkillDialog.vue`
+- `src/components/settings/PitchingSkillDialog.vue`
+- `src/components/settings/BattingStyleDialog.vue`
+- `src/components/settings/PitchingStyleDialog.vue`
+- `src/components/settings/BiorhythmDialog.vue`
+- `src/components/settings/PlayerTypeDialog.vue`
+- `src/components/settings/CostDialog.vue`
+- `src/components/settings/ScheduleDialog.vue`
+- `src/components/settings/ScheduleDetailEditor.vue`
 - `src/components/shared/TeamMemberSelect.vue`
 - `src/components/shared/CostListSelect.vue`
 - `src/components/shared/PlayerDetailSelect.vue`
@@ -726,6 +735,243 @@
 - DELETE `/schedules/:id` で削除
 
 **使用箇所**: `Settings.vue`（view）
+
+---
+
+### マスタ設定ダイアログコンポーネント
+
+#### `BattingSkillDialog.vue` (`src/components/settings/BattingSkillDialog.vue`)
+
+打撃スキルの追加・編集ダイアログ。`GenericMasterSettings`の`dialogComponent`として使用される。
+
+**props**:
+
+| 名前 | 型 | 必須 | デフォルト | 説明 |
+|------|-----|------|-----------|------|
+| `modelValue` | `boolean` | ✓ | — | ダイアログ表示状態（v-model） |
+| `item` | `BattingSkill \| null` | ✓ | — | 編集対象（`null`=新規追加） |
+
+**emits**:
+
+| イベント | 引数 | 説明 |
+|---------|------|------|
+| `update:modelValue` | `boolean` | ダイアログ開閉 |
+| `save` | — | 保存完了後に発火 |
+
+**主要機能・責務**:
+- name・skill_type（positive/negative/neutral）・descriptionフォーム
+- skill_typeに応じた背景色変化（青/赤/緑）
+- PUT `/batting-skills/:id`（編集）/ POST `/batting-skills`（追加）
+
+**使用箇所**: `BattingSkillSettings.vue` → `GenericMasterSettings.vue`の`dialogComponent`として
+
+---
+
+#### `PitchingSkillDialog.vue` (`src/components/settings/PitchingSkillDialog.vue`)
+
+投球スキルの追加・編集ダイアログ。`BattingSkillDialog`と同構造。
+
+**props**:
+
+| 名前 | 型 | 必須 | デフォルト | 説明 |
+|------|-----|------|-----------|------|
+| `modelValue` | `boolean` | ✓ | — | ダイアログ表示状態（v-model） |
+| `item` | `PitchingSkill \| null` | ✓ | — | 編集対象（`null`=新規追加） |
+
+**emits**:
+
+| イベント | 引数 | 説明 |
+|---------|------|------|
+| `update:modelValue` | `boolean` | ダイアログ開閉 |
+| `save` | — | 保存完了後に発火 |
+
+**主要機能・責務**:
+- name・skill_type（positive/negative/neutral）・descriptionフォーム
+- skill_typeに応じた背景色変化（青/赤/緑）
+- PUT `/pitching-skills/:id`（編集）/ POST `/pitching-skills`（追加）
+
+**使用箇所**: `PitchingSkillSettings.vue` → `GenericMasterSettings.vue`の`dialogComponent`として
+
+---
+
+#### `BattingStyleDialog.vue` (`src/components/settings/BattingStyleDialog.vue`)
+
+打撃スタイルの追加・編集ダイアログ。
+
+**props**:
+
+| 名前 | 型 | 必須 | デフォルト | 説明 |
+|------|-----|------|-----------|------|
+| `modelValue` | `boolean` | ✓ | — | ダイアログ表示状態（v-model） |
+| `item` | `BattingStyle \| null` | ✓ | — | 編集対象（`null`=新規追加） |
+
+**emits**:
+
+| イベント | 引数 | 説明 |
+|---------|------|------|
+| `update:modelValue` | `boolean` | ダイアログ開閉 |
+| `save` | — | 保存完了後に発火 |
+
+**主要機能・責務**:
+- name・descriptionフォーム
+- PUT `/batting-styles/:id`（編集）/ POST `/batting-styles`（追加）
+
+**使用箇所**: `BattingStyleSettings.vue` → `GenericMasterSettings.vue`の`dialogComponent`として
+
+---
+
+#### `PitchingStyleDialog.vue` (`src/components/settings/PitchingStyleDialog.vue`)
+
+投球スタイルの追加・編集ダイアログ。
+
+**props**:
+
+| 名前 | 型 | 必須 | デフォルト | 説明 |
+|------|-----|------|-----------|------|
+| `modelValue` | `boolean` | ✓ | — | ダイアログ表示状態（v-model） |
+| `item` | `PitchingStyle \| null` | ✓ | — | 編集対象（`null`=新規追加） |
+
+**emits**:
+
+| イベント | 引数 | 説明 |
+|---------|------|------|
+| `update:modelValue` | `boolean` | ダイアログ開閉 |
+| `save` | — | 保存完了後に発火 |
+
+**主要機能・責務**:
+- name・descriptionフォーム
+- PUT `/pitching-styles/:id`（編集）/ POST `/pitching-styles`（追加）
+
+**使用箇所**: `PitchingStyleSettings.vue` → `GenericMasterSettings.vue`の`dialogComponent`として
+
+---
+
+#### `BiorhythmDialog.vue` (`src/components/settings/BiorhythmDialog.vue`)
+
+バイオリズム期間の追加・編集ダイアログ。
+
+**props**:
+
+| 名前 | 型 | 必須 | デフォルト | 説明 |
+|------|-----|------|-----------|------|
+| `modelValue` | `boolean` | ✓ | — | ダイアログ表示状態（v-model） |
+| `item` | `Biorhythm \| null` | ✓ | — | 編集対象（`null`=新規追加） |
+
+**emits**:
+
+| イベント | 引数 | 説明 |
+|---------|------|------|
+| `update:modelValue` | `boolean` | ダイアログ開閉 |
+| `save` | — | 保存完了後に発火 |
+
+**主要機能・責務**:
+- name・start_date・end_dateフォーム（YYYY-MM-DD形式バリデーション付き）
+- PUT `/biorhythms/:id`（編集）/ POST `/biorhythms`（追加）
+
+**使用箇所**: `BiorhythmSettings.vue` → `GenericMasterSettings.vue`の`dialogComponent`として
+
+---
+
+#### `PlayerTypeDialog.vue` (`src/components/settings/PlayerTypeDialog.vue`)
+
+プレイヤータイプの追加・編集ダイアログ。
+
+**props**:
+
+| 名前 | 型 | 必須 | デフォルト | 説明 |
+|------|-----|------|-----------|------|
+| `modelValue` | `boolean` | ✓ | — | ダイアログ表示状態（v-model） |
+| `item` | `PlayerType \| null` | ✓ | — | 編集対象（`null`=新規追加） |
+
+**emits**:
+
+| イベント | 引数 | 説明 |
+|---------|------|------|
+| `update:modelValue` | `boolean` | ダイアログ開閉 |
+| `save` | — | 保存完了後に発火 |
+
+**主要機能・責務**:
+- name・descriptionフォーム
+- PUT `/player-types/:id`（編集）/ POST `/player-types`（追加）
+
+**使用箇所**: `PlayerTypeSettings.vue` → `GenericMasterSettings.vue`の`dialogComponent`として
+
+---
+
+#### `CostDialog.vue` (`src/components/settings/CostDialog.vue`)
+
+コスト表の追加・編集ダイアログ。保存処理は親（`CostSettings.vue`）に委譲。
+
+**props**:
+
+| 名前 | 型 | 必須 | デフォルト | 説明 |
+|------|-----|------|-----------|------|
+| `modelValue` | `boolean` | ✓ | — | ダイアログ表示状態（v-model） |
+| `cost` | `{ name: string; start_date: string \| null; end_date: string \| null } \| null` | ✓ | — | 編集対象（`null`=新規追加） |
+
+**emits**:
+
+| イベント | 引数 | 説明 |
+|---------|------|------|
+| `update:modelValue` | `boolean` | ダイアログ開閉 |
+| `save` | `{ name, start_date, end_date }` | フォームデータを親に渡す |
+
+**主要機能・責務**:
+- name・start_date・end_dateフォーム
+- 保存はemit('save', data)で親に委譲（API呼び出しは`CostSettings.vue`側）
+
+**使用箇所**: `CostSettings.vue`
+
+---
+
+#### `ScheduleDialog.vue` (`src/components/settings/ScheduleDialog.vue`)
+
+スケジュールの基本情報（名前・期間・発効日）の追加・編集ダイアログ。
+
+**props（defineModel + props）**:
+
+| 名前 | 型 | 必須 | デフォルト | 説明 |
+|------|-----|------|-----------|------|
+| `modelValue` | `boolean` | — | — | ダイアログ表示状態（v-model） |
+| `schedule` | `ScheduleList \| null` | ✓ | — | 編集対象（`null`=新規追加） |
+
+**emits**:
+
+| イベント | 引数 | 説明 |
+|---------|------|------|
+| `save` | — | 保存完了後に発火 |
+
+**主要機能・責務**:
+- name・start_date・end_date・effective_dateフォーム
+- PATCH `/schedules/:id`（編集）/ POST `/schedules`（追加）
+
+**使用箇所**: `ScheduleSettings.vue`
+
+---
+
+#### `ScheduleDetailEditor.vue` (`src/components/settings/ScheduleDetailEditor.vue`)
+
+スケジュール詳細（日付タイプ設定）の編集ダイアログ。カレンダーUIで各日付の種別を設定する。
+
+**props（defineModel + props）**:
+
+| 名前 | 型 | 必須 | デフォルト | 説明 |
+|------|-----|------|-----------|------|
+| `modelValue` | `boolean` | — | — | ダイアログ表示状態（v-model） |
+| `schedule` | `ScheduleList \| null` | ✓ | — | 対象スケジュール |
+
+**emits**:
+
+| イベント | 引数 | 説明 |
+|---------|------|------|
+| `save` | — | 保存完了後に発火 |
+
+**主要機能・責務**:
+- GET `/schedules/:id/schedule_details` で日付タイプ一覧取得
+- カレンダーUIで日付を選択 → 日付タイプ（game_day/interleague_game_day/playoff_day/travel_day/reserve_day/interleague_reserve_day/no_game_day）を設定
+- POST `/schedules/:id/schedule_details/upsert_all` で一括保存
+
+**使用箇所**: `ScheduleSettings.vue`
 
 ---
 

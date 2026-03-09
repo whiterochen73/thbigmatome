@@ -1,12 +1,9 @@
 class PlayerDetailSerializer < ActiveModel::Serializer
-  attributes :id, :name, :short_name, :number, :position, :throwing_hand, :batting_hand,
-              :speed, :bunt, :steal_start, :steal_end, :injury_rate, :defense_p, :defense_c,
-              :throwing_c, :defense_1b, :defense_2b, :defense_3b, :defense_ss, :defense_of,
-              :throwing_of, :defense_lf, :throwing_lf, :defense_cf, :throwing_cf, :defense_rf,
-              :throwing_rf, :is_pitcher, :starter_stamina, :relief_stamina, :is_relief_only,
-              :pitching_style_id, :pinch_pitching_style_id, :catcher_pitching_style_id, :batting_style_id,
-              :pitching_style_description, :batting_style_description,
-              :special_defense_c, :special_throwing_c, :biorhythm_ids, :batting_skill_ids,
+  attributes :id, :name, :short_name, :number, :throwing_hand, :batting_hand,
+              :speed, :bunt, :steal_start, :steal_end, :injury_rate,
+              :is_pitcher, :is_relief_only,
+              :pinch_pitching_style_id, :catcher_pitching_style_id,
+              :pitching_style_description, :special_throwing_c, :biorhythm_ids, :batting_skill_ids,
               :pitching_skill_ids, :player_type_ids, :catcher_ids, :partner_pitcher_ids
 
   def pitching_skill_ids

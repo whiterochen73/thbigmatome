@@ -117,15 +117,7 @@
             @click="navigateToDetail(card.id)"
           >
             <td>
-              <v-img
-                v-if="card.card_image_path"
-                :src="imageBaseUrl + card.card_image_path"
-                width="28"
-                height="40"
-                cover
-                style="border-radius: 2px"
-              ></v-img>
-              <div v-else class="thumb-box">No<br />IMG</div>
+              <div class="thumb-box">No<br />IMG</div>
             </td>
             <td class="ctr" style="font-weight: bold">{{ card.player_number }}</td>
             <td style="font-weight: bold">{{ card.player_name }}</td>
@@ -188,7 +180,6 @@ interface PlayerCard {
   steal_start: number
   steal_end: number
   injury_rate: number
-  card_image_path: string | null
   primary_position: string | null
   cost?: number | null
 }
@@ -208,10 +199,6 @@ const filterName = ref('')
 const viewMode = ref<'table' | 'grid'>('table')
 
 const totalPages = computed(() => Math.ceil(totalCount.value / perPage) || 1)
-
-const imageBaseUrl = computed(() => {
-  return axios.defaults.baseURL?.replace(/\/api\/v1\/?$/, '') || ''
-})
 
 onMounted(() => {
   fetchCardSets()

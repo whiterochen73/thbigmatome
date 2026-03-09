@@ -121,7 +121,6 @@ export interface PlayerCard {
   steal_start: number
   steal_end: number
   injury_rate: number
-  card_image_path: string | null
   cost?: number | null
   defenses?: Defense[]
   unique_traits?: string | null

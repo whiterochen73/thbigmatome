@@ -27,7 +27,10 @@
           </v-col>
         </v-row>
 
-        <PitchingAbilityForm v-if="editableItem.is_pitcher" v-model="editableItem"></PitchingAbilityForm>
+        <PitchingAbilityForm
+          v-if="editableItem.is_pitcher"
+          v-model="editableItem"
+        ></PitchingAbilityForm>
       </v-card-text>
 
       <v-card-actions>
@@ -57,61 +60,71 @@ import FielderAbilityForm from './FielderAbilityForm.vue'
 import DefenseAbilityForm from './DefenseAbilityForm.vue'
 
 const props = defineProps<{
-  modelValue: boolean;
-  item: PlayerDetail | null;
+  modelValue: boolean
+  item: PlayerDetail | null
 }>()
 
 const emit = defineEmits<{
-  (e: 'update:modelValue', value: boolean): void;
-  (e: 'save'): void;
+  (e: 'update:modelValue', value: boolean): void
+  (e: 'save'): void
 }>()
 
 const { t } = useI18n()
 const { showSnackbar } = useSnackbar()
 
 const defaultItem: PlayerDetail = {
-  id: null, name: '', number: null, short_name: null, position: null, throwing_hand: null,
-  batting_style_id: null, batting_style_description: null,
-  batting_skill_ids: [], player_type_ids: [], biorhythm_ids: [],
-  batting_hand: null, bunt: 1, steal_start: 1, steal_end: 1, speed: 1, injury_rate: 1,
-  defense_p: null, defense_c: null, throwing_c: null, defense_1b: null,
-  defense_2b: null, defense_3b: null, defense_ss: null, defense_of: null,
-  throwing_of: null, defense_lf: null, throwing_lf: null, defense_cf: null,
-  throwing_cf: null, defense_rf: null, throwing_rf: null, is_pitcher: false,
-  is_relief_only: false, starter_stamina: null, relief_stamina: null,
-  pitching_style_id: null, pitching_style_description: null,
-  pinch_pitching_style_id: null, pitching_skill_ids: [],
-  catcher_ids: [], catcher_pitching_style_id: null,
+  id: null,
+  name: '',
+  number: null,
+  short_name: null,
+  throwing_hand: null,
+  batting_skill_ids: [],
+  player_type_ids: [],
+  biorhythm_ids: [],
+  batting_hand: null,
+  bunt: 1,
+  steal_start: 1,
+  steal_end: 1,
+  speed: 1,
+  injury_rate: 1,
+  is_pitcher: false,
+  is_relief_only: false,
+  pitching_style_description: null,
+  pinch_pitching_style_id: null,
+  pitching_skill_ids: [],
+  catcher_ids: [],
+  catcher_pitching_style_id: null,
   partner_pitcher_ids: [],
-  special_defense_c: null, special_throwing_c: null,
+  special_throwing_c: null,
 }
 
 const editableItem = ref<PlayerDetail>({ ...defaultItem })
 
-watch(() => props.modelValue, (isOpen) => {
-  if (isOpen && props.item) {
-    editableItem.value = props.item
-  } else {
-    editableItem.value = { ...defaultItem }
-  }
-})
+watch(
+  () => props.modelValue,
+  (isOpen) => {
+    if (isOpen && props.item) {
+      editableItem.value = props.item
+    } else {
+      editableItem.value = { ...defaultItem }
+    }
+  },
+)
 
-const title = computed(() => (props.item ? t('playerDialog.title.edit') : t('playerDialog.title.add')))
+const title = computed(() =>
+  props.item ? t('playerDialog.title.edit') : t('playerDialog.title.add'),
+)
 
 const isFormValid = computed(() => {
-  const item = editableItem.value;
-  return !!item.name &&
-         item.bunt != null &&
-         item.steal_start != null &&
-         item.steal_end != null &&
-         item.speed != null &&
-         item.injury_rate != null;
-})
-
-watch(() => editableItem.value.position, (newPosition) => {
-  if (newPosition && newPosition == 'pitcher') {
-    editableItem.value.is_pitcher = true
-  }
+  const item = editableItem.value
+  return (
+    !!item.name &&
+    item.bunt != null &&
+    item.steal_start != null &&
+    item.steal_end != null &&
+    item.speed != null &&
+    item.injury_rate != null
+  )
 })
 
 const closeDialog = () => {
@@ -122,19 +135,28 @@ const saveItem = async () => {
   if (!isFormValid.value) return
   try {
     const payload = { player: editableItem.value }
-    props.item?.id
-      ? await axios.put(`/players/${props.item.id}`, payload)
-      : await axios.post('/players', payload)
+    if (props.item?.id) {
+      await axios.put(`/players/${props.item.id}`, payload)
+    } else {
+      await axios.post('/players', payload)
+    }
 
-    showSnackbar(props.item?.id ? t('playerDialog.notifications.updateSuccess') : t('playerDialog.notifications.addSuccess'), 'success')
+    showSnackbar(
+      props.item?.id
+        ? t('playerDialog.notifications.updateSuccess')
+        : t('playerDialog.notifications.addSuccess'),
+      'success',
+    )
     emit('save')
     closeDialog()
   } catch (error) {
-    const message = isAxiosError(error) && Array.isArray(error.response?.data?.errors)
-      ? t('playerDialog.notifications.saveFailedWithErrors', { errors: (error.response?.data?.errors as string[]).join('\n') })
-      : t('playerDialog.notifications.saveFailed')
+    const message =
+      isAxiosError(error) && Array.isArray(error.response?.data?.errors)
+        ? t('playerDialog.notifications.saveFailedWithErrors', {
+            errors: (error.response?.data?.errors as string[]).join('\n'),
+          })
+        : t('playerDialog.notifications.saveFailed')
     showSnackbar(message, 'error')
   }
 }
-
 </script>

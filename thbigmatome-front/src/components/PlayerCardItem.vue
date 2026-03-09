@@ -3,13 +3,7 @@
     <v-card class="player-card" @click="emit('click')" :ripple="true" variant="outlined">
       <!-- カード画像 -->
       <div class="card-image-container">
-        <v-img
-          v-if="card.card_image_path"
-          :src="imageBaseUrl + card.card_image_path"
-          class="card-image"
-          cover
-        ></v-img>
-        <div v-else class="no-image">
+        <div class="no-image">
           <v-icon size="large">mdi-card-account-details</v-icon>
         </div>
       </div>
@@ -74,8 +68,6 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
-import axios from '@/plugins/axios'
 import type { PlayerCard } from '@/types/game-record'
 
 interface Props {
@@ -86,11 +78,6 @@ defineProps<Props>()
 const emit = defineEmits<{
   click: []
 }>()
-
-const imageBaseUrl = computed(() => {
-  const base = axios.defaults.baseURL ?? ''
-  return base.replace(/\/api\/v1\/?$/, '')
-})
 </script>
 
 <style scoped>

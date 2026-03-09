@@ -14,7 +14,6 @@ export interface RosterPlayer {
   squad: 'first' | 'second'
   cost: number
   selected_cost_type: string
-  position: string // Added position
   throwing_hand: string
   batting_hand: string
   player_types: string[] // Added player_types (comma-separated string)

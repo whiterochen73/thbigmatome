@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_03_08_161224) do
+ActiveRecord::Schema[8.1].define(version: 2026_03_09_123201) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -540,14 +540,11 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_08_161224) do
   end
 
   create_table "player_cards", force: :cascade do |t|
-    t.jsonb "abilities", default: {}, null: false
-    t.string "batting_style_description"
     t.bigint "batting_style_id"
     t.jsonb "batting_table", default: {}, null: false
     t.jsonb "biorhythm_date_ranges"
     t.string "biorhythm_period"
     t.integer "bunt"
-    t.string "card_image_path"
     t.string "card_label"
     t.bigint "card_set_id", null: false
     t.string "card_type", null: false
@@ -617,21 +614,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_08_161224) do
 
   create_table "players", force: :cascade do |t|
     t.string "batting_hand"
-    t.string "batting_style_description"
-    t.bigint "batting_style_id"
     t.integer "bunt"
     t.bigint "catcher_pitching_style_id"
     t.datetime "created_at", null: false
-    t.string "defense_1b"
-    t.string "defense_2b"
-    t.string "defense_3b"
-    t.string "defense_c"
-    t.string "defense_cf"
-    t.string "defense_lf"
-    t.string "defense_of"
-    t.string "defense_p"
-    t.string "defense_rf"
-    t.string "defense_ss"
     t.integer "injury_rate"
     t.boolean "is_pitcher", default: false
     t.boolean "is_relief_only", default: false
@@ -639,27 +624,15 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_08_161224) do
     t.string "number", null: false
     t.bigint "pinch_pitching_style_id"
     t.string "pitching_style_description"
-    t.bigint "pitching_style_id"
-    t.string "position"
-    t.integer "relief_stamina"
     t.string "short_name"
-    t.string "special_defense_c"
     t.integer "special_throwing_c"
     t.integer "speed"
-    t.integer "starter_stamina"
     t.integer "steal_end"
     t.integer "steal_start"
-    t.integer "throwing_c"
-    t.string "throwing_cf"
     t.string "throwing_hand"
-    t.string "throwing_lf"
-    t.string "throwing_of"
-    t.string "throwing_rf"
     t.datetime "updated_at", null: false
-    t.index [ "batting_style_id" ], name: "index_players_on_batting_style_id"
     t.index [ "catcher_pitching_style_id" ], name: "index_players_on_catcher_pitching_style_id"
     t.index [ "pinch_pitching_style_id" ], name: "index_players_on_pinch_pitching_style_id"
-    t.index [ "pitching_style_id" ], name: "index_players_on_pitching_style_id"
   end
 
   create_table "schedule_details", force: :cascade do |t|
@@ -887,8 +860,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_08_161224) do
   add_foreign_key "player_pitching_skills", "players"
   add_foreign_key "player_player_types", "player_types"
   add_foreign_key "player_player_types", "players"
-  add_foreign_key "players", "batting_styles"
-  add_foreign_key "players", "pitching_styles"
   add_foreign_key "players", "pitching_styles", column: "catcher_pitching_style_id"
   add_foreign_key "players", "pitching_styles", column: "pinch_pitching_style_id"
   add_foreign_key "schedule_details", "schedules"

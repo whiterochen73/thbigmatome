@@ -37,7 +37,6 @@ module Api
             throwing_hand: tm.player.throwing_hand,
             batting_hand: tm.player.batting_hand,
             squad: squad_status,
-            position: tm.player.position, # Add player position
             player_types: tm.player.player_types.pluck([ :name ]), # Add player types
             selected_cost_type: tm.selected_cost_type, # Add selected cost type
             cost: tm.player.cost_players.find { |pc| pc.cost_id == current_cost_list.id }.send(tm.selected_cost_type), # Assuming player has cost methods
@@ -45,8 +44,8 @@ module Api
             cooldown_until: cooldown_info[:cooldown_until],
             same_day_exempt: cooldown_info[:same_day_exempt],
             is_outside_world: tm.player.player_types.any? { |pt| pt.category == "outside_world" },
-            is_starter_pitcher: tm.player.position == "pitcher" && tm.player.player_cards.first&.starter_stamina.present? && tm.player.player_cards.first&.starter_stamina >= 4,
-            is_relief_only: tm.player.position == "pitcher" && (tm.player.player_cards.first&.is_relief_only || false),
+            is_starter_pitcher: tm.player.is_pitcher && tm.player.player_cards.first&.starter_stamina.present? && tm.player.player_cards.first&.starter_stamina >= 4,
+            is_relief_only: tm.player.is_pitcher && (tm.player.player_cards.first&.is_relief_only || false),
             **absence_info_for(tm, target_date)
           }
         end

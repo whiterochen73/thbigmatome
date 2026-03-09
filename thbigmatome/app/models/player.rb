@@ -4,10 +4,8 @@ class Player < ApplicationRecord
   has_many :team_memberships, dependent: :destroy
   has_many :teams, through: :team_memberships
 
-  belongs_to :batting_style, optional: true
   has_many :player_batting_skills, dependent: :destroy
   has_many :batting_skills, through: :player_batting_skills
-  belongs_to :pitching_style, optional: true
   belongs_to :pinch_pitching_style, class_name: "PitchingStyle", foreign_key: :pinch_pitching_style_id, optional: true
   has_many :player_pitching_skills, dependent: :destroy
   has_many :pitching_skills, through: :player_pitching_skills
@@ -32,9 +30,6 @@ class Player < ApplicationRecord
   has_many :imported_stats, dependent: :destroy
 
   belongs_to :catcher_pitching_style, class_name: "PitchingStyle", foreign_key: :catcher_pitching_style_id, optional: true
-
-  # ポジションをenumで定義
-  enum :position, { pitcher: "pitcher", catcher: "catcher", infielder: "infielder", outfielder: "outfielder" }
 
   # 投打をenumで定義
   enum :throwing_hand, { right_throw: "right_throw", left_throw: "left_throw" }

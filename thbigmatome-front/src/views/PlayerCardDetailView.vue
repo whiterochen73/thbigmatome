@@ -54,8 +54,8 @@
             <!-- カード画像 -->
             <div class="card-img-wrap">
               <v-img
-                v-if="card.image_url || card.card_image_path"
-                :src="card.image_url || imageBaseUrl + card.card_image_path"
+                v-if="card.image_url"
+                :src="card.image_url"
                 width="108"
                 height="150"
                 cover
@@ -583,7 +583,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import axios from '@/plugins/axios'
 import BattingTable from '@/components/BattingTable.vue'
@@ -636,7 +636,6 @@ interface PlayerCardDetail {
   biorhythm_period: string | null
   unique_traits: string | null
   injury_traits: Record<string, unknown> | null
-  card_image_path: string | null
   image_url: string | null
   player: { id: number; name: string; number: string } | null
   card_set: { id: number; name: string } | null
@@ -647,10 +646,6 @@ interface PlayerCardDetail {
   pitching_table: string[]
   cost?: number | null
 }
-
-const imageBaseUrl = computed(() => {
-  return axios.defaults.baseURL?.replace(/\/api\/v1\/?$/, '') || ''
-})
 
 const route = useRoute()
 const router = useRouter()

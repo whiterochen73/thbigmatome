@@ -5,9 +5,9 @@ class PlayerCardDetailSerializer < ActiveModel::Serializer
              :is_switch_hitter, :is_dual_wielder,
              :starter_stamina, :relief_stamina,
              :biorhythm_period,
-             :abilities, :unique_traits, :injury_traits,
+             :unique_traits, :injury_traits,
              :batting_table, :pitching_table,
-             :card_image_path, :image_url
+             :image_url
 
   attribute :handedness do
     object.handedness.presence || build_handedness_from_player

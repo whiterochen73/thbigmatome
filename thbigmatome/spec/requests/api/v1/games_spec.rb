@@ -167,6 +167,8 @@ RSpec.describe "Api::V1::GamesController", type: :request do
     end
 
     before do
+      allow(ENV).to receive(:[]).and_call_original
+      allow(ENV).to receive(:[]).with("PARSER_API_URL").and_return(nil)
       allow(Open3).to receive(:capture3).and_return([ parse_log_output, "", instance_double(Process::Status, success?: true) ])
     end
 
@@ -234,6 +236,8 @@ RSpec.describe "Api::V1::GamesController", type: :request do
     before do
       batter
       pitcher
+      allow(ENV).to receive(:[]).and_call_original
+      allow(ENV).to receive(:[]).with("PARSER_API_URL").and_return(nil)
       allow(Open3).to receive(:capture3).and_return([ parser_output, "", instance_double(Process::Status, success?: true) ])
     end
 

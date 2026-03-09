@@ -60,6 +60,8 @@
                 height="150"
                 cover
                 class="rounded"
+                :style="{ cursor: 'pointer' }"
+                @click="imageDialog = true"
               ></v-img>
               <div v-else class="card-img-placeholder">
                 <v-icon size="36" color="#9a8060">mdi-card-account-details</v-icon>
@@ -476,6 +478,17 @@
       </v-card>
     </v-dialog>
 
+    <!-- ■ カード画像ライトボックス -->
+    <v-dialog v-model="imageDialog" max-width="90vw">
+      <v-card>
+        <v-card-actions>
+          <v-spacer />
+          <v-btn icon @click="imageDialog = false"><v-icon>mdi-close</v-icon></v-btn>
+        </v-card-actions>
+        <v-img v-if="card" :src="card.image_url ?? ''" max-height="85vh" contain />
+      </v-card>
+    </v-dialog>
+
     <!-- ■ 特徴・能力編集ダイアログ -->
     <v-dialog v-model="traitEditDialog" max-width="700">
       <v-card>
@@ -654,6 +667,7 @@ const loading = ref(false)
 const errorMessage = ref('')
 const saving = ref(false)
 const editError = ref('')
+const imageDialog = ref(false)
 
 // --- Basic edit dialog ---
 const basicEditDialog = ref(false)

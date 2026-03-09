@@ -12,25 +12,6 @@
 
       <v-card-text>
         <PlayerIdentityForm v-model="editableItem"></PlayerIdentityForm>
-
-        <FielderAbilityForm v-model="editableItem"></FielderAbilityForm>
-
-        <DefenseAbilityForm v-model="editableItem"></DefenseAbilityForm>
-
-        <v-row dense>
-          <v-col>
-            <v-checkbox
-              v-model="editableItem.is_pitcher"
-              :label="t('playerDialog.form.is_pitcher')"
-              density="compact"
-            ></v-checkbox>
-          </v-col>
-        </v-row>
-
-        <PitchingAbilityForm
-          v-if="editableItem.is_pitcher"
-          v-model="editableItem"
-        ></PitchingAbilityForm>
       </v-card-text>
 
       <v-card-actions>
@@ -55,9 +36,6 @@ import { isAxiosError } from 'axios'
 import { useSnackbar } from '@/composables/useSnackbar'
 import type { PlayerDetail } from '@/types/playerDetail'
 import PlayerIdentityForm from './PlayerIdentityForm.vue'
-import PitchingAbilityForm from './PitchingAbilityForm.vue'
-import FielderAbilityForm from './FielderAbilityForm.vue'
-import DefenseAbilityForm from './DefenseAbilityForm.vue'
 
 const props = defineProps<{
   modelValue: boolean
@@ -77,20 +55,6 @@ const defaultItem: PlayerDetail = {
   name: '',
   number: null,
   short_name: null,
-  throwing_hand: null,
-  batting_skill_ids: [],
-  player_type_ids: [],
-  biorhythm_ids: [],
-  batting_hand: null,
-  is_pitcher: false,
-  is_relief_only: false,
-  pitching_style_description: null,
-  pinch_pitching_style_id: null,
-  pitching_skill_ids: [],
-  catcher_ids: [],
-  catcher_pitching_style_id: null,
-  partner_pitcher_ids: [],
-  special_throwing_c: null,
 }
 
 const editableItem = ref<PlayerDetail>({ ...defaultItem })

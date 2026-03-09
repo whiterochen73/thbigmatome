@@ -22,16 +22,6 @@
               hide-details
             ></v-text-field>
           </v-col>
-          <v-col cols="12" sm="6" md="3">
-            <v-select
-              v-model="selectedPosition"
-              :items="positionFilterOptions"
-              :label="t('playerList.filters.position')"
-              clearable
-              dense
-              hide-details
-            ></v-select>
-          </v-col>
         </v-row>
 
         <v-data-table
@@ -43,9 +33,6 @@
           item-value="id"
           class="elevation-1"
         >
-          <template #item.position="{ item }">
-            {{ t(`baseball.positions.${item.position}`) }}
-          </template>
           <template #item.actions="{ item }">
             <v-icon size="small" class="me-2" @click="openDialog(item)" icon="mdi-pencil"></v-icon>
             <v-icon size="small" @click="deletePlayer(item.id!)" icon="mdi-delete"></v-icon>
@@ -80,31 +67,18 @@ const dialog = ref(false)
 const confirmDialog = ref<InstanceType<typeof ConfirmDialog> | null>(null)
 const editedItem = ref<PlayerDetail | null>(null)
 
-// フィルター用のstate
 const searchText = ref('')
-const selectedPosition = ref<string | null>(null)
 
 const headers = computed(() => [
   { title: t('playerList.headers.number'), key: 'number', width: '15%' },
-  { title: t('playerList.headers.name'), key: 'name', width: '30%' },
-  { title: t('playerList.headers.short_name'), key: 'short_name', width: '20%' },
-  { title: t('playerList.headers.position'), key: 'position', width: '15%' },
-  { title: t('playerList.headers.actions'), key: 'actions', sortable: false, width: '10%' },
+  { title: t('playerList.headers.name'), key: 'name', width: '40%' },
+  { title: t('playerList.headers.short_name'), key: 'short_name', width: '30%' },
+  { title: t('playerList.headers.actions'), key: 'actions', sortable: false, width: '15%' },
 ])
 
-// ポジションフィルターのオプション
-const positionFilterOptions = computed(() => [
-  { value: 'pitcher', title: t('baseball.positions.pitcher') },
-  { value: 'catcher', title: t('baseball.positions.catcher') },
-  { value: 'infielder', title: t('baseball.positions.infielder') },
-  { value: 'outfielder', title: t('baseball.positions.outfielder') },
-])
-
-// フィルター適用後の選手リスト
 const filteredPlayers = computed(() => {
   let result = players.value
 
-  // 名前検索フィルター（name または short_name に部分一致）
   if (searchText.value) {
     const search = searchText.value.toLowerCase()
     result = result.filter(
@@ -112,11 +86,6 @@ const filteredPlayers = computed(() => {
         player.name.toLowerCase().includes(search) ||
         (player.short_name && player.short_name.toLowerCase().includes(search)),
     )
-  }
-
-  // ポジションフィルター
-  if (selectedPosition.value) {
-    result = result.filter((player) => player.position === selectedPosition.value)
   }
 
   return result
@@ -137,7 +106,7 @@ const fetchPlayers = async () => {
 onMounted(fetchPlayers)
 
 const openDialog = (player: PlayerDetail | null = null) => {
-  editedItem.value = player ? { ...player } : null // 参照渡しを防ぐためスプレッド構文でコピー
+  editedItem.value = player ? { ...player } : null
   dialog.value = true
 }
 
@@ -154,7 +123,7 @@ const deletePlayer = async (id: number) => {
   try {
     await axios.delete(`/players/${id}`)
     showSnackbar(t('playerList.deleteSuccess'), 'success')
-    fetchPlayers() // 削除後、一覧を再取得
+    fetchPlayers()
   } catch (error) {
     console.error('Error deleting player:', error)
     showSnackbar(t('playerList.deleteFailed'), 'error')

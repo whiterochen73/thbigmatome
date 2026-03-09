@@ -5,7 +5,7 @@ class Api::V1::PlayersController < Api::V1::BaseController
   end
 
   def show
-    player = Player.find(params[:id])
+    player = Player.includes(player_cards: :card_set).find(params[:id])
     render json: player, serializer: PlayerDetailSerializer
   end
 
@@ -37,8 +37,7 @@ class Api::V1::PlayersController < Api::V1::BaseController
 
   def player_params
     params.require(:player).permit(
-      :name, :number, :short_name,
-      :special_throwing_c
+      :name, :number, :short_name
     )
   end
 end

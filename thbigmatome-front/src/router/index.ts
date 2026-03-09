@@ -57,6 +57,12 @@ const routes: RouteRecordRaw[] = [
         meta: { requiresAuth: true, title: '選手一覧' },
       },
       {
+        path: '/players/:id',
+        name: 'PlayerDetail',
+        component: () => import('@/views/PlayerDetailView.vue'),
+        meta: { requiresAuth: true, title: '選手詳細' },
+      },
+      {
         path: '/cost_assignment',
         name: 'CostAssignment',
         component: CostAssignment,

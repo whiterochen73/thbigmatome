@@ -33,6 +33,11 @@
           item-value="id"
           class="elevation-1"
         >
+          <template #item.card_count="{ item }">
+            <a href="#" class="card-count-link" @click.prevent="router.push(`/players/${item.id}`)">
+              {{ item.player_cards?.length ?? 0 }}枚
+            </a>
+          </template>
           <template #item.actions="{ item }">
             <v-icon size="small" class="me-2" @click="openDialog(item)" icon="mdi-pencil"></v-icon>
             <v-icon size="small" @click="deletePlayer(item.id!)" icon="mdi-delete"></v-icon>
@@ -50,6 +55,7 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { useRouter } from 'vue-router'
 import axios from '@/plugins/axios'
 import { useSnackbar } from '@/composables/useSnackbar'
 import PlayerDialog from '@/components/players/PlayerDialog.vue'
@@ -60,6 +66,7 @@ import type { PlayerDetail } from '@/types/playerDetail'
 const { t } = useI18n()
 const { showSnackbar } = useSnackbar()
 const { displayClasses } = useDisplay()
+const router = useRouter()
 
 const players = ref<PlayerDetail[]>([])
 const loading = ref(true)
@@ -70,9 +77,10 @@ const editedItem = ref<PlayerDetail | null>(null)
 const searchText = ref('')
 
 const headers = computed(() => [
-  { title: t('playerList.headers.number'), key: 'number', width: '15%' },
-  { title: t('playerList.headers.name'), key: 'name', width: '40%' },
-  { title: t('playerList.headers.short_name'), key: 'short_name', width: '30%' },
+  { title: t('playerList.headers.number'), key: 'number', width: '12%' },
+  { title: t('playerList.headers.name'), key: 'name', width: '33%' },
+  { title: t('playerList.headers.short_name'), key: 'short_name', width: '25%' },
+  { title: 'カード数', key: 'card_count', sortable: false, width: '15%' },
   { title: t('playerList.headers.actions'), key: 'actions', sortable: false, width: '15%' },
 ])
 
@@ -134,3 +142,15 @@ const onSave = () => {
   fetchPlayers()
 }
 </script>
+
+<style scoped>
+.card-count-link {
+  color: #5a3e20;
+  text-decoration: none;
+  font-size: 0.88em;
+}
+
+.card-count-link:hover {
+  text-decoration: underline;
+}
+</style>

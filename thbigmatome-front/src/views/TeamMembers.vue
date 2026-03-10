@@ -209,7 +209,7 @@
                 </v-chip-group>
               </template>
               <template #item.position="{ item }">
-                {{ item.position ? t(`baseball.positions.${item.position}`) : '—' }}
+                {{ item.position ? t(`baseball.shortPositions.${item.position}`) : '—' }}
               </template>
               <template #item.throws="{ item }">
                 {{ t(`baseball.throwingHands.${item.handedness?.split('/')[0]}`) }}

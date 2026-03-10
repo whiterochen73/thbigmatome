@@ -545,14 +545,10 @@ const getAvailableCostTypes = (player: Player) => {
   }
 
   addOption('normal_cost', costPlayerForSelectedList.normal_cost)
-  if (player.player_type_ids && player.player_type_ids.includes(9))
-    addOption('relief_only_cost', costPlayerForSelectedList.relief_only_cost)
-  if (player.player_type_ids && player.player_type_ids.includes(8)) {
-    addOption('pitcher_only_cost', costPlayerForSelectedList.pitcher_only_cost)
-    addOption('fielder_only_cost', costPlayerForSelectedList.fielder_only_cost)
-  }
-  if (player.player_type_ids && player.player_type_ids.includes(2))
-    addOption('two_way_cost', costPlayerForSelectedList.two_way_cost)
+  addOption('relief_only_cost', costPlayerForSelectedList.relief_only_cost)
+  addOption('pitcher_only_cost', costPlayerForSelectedList.pitcher_only_cost)
+  addOption('fielder_only_cost', costPlayerForSelectedList.fielder_only_cost)
+  addOption('two_way_cost', costPlayerForSelectedList.two_way_cost)
 
   return options
 }

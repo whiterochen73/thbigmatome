@@ -15,6 +15,7 @@ export interface RosterPlayer {
   cost: number
   selected_cost_type: string
   handedness: string | null
+  position: string | null
   player_types: string[]
   cooldown_until?: string
   same_day_exempt?: boolean

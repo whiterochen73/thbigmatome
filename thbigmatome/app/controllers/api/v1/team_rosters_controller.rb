@@ -35,7 +35,7 @@ module Api
             number: tm.player.number,
             player_name: tm.player.short_name,
             handedness: tm.player.player_cards.first&.handedness,
-            position: (tm.player.player_cards.first&.card_type == "pitcher" ? "pitcher" : tm.player.player_cards.first&.player_card_defenses&.first&.position),
+            position: (tm.player.player_cards.first&.card_type == "pitcher" ? "pitcher" : tm.player.player_cards.first&.player_card_defenses&.first&.position&.downcase),
             squad: squad_status,
             player_types: [],
             selected_cost_type: tm.selected_cost_type, # Add selected cost type

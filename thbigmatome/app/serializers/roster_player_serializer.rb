@@ -14,7 +14,7 @@ class RosterPlayerSerializer < ActiveModel::Serializer
     if pc&.card_type == "pitcher"
       "pitcher"
     else
-      pc&.player_card_defenses&.first&.position
+      pc&.player_card_defenses&.first&.position&.downcase
     end
   end
 

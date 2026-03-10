@@ -3,7 +3,7 @@ class Api::V1::TeamPlayersController < Api::V1::BaseController
 
   def index
     cost_list_id = params[:cost_list_id]
-    players = @team.players
+    players = @team.players.includes(:cost_players, player_cards: :player_card_defenses)
     render json: players, each_serializer: TeamPlayerSerializer, team: @team, cost_list_id: cost_list_id
   end
 

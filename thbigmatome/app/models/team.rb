@@ -55,9 +55,11 @@ class Team < ApplicationRecord
     end
   end
 
-  # 1軍の外の世界枠選手（player_player_typesテーブル廃止によりcmd_511 Phase 2bで常に空を返す）
+  # 1軍の外の世界枠選手（Player.series != 'touhou' で判定）
   def outside_world_first_squad_memberships
-    []
+    team_memberships.where(squad: "first")
+      .joins(:player)
+      .where.not(players: { series: "touhou" })
   end
 
   # 外の世界枠: 最大4人チェック
@@ -73,9 +75,21 @@ class Team < ApplicationRecord
   end
 
   # 外の世界枠: 4人のとき投手/野手混在必須チェック
-  # player_player_typesテーブル廃止(cmd_511 Phase 2b)により、常にtrueを返す
+  # player_cards.card_type で判定。pitcherカードがあれば投手扱い
   def validate_outside_world_balance
-    true
+    ow_memberships = outside_world_first_squad_memberships
+    return true if ow_memberships.size < OUTSIDE_WORLD_LIMIT
+
+    ow_with_cards = ow_memberships.includes(player: :player_cards)
+    has_pitcher = ow_with_cards.any? { |tm| tm.player.player_cards.any? { |pc| pc.card_type == "pitcher" } }
+    has_fielder = ow_with_cards.any? { |tm| tm.player.player_cards.any? { |pc| pc.card_type == "batter" } }
+
+    unless has_pitcher && has_fielder
+      errors.add(:base, I18n.t("activerecord.errors.models.team.outside_world.balance_required"))
+      false
+    else
+      true
+    end
   end
 
   private

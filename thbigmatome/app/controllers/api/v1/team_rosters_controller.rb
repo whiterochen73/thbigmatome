@@ -43,7 +43,7 @@ module Api
             # Add cooldown information if applicable
             cooldown_until: cooldown_info[:cooldown_until],
             same_day_exempt: cooldown_info[:same_day_exempt],
-            is_outside_world: false,
+            is_outside_world: tm.player.series != "touhou",
             is_starter_pitcher: (tm.player.player_cards.first&.is_pitcher && tm.player.player_cards.first&.starter_stamina.present? && tm.player.player_cards.first&.starter_stamina >= 4) || false,
             is_relief_only: (tm.player.player_cards.first&.is_pitcher && tm.player.player_cards.first&.is_relief_only) || false,
             **absence_info_for(tm, target_date)

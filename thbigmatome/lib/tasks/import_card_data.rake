@@ -58,11 +58,11 @@ namespace :import do
         next
       end
 
-      # Player
+      # Player（空白正規化マッチ: 全角/半角スペース差異を吸収）
       player_name = row["name"]
-      player = Player.find_or_create_by!(name: player_name) do |p|
-        p.number = row["number"].presence || "?"
-      end
+      normalized_name = player_name.gsub(/[\s\u3000]+/, '')
+      player = Player.find_by("REPLACE(REPLACE(name, ' ', ''), '　', '') = ?", normalized_name) ||
+               Player.create!(name: player_name, number: row["number"].presence || "?")
 
       # Derive card_type from is_pitcher (CSV) or card_type column if available
       card_type = if row["card_type"].present?

@@ -15,7 +15,7 @@ module Api
         target_date = season.current_date
 
         # Fetch all team memberships for the team
-        team_memberships = team.team_memberships.preload(:season_rosters, :player_absences, player: [ :cost_players, :player_cards ])
+        team_memberships = team.team_memberships.preload(:season_rosters, :player_absences, player: [ :cost_players, { player_cards: :player_card_defenses } ])
         start_date = season.season_schedules.minimum(:date)
 
         # Determine current squad for each player based on the latest SeasonRoster entry
@@ -35,6 +35,7 @@ module Api
             number: tm.player.number,
             player_name: tm.player.short_name,
             handedness: tm.player.player_cards.first&.handedness,
+            position: (tm.player.player_cards.first&.card_type == "pitcher" ? "pitcher" : tm.player.player_cards.first&.player_card_defenses&.first&.position),
             squad: squad_status,
             player_types: [],
             selected_cost_type: tm.selected_cost_type, # Add selected cost type

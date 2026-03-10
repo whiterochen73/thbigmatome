@@ -228,7 +228,7 @@
                       </div>
                     </td>
                     <td class="text-caption">
-                      {{ t(`baseball.shortPositions.${item.position}`) }}
+                      {{ item.position ? t(`baseball.shortPositions.${item.position}`) : '—' }}
                     </td>
                     <td>
                       <v-chip
@@ -469,7 +469,9 @@
                       </div>
                     </div>
                   </td>
-                  <td class="text-caption">{{ t(`baseball.shortPositions.${item.position}`) }}</td>
+                  <td class="text-caption">
+                    {{ item.position ? t(`baseball.shortPositions.${item.position}`) : '—' }}
+                  </td>
                   <td>
                     <v-chip
                       v-if="item.selected_cost_type && item.selected_cost_type !== 'normal_cost'"

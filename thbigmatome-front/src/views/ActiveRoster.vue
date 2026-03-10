@@ -229,7 +229,7 @@
                 </v-chip>
               </template>
               <template #item.position="{ item }">
-                {{ t(`baseball.shortPositions.${item.position}`) }}
+                {{ item.position ? t(`baseball.shortPositions.${item.position}`) : '—' }}
               </template>
               <template #item.handedness="{ item }">
                 {{ t(`baseball.throwingHands.${item.handedness?.split('/')[0]}`) }}/{{
@@ -362,7 +362,7 @@
                 </v-chip>
               </template>
               <template #item.position="{ item }">
-                {{ t(`baseball.shortPositions.${item.position}`) }}
+                {{ item.position ? t(`baseball.shortPositions.${item.position}`) : '—' }}
               </template>
               <template #item.handedness="{ item }">
                 {{ t(`baseball.throwingHands.${item.handedness?.split('/')[0]}`) }}/{{

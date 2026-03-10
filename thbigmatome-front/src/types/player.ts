@@ -6,5 +6,6 @@ export interface Player {
   short_name: string
   number: string
   handedness: string | null
+  position: string | null
   cost_players: PlayerCost[]
 }

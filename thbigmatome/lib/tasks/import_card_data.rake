@@ -5,18 +5,18 @@ namespace :import do
   task card_data: :environment do
     def derive_handedness(throwing, batting)
       throw_part = case throwing
-                   when "right" then "右投"
-                   when "left"  then "左投"
-                   else ""
+                   when "right" then "right_throw"
+                   when "left"  then "left_throw"
+                   else nil
                    end
       bat_part = case batting
-                 when "right"  then "右打"
-                 when "left"   then "左打"
-                 when "switch" then "両打"
-                 else ""
+                 when "right"  then "right_bat"
+                 when "left"   then "left_bat"
+                 when "switch" then "switch_hitter"
+                 else nil
                  end
-      result = throw_part + bat_part
-      result.empty? ? nil : result
+      return nil if throw_part.nil? || bat_part.nil?
+      "#{throw_part}/#{bat_part}"
     end
     data_dir = ENV["CARD_DATA_DIR"] || "/home/morinaga/projects/thbig-irc-parser/data/import"
 

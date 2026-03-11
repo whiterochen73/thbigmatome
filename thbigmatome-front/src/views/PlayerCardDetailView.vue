@@ -27,7 +27,9 @@
         <div class="detail-card-header">
           <div>
             <div class="detail-player-name">#{{ card.player?.number }} {{ card.player?.name }}</div>
-            <div class="detail-player-sub">{{ card.card_set?.name }} ／ {{ card.handedness }}</div>
+            <div class="detail-player-sub">
+              {{ card.card_set?.name }} ／ {{ handednessToJa(card.handedness) }}
+            </div>
           </div>
           <span class="type-chip-header" :class="card.card_type">
             {{ card.card_type === 'pitcher' ? '投手' : '野手' }}
@@ -97,7 +99,7 @@
               </div>
               <div class="info-item">
                 <div class="info-label">利き腕/打席</div>
-                <div class="info-val">{{ card.handedness || '—' }}</div>
+                <div class="info-val">{{ handednessToJa(card.handedness) }}</div>
               </div>
               <template v-if="card.card_type === 'pitcher'">
                 <div class="info-item">
@@ -600,6 +602,19 @@ import { ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import axios from '@/plugins/axios'
 import BattingTable from '@/components/BattingTable.vue'
+
+const HANDEDNESS_MAP: Record<string, string> = {
+  right_throw: '右投',
+  left_throw: '左投',
+  right_bat: '右打',
+  left_bat: '左打',
+  switch_bat: '両打',
+}
+
+function handednessToJa(val: string | null | undefined): string {
+  if (!val) return '—'
+  return HANDEDNESS_MAP[val] ?? val
+}
 
 interface DefenseItem {
   id?: number

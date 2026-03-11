@@ -19,7 +19,7 @@
     </v-alert>
 
     <!-- 戻るボタン -->
-    <button class="detail-back-btn" @click="router.back()">← 一覧に戻る</button>
+    <button class="detail-back-btn" @click="router.push('/players')">← 一覧に戻る</button>
 
     <template v-if="player">
       <div class="detail-wrap">
@@ -70,6 +70,36 @@
             </span>
           </div>
 
+          <!-- コストセクション -->
+          <div class="section-header-row mt-2">
+            <span class="section-header-title">コスト</span>
+          </div>
+          <div v-if="player.costs && player.costs.length > 0" class="section-box mb-4">
+            <table class="card-table">
+              <thead>
+                <tr>
+                  <th>カードセット</th>
+                  <th>通常</th>
+                  <th>投手専</th>
+                  <th>野手専</th>
+                  <th>リリーフ専</th>
+                  <th>二刀流</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="(c, idx) in player.costs" :key="idx">
+                  <td>{{ c.cost_name }}</td>
+                  <td>{{ c.normal_cost ?? '—' }}</td>
+                  <td>{{ c.pitcher_only_cost ?? '—' }}</td>
+                  <td>{{ c.fielder_only_cost ?? '—' }}</td>
+                  <td>{{ c.relief_only_cost ?? '—' }}</td>
+                  <td>{{ c.two_way_cost ?? '—' }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <div v-else class="text-grey text-caption pa-2 mb-4">コストなし</div>
+
           <div v-if="player.player_cards && player.player_cards.length > 0" class="section-box">
             <table class="card-table">
               <thead>
@@ -96,7 +126,7 @@
                       {{ pc.card_type === 'pitcher' ? '投手' : '野手' }}
                     </span>
                   </td>
-                  <td>{{ pc.handedness ?? '—' }}</td>
+                  <td>{{ handednessToJa(pc.handedness) }}</td>
                   <td>{{ pc.speed ?? '—' }}</td>
                   <td>{{ pc.bunt ?? '—' }}</td>
                   <td>{{ pc.injury_rate ?? '—' }}</td>
@@ -127,6 +157,19 @@ import { useRoute, useRouter } from 'vue-router'
 import axios from '@/plugins/axios'
 import PlayerDialog from '@/components/players/PlayerDialog.vue'
 import type { PlayerDetail } from '@/types/playerDetail'
+
+const HANDEDNESS_MAP: Record<string, string> = {
+  right_throw: '右投',
+  left_throw: '左投',
+  right_bat: '右打',
+  left_bat: '左打',
+  switch_bat: '両打',
+}
+
+function handednessToJa(val: string | null | undefined): string {
+  if (!val) return '—'
+  return HANDEDNESS_MAP[val] ?? val
+}
 
 const route = useRoute()
 const router = useRouter()

@@ -55,18 +55,20 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { useRouter } from 'vue-router'
+import { useRouter, onBeforeRouteLeave } from 'vue-router'
 import axios from '@/plugins/axios'
 import { useSnackbar } from '@/composables/useSnackbar'
 import PlayerDialog from '@/components/players/PlayerDialog.vue'
 import { useDisplay } from 'vuetify'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
 import type { PlayerDetail } from '@/types/playerDetail'
+import { usePlayersSearchStore } from '@/stores/playersSearch'
 
 const { t } = useI18n()
 const { showSnackbar } = useSnackbar()
 const { displayClasses } = useDisplay()
 const router = useRouter()
+const playersSearchStore = usePlayersSearchStore()
 
 const players = ref<PlayerDetail[]>([])
 const loading = ref(true)
@@ -74,7 +76,10 @@ const dialog = ref(false)
 const confirmDialog = ref<InstanceType<typeof ConfirmDialog> | null>(null)
 const editedItem = ref<PlayerDetail | null>(null)
 
-const searchText = ref('')
+const searchText = computed({
+  get: () => playersSearchStore.searchText,
+  set: (val: string) => playersSearchStore.setSearchText(val),
+})
 
 const headers = computed(() => [
   { title: t('playerList.headers.number'), key: 'number', width: '12%' },
@@ -111,7 +116,14 @@ const fetchPlayers = async () => {
   }
 }
 
-onMounted(fetchPlayers)
+onMounted(async () => {
+  await fetchPlayers()
+  window.scrollTo(0, playersSearchStore.scrollY)
+})
+
+onBeforeRouteLeave(() => {
+  playersSearchStore.setScrollY(window.scrollY)
+})
 
 const openDialog = (player: PlayerDetail | null = null) => {
   editedItem.value = player ? { ...player } : null

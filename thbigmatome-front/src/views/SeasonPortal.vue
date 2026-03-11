@@ -18,13 +18,16 @@
       </template>
     </v-toolbar>
 
+    <!-- ローディング中 -->
+    <v-skeleton-loader v-if="loading" type="card" class="mt-2" />
+
     <EmptyState
-      v-if="!season"
+      v-if="!loading && !season"
       icon="mdi-calendar-blank-outline"
       :message="t('seasonPortal.noSeasonData')"
     />
 
-    <v-tabs v-if="season" v-model="activeTab" color="primary" class="mt-2">
+    <v-tabs v-if="!loading && season" v-model="activeTab" color="primary" class="mt-2">
       <v-tab value="calendar">
         <v-icon start>mdi-calendar</v-icon>
         {{ t('seasonPortal.tabs.calendar') }}
@@ -51,7 +54,7 @@
       </v-tab>
     </v-tabs>
 
-    <v-tabs-window v-if="season" v-model="activeTab">
+    <v-tabs-window v-if="!loading && season" v-model="activeTab">
       <!-- タブ1: カレンダー -->
       <v-tabs-window-item value="calendar">
         <v-row class="mt-2">
@@ -500,6 +503,7 @@ const { t } = useI18n()
 const route = useRoute()
 const router = useRouter()
 const teamSelectionStore = useTeamSelectionStore()
+const loading = ref(true)
 const season = ref<SeasonDetail | null>(null)
 const currentDate = ref(new Date())
 
@@ -556,6 +560,7 @@ const openDayDetail = (day: CalendarDay) => {
 }
 
 const fetchSeason = async () => {
+  loading.value = true
   try {
     const response = await axios.get(`/teams/${teamId}/season`)
     season.value = response.data
@@ -564,6 +569,8 @@ const fetchSeason = async () => {
     }
   } catch (error) {
     console.error('Failed to fetch season data:', error)
+  } finally {
+    loading.value = false
   }
 }
 

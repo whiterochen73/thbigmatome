@@ -13,8 +13,15 @@
       @update:model-value="fetchSummary"
     />
 
+    <!-- ローディング中 -->
+    <template v-if="loading">
+      <v-skeleton-loader type="card" class="mb-4" />
+      <v-skeleton-loader type="card" class="mb-4" />
+      <v-skeleton-loader type="card" class="mb-4" />
+    </template>
+
     <!-- シーズン進行カード -->
-    <v-card class="mb-4" elevation="1">
+    <v-card v-if="!loading" class="mb-4" elevation="1">
       <v-card-title class="text-h6">シーズン進行</v-card-title>
       <v-card-text>
         <div v-if="summary" class="mb-2">
@@ -43,7 +50,7 @@
     </v-card>
 
     <!-- 直近の試合結果 -->
-    <v-card class="mb-4" elevation="1">
+    <v-card v-if="!loading" class="mb-4" elevation="1">
       <v-card-title class="text-h6">直近の試合結果</v-card-title>
       <v-card-text class="pa-0">
         <v-list density="compact" v-if="summary && summary.recent_games.length > 0">
@@ -73,7 +80,7 @@
     </v-card>
 
     <!-- 成績サマリー -->
-    <v-card class="mb-4" elevation="1">
+    <v-card v-if="!loading" class="mb-4" elevation="1">
       <v-card-title class="text-h6">成績サマリー</v-card-title>
       <v-card-text>
         <div v-if="summary && summary.team_summary" class="mb-4">
@@ -150,7 +157,7 @@
     </v-card>
 
     <!-- お知らせエリア -->
-    <v-card elevation="1">
+    <v-card v-if="!loading" elevation="1">
       <v-card-title class="text-h6">お知らせ</v-card-title>
       <v-card-text>
         <span class="text-caption text-medium-emphasis">お知らせはありません</span>
@@ -214,6 +221,7 @@ interface HomeSummary {
 const selectedCompetitionId = ref<number | null>(null)
 const competitions = ref<Competition[]>([])
 const summary = ref<HomeSummary | null>(null)
+const loading = ref(true)
 
 const progressPercent = computed(() => {
   if (!summary.value) return 0
@@ -226,16 +234,19 @@ onMounted(() => {
 })
 
 async function fetchCompetitions() {
+  loading.value = true
   try {
     const response = await axios.get<Competition[]>('/competitions')
     competitions.value = response.data
     if (competitions.value.length > 0) {
       const lpena = competitions.value.find((c) => c.competition_type === 'league_pennant')
       selectedCompetitionId.value = lpena ? lpena.id : competitions.value[0].id
-      fetchSummary()
+      await fetchSummary()
     }
   } catch (error) {
     console.error('Error fetching competitions:', error)
+  } finally {
+    loading.value = false
   }
 }
 

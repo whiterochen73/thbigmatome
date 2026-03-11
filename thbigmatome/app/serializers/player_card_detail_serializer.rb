@@ -69,6 +69,7 @@ class PlayerCardDetailSerializer < ActiveModel::Serializer
     object.player.cost_players.includes(:cost).map do |cp|
       {
         cost_name: cp.cost.name,
+        is_current: cp.cost.end_date.nil?,
         normal_cost: cp.normal_cost,
         pitcher_only_cost: cp.pitcher_only_cost,
         fielder_only_cost: cp.fielder_only_cost,

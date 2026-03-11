@@ -94,10 +94,6 @@
                 <div class="info-val">{{ card.injury_rate }}</div>
               </div>
               <div class="info-item">
-                <div class="info-label">コスト</div>
-                <div class="info-val">{{ card.cost ?? '—' }}</div>
-              </div>
-              <div class="info-item">
                 <div class="info-label">利き腕/打席</div>
                 <div class="info-val">{{ handednessToJa(card.handedness) }}</div>
               </div>
@@ -238,8 +234,15 @@
                   </tr>
                 </thead>
                 <tbody>
-                  <tr v-for="(c, idx) in card.costs" :key="idx">
-                    <td style="text-align: left">{{ c.cost_name }}</td>
+                  <tr
+                    v-for="(c, idx) in card.costs"
+                    :key="idx"
+                    :class="{ 'cost-row-current': c.is_current }"
+                  >
+                    <td style="text-align: left">
+                      {{ c.cost_name }}
+                      <span v-if="c.is_current" class="cost-current-badge">現行</span>
+                    </td>
                     <td>{{ c.normal_cost ?? '—' }}</td>
                     <td>{{ c.pitcher_only_cost ?? '—' }}</td>
                     <td>{{ c.fielder_only_cost ?? '—' }}</td>
@@ -679,6 +682,7 @@ interface AbilityItem {
 
 interface CostItem {
   cost_name: string
+  is_current: boolean
   normal_cost: number | null
   pitcher_only_cost: number | null
   fielder_only_cost: number | null
@@ -1359,5 +1363,27 @@ function extractErrorMessage(error: unknown): string {
   border-color: #fb923c;
   color: #9a3412;
   font-style: italic;
+}
+
+/* ── 現行コスト強調 ── */
+.cost-row-current {
+  background: #fef9c3;
+  font-weight: bold;
+}
+
+.cost-row-current td {
+  color: #713f12;
+}
+
+.cost-current-badge {
+  display: inline-block;
+  background: #fde047;
+  color: #713f12;
+  font-size: 0.65em;
+  font-weight: bold;
+  padding: 0px 5px;
+  border-radius: 3px;
+  margin-left: 4px;
+  vertical-align: middle;
 }
 </style>

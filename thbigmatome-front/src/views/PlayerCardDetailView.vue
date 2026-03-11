@@ -222,6 +222,35 @@
             </div>
           </div>
 
+          <!-- コスト一覧 -->
+          <div v-if="card.costs && card.costs.length > 0" class="section-box mb-2">
+            <div class="section-title-bar">💴 コスト</div>
+            <div class="section-body pa-1">
+              <table class="def-table">
+                <thead>
+                  <tr>
+                    <th style="text-align: left">カードセット</th>
+                    <th>通常</th>
+                    <th>投専</th>
+                    <th>野専</th>
+                    <th>RL専</th>
+                    <th>二刀</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="(c, idx) in card.costs" :key="idx">
+                    <td style="text-align: left">{{ c.cost_name }}</td>
+                    <td>{{ c.normal_cost ?? '—' }}</td>
+                    <td>{{ c.pitcher_only_cost ?? '—' }}</td>
+                    <td>{{ c.fielder_only_cost ?? '—' }}</td>
+                    <td>{{ c.relief_only_cost ?? '—' }}</td>
+                    <td>{{ c.two_way_cost ?? '—' }}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
           <!-- 投球P列 (投手のみ) -->
           <div
             v-if="
@@ -613,7 +642,10 @@ const HANDEDNESS_MAP: Record<string, string> = {
 
 function handednessToJa(val: string | null | undefined): string {
   if (!val) return '—'
-  return HANDEDNESS_MAP[val] ?? val
+  return val
+    .split('/')
+    .map((part) => HANDEDNESS_MAP[part] ?? part)
+    .join('/')
 }
 
 interface DefenseItem {
@@ -645,6 +677,15 @@ interface AbilityItem {
   ability_definition_id?: number
 }
 
+interface CostItem {
+  cost_name: string
+  normal_cost: number | null
+  pitcher_only_cost: number | null
+  fielder_only_cost: number | null
+  relief_only_cost: number | null
+  two_way_cost: number | null
+}
+
 interface PlayerCardDetail {
   id: number
   card_type: 'pitcher' | 'batter'
@@ -673,6 +714,7 @@ interface PlayerCardDetail {
   batting_table: string[][]
   pitching_table: string[]
   cost?: number | null
+  costs?: CostItem[]
 }
 
 const route = useRoute()

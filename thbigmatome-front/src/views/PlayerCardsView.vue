@@ -161,9 +161,10 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRouter, onBeforeRouteLeave } from 'vue-router'
 import axios from '@/plugins/axios'
 import PlayerCardItem from '@/components/PlayerCardItem.vue'
+import { usePlayerCardsSearchStore } from '@/stores/playerCardsSearch'
 
 interface CardSet {
   id: number
@@ -189,24 +190,35 @@ interface PlayerCard {
 }
 
 const router = useRouter()
+const store = usePlayerCardsSearchStore()
 const playerCards = ref<PlayerCard[]>([])
 const cardSets = ref<CardSet[]>([])
 const loading = ref(false)
 const errorMessage = ref('')
 const totalCount = ref(0)
-const currentPage = ref(1)
 const perPage = 50
 
-const filterCardSetId = ref<number | null>(null)
-const filterCardType = ref('')
-const filterName = ref('')
-const viewMode = ref<'table' | 'grid'>('table')
+const filterCardSetId = ref<number | null>(store.filterCardSetId)
+const filterCardType = ref(store.filterCardType)
+const filterName = ref(store.filterName)
+const currentPage = ref(store.currentPage)
+const viewMode = ref<'table' | 'grid'>(store.viewMode)
 
 const totalPages = computed(() => Math.ceil(totalCount.value / perPage) || 1)
 
-onMounted(() => {
+onMounted(async () => {
   fetchCardSets()
-  fetchPlayerCards()
+  await fetchPlayerCards()
+  window.scrollTo(0, store.scrollY)
+})
+
+onBeforeRouteLeave(() => {
+  store.filterCardSetId = filterCardSetId.value
+  store.filterCardType = filterCardType.value
+  store.filterName = filterName.value
+  store.currentPage = currentPage.value
+  store.viewMode = viewMode.value
+  store.setScrollY(window.scrollY)
 })
 
 watch([filterCardSetId, filterCardType], () => {

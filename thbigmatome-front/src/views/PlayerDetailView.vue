@@ -168,7 +168,10 @@ const HANDEDNESS_MAP: Record<string, string> = {
 
 function handednessToJa(val: string | null | undefined): string {
   if (!val) return '—'
-  return HANDEDNESS_MAP[val] ?? val
+  return val
+    .split('/')
+    .map((part) => HANDEDNESS_MAP[part] ?? part)
+    .join('/')
 }
 
 const route = useRoute()

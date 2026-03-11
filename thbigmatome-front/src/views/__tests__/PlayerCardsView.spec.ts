@@ -4,6 +4,7 @@ import { createVuetify } from 'vuetify'
 import * as components from 'vuetify/components'
 import * as directives from 'vuetify/directives'
 import { createRouter, createMemoryHistory } from 'vue-router'
+import { createPinia } from 'pinia'
 import PlayerCardsView from '../PlayerCardsView.vue'
 
 vi.mock('@/plugins/axios', () => {
@@ -89,21 +90,25 @@ describe('PlayerCardsView', () => {
 
   it('コンポーネントがマウントされること', async () => {
     const router = createTestRouter()
-    const wrapper = mount(PlayerCardsView, { global: { plugins: [vuetify, router] } })
+    const wrapper = mount(PlayerCardsView, {
+      global: { plugins: [vuetify, router, createPinia()] },
+    })
     await flushPromises()
     expect(wrapper.exists()).toBe(true)
   })
 
   it('タイトルが表示されること', async () => {
     const router = createTestRouter()
-    const wrapper = mount(PlayerCardsView, { global: { plugins: [vuetify, router] } })
+    const wrapper = mount(PlayerCardsView, {
+      global: { plugins: [vuetify, router, createPinia()] },
+    })
     await flushPromises()
     expect(wrapper.text()).toContain('選手カード一覧')
   })
 
   it('マウント時にcard_setsとplayer_cardsを取得すること', async () => {
     const router = createTestRouter()
-    mount(PlayerCardsView, { global: { plugins: [vuetify, router] } })
+    mount(PlayerCardsView, { global: { plugins: [vuetify, router, createPinia()] } })
     await flushPromises()
     expect(axios.get).toHaveBeenCalledWith('/card_sets')
     expect(axios.get).toHaveBeenCalledWith('/player_cards', expect.any(Object))
@@ -111,7 +116,9 @@ describe('PlayerCardsView', () => {
 
   it('選手カード一覧が表示されること', async () => {
     const router = createTestRouter()
-    const wrapper = mount(PlayerCardsView, { global: { plugins: [vuetify, router] } })
+    const wrapper = mount(PlayerCardsView, {
+      global: { plugins: [vuetify, router, createPinia()] },
+    })
     await flushPromises()
     expect(wrapper.text()).toContain('博麗霊夢')
     expect(wrapper.text()).toContain('霧雨魔理沙')
@@ -119,14 +126,18 @@ describe('PlayerCardsView', () => {
 
   it('合計件数が表示されること', async () => {
     const router = createTestRouter()
-    const wrapper = mount(PlayerCardsView, { global: { plugins: [vuetify, router] } })
+    const wrapper = mount(PlayerCardsView, {
+      global: { plugins: [vuetify, router, createPinia()] },
+    })
     await flushPromises()
     expect(wrapper.text()).toContain('2件')
   })
 
   it('フィルターセクションが存在すること', async () => {
     const router = createTestRouter()
-    const wrapper = mount(PlayerCardsView, { global: { plugins: [vuetify, router] } })
+    const wrapper = mount(PlayerCardsView, {
+      global: { plugins: [vuetify, router, createPinia()] },
+    })
     await flushPromises()
     expect(wrapper.text()).toContain('カードセット')
     expect(wrapper.text()).toContain('選手名')
@@ -135,7 +146,9 @@ describe('PlayerCardsView', () => {
   it('APIエラー時にエラーメッセージが表示されること', async () => {
     vi.mocked(axios.get).mockRejectedValue(new Error('Network Error'))
     const router = createTestRouter()
-    const wrapper = mount(PlayerCardsView, { global: { plugins: [vuetify, router] } })
+    const wrapper = mount(PlayerCardsView, {
+      global: { plugins: [vuetify, router, createPinia()] },
+    })
     await flushPromises()
     expect(wrapper.text()).toContain('選手カードの取得に失敗しました')
   })

@@ -182,7 +182,6 @@
                             </span>
                           </div>
                           <v-btn
-                            v-if="!isDateBeforeCurrent(day.date)"
                             size="x-small"
                             color="primary"
                             variant="text"
@@ -322,11 +321,7 @@
                         </td>
                         <td>
                           <v-btn
-                            v-if="
-                              row.schedule &&
-                              isGameType(row.schedule.date_type) &&
-                              !isDateBeforeCurrent(row.date)
-                            "
+                            v-if="row.schedule && isGameType(row.schedule.date_type)"
                             size="x-small"
                             color="primary"
                             variant="text"
@@ -463,7 +458,6 @@
               </div>
             </template>
             <v-btn
-              v-if="!isDateBeforeCurrent(selectedDay.date)"
               color="primary"
               variant="elevated"
               block

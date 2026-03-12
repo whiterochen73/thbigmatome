@@ -312,9 +312,14 @@
       "id": "ID",
       "name": "名前",
       "shortName": "短縮名",
+      "teamType": "種別",
       "managerName": "監督名",
       "isActive": "稼働中",
       "actions": "操作"
+    },
+    "teamTypes": {
+      "normal": "通常",
+      "hachinai": "ハチナイ"
     },
     "actions": {
       "editMembers": "メンバー編集",
@@ -379,7 +384,11 @@
       "name": "名前",
       "shortName": "短縮名",
       "manager": "監督",
-      "isActive": "稼働中"
+      "isActive": "稼働中",
+      "teamType": "チーム種別",
+      "teamTypeNormal": "通常チーム（東方キャラがネイティブ）",
+      "teamTypeHachinai": "ハチナイチーム（ハチナイ/球詠キャラがネイティブ）",
+      "teamTypeReadonly": "チーム種別は作成後に変更できません"
     },
     "validation": {
       "required": "必須項目です。"

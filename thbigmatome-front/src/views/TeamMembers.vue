@@ -636,8 +636,16 @@ const saveTeamMembers = async () => {
     }
     await axios.post(`/teams/${teamId.value}/team_players`, payload)
     showSnackbar(t('teamMembers.notifications.saveSuccess'), 'success')
-  } catch (error) {
-    showSnackbar(t('teamMembers.notifications.saveFailed'), 'error')
+  } catch (error: unknown) {
+    const axiosError = error as {
+      response?: { data?: { errors?: { player_id?: string[] }; message?: string; error?: string } }
+    }
+    const errorMsg =
+      axiosError.response?.data?.errors?.player_id?.[0] ||
+      axiosError.response?.data?.error ||
+      axiosError.response?.data?.message ||
+      t('teamMembers.notifications.saveFailed')
+    showSnackbar(errorMsg, 'error')
     console.error('Failed to save team members:', error)
   }
 }

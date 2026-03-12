@@ -17,6 +17,20 @@
           item-value="id"
           :no-data-text="t('teamList.noData')"
         >
+          <template #[`item.team_type`]="{ item }">
+            <v-chip
+              v-if="item.team_type === 'hachinai'"
+              size="small"
+              color="purple"
+              variant="tonal"
+            >
+              {{ t('teamList.teamTypes.hachinai') }}
+            </v-chip>
+            <span v-else class="text-caption text-medium-emphasis">{{
+              t('teamList.teamTypes.normal')
+            }}</span>
+          </template>
+
           <template #[`item.is_active`]="{ item }">
             <v-icon v-if="item.is_active"> mdi-check </v-icon>
           </template>
@@ -77,6 +91,7 @@ const headers = computed(() => [
   { title: t('teamList.headers.id'), key: 'id' },
   { title: t('teamList.headers.name'), key: 'name' },
   { title: t('teamList.headers.shortName'), key: 'short_name' },
+  { title: t('teamList.headers.teamType'), key: 'team_type', sortable: false },
   { title: t('teamList.headers.managerName'), key: 'manager_name', sortable: false },
   { title: t('teamList.headers.isActive'), key: 'is_active', sortable: false },
   { title: t('teamList.headers.actions'), key: 'actions', sortable: false },

@@ -6,6 +6,7 @@ export interface Team {
   short_name: string
   is_active: boolean
   has_season: boolean
+  team_type: 'normal' | 'hachinai'
   user_id?: number | null
   director?: Manager
   coaches?: Manager[]

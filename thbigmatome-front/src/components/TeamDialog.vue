@@ -31,6 +31,7 @@
                 :items="managers"
                 item-title="name"
                 item-value="id"
+                :item-props="managerItemProps"
                 :label="t('teamDialog.form.director')"
               ></v-autocomplete>
             </v-col>
@@ -181,6 +182,15 @@ watch(
   },
   { immediate: true },
 )
+
+const managerItemProps = (manager: Manager) => {
+  const count = manager.active_director_team_count ?? 0
+  const isAtCapacity = count >= 2 && manager.id !== editedTeam.value.director_id
+  return {
+    disabled: isAtCapacity,
+    subtitle: isAtCapacity ? t('teamDialog.form.directorAtCapacity') : undefined,
+  }
+}
 
 const close = () => {
   internalIsVisible.value = false

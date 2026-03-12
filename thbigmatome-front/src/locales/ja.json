@@ -342,7 +342,8 @@
       "shortName": "短縮名",
       "ircName": "IRCネーム",
       "userId": "ユーザーID",
-      "actions": "操作"
+      "actions": "操作",
+      "teamCount": "チーム数"
     },
     "expanded": {
       "title": "担当チーム",
@@ -355,7 +356,8 @@
     "deleteConfirmMessage": "本当にこの監督を削除しますか？\n関連するチームも削除されます。",
     "fetchFailed": "監督一覧の取得に失敗しました。",
     "deleteSuccess": "監督を削除しました。",
-    "deleteFailed": "監督の削除に失敗しました。"
+    "deleteFailed": "監督の削除に失敗しました。",
+    "atCapacity": "上限"
   },
   "managerDialog": {
     "title": {
@@ -388,7 +390,8 @@
       "teamType": "チーム種別",
       "teamTypeNormal": "通常チーム（東方キャラがネイティブ）",
       "teamTypeHachinai": "ハチナイチーム（ハチナイ/球詠キャラがネイティブ）",
-      "teamTypeReadonly": "チーム種別は作成後に変更できません"
+      "teamTypeReadonly": "チーム種別は作成後に変更できません",
+      "directorAtCapacity": "上限到達(2チーム)"
     },
     "validation": {
       "required": "必須項目です。"
@@ -401,8 +404,7 @@
       "saveFailed": "チーム情報の保存に失敗しました。"
     }
   },
-  "confirmDialog": {
-  },
+  "confirmDialog": {},
   "settings": {
     "title": "設定",
     "description": "この画面では、アプリケーション全体で利用される細かいマスターデータの設定を行います。",
@@ -825,7 +827,7 @@
       "defenseSectionTitle": "守備・送球",
       "injury_rate": "怪我特徴",
       "batting_style": "打者特徴",
-      "batting_style_description" : "打者特徴補足",
+      "batting_style_description": "打者特徴補足",
       "batting_skills": "打者特殊能力",
       "player_types": "選手タイプ",
       "biorhythms": "バイオリズム",
@@ -836,7 +838,7 @@
       "relief_stamina": "中継疲労P",
       "is_relief_only": "リリーフ専任",
       "pitching_style": "投手特徴",
-      "pitching_style_description" : "投手特徴補足",
+      "pitching_style_description": "投手特徴補足",
       "pinch_pitching_style": "有走者時投手特徴",
       "pitching_skills": "投手特殊能力",
       "hasPartnerCatchers": "専属捕手",

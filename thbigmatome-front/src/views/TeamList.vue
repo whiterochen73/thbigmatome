@@ -16,6 +16,9 @@
           class="elevation-1"
           item-value="id"
           :no-data-text="t('teamList.noData')"
+          :row-props="
+            (row: { item: Team }) => (row.item.is_active ? {} : { class: 'text-medium-emphasis' })
+          "
         >
           <template #[`item.team_type`]="{ item }">
             <v-chip

@@ -22,6 +22,20 @@
           @update:options="onOptionsUpdate"
         >
           <!-- eslint-disable-next-line vue/valid-v-slot -->
+          <template #item.team_count="{ item }">
+            <span>{{ item.active_director_team_count ?? 0 }}/2</span>
+            <v-chip
+              v-if="(item.active_director_team_count ?? 0) >= 2"
+              size="x-small"
+              color="warning"
+              variant="tonal"
+              class="ml-1"
+            >
+              {{ t('managerList.atCapacity') }}
+            </v-chip>
+          </template>
+
+          <!-- eslint-disable-next-line vue/valid-v-slot -->
           <template #item.actions="{ item }">
             <v-icon size="small" class="mr-2" @click="openDialog(item)"> mdi-pencil </v-icon>
             <v-icon size="small" @click="deleteManager(item.id)"> mdi-delete </v-icon>
@@ -119,6 +133,7 @@ const headers = computed(() => [
   { title: t('managerList.headers.shortName'), key: 'short_name' },
   { title: t('managerList.headers.ircName'), key: 'irc_name' },
   { title: t('managerList.headers.userId'), key: 'user_id' },
+  { title: t('managerList.headers.teamCount'), key: 'team_count', sortable: false },
   { title: t('managerList.headers.actions'), key: 'actions', sortable: false },
 ])
 

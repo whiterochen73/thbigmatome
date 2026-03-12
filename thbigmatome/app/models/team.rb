@@ -25,7 +25,14 @@ class Team < ApplicationRecord
   has_many :coach_team_managers, -> { where(role: :coach) }, class_name: "TeamManager", dependent: :destroy
   has_many :coaches, through: :coach_team_managers, source: :manager
 
+  VALID_TEAM_TYPES = %w[normal hachinai].freeze
+  NATIVE_SERIES = {
+    "normal"   => %w[touhou].freeze,
+    "hachinai" => %w[hachinai tamayomi].freeze
+  }.freeze
+
   validates :name, presence: true
+  validates :team_type, inclusion: { in: VALID_TEAM_TYPES }
 
   # シーズンが存在するかどうか（TopMenu等のUI表示で使用）
   def has_season
@@ -55,11 +62,12 @@ class Team < ApplicationRecord
     end
   end
 
-  # 1軍の外の世界枠選手（Player.series != 'touhou' で判定）
+  # 1軍の外の世界枠選手（team_type に応じたネイティブ series 以外が外の世界枠）
   def outside_world_first_squad_memberships
+    native = NATIVE_SERIES[team_type] || NATIVE_SERIES["normal"]
     team_memberships.where(squad: "first")
       .joins(:player)
-      .where.not(players: { series: "touhou" })
+      .where.not(players: { series: native })
   end
 
   # 外の世界枠: 最大4人チェック

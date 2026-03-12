@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_03_10_141953) do
+ActiveRecord::Schema[8.1].define(version: 2026_03_12_141759) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -629,8 +629,10 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_10_141953) do
     t.boolean "is_active", default: true
     t.string "name"
     t.string "short_name"
+    t.string "team_type", default: "normal", null: false
     t.datetime "updated_at", null: false
     t.bigint "user_id"
+    t.index [ "team_type" ], name: "index_teams_on_team_type"
   end
 
   create_table "trait_conditions", force: :cascade do |t|

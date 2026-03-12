@@ -19,6 +19,7 @@ module Api
         start_date = season.season_schedules.minimum(:date)
 
         # Determine current squad for each player based on the latest SeasonRoster entry
+        native_series = Team::NATIVE_SERIES[team.team_type] || Team::NATIVE_SERIES["normal"]
         roster_data = team_memberships.map do |tm|
           latest_roster_entry = tm.season_rosters
                                   .where("registered_on <= ?", target_date)
@@ -43,7 +44,7 @@ module Api
             # Add cooldown information if applicable
             cooldown_until: cooldown_info[:cooldown_until],
             same_day_exempt: cooldown_info[:same_day_exempt],
-            is_outside_world: tm.player.series != "touhou",
+            is_outside_world: !native_series.include?(tm.player.series),
             is_starter_pitcher: (tm.player.player_cards.first&.is_pitcher && tm.player.player_cards.first&.starter_stamina.present? && tm.player.player_cards.first&.starter_stamina >= 4) || false,
             is_relief_only: (tm.player.player_cards.first&.is_pitcher && tm.player.player_cards.first&.is_relief_only) || false,
             **absence_info_for(tm, target_date)

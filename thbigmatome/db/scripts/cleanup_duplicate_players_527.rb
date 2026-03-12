@@ -54,6 +54,11 @@ dup_groups.each do |norm_name, players_in_group|
       if conflict
         conflict_pcs += 1
         puts "  CONFLICT: PlayerCard id=#{pc.id} (card_set=#{pc.card_set_id}, type=#{pc.card_type}) vs existing id=#{conflict.id}"
+        # 重複側にhandednessがあり元側にない場合、元側にコピー
+        if pc.handedness.present? && conflict.handedness.blank?
+          puts "  COPY handedness: #{pc.handedness} → card id=#{conflict.id}"
+          conflict.update_column(:handedness, pc.handedness) unless dry_run
+        end
         # Active Storageはpc.idで参照されているため、pcを削除する前にattachmentを確認
         attachments = ActiveStorage::Attachment.where(record_type: "PlayerCard", record_id: pc.id)
         if attachments.any?
@@ -108,41 +113,45 @@ dup_groups.each do |norm_name, players_in_group|
       end
     end
 
-    # --- PlayerPlayerType 移動 ---
-    ppts = ActiveRecord::Base.connection.execute(
-      "SELECT id, player_type_id FROM player_player_types WHERE player_id = #{dup.id}"
-    )
-    ppts.each do |ppt|
-      conflict = ActiveRecord::Base.connection.execute(
-        "SELECT id FROM player_player_types WHERE player_id = #{original.id} AND player_type_id = #{ppt['player_type_id']}"
-      ).first
-      if conflict
-        puts "  CONFLICT PPT: player_type_id=#{ppt['player_type_id']} already on original — deleting dup"
-        ActiveRecord::Base.connection.execute("DELETE FROM player_player_types WHERE id = #{ppt['id']}") unless dry_run
-      else
-        puts "  MOVE PPT: player_type_id=#{ppt['player_type_id']} → player_id=#{original.id}"
-        ActiveRecord::Base.connection.execute(
-          "UPDATE player_player_types SET player_id = #{original.id} WHERE id = #{ppt['id']}"
-        ) unless dry_run
+    # --- PlayerPlayerType 移動 (テーブルが存在する場合のみ) ---
+    if ActiveRecord::Base.connection.table_exists?('player_player_types')
+      ppts = ActiveRecord::Base.connection.execute(
+        "SELECT id, player_type_id FROM player_player_types WHERE player_id = #{dup.id}"
+      )
+      ppts.each do |ppt|
+        conflict = ActiveRecord::Base.connection.execute(
+          "SELECT id FROM player_player_types WHERE player_id = #{original.id} AND player_type_id = #{ppt['player_type_id']}"
+        ).first
+        if conflict
+          puts "  CONFLICT PPT: player_type_id=#{ppt['player_type_id']} already on original — deleting dup"
+          ActiveRecord::Base.connection.execute("DELETE FROM player_player_types WHERE id = #{ppt['id']}") unless dry_run
+        else
+          puts "  MOVE PPT: player_type_id=#{ppt['player_type_id']} → player_id=#{original.id}"
+          ActiveRecord::Base.connection.execute(
+            "UPDATE player_player_types SET player_id = #{original.id} WHERE id = #{ppt['id']}"
+          ) unless dry_run
+        end
       end
     end
 
-    # --- PlayerPitchingSkill 移動 ---
-    ppss = ActiveRecord::Base.connection.execute(
-      "SELECT id, pitching_skill_id FROM player_pitching_skills WHERE player_id = #{dup.id}"
-    )
-    ppss.each do |pps|
-      conflict = ActiveRecord::Base.connection.execute(
-        "SELECT id FROM player_pitching_skills WHERE player_id = #{original.id} AND pitching_skill_id = #{pps['pitching_skill_id']}"
-      ).first
-      if conflict
-        puts "  CONFLICT PPS: pitching_skill_id=#{pps['pitching_skill_id']} already on original — deleting dup"
-        ActiveRecord::Base.connection.execute("DELETE FROM player_pitching_skills WHERE id = #{pps['id']}") unless dry_run
-      else
-        puts "  MOVE PPS: pitching_skill_id=#{pps['pitching_skill_id']} → player_id=#{original.id}"
-        ActiveRecord::Base.connection.execute(
-          "UPDATE player_pitching_skills SET player_id = #{original.id} WHERE id = #{pps['id']}"
-        ) unless dry_run
+    # --- PlayerPitchingSkill 移動 (テーブルが存在する場合のみ) ---
+    if ActiveRecord::Base.connection.table_exists?('player_pitching_skills')
+      ppss = ActiveRecord::Base.connection.execute(
+        "SELECT id, pitching_skill_id FROM player_pitching_skills WHERE player_id = #{dup.id}"
+      )
+      ppss.each do |pps|
+        conflict = ActiveRecord::Base.connection.execute(
+          "SELECT id FROM player_pitching_skills WHERE player_id = #{original.id} AND pitching_skill_id = #{pps['pitching_skill_id']}"
+        ).first
+        if conflict
+          puts "  CONFLICT PPS: pitching_skill_id=#{pps['pitching_skill_id']} already on original — deleting dup"
+          ActiveRecord::Base.connection.execute("DELETE FROM player_pitching_skills WHERE id = #{pps['id']}") unless dry_run
+        else
+          puts "  MOVE PPS: pitching_skill_id=#{pps['pitching_skill_id']} → player_id=#{original.id}"
+          ActiveRecord::Base.connection.execute(
+            "UPDATE player_pitching_skills SET player_id = #{original.id} WHERE id = #{pps['id']}"
+          ) unless dry_run
+        end
       end
     end
 

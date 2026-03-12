@@ -1,5 +1,6 @@
 class Api::V1::TeamPlayersController < Api::V1::BaseController
   before_action :set_team
+  before_action :authorize_commissioner!, only: [ :create ]
 
   def index
     cost_list_id = params[:cost_list_id]

@@ -2,6 +2,7 @@ module Api
   module V1
     class TeamsController < Api::V1::BaseController
       before_action :set_team, only: [ :show, :update, :destroy ]
+      before_action :authorize_commissioner!, only: [ :create, :destroy ]
 
       # GET /api/v1/teams
       def index

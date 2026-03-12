@@ -159,6 +159,110 @@ RSpec.describe Team, type: :model do
     end
   end
 
+  # ============================================================
+  # team_type バリデーション
+  # ============================================================
+
+  describe "team_type validation" do
+    it "デフォルトはnormal" do
+      team = build(:team)
+      expect(team.team_type).to eq("normal")
+    end
+
+    it "normalは有効" do
+      expect(build(:team, team_type: "normal")).to be_valid
+    end
+
+    it "hachinaiは有効" do
+      expect(build(:team, team_type: "hachinai")).to be_valid
+    end
+
+    it "不正な値はエラー" do
+      expect(build(:team, team_type: "invalid")).not_to be_valid
+    end
+  end
+
+  # ============================================================
+  # outside_world_first_squad_memberships（team_type対応）
+  # ============================================================
+
+  describe "#outside_world_first_squad_memberships" do
+    def add_first_squad_player(team:, series:)
+      player = create(:player, series: series)
+      create(:team_membership, team: team, player: player, squad: "first")
+      player
+    end
+
+    context "normal チーム（東方がネイティブ）" do
+      let(:normal_team) { create(:team, team_type: "normal") }
+
+      it "touhou 選手は外の世界枠にカウントされない" do
+        add_first_squad_player(team: normal_team, series: "touhou")
+        expect(normal_team.outside_world_first_squad_memberships.size).to eq(0)
+      end
+
+      it "hachinai 選手は外の世界枠にカウントされる" do
+        add_first_squad_player(team: normal_team, series: "hachinai")
+        expect(normal_team.outside_world_first_squad_memberships.size).to eq(1)
+      end
+
+      it "tamayomi 選手は外の世界枠にカウントされる" do
+        add_first_squad_player(team: normal_team, series: "tamayomi")
+        expect(normal_team.outside_world_first_squad_memberships.size).to eq(1)
+      end
+
+      it "original 選手は外の世界枠にカウントされる" do
+        add_first_squad_player(team: normal_team, series: "original")
+        expect(normal_team.outside_world_first_squad_memberships.size).to eq(1)
+      end
+
+      it "touhou 2人 + hachinai 2人 = 外の世界2人" do
+        2.times { add_first_squad_player(team: normal_team, series: "touhou") }
+        2.times { add_first_squad_player(team: normal_team, series: "hachinai") }
+        expect(normal_team.outside_world_first_squad_memberships.size).to eq(2)
+      end
+    end
+
+    context "hachinai チーム（hachinai/tamayomi がネイティブ）" do
+      let(:hachinai_team) { create(:team, team_type: "hachinai") }
+
+      it "hachinai 選手は外の世界枠にカウントされない" do
+        add_first_squad_player(team: hachinai_team, series: "hachinai")
+        expect(hachinai_team.outside_world_first_squad_memberships.size).to eq(0)
+      end
+
+      it "tamayomi 選手は外の世界枠にカウントされない" do
+        add_first_squad_player(team: hachinai_team, series: "tamayomi")
+        expect(hachinai_team.outside_world_first_squad_memberships.size).to eq(0)
+      end
+
+      it "touhou 選手は外の世界枠にカウントされる" do
+        add_first_squad_player(team: hachinai_team, series: "touhou")
+        expect(hachinai_team.outside_world_first_squad_memberships.size).to eq(1)
+      end
+
+      it "original 選手は外の世界枠にカウントされる" do
+        add_first_squad_player(team: hachinai_team, series: "original")
+        expect(hachinai_team.outside_world_first_squad_memberships.size).to eq(1)
+      end
+
+      it "hachinai 2人 + tamayomi 1人 + touhou 2人 = 外の世界2人" do
+        2.times { add_first_squad_player(team: hachinai_team, series: "hachinai") }
+        add_first_squad_player(team: hachinai_team, series: "tamayomi")
+        2.times { add_first_squad_player(team: hachinai_team, series: "touhou") }
+        expect(hachinai_team.outside_world_first_squad_memberships.size).to eq(2)
+      end
+    end
+
+    context "2軍選手はカウントしない" do
+      it "squad: second の選手は team_type に関係なく除外" do
+        player = create(:player, series: "hachinai")
+        create(:team_membership, team: team, player: player, squad: "second")
+        expect(team.outside_world_first_squad_memberships.size).to eq(0)
+      end
+    end
+  end
+
   # 外の世界枠バリデーション: player_player_typesテーブル廃止(cmd_511 Phase 2b)によりテスト削除
 end
 

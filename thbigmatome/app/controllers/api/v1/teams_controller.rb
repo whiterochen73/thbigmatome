@@ -57,6 +57,23 @@ module Api
 
       def update_managers(team, director_id, coach_ids)
         team.transaction do
+          old_director_id = team.director_team_manager&.manager_id
+
+          if director_id.present? && director_id.to_i != old_director_id
+            new_director_team_ids = TeamManager.where(manager_id: director_id, role: :director)
+                                               .pluck(:team_id)
+            if new_director_team_ids.any?
+              overlapping = TeamMembership.where(
+                team_id: new_director_team_ids,
+                player_id: team.team_memberships.pluck(:player_id)
+              )
+              if overlapping.exists?
+                raise ActiveRecord::RecordInvalid,
+                  "Director変更不可: 新しい監督の他チームと選手が重複しています"
+              end
+            end
+          end
+
           team.director = director_id.present? ? Manager.find_by(id: director_id) : nil
 
           team.coach_team_managers.destroy_all

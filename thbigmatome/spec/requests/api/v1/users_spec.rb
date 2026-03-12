@@ -101,10 +101,10 @@ RSpec.describe 'Api::V1::Users', type: :request do
         expect(json.map { |t| t['id'] }).not_to include(other_team.id)
       end
 
-      it 'id/name/is_active/user_id/short_nameのフィールドを含む' do
+      it 'id/name/is_active/user_id/short_name/team_typeのフィールドを含む' do
         get '/api/v1/users/me/teams'
         json = JSON.parse(response.body)
-        expect(json.first.keys).to match_array(%w[id name is_active user_id short_name])
+        expect(json.first.keys).to match_array(%w[id name is_active user_id short_name team_type])
       end
     end
 

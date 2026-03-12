@@ -96,7 +96,7 @@ RSpec.describe "Api::V1::ManagersController", type: :request do
   end
 
   describe "POST /api/v1/managers" do
-    include_context "authenticated user"
+    include_context "authenticated commissioner"
 
     it "creates a manager and returns 201" do
       expect {
@@ -116,7 +116,7 @@ RSpec.describe "Api::V1::ManagersController", type: :request do
   end
 
   describe "PATCH /api/v1/managers/:id" do
-    include_context "authenticated user"
+    include_context "authenticated commissioner"
 
     let!(:manager) { create(:manager, name: "旧監督名") }
 
@@ -135,7 +135,7 @@ RSpec.describe "Api::V1::ManagersController", type: :request do
   end
 
   describe "DELETE /api/v1/managers/:id" do
-    include_context "authenticated user"
+    include_context "authenticated commissioner"
 
     let!(:manager) { create(:manager) }
 

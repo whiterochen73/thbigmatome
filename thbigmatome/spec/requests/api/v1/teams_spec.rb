@@ -74,7 +74,7 @@ RSpec.describe "Api::V1::TeamsController", type: :request do
   end
 
   describe "POST /api/v1/teams" do
-    include_context "authenticated user"
+    include_context "authenticated commissioner"
 
     it "creates a team and returns 201" do
       expect {
@@ -129,7 +129,7 @@ RSpec.describe "Api::V1::TeamsController", type: :request do
   end
 
   describe "DELETE /api/v1/teams/:id" do
-    include_context "authenticated user"
+    include_context "authenticated commissioner"
 
     let!(:team) { create(:team) }
 

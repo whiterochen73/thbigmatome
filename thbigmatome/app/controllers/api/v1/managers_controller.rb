@@ -2,6 +2,7 @@ module Api
   module V1
     class ManagersController < Api::V1::BaseController
       before_action :set_manager, only: [ :show, :update, :destroy ]
+      before_action :authorize_commissioner!, only: [ :create, :update, :destroy ]
 
       # GET /api/v1/managers
       def index
@@ -19,7 +20,10 @@ module Api
         total_pages = (total_count.to_f / per_page).ceil
 
         render json: {
-          data: @managers.as_json(include: { teams: { methods: [ :has_season ] } }),
+          data: @managers.as_json(
+            include: { teams: { methods: [ :has_season ] } },
+            methods: [ :active_director_team_count ]
+          ),
           meta: {
             total_count: total_count,
             per_page: per_page,

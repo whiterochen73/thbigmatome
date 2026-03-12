@@ -24,7 +24,7 @@ module Api
       # GET /api/v1/users/me/teams
       def my_teams
         teams = current_user.teams.order(is_active: :desc, created_at: :asc)
-        render json: teams.as_json(only: [ :id, :name, :is_active, :user_id, :short_name ])
+        render json: teams.as_json(only: [ :id, :name, :is_active, :user_id, :short_name, :team_type ])
       end
 
       # PATCH /api/v1/users/:id/reset_password

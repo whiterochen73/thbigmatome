@@ -125,7 +125,7 @@ const commissionerMenuItems = [
     title: '監督一覧',
     icon: 'mdi-account-tie',
     value: 'managers',
-    to: '/commissioner/managers',
+    to: '/managers',
   },
   {
     title: 'ユーザー管理',

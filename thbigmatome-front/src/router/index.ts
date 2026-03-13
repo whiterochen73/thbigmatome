@@ -36,7 +36,7 @@ const routes: RouteRecordRaw[] = [
         path: 'managers',
         name: '監督一覧',
         component: ManagerList,
-        meta: { title: '監督一覧' },
+        meta: { requiresAuth: true, requiresCommissioner: true, title: '監督一覧' },
       },
       {
         path: '/teams',

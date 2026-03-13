@@ -103,12 +103,8 @@
       </v-card-text>
       <v-card-actions>
         <v-spacer></v-spacer>
-        <v-btn color="blue-darken-1" variant="text" @click="closeDialog">{{
-          t('actions.cancel')
-        }}</v-btn>
-        <v-btn color="blue-darken-1" variant="text" @click="saveLineup">{{
-          t('actions.save')
-        }}</v-btn>
+        <v-btn variant="text" @click="closeDialog">{{ t('actions.cancel') }}</v-btn>
+        <v-btn color="accent" variant="flat" @click="saveLineup">{{ t('actions.save') }}</v-btn>
       </v-card-actions>
     </v-card>
   </v-dialog>

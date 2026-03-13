@@ -1,5 +1,10 @@
 <template>
-  <v-dialog :model-value="modelValue" @update:model-value="(value) => emit('update:modelValue', value)" max-width="500px" persistent>
+  <v-dialog
+    :model-value="modelValue"
+    @update:model-value="(value) => emit('update:modelValue', value)"
+    max-width="500px"
+    persistent
+  >
     <v-card>
       <v-card-title>
         <span class="text-h5">{{ title }}</span>
@@ -39,10 +44,10 @@
 
       <v-card-actions>
         <v-spacer></v-spacer>
-        <v-btn color="blue-darken-1" variant="text" @click="closeDialog">
+        <v-btn variant="text" @click="closeDialog">
           {{ t('actions.cancel') }}
         </v-btn>
-        <v-btn color="blue-darken-1" variant="text" @click="saveItem" :disabled="!isFormValid">
+        <v-btn color="accent" variant="flat" @click="saveItem" :disabled="!isFormValid">
           {{ t('actions.save') }}
         </v-btn>
       </v-card-actions>
@@ -96,11 +101,18 @@ const skillTypeBackgroundColor = computed(() => {
   }
 })
 
-watch(() => props.item, (newItem) => {
-  editableItem.value = newItem ? { ...newItem } : { ...defaultItem }
-})
+watch(
+  () => props.item,
+  (newItem) => {
+    editableItem.value = newItem ? { ...newItem } : { ...defaultItem }
+  },
+)
 
-const title = computed(() => props.item ? t('settings.pitchingSkill.dialog.title.edit') : t('settings.pitchingSkill.dialog.title.add'))
+const title = computed(() =>
+  props.item
+    ? t('settings.pitchingSkill.dialog.title.edit')
+    : t('settings.pitchingSkill.dialog.title.add'),
+)
 
 const rules = {
   required: (value: string) => !!value || t('validation.required'),
@@ -129,7 +141,10 @@ const saveItem = async () => {
   } catch (error) {
     if (isAxiosError(error) && Array.isArray(error.response?.data?.errors)) {
       const errorMessages = (error.response?.data?.errors as string[]).join('\n')
-      showSnackbar(t('settings.pitchingSkill.notifications.saveFailedWithErrors', { errors: errorMessages }), 'error')
+      showSnackbar(
+        t('settings.pitchingSkill.notifications.saveFailedWithErrors', { errors: errorMessages }),
+        'error',
+      )
     } else {
       showSnackbar(t('settings.pitchingSkill.notifications.saveFailed'), 'error')
     }

@@ -100,8 +100,8 @@
         </v-card-text>
         <v-card-actions>
           <v-spacer></v-spacer>
-          <v-btn color="blue darken-1" text @click="closeCreateDialog">キャンセル</v-btn>
-          <v-btn color="blue darken-1" text @click="createUser" :loading="creating">作成</v-btn>
+          <v-btn variant="text" @click="closeCreateDialog">キャンセル</v-btn>
+          <v-btn color="accent" variant="flat" @click="createUser" :loading="creating">作成</v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
@@ -128,8 +128,8 @@
         </v-card-text>
         <v-card-actions>
           <v-spacer></v-spacer>
-          <v-btn color="blue darken-1" text @click="closeResetDialog">キャンセル</v-btn>
-          <v-btn color="blue darken-1" text @click="submitReset" :loading="resetting"
+          <v-btn variant="text" @click="closeResetDialog">キャンセル</v-btn>
+          <v-btn color="accent" variant="flat" @click="submitReset" :loading="resetting"
             >リセット</v-btn
           >
         </v-card-actions>

@@ -72,10 +72,10 @@
       </v-card-text>
       <v-card-actions>
         <v-spacer></v-spacer>
-        <v-btn color="blue-darken-1" variant="text" @click="isOpen = false">
+        <v-btn variant="text" @click="isOpen = false">
           {{ t('actions.cancel') }}
         </v-btn>
-        <v-btn color="blue-darken-1" variant="text" @click="saveAbsence">
+        <v-btn color="accent" variant="flat" @click="saveAbsence">
           {{ t('actions.save') }}
         </v-btn>
       </v-card-actions>

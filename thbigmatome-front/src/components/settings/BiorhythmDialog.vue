@@ -1,5 +1,10 @@
 <template>
-  <v-dialog :model-value="modelValue" @update:model-value="(value) => emit('update:modelValue', value)" max-width="500px" persistent>
+  <v-dialog
+    :model-value="modelValue"
+    @update:model-value="(value) => emit('update:modelValue', value)"
+    max-width="500px"
+    persistent
+  >
     <v-card>
       <v-card-title>
         <span class="text-h5">{{ title }}</span>
@@ -40,10 +45,10 @@
 
       <v-card-actions>
         <v-spacer></v-spacer>
-        <v-btn color="blue-darken-1" variant="text" @click="closeDialog">
+        <v-btn variant="text" @click="closeDialog">
           {{ t('actions.cancel') }}
         </v-btn>
-        <v-btn color="blue-darken-1" variant="text" @click="saveItem" :disabled="!isFormValid">
+        <v-btn color="accent" variant="flat" @click="saveItem" :disabled="!isFormValid">
           {{ t('actions.save') }}
         </v-btn>
       </v-card-actions>
@@ -70,11 +75,16 @@ const { showSnackbar } = useSnackbar()
 const defaultItem: BiorhythmPayload = { name: '', start_date: '', end_date: '' }
 const editableItem = ref<BiorhythmPayload>({ ...defaultItem })
 
-watch(() => props.item, (newItem) => {
-  editableItem.value = newItem ? { ...newItem } : { ...defaultItem }
-})
+watch(
+  () => props.item,
+  (newItem) => {
+    editableItem.value = newItem ? { ...newItem } : { ...defaultItem }
+  },
+)
 
-const title = computed(() => props.item ? t('settings.biorhythm.dialog.title.edit') : t('settings.biorhythm.dialog.title.add'))
+const title = computed(() =>
+  props.item ? t('settings.biorhythm.dialog.title.edit') : t('settings.biorhythm.dialog.title.add'),
+)
 
 const rules = {
   required: (value: string) => !!value || t('validation.required'),
@@ -82,7 +92,11 @@ const rules = {
 }
 
 const isFormValid = computed(() => {
-  return !!editableItem.value.name && rules.dateFormat(editableItem.value.start_date) === true && rules.dateFormat(editableItem.value.end_date) === true
+  return (
+    !!editableItem.value.name &&
+    rules.dateFormat(editableItem.value.start_date) === true &&
+    rules.dateFormat(editableItem.value.end_date) === true
+  )
 })
 
 const closeDialog = () => emit('update:modelValue', false)
@@ -92,14 +106,24 @@ const saveItem = async () => {
   try {
     const payload = { biorhythm: { ...editableItem.value } }
     const messageKey = props.item?.id ? 'updateSuccess' : 'addSuccess'
-    const request = props.item?.id ? axios.put(`/biorhythms/${props.item.id}`, payload) : axios.post('/biorhythms', payload)
+    const request = props.item?.id
+      ? axios.put(`/biorhythms/${props.item.id}`, payload)
+      : axios.post('/biorhythms', payload)
     await request
     showSnackbar(t(`settings.biorhythm.notifications.${messageKey}`), 'success')
     emit('save')
     closeDialog()
   } catch (error) {
-    const errorMessages = isAxiosError(error) && Array.isArray(error.response?.data?.errors) ? (error.response?.data.errors as string[]).join('\n') : ''
-    showSnackbar(errorMessages ? t('settings.biorhythm.notifications.saveFailedWithErrors', { errors: errorMessages }) : t('settings.biorhythm.notifications.saveFailed'), 'error')
+    const errorMessages =
+      isAxiosError(error) && Array.isArray(error.response?.data?.errors)
+        ? (error.response?.data.errors as string[]).join('\n')
+        : ''
+    showSnackbar(
+      errorMessages
+        ? t('settings.biorhythm.notifications.saveFailedWithErrors', { errors: errorMessages })
+        : t('settings.biorhythm.notifications.saveFailed'),
+      'error',
+    )
   }
 }
 </script>

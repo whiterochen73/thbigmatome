@@ -93,8 +93,8 @@
         </v-card-text>
         <v-card-actions>
           <v-spacer></v-spacer>
-          <v-btn color="blue darken-1" text @click="closeCreateDialog">キャンセル</v-btn>
-          <v-btn color="blue darken-1" text @click="createCompetition" :loading="creating"
+          <v-btn variant="text" @click="closeCreateDialog">キャンセル</v-btn>
+          <v-btn color="accent" variant="flat" @click="createCompetition" :loading="creating"
             >作成</v-btn
           >
         </v-card-actions>
@@ -137,8 +137,8 @@
         </v-card-text>
         <v-card-actions>
           <v-spacer></v-spacer>
-          <v-btn color="blue darken-1" text @click="closeEditDialog">キャンセル</v-btn>
-          <v-btn color="blue darken-1" text @click="updateCompetition" :loading="updating"
+          <v-btn variant="text" @click="closeEditDialog">キャンセル</v-btn>
+          <v-btn color="accent" variant="flat" @click="updateCompetition" :loading="updating"
             >更新</v-btn
           >
         </v-card-actions>

@@ -16,10 +16,10 @@
 
       <v-card-actions>
         <v-spacer></v-spacer>
-        <v-btn color="blue-darken-1" variant="text" @click="closeDialog">
+        <v-btn variant="text" @click="closeDialog">
           {{ t('actions.cancel') }}
         </v-btn>
-        <v-btn color="blue-darken-1" variant="text" @click="saveItem" :disabled="!isFormValid">
+        <v-btn color="accent" variant="flat" @click="saveItem" :disabled="!isFormValid">
           {{ t('actions.save') }}
         </v-btn>
       </v-card-actions>

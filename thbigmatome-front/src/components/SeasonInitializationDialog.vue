@@ -29,10 +29,10 @@
       </v-card-text>
       <v-card-actions>
         <v-spacer></v-spacer>
-        <v-btn color="blue-darken-1" text @click="closeDialog">
+        <v-btn variant="text" @click="closeDialog">
           {{ t('common.close') }}
         </v-btn>
-        <v-btn color="blue-darken-1" text @click="initializeSeasonAndCloseDialog">
+        <v-btn color="accent" variant="flat" @click="initializeSeasonAndCloseDialog">
           {{ t('topMenu.seasonInitialization.initializeButton') }}
         </v-btn>
       </v-card-actions>
@@ -41,33 +41,33 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch } from 'vue';
-import { useI18n } from 'vue-i18n';
-import axios from 'axios';
-import type { ScheduleList } from '@/types/scheduleList';
-import type { Team } from '@/types/team';
+import { ref, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
+import axios from 'axios'
+import type { ScheduleList } from '@/types/scheduleList'
+import type { Team } from '@/types/team'
 
 const props = defineProps<{
-  isVisible: boolean;
-  schedules: ScheduleList[];
-  selectedTeam: Team | null;
-}>();
+  isVisible: boolean
+  schedules: ScheduleList[]
+  selectedTeam: Team | null
+}>()
 
-const emit = defineEmits(['update:isVisible', 'save']);
+const emit = defineEmits(['update:isVisible', 'save'])
 
-const { t } = useI18n();
+const { t } = useI18n()
 
-const seasonName = ref('');
-const selectedSchedule = ref<number | null>(null);
+const seasonName = ref('')
+const selectedSchedule = ref<number | null>(null)
 
 const closeDialog = () => {
-  emit('update:isVisible', false);
-};
+  emit('update:isVisible', false)
+}
 
 const initializeSeason = async () => {
   if (!props.selectedTeam || !selectedSchedule.value || !seasonName.value) {
-    console.error('Team, schedule, and season name are required.');
-    return;
+    console.error('Team, schedule, and season name are required.')
+    return
   }
 
   try {
@@ -75,25 +75,28 @@ const initializeSeason = async () => {
       team_id: props.selectedTeam.id,
       schedule_id: selectedSchedule.value,
       name: seasonName.value,
-    });
-    console.log('Season initialized:', response.data);
-    seasonName.value = '';
-    selectedSchedule.value = null;
-    emit('save');
+    })
+    console.log('Season initialized:', response.data)
+    seasonName.value = ''
+    selectedSchedule.value = null
+    emit('save')
   } catch (error) {
-    console.error('Failed to initialize season:', error);
+    console.error('Failed to initialize season:', error)
   }
-};
+}
 
 const initializeSeasonAndCloseDialog = async () => {
-  await initializeSeason();
-  closeDialog();
-};
+  await initializeSeason()
+  closeDialog()
+}
 
-watch(() => props.isVisible, (newValue) => {
-  if (!newValue) {
-    seasonName.value = '';
-    selectedSchedule.value = null;
-  }
-});
+watch(
+  () => props.isVisible,
+  (newValue) => {
+    if (!newValue) {
+      seasonName.value = ''
+      selectedSchedule.value = null
+    }
+  },
+)
 </script>

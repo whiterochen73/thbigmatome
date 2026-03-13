@@ -80,8 +80,10 @@
         </v-card-text>
         <v-card-actions>
           <v-spacer></v-spacer>
-          <v-btn color="blue darken-1" text @click="closeCreateDialog">キャンセル</v-btn>
-          <v-btn color="blue darken-1" text @click="createStadium" :loading="creating">作成</v-btn>
+          <v-btn variant="text" @click="closeCreateDialog">キャンセル</v-btn>
+          <v-btn color="accent" variant="flat" @click="createStadium" :loading="creating"
+            >作成</v-btn
+          >
         </v-card-actions>
       </v-card>
     </v-dialog>
@@ -122,8 +124,10 @@
         </v-card-text>
         <v-card-actions>
           <v-spacer></v-spacer>
-          <v-btn color="blue darken-1" text @click="closeEditDialog">キャンセル</v-btn>
-          <v-btn color="blue darken-1" text @click="updateStadium" :loading="updating">更新</v-btn>
+          <v-btn variant="text" @click="closeEditDialog">キャンセル</v-btn>
+          <v-btn color="accent" variant="flat" @click="updateStadium" :loading="updating"
+            >更新</v-btn
+          >
         </v-card-actions>
       </v-card>
     </v-dialog>

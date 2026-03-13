@@ -122,6 +122,12 @@ const commissionerMenuItems = [
     to: '/commissioner/players',
   },
   {
+    title: '監督一覧',
+    icon: 'mdi-account-tie',
+    value: 'managers',
+    to: '/commissioner/managers',
+  },
+  {
     title: 'ユーザー管理',
     icon: 'mdi-account-cog',
     value: 'users',

@@ -4,7 +4,7 @@
       <v-col cols="12" class="d-flex align-center">
         <h1 class="text-h4">試合記録</h1>
         <v-spacer></v-spacer>
-        <v-btn color="primary" @click="navigateToImport">ログ取り込み</v-btn>
+        <v-btn color="accent" variant="flat" @click="navigateToImport">ログ取り込み</v-btn>
       </v-col>
     </v-row>
 
@@ -37,7 +37,7 @@
         ></v-text-field>
       </v-col>
       <v-col cols="12" sm="2" class="d-flex align-center">
-        <v-btn color="primary" @click="fetchGames" :loading="loading">検索</v-btn>
+        <v-btn color="accent" variant="flat" @click="fetchGames" :loading="loading">検索</v-btn>
       </v-col>
     </v-row>
 

@@ -91,7 +91,7 @@
 
         <!-- 保存ボタン -->
         <div class="d-flex justify-end mt-4">
-          <v-btn color="primary" :loading="saving" @click="save">
+          <v-btn color="accent" variant="flat" :loading="saving" @click="save">
             {{ t('squadTextSettings.save') }}
           </v-btn>
         </div>

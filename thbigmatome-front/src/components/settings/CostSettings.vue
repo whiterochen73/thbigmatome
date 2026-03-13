@@ -3,88 +3,102 @@
     <v-card-title>
       {{ t('settings.cost.title') }}
       <v-spacer></v-spacer>
-      <v-btn color="primary" @click="openDialog(null)">
+      <v-btn color="accent" variant="flat" @click="openDialog(null)">
         {{ t('settings.cost.add') }}
       </v-btn>
     </v-card-title>
+    <!-- eslint-disable vue/valid-v-slot -->
     <v-data-table :headers="headers" :items="costs" class="elevation-1">
       <template v-slot:item.actions="{ item }">
         <v-icon size="small" class="mr-2" @click="openDialog(item)" icon="mdi-pencil"></v-icon>
-        <v-icon size="small" class="mr-2" @click="confirmDuplicate(item)" icon="mdi-content-copy"></v-icon>
+        <v-icon
+          size="small"
+          class="mr-2"
+          @click="confirmDuplicate(item)"
+          icon="mdi-content-copy"
+        ></v-icon>
         <v-icon size="small" @click="deleteItem(item)" icon="mdi-delete"></v-icon>
       </template>
     </v-data-table>
 
-    <CostDialog :model-value="dialogOpen" :cost="selectedCost" @update:model-value="dialogOpen = $event" @save="saveCost" />
+    <CostDialog
+      :model-value="dialogOpen"
+      :cost="selectedCost"
+      @update:model-value="dialogOpen = $event"
+      @save="saveCost"
+    />
   </v-card>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue';
-import { useI18n } from 'vue-i18n';
-import axios from '@/plugins/axios';
-import CostDialog from '@/components/settings/CostDialog.vue';
-import type { CostList } from '@/types/costList';
+import { ref, computed, onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
+import axios from '@/plugins/axios'
+import CostDialog from '@/components/settings/CostDialog.vue'
+import type { CostList } from '@/types/costList'
 
-const { t } = useI18n();
+const { t } = useI18n()
 
-
-const costs = ref<CostList[]>([]);
-const dialogOpen = ref(false);
-const selectedCost = ref<CostList | null>(null);
+const costs = ref<CostList[]>([])
+const dialogOpen = ref(false)
+const selectedCost = ref<CostList | null>(null)
 
 const headers = computed(() => [
   { title: t('settings.cost.headers.name'), key: 'name' },
   { title: t('settings.cost.headers.start_date'), key: 'start_date' },
   { title: t('settings.cost.headers.end_date'), key: 'end_date' },
   { title: t('settings.cost.headers.actions'), key: 'actions', sortable: false },
-]);
+])
 
 const fetchCosts = async () => {
-  const response = await axios.get<CostList[]>('/costs');
-  costs.value = response.data;
-};
+  const response = await axios.get<CostList[]>('/costs')
+  costs.value = response.data
+}
 
 const openDialog = (cost: CostList | null) => {
-  selectedCost.value = cost ? { ...cost } : null;
-  dialogOpen.value = true;
-};
+  selectedCost.value = cost ? { ...cost } : null
+  dialogOpen.value = true
+}
 
-const saveCost = async (costData: { name: string; start_date: string | null; end_date: string | null }) => {
+const saveCost = async (costData: {
+  name: string
+  start_date: string | null
+  end_date: string | null
+}) => {
   if (selectedCost.value) {
     // Update existing cost
-    await axios.patch(`/costs/${selectedCost.value.id}`, costData);
+    await axios.patch(`/costs/${selectedCost.value.id}`, costData)
   } else {
     // Create new cost
-    await axios.post('/costs', costData);
+    await axios.post('/costs', costData)
   }
-  fetchCosts();
-  dialogOpen.value = false;
-};
+  fetchCosts()
+  dialogOpen.value = false
+}
 
 const deleteItem = async (cost: CostList) => {
   if (confirm(t('settings.cost.confirmDelete'))) {
-    await axios.delete(`/costs/${cost.id}`);
-    fetchCosts();
+    await axios.delete(`/costs/${cost.id}`)
+    fetchCosts()
   }
-};
+}
 
 const confirmDuplicate = (cost: CostList) => {
   if (confirm(`${cost.name} を複製しますか？`)) {
-    duplicateCost(cost);
+    duplicateCost(cost)
   }
-};
+}
 
 const duplicateCost = async (cost: CostList) => {
   try {
-    await axios.post(`/costs/${cost.id}/duplicate`);
-    fetchCosts();
+    await axios.post(`/costs/${cost.id}/duplicate`)
+    fetchCosts()
   } catch (error) {
-    console.error('Failed to duplicate cost:', error);
+    console.error('Failed to duplicate cost:', error)
   }
-};
+}
 
 onMounted(() => {
-  fetchCosts();
-});
+  fetchCosts()
+})
 </script>

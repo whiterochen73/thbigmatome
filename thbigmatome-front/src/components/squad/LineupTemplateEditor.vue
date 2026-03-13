@@ -77,7 +77,7 @@
 
       <!-- 保存・削除ボタン -->
       <div class="d-flex align-center mt-4" style="gap: 8px">
-        <v-btn color="primary" variant="elevated" :loading="saving" @click="saveTemplate">
+        <v-btn color="accent" variant="flat" :loading="saving" @click="saveTemplate">
           {{ t('lineupTemplate.save') }}
         </v-btn>
         <v-btn

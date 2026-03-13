@@ -66,7 +66,7 @@
             ></v-textarea>
             <v-row class="mt-2">
               <v-col>
-                <v-btn color="primary" variant="tonal" :loading="loading" @click="analyzeLog"
+                <v-btn color="accent" variant="flat" :loading="loading" @click="analyzeLog"
                   >解析する</v-btn
                 >
               </v-col>
@@ -427,8 +427,8 @@
                 <v-col>
                   <v-btn variant="outlined" class="mr-2" @click="backToStep1">戻る</v-btn>
                   <v-btn
-                    color="primary"
-                    variant="tonal"
+                    color="accent"
+                    variant="flat"
                     :loading="loading"
                     :disabled="!canImport"
                     @click="importLog"
@@ -585,7 +585,7 @@ const visitorBenchFielders = computed(() =>
 )
 
 function benchRoleColor(role: string): string {
-  if (role === 'pitcher') return '#1b3a6b'
+  if (role === 'pitcher') return 'var(--color-visitor)'
   if (role === 'fielder') return '#2c5f2e'
   return 'grey'
 }

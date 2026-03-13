@@ -482,7 +482,7 @@ function formatAutoEvent(ev: SourceEvent): string {
 
 .v-card,
 .ab-card {
-  --ai: #1b3a6b;
+  --ai: var(--color-visitor);
   --moegi: #5a8a00;
   --kohaku: #c87a10;
   --decl-bg: #eeeef0;
@@ -531,7 +531,7 @@ function formatAutoEvent(ev: SourceEvent): string {
 }
 
 .ab-num-badge {
-  background: #1b3a6b;
+  background: var(--color-visitor);
   color: white;
   width: 22px;
   height: 22px;

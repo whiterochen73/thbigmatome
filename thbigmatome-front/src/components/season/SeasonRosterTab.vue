@@ -7,7 +7,7 @@
           <v-card-title class="d-flex">
             {{ t('activeRoster.keyPlayerSelection') }}
             <v-spacer></v-spacer>
-            <v-btn color="primary" variant="outlined" @click="saveKeyPlayer">
+            <v-btn color="accent" variant="flat" @click="saveKeyPlayer">
               {{ t('activeRoster.saveKeyPlayer') }}
             </v-btn>
           </v-card-title>
@@ -507,7 +507,7 @@
 
     <v-row class="mt-4">
       <v-col>
-        <v-btn color="primary" variant="outlined" @click="saveRoster">{{
+        <v-btn color="accent" variant="flat" @click="saveRoster">{{
           t('activeRoster.saveRoster')
         }}</v-btn>
       </v-col>
@@ -536,7 +536,9 @@
         <v-card-actions>
           <v-spacer />
           <v-btn @click="absenceConfirmDialog = false">{{ t('actions.cancel') }}</v-btn>
-          <v-btn color="primary" @click="confirmPromoteAbsentPlayer">{{ t('actions.ok') }}</v-btn>
+          <v-btn color="accent" variant="flat" @click="confirmPromoteAbsentPlayer">{{
+            t('actions.ok')
+          }}</v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>

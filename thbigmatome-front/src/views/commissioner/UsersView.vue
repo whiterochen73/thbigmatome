@@ -12,7 +12,7 @@
           <v-card-title class="d-flex align-center">
             ユーザー一覧
             <v-spacer></v-spacer>
-            <v-btn color="primary" @click="openCreateDialog">新規ユーザー作成</v-btn>
+            <v-btn color="accent" variant="flat" @click="openCreateDialog">新規ユーザー作成</v-btn>
           </v-card-title>
           <v-card-text>
             <v-alert

@@ -6,9 +6,14 @@
           <div class="d-flex align-center w-100">
             <span class="text-no-wrap">{{ title }}</span>
             <v-spacer></v-spacer>
-            <v-btn v-if="!readonly" color="primary" @click.stop="openNewDialog" size="small">{{
-              t(`${i18nKey}.add`)
-            }}</v-btn>
+            <v-btn
+              v-if="!readonly"
+              color="accent"
+              variant="flat"
+              @click.stop="openNewDialog"
+              size="small"
+              >{{ t(`${i18nKey}.add`) }}</v-btn
+            >
           </div>
         </v-expansion-panel-title>
         <v-expansion-panel-text>

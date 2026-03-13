@@ -37,7 +37,7 @@ onMounted(async () => {
 
 /* 和色パレット */
 :root {
-  --ai: #1b3a6b;
+  --ai: var(--color-visitor);
   --ai-light: #2a5298;
   --shu: #b33333;
   --moegi: #5a8a00;

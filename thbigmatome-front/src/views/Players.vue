@@ -5,7 +5,7 @@
       <v-card-title>
         {{ t('playerList.title') }}
         <v-spacer></v-spacer>
-        <v-btn color="primary" @click="openDialog">
+        <v-btn color="accent" variant="flat" @click="openDialog">
           {{ t('playerList.addPlayer') }}
         </v-btn>
       </v-card-title>

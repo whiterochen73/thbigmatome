@@ -4,7 +4,7 @@
       <v-card-title class="d-flex align-center">
         {{ t('managerList.title') }}
         <v-spacer></v-spacer>
-        <v-btn color="primary" @click="openDialog()" prepend-icon="mdi-plus">
+        <v-btn color="accent" variant="flat" @click="openDialog()" prepend-icon="mdi-plus">
           {{ t('managerList.addManager') }}
         </v-btn>
       </v-card-title>

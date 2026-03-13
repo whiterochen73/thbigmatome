@@ -250,7 +250,7 @@
     <v-row>
       <v-col class="d-flex justify-end mt-4">
         <v-btn variant="outlined" @click="goBack" class="mr-4">{{ t('actions.cancel') }}</v-btn>
-        <v-btn color="primary" variant="outlined" @click="saveTeamMembers">{{
+        <v-btn color="accent" variant="flat" @click="saveTeamMembers">{{
           t('actions.save')
         }}</v-btn>
       </v-col>

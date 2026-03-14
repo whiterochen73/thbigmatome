@@ -103,6 +103,12 @@ const mainMenuItems = [
 
 const commissionerMenuItems = [
   {
+    title: 'ダッシュボード',
+    icon: 'mdi-view-dashboard',
+    value: 'commissionerDashboard',
+    to: '/commissioner/dashboard',
+  },
+  {
     title: '大会管理',
     icon: 'mdi-trophy-outline',
     value: 'competitions',

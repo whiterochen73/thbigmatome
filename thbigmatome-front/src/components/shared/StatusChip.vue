@@ -20,6 +20,8 @@ const statusColorMap: Record<string, string> = {
   hachinai: 'purple',
   warning: 'warning',
   injury: 'error',
+  suspension: 'warning',
+  reconditioning: 'info',
   cooldown: 'info',
 }
 

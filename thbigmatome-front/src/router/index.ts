@@ -75,6 +75,12 @@ const routes: RouteRecordRaw[] = [
         meta: { title: '各種設定' },
       },
       {
+        path: 'commissioner/dashboard',
+        name: 'CommissionerDashboard',
+        component: () => import('@/views/commissioner/CommissionerDashboardView.vue'),
+        meta: { requiresAuth: true, requiresCommissioner: true, title: 'ダッシュボード' },
+      },
+      {
         path: 'commissioner/leagues',
         redirect: '/commissioner/competitions',
       },

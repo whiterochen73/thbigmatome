@@ -31,6 +31,9 @@
               </v-chip>
             </template>
             <template v-slot:[`item.actions`]="{ item }">
+              <v-icon size="small" @click="openRoleDialog(item)" title="ロール変更" class="mr-2"
+                >mdi-account-edit</v-icon
+              >
               <v-icon size="small" @click="openResetDialog(item)" title="パスワードリセット"
                 >mdi-lock-reset</v-icon
               >
@@ -98,6 +101,35 @@
       </v-card>
     </v-dialog>
 
+    <!-- ロール変更ダイアログ -->
+    <v-dialog v-model="roleDialog" max-width="400px">
+      <v-card>
+        <v-card-title>
+          <span class="text-h5">ロール変更</span>
+        </v-card-title>
+        <v-card-text>
+          <p class="mb-3 text-body-2">
+            {{ roleTarget?.display_name || roleTarget?.name }} のロールを変更します。
+          </p>
+          <v-select
+            v-model="newRole"
+            :items="roleOptions"
+            item-title="label"
+            item-value="value"
+            label="新しいロール"
+            density="compact"
+          ></v-select>
+        </v-card-text>
+        <v-card-actions>
+          <v-spacer></v-spacer>
+          <v-btn variant="text" @click="closeRoleDialog">キャンセル</v-btn>
+          <v-btn color="accent" variant="flat" @click="submitRoleChange" :loading="roleChanging"
+            >変更</v-btn
+          >
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
     <!-- パスワードリセットダイアログ -->
     <v-dialog v-model="resetDialog" max-width="400px">
       <v-card>
@@ -154,6 +186,11 @@ const createDialog = ref(false)
 const creating = ref(false)
 const createErrors = ref<string[]>([])
 const newUser = ref({ name: '', display_name: '', password: '', role: 'player' })
+
+const roleDialog = ref(false)
+const roleChanging = ref(false)
+const roleTarget = ref<User | null>(null)
+const newRole = ref<'player' | 'commissioner'>('player')
 
 const resetDialog = ref(false)
 const resetting = ref(false)
@@ -223,6 +260,36 @@ async function createUser() {
     }
   } finally {
     creating.value = false
+  }
+}
+
+function openRoleDialog(user: User) {
+  roleTarget.value = user
+  newRole.value = user.role
+  roleDialog.value = true
+}
+
+function closeRoleDialog() {
+  roleDialog.value = false
+  roleTarget.value = null
+}
+
+async function submitRoleChange() {
+  if (!roleTarget.value) return
+  roleChanging.value = true
+  try {
+    const response = await axios.patch<User>(`/users/${roleTarget.value.id}/update_role`, {
+      role: newRole.value,
+    })
+    const idx = users.value.findIndex((u) => u.id === roleTarget.value!.id)
+    if (idx !== -1) users.value[idx] = response.data
+    showSnackbar('ロールを変更しました', 'success')
+    closeRoleDialog()
+  } catch (error: unknown) {
+    const data = (error as { response?: { data?: { error?: string } } })?.response?.data
+    showSnackbar(data?.error ?? '変更できません', 'error')
+  } finally {
+    roleChanging.value = false
   }
 }
 

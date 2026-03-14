@@ -1,5 +1,5 @@
 class PlayerDetailSerializer < ActiveModel::Serializer
-  attributes :id, :name, :short_name, :number
+  attributes :id, :name, :short_name, :number, :series
 
   has_many :player_cards, serializer: PlayerCardSummarySerializer
 

@@ -37,7 +37,7 @@ class Api::V1::PlayersController < Api::V1::BaseController
 
   def player_params
     params.require(:player).permit(
-      :name, :number, :short_name
+      :name, :number, :short_name, :series
     )
   end
 end

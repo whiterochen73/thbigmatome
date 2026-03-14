@@ -96,6 +96,13 @@ RSpec.describe "Api::V1::PlayersController", type: :request do
       expect(response).to have_http_status(:ok)
       expect(player.reload.name).to eq("新選手名")
     end
+
+    it "updates the series" do
+      patch "/api/v1/players/#{player.id}", params: { player: { series: "touhou" } }, as: :json
+
+      expect(response).to have_http_status(:ok)
+      expect(player.reload.series).to eq("touhou")
+    end
   end
 
   describe "DELETE /api/v1/players/:id" do

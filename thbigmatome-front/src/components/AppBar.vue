@@ -25,6 +25,13 @@
 
         <v-divider />
 
+        <v-list-item :to="{ path: '/settings', query: { tab: 'account' } }">
+          <v-list-item-title>
+            <v-icon start>mdi-lock-reset</v-icon>
+            パスワード変更
+          </v-list-item-title>
+        </v-list-item>
+
         <v-list-item @click="handleLogout">
           <v-list-item-title>
             <v-icon start>mdi-logout</v-icon>

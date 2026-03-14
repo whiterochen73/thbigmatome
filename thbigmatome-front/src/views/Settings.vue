@@ -65,6 +65,7 @@
 
 <script setup lang="ts">
 import { ref } from 'vue'
+import { useRoute } from 'vue-router'
 
 defineOptions({ name: 'SettingsView' })
 import PitchingStyleSettings from '@/components/settings/PitchingStyleSettings.vue'
@@ -77,5 +78,6 @@ import CostSettings from '@/components/settings/CostSettings.vue'
 import ScheduleSettings from '@/components/settings/ScheduleSettings.vue'
 import PasswordChangeForm from '@/components/settings/PasswordChangeForm.vue'
 
-const selectedTab = ref('player')
+const route = useRoute()
+const selectedTab = ref((route.query.tab as string) || 'player')
 </script>

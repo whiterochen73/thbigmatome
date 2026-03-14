@@ -411,7 +411,8 @@
     "managedByConfigFile": "この設定は設定ファイルで管理されているため、ここでは閲覧のみ可能です。",
     "tabs": {
       "player": "選手設定",
-      "squad": "その他"
+      "squad": "その他",
+      "account": "アカウント"
     },
     "player": {
       "description": "選手に関する設定を行います。"

@@ -11,6 +11,7 @@
         <v-tabs color="primary" slider-color="accent" v-model="selectedTab">
           <v-tab value="player">{{ $t('settings.tabs.player') }}</v-tab>
           <v-tab value="squad">{{ $t('settings.tabs.squad') }}</v-tab>
+          <v-tab value="account">{{ $t('settings.tabs.account') }}</v-tab>
         </v-tabs>
 
         <v-card>
@@ -48,6 +49,13 @@
                 </v-col>
               </v-row>
             </v-tabs-window-item>
+            <v-tabs-window-item value="account">
+              <v-row>
+                <v-col cols="12" md="6">
+                  <PasswordChangeForm />
+                </v-col>
+              </v-row>
+            </v-tabs-window-item>
           </v-tabs-window>
         </v-card>
       </v-col>
@@ -56,17 +64,18 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue';
-import { useI18n } from 'vue-i18n';
-import PitchingStyleSettings from '@/components/settings/PitchingStyleSettings.vue';
-import PitchingSkillSettings from '@/components/settings/PitchingSkillSettings.vue';
-import BattingStyleSettings from '@/components/settings/BattingStyleSettings.vue';
-import BattingSkillSettings from '@/components/settings/BattingSkillSettings.vue';
-import PlayerTypeSettings from '@/components/settings/PlayerTypeSettings.vue';
-import BiorhythmSettings from '@/components/settings/BiorhythmSettings.vue';
-import CostSettings from '@/components/settings/CostSettings.vue';
-import ScheduleSettings from '@/components/settings/ScheduleSettings.vue';
+import { ref } from 'vue'
 
-const { t } = useI18n();
-const selectedTab = ref('player');
+defineOptions({ name: 'SettingsView' })
+import PitchingStyleSettings from '@/components/settings/PitchingStyleSettings.vue'
+import PitchingSkillSettings from '@/components/settings/PitchingSkillSettings.vue'
+import BattingStyleSettings from '@/components/settings/BattingStyleSettings.vue'
+import BattingSkillSettings from '@/components/settings/BattingSkillSettings.vue'
+import PlayerTypeSettings from '@/components/settings/PlayerTypeSettings.vue'
+import BiorhythmSettings from '@/components/settings/BiorhythmSettings.vue'
+import CostSettings from '@/components/settings/CostSettings.vue'
+import ScheduleSettings from '@/components/settings/ScheduleSettings.vue'
+import PasswordChangeForm from '@/components/settings/PasswordChangeForm.vue'
+
+const selectedTab = ref('player')
 </script>

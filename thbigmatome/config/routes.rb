@@ -111,6 +111,11 @@ Rails.application.routes.draw do
       # 自分のパスワード変更（全ログインユーザー利用可）
       post "users/change_password", to: "users#change_password"
 
+      # コミッショナー横断管理（commissioner専用）
+      namespace :commissioner do
+        get "dashboard/absences", to: "dashboard#absences"
+      end
+
       # ユーザー管理（commissioner専用）
       resources :users, only: [ :index, :create ] do
         member do

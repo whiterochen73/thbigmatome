@@ -1,7 +1,10 @@
 module Api
   module V1
     class SquadTextSettingsController < Api::V1::BaseController
+      include TeamAccessible
+
       before_action :set_team
+      before_action :authorize_team_access!
 
       # GET /api/v1/teams/:team_id/squad_text_settings
       # 存在すれば取得、なければデフォルト値で新規作成

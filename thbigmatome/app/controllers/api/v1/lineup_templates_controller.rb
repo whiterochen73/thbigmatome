@@ -1,7 +1,10 @@
 module Api
   module V1
     class LineupTemplatesController < Api::V1::BaseController
+      include TeamAccessible
+
       before_action :set_team
+      before_action :authorize_team_access!
       before_action :set_lineup_template, only: [ :show, :update, :destroy ]
 
       # GET /api/v1/teams/:team_id/lineup_templates

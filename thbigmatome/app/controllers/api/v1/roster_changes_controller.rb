@@ -1,7 +1,10 @@
 module Api
   module V1
     class RosterChangesController < BaseController
+      include TeamAccessible
+
       before_action :set_team
+      before_action :authorize_team_access!
 
       def index
         since_date = params[:since]

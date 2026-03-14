@@ -57,7 +57,7 @@ RSpec.describe "Api::V1::TeamsController", type: :request do
     include_context "authenticated user"
 
     it "returns 200 with team details" do
-      team = create(:team, name: "詳細チーム")
+      team = create(:team, name: "詳細チーム", user: user)
 
       get "/api/v1/teams/#{team.id}", as: :json
 
@@ -112,7 +112,7 @@ RSpec.describe "Api::V1::TeamsController", type: :request do
   describe "PATCH /api/v1/teams/:id" do
     include_context "authenticated user"
 
-    let!(:team) { create(:team, name: "旧名前") }
+    let!(:team) { create(:team, name: "旧名前", user: user) }
 
     it "updates the team" do
       patch "/api/v1/teams/#{team.id}", params: { team: { name: "新名前" } }, as: :json

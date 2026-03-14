@@ -35,6 +35,7 @@ RSpec.describe "Api::V1::GameLineups", type: :request do
 
   describe "GET /api/v1/teams/:team_id/game_lineup" do
     include_context "authenticated user"
+    before { team.update!(user: user) }
 
     context "前回データが存在する場合" do
       let!(:game_lineup) { create(:game_lineup, team: team, lineup_data: valid_lineup_data) }
@@ -64,6 +65,7 @@ RSpec.describe "Api::V1::GameLineups", type: :request do
 
   describe "PUT /api/v1/teams/:team_id/game_lineup" do
     include_context "authenticated user"
+    before { team.update!(user: user) }
 
     context "前回データが存在しない場合（create）" do
       it "200を返す" do

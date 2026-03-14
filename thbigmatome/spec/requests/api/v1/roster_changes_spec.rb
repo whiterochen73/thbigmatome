@@ -17,6 +17,7 @@ RSpec.describe "Api::V1::RosterChanges", type: :request do
 
   describe "GET /api/v1/teams/:team_id/roster_changes" do
     include_context "authenticated user"
+    before { team.update!(user: user) }
 
     context "パラメータ不足" do
       it "sinceがない場合は422を返す" do

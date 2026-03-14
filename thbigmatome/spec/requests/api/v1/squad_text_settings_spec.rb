@@ -21,6 +21,7 @@ RSpec.describe "Api::V1::SquadTextSettings", type: :request do
 
   describe "GET /api/v1/teams/:team_id/squad_text_settings" do
     include_context "authenticated user"
+    before { team.update!(user: user) }
 
     context "設定が存在する場合" do
       let!(:setting) { create(:squad_text_setting, team: team, position_format: "japanese") }
@@ -82,6 +83,7 @@ RSpec.describe "Api::V1::SquadTextSettings", type: :request do
 
   describe "PUT /api/v1/teams/:team_id/squad_text_settings" do
     include_context "authenticated user"
+    before { team.update!(user: user) }
 
     context "設定が存在する場合（update）" do
       let!(:setting) { create(:squad_text_setting, team: team) }

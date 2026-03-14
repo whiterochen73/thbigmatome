@@ -27,6 +27,7 @@ RSpec.describe "Api::V1::LineupTemplates", type: :request do
 
   describe "GET /api/v1/teams/:team_id/lineup_templates" do
     include_context "authenticated user"
+    before { team.update!(user: user) }
 
     context "テンプレートが存在する場合" do
       let!(:template) do
@@ -73,6 +74,7 @@ RSpec.describe "Api::V1::LineupTemplates", type: :request do
 
   describe "GET /api/v1/teams/:team_id/lineup_templates/:id" do
     include_context "authenticated user"
+    before { team.update!(user: user) }
 
     let!(:template) do
       t = create(:lineup_template, team: team)
@@ -100,6 +102,7 @@ RSpec.describe "Api::V1::LineupTemplates", type: :request do
 
   describe "POST /api/v1/teams/:team_id/lineup_templates" do
     include_context "authenticated user"
+    before { team.update!(user: user) }
 
     let(:valid_params) do
       {
@@ -140,6 +143,7 @@ RSpec.describe "Api::V1::LineupTemplates", type: :request do
 
   describe "PUT /api/v1/teams/:team_id/lineup_templates/:id" do
     include_context "authenticated user"
+    before { team.update!(user: user) }
 
     let!(:template) do
       t = create(:lineup_template, team: team, dh_enabled: true, opponent_pitcher_hand: "right")
@@ -188,6 +192,7 @@ RSpec.describe "Api::V1::LineupTemplates", type: :request do
 
   describe "DELETE /api/v1/teams/:team_id/lineup_templates/:id" do
     include_context "authenticated user"
+    before { team.update!(user: user) }
 
     let!(:template) { create(:lineup_template, team: team) }
 

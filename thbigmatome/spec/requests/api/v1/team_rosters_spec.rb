@@ -25,6 +25,7 @@ RSpec.describe "Api::V1::TeamRosters", type: :request do
 
   describe "GET /api/v1/teams/:team_id/roster" do
     include_context "authenticated user"
+    before { team.update!(user: user) }
 
     let!(:season_schedule) do
       create(:season_schedule, season: season, date: Date.new(2026, 4, 1), date_type: "game_day")
@@ -207,7 +208,7 @@ RSpec.describe "Api::V1::TeamRosters", type: :request do
     end
 
     context "when team has no season" do
-      let(:team_no_season) { create(:team) }
+      let(:team_no_season) { create(:team, user: user) }
 
       it "returns 404" do
         get "/api/v1/teams/#{team_no_season.id}/roster", as: :json
@@ -237,6 +238,7 @@ RSpec.describe "Api::V1::TeamRosters", type: :request do
 
   describe "POST /api/v1/teams/:team_id/roster" do
     include_context "authenticated user"
+    before { team.update!(user: user) }
 
     let(:target_date) { Date.new(2026, 5, 15) }
 
@@ -493,7 +495,7 @@ RSpec.describe "Api::V1::TeamRosters", type: :request do
   describe "POST /api/v1/teams/:team_id/roster (no season)" do
     include_context "authenticated user"
 
-    let(:team_no_season) { create(:team) }
+    let(:team_no_season) { create(:team, user: user) }
 
     it "returns 400 when team has no season" do
       post "/api/v1/teams/#{team_no_season.id}/roster",

@@ -1,7 +1,10 @@
 module Api
   module V1
     class GameLineupsController < Api::V1::BaseController
+      include TeamAccessible
+
       before_action :set_team
+      before_action :authorize_team_access!
 
       # GET /api/v1/teams/:team_id/game_lineup
       def show

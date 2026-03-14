@@ -1,6 +1,9 @@
 module Api
   module V1
     class TeamSeasonsController < Api::V1::BaseController
+      include TeamAccessible
+      before_action :authorize_team_access!
+
       def show
         team = Team.find(params[:team_id])
         season = team.season

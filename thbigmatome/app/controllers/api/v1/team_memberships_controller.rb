@@ -1,6 +1,9 @@
 module Api
   module V1
     class TeamMembershipsController < Api::V1::BaseController
+      include TeamAccessible
+      before_action :authorize_team_access!
+
       def index
         team = Team.find(params[:team_id])
         team_memberships = team.team_memberships.preload(:player)

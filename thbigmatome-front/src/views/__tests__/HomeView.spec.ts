@@ -82,10 +82,24 @@ const mockSummary = {
   },
 }
 
+const mockMyTeams = [
+  {
+    id: 1,
+    name: 'テストチーム',
+    is_active: true,
+    user_id: 1,
+    short_name: 'TT',
+    team_type: 'normal',
+  },
+]
+
 describe('HomeView', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     vi.mocked(axios.get).mockImplementation((url: string) => {
+      if (url === '/users/my_teams') {
+        return Promise.resolve({ data: mockMyTeams })
+      }
       if (url === '/competitions') {
         return Promise.resolve({
           data: [{ id: 1, name: '第3回Lペナ', competition_type: 'league_pennant' }],
@@ -158,5 +172,34 @@ describe('HomeView', () => {
     expect(text).toContain('成績サマリー')
     expect(text).toContain('打撃TOP3')
     expect(text).toContain('投手TOP3')
+  })
+
+  it('チーム0件時にEmptyStateが表示されること', async () => {
+    vi.mocked(axios.get).mockImplementation((url: string) => {
+      if (url === '/users/my_teams') return Promise.resolve({ data: [] })
+      return Promise.resolve({ data: [] })
+    })
+    const router = createTestRouter()
+    const wrapper = mount(HomeView, { global: { plugins: [vuetify, router] } })
+    await flushPromises()
+    expect(wrapper.text()).toContain('コミッショナーにお問い合わせください')
+  })
+
+  it('チームあり時に通常ダッシュボードが表示されること', async () => {
+    const router = createTestRouter()
+    mount(HomeView, { global: { plugins: [vuetify, router] } })
+    await flushPromises()
+    // チームが1件あるので大会選択が表示される
+    expect(axios.get).toHaveBeenCalledWith('/users/my_teams')
+    expect(axios.get).toHaveBeenCalledWith('/competitions')
+  })
+
+  it('my_teamsが/users/my_teamsで取得されること（二重プレフィックスなし）', async () => {
+    const router = createTestRouter()
+    mount(HomeView, { global: { plugins: [vuetify, router] } })
+    await flushPromises()
+    expect(axios.get).toHaveBeenCalledWith('/users/my_teams')
+    // /api/v1/users/my_teams では呼ばれていないことを確認
+    expect(axios.get).not.toHaveBeenCalledWith('/api/v1/users/my_teams')
   })
 })

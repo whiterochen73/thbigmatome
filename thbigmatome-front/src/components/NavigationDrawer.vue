@@ -26,7 +26,7 @@
       />
     </v-list>
 
-    <template v-if="isCommissioner">
+    <template v-if="showCommissionerMenu">
       <v-divider class="my-1" />
       <v-list nav density="compact">
         <v-list-subheader v-if="!rail">管理</v-list-subheader>
@@ -71,8 +71,10 @@
 </template>
 
 <script setup lang="ts">
+import { computed } from 'vue'
 import { useAuth } from '@/composables/useAuth'
 import { useTeamSelectionStore } from '@/stores/teamSelection'
+import { useCommissionerModeStore } from '@/stores/commissionerMode'
 
 const props = defineProps<{
   modelValue: boolean
@@ -86,6 +88,11 @@ const emit = defineEmits<{
 
 const { isCommissioner } = useAuth()
 const teamSelectionStore = useTeamSelectionStore()
+const commissionerModeStore = useCommissionerModeStore()
+
+const showCommissionerMenu = computed(
+  () => isCommissioner.value && commissionerModeStore.isCommissionerMode,
+)
 
 const mainMenuItems = [
   { title: 'ホーム', icon: 'mdi-home', value: 'dashboard', to: '/' },

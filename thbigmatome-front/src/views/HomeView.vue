@@ -262,7 +262,7 @@ onMounted(async () => {
 async function fetchMyTeams() {
   loadingTeams.value = true
   try {
-    const response = await axios.get<MyTeam[]>('/users/my_teams')
+    const response = await axios.get<MyTeam[]>('/users/me/teams')
     myTeams.value = response.data
   } catch (error) {
     console.error('Error fetching my teams:', error)

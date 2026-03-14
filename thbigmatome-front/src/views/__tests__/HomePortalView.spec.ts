@@ -108,14 +108,14 @@ describe('HomePortalView', () => {
     expect(wrapper.text()).toContain('コミッショナーにお問い合わせください')
   })
 
-  it('my_teamsが/users/my_teamsで取得されること（二重プレフィックスなし）', async () => {
+  it('my_teamsが/users/me/teamsで取得されること（二重プレフィックスなし）', async () => {
     mockAxios.get.mockResolvedValueOnce({ data: [teamA] })
     const router = createTestRouter()
     mount(HomePortalView, { global: { plugins: [vuetify, router, createPinia()] } })
     await flushPromises()
 
-    expect(mockAxios.get).toHaveBeenCalledWith('/users/my_teams')
-    expect(mockAxios.get).not.toHaveBeenCalledWith('/api/v1/users/my_teams')
+    expect(mockAxios.get).toHaveBeenCalledWith('/users/me/teams')
+    expect(mockAxios.get).not.toHaveBeenCalledWith('/api/v1/users/me/teams')
   })
 
   it('コミッショナーモードON時: my_teamsを取得せずリダイレクトされること', async () => {

@@ -55,7 +55,7 @@ onMounted(async () => {
     return
   }
   try {
-    const response = await axios.get<Team[]>('/users/my_teams')
+    const response = await axios.get<Team[]>('/users/me/teams')
     myTeams.value = response.data
     if (myTeams.value.length > 0) {
       const storedId = teamSelectionStore.selectedTeamId

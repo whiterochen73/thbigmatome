@@ -97,7 +97,7 @@ describe('HomeView', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     vi.mocked(axios.get).mockImplementation((url: string) => {
-      if (url === '/users/my_teams') {
+      if (url === '/users/me/teams') {
         return Promise.resolve({ data: mockMyTeams })
       }
       if (url === '/competitions') {
@@ -176,7 +176,7 @@ describe('HomeView', () => {
 
   it('チーム0件時にEmptyStateが表示されること', async () => {
     vi.mocked(axios.get).mockImplementation((url: string) => {
-      if (url === '/users/my_teams') return Promise.resolve({ data: [] })
+      if (url === '/users/me/teams') return Promise.resolve({ data: [] })
       return Promise.resolve({ data: [] })
     })
     const router = createTestRouter()
@@ -190,16 +190,16 @@ describe('HomeView', () => {
     mount(HomeView, { global: { plugins: [vuetify, router] } })
     await flushPromises()
     // チームが1件あるので大会選択が表示される
-    expect(axios.get).toHaveBeenCalledWith('/users/my_teams')
+    expect(axios.get).toHaveBeenCalledWith('/users/me/teams')
     expect(axios.get).toHaveBeenCalledWith('/competitions')
   })
 
-  it('my_teamsが/users/my_teamsで取得されること（二重プレフィックスなし）', async () => {
+  it('my_teamsが/users/me/teamsで取得されること（二重プレフィックスなし）', async () => {
     const router = createTestRouter()
     mount(HomeView, { global: { plugins: [vuetify, router] } })
     await flushPromises()
-    expect(axios.get).toHaveBeenCalledWith('/users/my_teams')
-    // /api/v1/users/my_teams では呼ばれていないことを確認
-    expect(axios.get).not.toHaveBeenCalledWith('/api/v1/users/my_teams')
+    expect(axios.get).toHaveBeenCalledWith('/users/me/teams')
+    // /api/v1/users/me/teams では呼ばれていないことを確認
+    expect(axios.get).not.toHaveBeenCalledWith('/api/v1/users/me/teams')
   })
 })

@@ -86,4 +86,68 @@ RSpec.describe "Api::V1::Commissioner::Dashboard", type: :request do
       end
     end
   end
+
+  describe "GET /api/v1/commissioner/dashboard/costs" do
+    context "コミッショナーユーザーの場合" do
+      before { login_as(commissioner_user) }
+
+      it "200を返す" do
+        get "/api/v1/commissioner/dashboard/costs"
+        expect(response).to have_http_status(:ok)
+      end
+
+      it "全チームのコスト使用状況を返す" do
+        cost = create(:cost, end_date: nil)
+        team = create(:team, is_active: true, team_type: :normal)
+        player = create(:player)
+        create(:cost_player, cost: cost, player: player, normal_cost: 10)
+        create(:team_membership, team: team, player: player, squad: "first", selected_cost_type: "normal_cost")
+
+        get "/api/v1/commissioner/dashboard/costs"
+        json = JSON.parse(response.body)
+        expect(json).to be_an(Array)
+        expect(json.size).to be >= 1
+
+        record = json.find { |r| r["team_id"] == team.id }
+        expect(record).not_to be_nil
+        expect(record["team_name"]).to eq(team.name)
+        expect(record["team_type"]).to eq("normal")
+        expect(record["total_cost"]).to eq(10)
+        expect(record["total_cost_limit"]).to eq(200)
+        expect(record["first_squad_cost"]).to eq(10)
+        expect(record["first_squad_count"]).to eq(1)
+        expect(record["exempt_count"]).to eq(0)
+        expect(record["cost_usage_ratio"]).to eq(10 / 200.0)
+      end
+
+      it "inactive チームは含まない" do
+        cost = create(:cost, end_date: nil)
+        team = create(:team, is_active: false, team_type: :normal)
+        player = create(:player)
+        create(:cost_player, cost: cost, player: player, normal_cost: 5)
+        create(:team_membership, team: team, player: player, squad: "first", selected_cost_type: "normal_cost")
+
+        get "/api/v1/commissioner/dashboard/costs"
+        json = JSON.parse(response.body)
+        record = json.find { |r| r["team_id"] == team.id }
+        expect(record).to be_nil
+      end
+    end
+
+    context "一般ユーザーの場合" do
+      before { login_as(player_user) }
+
+      it "403を返す" do
+        get "/api/v1/commissioner/dashboard/costs"
+        expect(response).to have_http_status(:forbidden)
+      end
+    end
+
+    context "未認証の場合" do
+      it "401を返す" do
+        get "/api/v1/commissioner/dashboard/costs"
+        expect(response).to have_http_status(:unauthorized)
+      end
+    end
+  end
 end

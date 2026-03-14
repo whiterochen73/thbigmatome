@@ -39,6 +39,48 @@ class Api::V1::Commissioner::DashboardController < Api::V1::Commissioner::BaseCo
     render json: absences
   end
 
+  def costs
+    current_cost = Cost.current_cost
+    return render json: [] unless current_cost
+
+    teams = Team.where(is_active: true).includes(
+      team_memberships: { player: :cost_players }
+    )
+
+    result = teams.map do |team|
+      memberships = team.team_memberships
+      first_squad = memberships.select { |tm| tm.squad == "first" }
+
+      total = memberships.reject(&:excluded_from_team_total).sum do |tm|
+        cp = tm.player.cost_players.find { |c| c.cost_id == current_cost.id }
+        cp&.send(tm.selected_cost_type) || 0
+      end
+
+      first_cost = first_squad.sum do |tm|
+        cp = tm.player.cost_players.find { |c| c.cost_id == current_cost.id }
+        cp&.send(tm.selected_cost_type) || 0
+      end
+
+      first_limit = Team.first_squad_cost_limit_for_count(first_squad.count)
+      exempt_count = memberships.count(&:excluded_from_team_total)
+
+      {
+        team_id: team.id,
+        team_name: team.name,
+        team_type: team.team_type,
+        total_cost: total,
+        total_cost_limit: 200,
+        first_squad_cost: first_cost,
+        first_squad_cost_limit: first_limit,
+        first_squad_count: first_squad.count,
+        exempt_count: exempt_count,
+        cost_usage_ratio: total / 200.0
+      }
+    end
+
+    render json: result
+  end
+
   private
 
   def calculate_remaining(absence, season)

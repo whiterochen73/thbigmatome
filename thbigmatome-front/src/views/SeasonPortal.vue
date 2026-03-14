@@ -499,6 +499,8 @@ import LineupTemplateEditor from '@/components/squad/LineupTemplateEditor.vue'
 import SquadTextGenerator from '@/components/squad/SquadTextGenerator.vue'
 import { useTeamSelectionStore } from '@/stores/teamSelection'
 
+const props = defineProps<{ teamId?: number }>()
+
 const { t } = useI18n()
 const route = useRoute()
 const router = useRouter()
@@ -507,7 +509,7 @@ const loading = ref(true)
 const season = ref<SeasonDetail | null>(null)
 const currentDate = ref(new Date())
 
-const teamId = parseInt(<string>route.params.teamId, 10)
+const teamId = props.teamId ?? parseInt(<string>route.params.teamId, 10)
 
 // タブ状態をURLクエリパラメータで管理
 const activeTab = ref((route.query.tab as string) || 'calendar')

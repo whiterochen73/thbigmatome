@@ -55,10 +55,7 @@
                           ?.date_type,
                     )?.label || ''
                   "
-                  @click="
-                    calendarDate = item.date
-                    console.log('Selected date:', item)
-                  "
+                  @click="handleDateSelect(item)"
                 >
                   {{ item.date.getDate() }}
                 </v-btn>
@@ -161,6 +158,11 @@ watch(selectedDateType, () => {
     })
   }
 })
+
+const handleDateSelect = (item: { date: Date }) => {
+  calendarDate.value = item.date
+  console.log('Selected date:', item)
+}
 
 const dateToString = (date: Date) => {
   return `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, '0')}-${date.getDate().toString().padStart(2, '0')}`

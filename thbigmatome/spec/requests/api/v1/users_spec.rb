@@ -182,6 +182,65 @@ RSpec.describe 'Api::V1::Users', type: :request do
     end
   end
 
+  describe 'PATCH /api/v1/users/:id/update_role' do
+    let!(:target_user) { create(:user, password: password) }
+    let!(:second_commissioner) { create(:user, :commissioner, password: password) }
+
+    context 'commissionerユーザーの場合' do
+      before { login_as(commissioner_user) }
+
+      it '他ユーザーをcommissionerに昇格 → 200' do
+        patch "/api/v1/users/#{target_user.id}/update_role", params: { role: 'commissioner' }, as: :json
+        expect(response).to have_http_status(:ok)
+        json = JSON.parse(response.body)
+        expect(json['role']).to eq('commissioner')
+        expect(target_user.reload.role).to eq('commissioner')
+      end
+
+      it '複数commissionerいれば降格できる → 200' do
+        patch "/api/v1/users/#{second_commissioner.id}/update_role", params: { role: 'player' }, as: :json
+        expect(response).to have_http_status(:ok)
+        json = JSON.parse(response.body)
+        expect(json['role']).to eq('player')
+        expect(second_commissioner.reload.role).to eq('player')
+      end
+
+      it '自分自身のロール変更 → 422' do
+        patch "/api/v1/users/#{commissioner_user.id}/update_role", params: { role: 'player' }, as: :json
+        expect(response).to have_http_status(:unprocessable_content)
+        json = JSON.parse(response.body)
+        expect(json['error']).to eq('自分自身のロールは変更できません')
+      end
+
+      it 'ラストコミッショナー保護: commissioner1人のみのとき自己変更を試みる → 422' do
+        # second_commissionerをplayerに変更してcommissioner_userを唯一のcommissionerにする
+        second_commissioner.update_column(:role, :player)
+        expect(User.where(role: :commissioner).count).to eq(1)
+        # 唯一のcommissionerが自分自身のロール変更を試みる（自己変更禁止で422）
+        patch "/api/v1/users/#{commissioner_user.id}/update_role", params: { role: 'player' }, as: :json
+        expect(response).to have_http_status(:unprocessable_content)
+        json = JSON.parse(response.body)
+        expect(json['error']).to eq('自分自身のロールは変更できません')
+      end
+    end
+
+    context '一般ユーザーの場合' do
+      before { login_as(player_user) }
+
+      it '403を返す' do
+        patch "/api/v1/users/#{target_user.id}/update_role", params: { role: 'commissioner' }, as: :json
+        expect(response).to have_http_status(:forbidden)
+      end
+    end
+
+    context '未認証の場合' do
+      it '401を返す' do
+        patch "/api/v1/users/#{target_user.id}/update_role", params: { role: 'commissioner' }, as: :json
+        expect(response).to have_http_status(:unauthorized)
+      end
+    end
+  end
+
   describe 'PATCH /api/v1/users/:id/reset_password' do
     let!(:target_user) { create(:user) }
 

@@ -2,7 +2,7 @@ module Api
   module V1
     class UsersController < Api::V1::BaseController
       before_action :check_commissioner
-      before_action :set_user, only: [ :reset_password ]
+      before_action :set_user, only: [ :reset_password, :update_role ]
       skip_before_action :check_commissioner, only: [ :my_teams, :change_password ]
 
       # GET /api/v1/users
@@ -37,6 +37,23 @@ module Api
           render json: { message: "パスワードを変更しました" }
         else
           render json: { errors: current_user.errors.full_messages }, status: :unprocessable_content
+        end
+      end
+
+      # PATCH /api/v1/users/:id/update_role
+      def update_role
+        if current_user.id == @user.id
+          return render json: { error: "自分自身のロールは変更できません" }, status: :unprocessable_content
+        end
+
+        if @user.commissioner? && User.where(role: :commissioner).count == 1 && params[:role] == "player"
+          return render json: { error: "ラストコミッショナーのロールは変更できません" }, status: :unprocessable_content
+        end
+
+        if @user.update(role: params[:role])
+          render json: @user.slice(:id, :name, :display_name, :role)
+        else
+          render json: { errors: @user.errors.full_messages }, status: :unprocessable_content
         end
       end
 

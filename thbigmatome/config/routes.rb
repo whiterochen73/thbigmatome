@@ -122,6 +122,7 @@ Rails.application.routes.draw do
       resources :users, only: [ :index, :create ] do
         member do
           patch :reset_password
+          patch :update_role
         end
       end
     end

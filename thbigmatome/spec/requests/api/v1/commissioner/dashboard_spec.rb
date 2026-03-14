@@ -150,4 +150,83 @@ RSpec.describe "Api::V1::Commissioner::Dashboard", type: :request do
       end
     end
   end
+
+  describe "GET /api/v1/commissioner/dashboard/cooldowns" do
+    context "コミッショナーユーザーの場合" do
+      before { login_as(commissioner_user) }
+
+      it "200を返す" do
+        get "/api/v1/commissioner/dashboard/cooldowns"
+        expect(response).to have_http_status(:ok)
+      end
+
+      it "クールダウン中の選手を返す" do
+        team = create(:team, is_active: true)
+        season = create(:season, team: team, current_date: Date.current)
+        player = create(:player)
+        tm = create(:team_membership, team: team, player: player, squad: "second")
+        # 昇格 → 降格（5日前）→ クールダウン中（10日ルール）
+        create(:season_roster, team_membership: tm, season: season, squad: "first", registered_on: Date.current - 10)
+        create(:season_roster, team_membership: tm, season: season, squad: "second", registered_on: Date.current - 5)
+
+        get "/api/v1/commissioner/dashboard/cooldowns"
+        json = JSON.parse(response.body)
+        expect(json).to be_an(Array)
+
+        record = json.find { |r| r["team_id"] == team.id }
+        expect(record).not_to be_nil
+        expect(record["team_name"]).to eq(team.name)
+        expect(record["player_name"]).to eq(player.name)
+        expect(record["remaining_days"]).to eq(5)
+        expect(record["same_day_exempt"]).to eq(false)
+        expect(record).to have_key("demotion_date")
+        expect(record).to have_key("cooldown_until")
+      end
+
+      it "クールダウン終了済みの選手は含まない" do
+        team = create(:team, is_active: true)
+        season = create(:season, team: team, current_date: Date.current)
+        player = create(:player)
+        tm = create(:team_membership, team: team, player: player, squad: "second")
+        # 昇格 → 降格（15日前）→ クールダウン終了済み
+        create(:season_roster, team_membership: tm, season: season, squad: "first", registered_on: Date.current - 20)
+        create(:season_roster, team_membership: tm, season: season, squad: "second", registered_on: Date.current - 15)
+
+        get "/api/v1/commissioner/dashboard/cooldowns"
+        json = JSON.parse(response.body)
+        record = json.find { |r| r["team_id"] == team.id }
+        expect(record).to be_nil
+      end
+
+      it "inactive チームは含まない" do
+        team = create(:team, is_active: false)
+        season = create(:season, team: team, current_date: Date.current)
+        player = create(:player)
+        tm = create(:team_membership, team: team, player: player, squad: "second")
+        create(:season_roster, team_membership: tm, season: season, squad: "first", registered_on: Date.current - 10)
+        create(:season_roster, team_membership: tm, season: season, squad: "second", registered_on: Date.current - 5)
+
+        get "/api/v1/commissioner/dashboard/cooldowns"
+        json = JSON.parse(response.body)
+        record = json.find { |r| r["team_id"] == team.id }
+        expect(record).to be_nil
+      end
+    end
+
+    context "一般ユーザーの場合" do
+      before { login_as(player_user) }
+
+      it "403を返す" do
+        get "/api/v1/commissioner/dashboard/cooldowns"
+        expect(response).to have_http_status(:forbidden)
+      end
+    end
+
+    context "未認証の場合" do
+      it "401を返す" do
+        get "/api/v1/commissioner/dashboard/cooldowns"
+        expect(response).to have_http_status(:unauthorized)
+      end
+    end
+  end
 end

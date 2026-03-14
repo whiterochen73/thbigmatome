@@ -1,4 +1,6 @@
 class Api::V1::Commissioner::DashboardController < Api::V1::Commissioner::BaseController
+  include CooldownCalculable
+
   def absences
     teams = Team.where(is_active: true).includes(
       :season,
@@ -79,6 +81,40 @@ class Api::V1::Commissioner::DashboardController < Api::V1::Commissioner::BaseCo
     end
 
     render json: result
+  end
+
+  def cooldowns
+    teams = Team.where(is_active: true).includes(
+      :season,
+      team_memberships: [ :player, :season_rosters ]
+    )
+
+    cooldowns = []
+    teams.each do |team|
+      season = team.season
+      next unless season
+
+      team.team_memberships.each do |tm|
+        next unless tm.squad == "second"
+
+        info = calculate_cooldown_info(tm, season.current_date)
+        next unless info[:cooldown_until]
+
+        remaining_days = (info[:cooldown_until].to_date - season.current_date.to_date).to_i
+        cooldowns << {
+          team_name: team.name,
+          team_id: team.id,
+          player_name: tm.player.name,
+          player_id: tm.player_id,
+          demotion_date: info[:demotion_date],
+          cooldown_until: info[:cooldown_until],
+          remaining_days: [ remaining_days, 0 ].max,
+          same_day_exempt: info[:same_day_exempt]
+        }
+      end
+    end
+
+    render json: cooldowns
   end
 
   private

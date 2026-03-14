@@ -115,6 +115,7 @@ Rails.application.routes.draw do
       namespace :commissioner do
         get "dashboard/absences", to: "dashboard#absences"
         get "dashboard/costs", to: "dashboard#costs"
+        get "dashboard/cooldowns", to: "dashboard#cooldowns"
       end
 
       # ユーザー管理（commissioner専用）

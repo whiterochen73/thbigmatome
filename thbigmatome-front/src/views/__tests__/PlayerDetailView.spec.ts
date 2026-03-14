@@ -113,6 +113,38 @@ describe('PlayerDetailView', () => {
     expect(wrapper.text()).toContain('投手')
   })
 
+  it('series が東方Project で表示される', async () => {
+    vi.mocked(axios.get).mockResolvedValueOnce({ data: { ...mockPlayer, series: 'touhou' } })
+    const router = createTestRouter('1')
+    await router.isReady()
+
+    const wrapper = mount(PlayerDetailView, {
+      global: {
+        plugins: [vuetify, router],
+      },
+    })
+
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('東方Project')
+  })
+
+  it('series が null のとき — を表示する', async () => {
+    vi.mocked(axios.get).mockResolvedValueOnce({ data: { ...mockPlayer, series: null } })
+    const router = createTestRouter('1')
+    await router.isReady()
+
+    const wrapper = mount(PlayerDetailView, {
+      global: {
+        plugins: [vuetify, router],
+      },
+    })
+
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('所属作品')
+  })
+
   it('APIエラー時にエラーメッセージを表示する', async () => {
     vi.mocked(axios.get).mockRejectedValueOnce(new Error('Network error'))
     const router = createTestRouter('1')

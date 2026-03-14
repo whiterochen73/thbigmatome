@@ -26,6 +26,7 @@ export interface PlayerDetail {
   name: string
   number: string | null
   short_name: string | null
+  series?: string | null
   player_cards?: PlayerCardSummary[]
   costs?: CostSummary[]
 }

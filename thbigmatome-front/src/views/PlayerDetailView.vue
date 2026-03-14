@@ -61,6 +61,10 @@
               <div class="info-label">略称</div>
               <div class="info-val">{{ player.short_name ?? '—' }}</div>
             </div>
+            <div class="info-item">
+              <div class="info-label">所属作品</div>
+              <div class="info-val">{{ seriesLabel(player.series) }}</div>
+            </div>
           </div>
 
           <!-- 選手カード一覧セクション -->
@@ -157,6 +161,18 @@ import { useRoute, useRouter } from 'vue-router'
 import axios from '@/plugins/axios'
 import PlayerDialog from '@/components/players/PlayerDialog.vue'
 import type { PlayerDetail } from '@/types/playerDetail'
+
+const SERIES_LABEL_MAP: Record<string, string> = {
+  touhou: '東方Project',
+  hachinai: 'ハチナイ',
+  tamayomi: '球詠',
+  original: 'オリジナル',
+}
+
+function seriesLabel(series: string | null | undefined): string {
+  if (!series) return '—'
+  return SERIES_LABEL_MAP[series] ?? series
+}
 
 const HANDEDNESS_MAP: Record<string, string> = {
   right_throw: '右投',

@@ -817,6 +817,7 @@
       "name": "名前",
       "number": "背番号",
       "short_name": "短縮名",
+      "series": "所属作品",
       "position": "ポジション",
       "throwing_hand": "投",
       "batting_hand": "打",

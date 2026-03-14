@@ -27,6 +27,17 @@
           density="compact"
         ></v-text-field>
       </v-col>
+      <v-col cols="12" sm="4">
+        <v-select
+          v-model="editableItem.series"
+          :label="t('playerDialog.form.series')"
+          :items="seriesItems"
+          item-title="label"
+          item-value="value"
+          density="compact"
+          clearable
+        ></v-select>
+      </v-col>
     </v-row>
   </div>
 </template>
@@ -41,6 +52,13 @@ const editableItem = defineModel<PlayerDetail>({
   type: Object,
   required: true,
 })
+
+const seriesItems = [
+  { value: 'touhou', label: '東方Project' },
+  { value: 'hachinai', label: 'ハチナイ' },
+  { value: 'tamayomi', label: '球詠' },
+  { value: 'original', label: 'オリジナル' },
+]
 
 const rules = {
   required: (value: string | number) =>

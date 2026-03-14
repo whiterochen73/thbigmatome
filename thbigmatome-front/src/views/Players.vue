@@ -30,6 +30,15 @@
         item-value="id"
         class="elevation-1"
       >
+        <template #item.series="{ item }">
+          <StatusChip
+            v-if="item.series"
+            :status="item.series"
+            :label="seriesLabelMap[item.series] ?? item.series"
+            size="small"
+          />
+          <span v-else class="text-grey">—</span>
+        </template>
         <template #item.card_count="{ item }">
           <a href="#" class="card-count-link" @click.prevent="router.push(`/players/${item.id}`)">
             {{ item.player_cards?.length ?? 0 }}枚
@@ -59,6 +68,7 @@ import { useDisplay } from 'vuetify'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
 import DataCard from '@/components/shared/DataCard.vue'
 import FilterBar from '@/components/shared/FilterBar.vue'
+import StatusChip from '@/components/shared/StatusChip.vue'
 import type { PlayerDetail } from '@/types/playerDetail'
 import { usePlayersSearchStore } from '@/stores/playersSearch'
 
@@ -79,11 +89,19 @@ const searchText = computed({
   set: (val: string) => playersSearchStore.setSearchText(val),
 })
 
+const seriesLabelMap: Record<string, string> = {
+  touhou: '東方Project',
+  hachinai: 'ハチナイ',
+  tamayomi: '球詠',
+  original: 'オリジナル',
+}
+
 const headers = computed(() => [
-  { title: t('playerList.headers.number'), key: 'number', width: '12%' },
-  { title: t('playerList.headers.name'), key: 'name', width: '33%' },
-  { title: t('playerList.headers.short_name'), key: 'short_name', width: '25%' },
-  { title: 'カード数', key: 'card_count', sortable: false, width: '15%' },
+  { title: t('playerList.headers.number'), key: 'number', width: '10%' },
+  { title: t('playerList.headers.name'), key: 'name', width: '28%' },
+  { title: t('playerList.headers.short_name'), key: 'short_name', width: '20%' },
+  { title: '所属作品', key: 'series', sortable: false, width: '15%' },
+  { title: 'カード数', key: 'card_count', sortable: false, width: '12%' },
   { title: t('playerList.headers.actions'), key: 'actions', sortable: false, width: '15%' },
 ])
 

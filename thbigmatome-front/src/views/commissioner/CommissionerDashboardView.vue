@@ -3,77 +3,140 @@
   <v-container>
     <PageHeader title="ダッシュボード" />
 
-    <v-row>
-      <v-col cols="12">
-        <DataCard title="離脱者一覧">
-          <FilterBar>
-            <template #search>
-              <v-text-field
-                v-model="searchQuery"
-                label="選手名検索"
-                prepend-inner-icon="mdi-magnify"
-                variant="outlined"
-                density="compact"
-                clearable
-                hide-details
-              />
-            </template>
-            <template #filters>
-              <v-select
-                v-model="selectedAbsenceType"
-                :items="absenceTypeOptions"
-                label="離脱種別"
-                variant="outlined"
-                density="compact"
-                clearable
-                hide-details
-              />
-            </template>
-          </FilterBar>
+    <v-tabs v-model="activeTab" color="primary" class="mb-4">
+      <v-tab value="absences">離脱者一覧</v-tab>
+      <v-tab value="costs">コスト状況</v-tab>
+    </v-tabs>
 
-          <v-data-table
-            :headers="headers"
-            :items="filteredAbsences"
-            :loading="loading"
-            density="compact"
-            :row-props="getRowProps"
-          >
-            <template v-slot:item.absence_type="{ item }">
-              <StatusChip
-                :status="item.absence_type"
-                :label="absenceTypeLabel(item.absence_type)"
-              />
-            </template>
-            <template v-slot:item.start_date="{ item }">
-              {{ formatDate(item.start_date) }}
-            </template>
-            <template v-slot:item.effective_end_date="{ item }">
-              {{ item.effective_end_date ? formatDate(item.effective_end_date) : '不明' }}
-            </template>
-            <template v-slot:item.remaining="{ item }">
-              <template v-if="getRemainingDisplay(item) !== null">
-                <v-chip
-                  :color="
-                    getRemainingCount(item) !== null && getRemainingCount(item)! <= 2
-                      ? 'green-darken-1'
-                      : undefined
-                  "
-                  :variant="
-                    getRemainingCount(item) !== null && getRemainingCount(item)! <= 2
-                      ? 'tonal'
-                      : 'text'
-                  "
-                  size="small"
-                >
-                  {{ getRemainingDisplay(item) }}
-                </v-chip>
-              </template>
-              <span v-else class="text-caption text-medium-emphasis">不明</span>
-            </template>
-          </v-data-table>
-        </DataCard>
-      </v-col>
-    </v-row>
+    <v-window v-model="activeTab">
+      <!-- 離脱者一覧タブ -->
+      <v-window-item value="absences">
+        <v-row>
+          <v-col cols="12">
+            <DataCard title="離脱者一覧">
+              <FilterBar>
+                <template #search>
+                  <v-text-field
+                    v-model="searchQuery"
+                    label="選手名検索"
+                    prepend-inner-icon="mdi-magnify"
+                    variant="outlined"
+                    density="compact"
+                    clearable
+                    hide-details
+                  />
+                </template>
+                <template #filters>
+                  <v-select
+                    v-model="selectedAbsenceType"
+                    :items="absenceTypeOptions"
+                    label="離脱種別"
+                    variant="outlined"
+                    density="compact"
+                    clearable
+                    hide-details
+                  />
+                </template>
+              </FilterBar>
+
+              <v-data-table
+                :headers="absenceHeaders"
+                :items="filteredAbsences"
+                :loading="absencesLoading"
+                density="compact"
+                :row-props="getRowProps"
+              >
+                <template v-slot:item.absence_type="{ item }">
+                  <StatusChip
+                    :status="item.absence_type"
+                    :label="absenceTypeLabel(item.absence_type)"
+                  />
+                </template>
+                <template v-slot:item.start_date="{ item }">
+                  {{ formatDate(item.start_date) }}
+                </template>
+                <template v-slot:item.effective_end_date="{ item }">
+                  {{ item.effective_end_date ? formatDate(item.effective_end_date) : '不明' }}
+                </template>
+                <template v-slot:item.remaining="{ item }">
+                  <template v-if="getRemainingDisplay(item) !== null">
+                    <v-chip
+                      :color="
+                        getRemainingCount(item) !== null && getRemainingCount(item)! <= 2
+                          ? 'green-darken-1'
+                          : undefined
+                      "
+                      :variant="
+                        getRemainingCount(item) !== null && getRemainingCount(item)! <= 2
+                          ? 'tonal'
+                          : 'text'
+                      "
+                      size="small"
+                    >
+                      {{ getRemainingDisplay(item) }}
+                    </v-chip>
+                  </template>
+                  <span v-else class="text-caption text-medium-emphasis">不明</span>
+                </template>
+              </v-data-table>
+            </DataCard>
+          </v-col>
+        </v-row>
+      </v-window-item>
+
+      <!-- コスト使用状況タブ -->
+      <v-window-item value="costs">
+        <v-row>
+          <v-col cols="12">
+            <DataCard title="チーム別コスト使用状況">
+              <v-data-table
+                :headers="costHeaders"
+                :items="costs"
+                :loading="costsLoading"
+                density="compact"
+              >
+                <template v-slot:item.total_cost="{ item }">
+                  <div class="d-flex align-center gap-2">
+                    <span>{{ item.total_cost }} / {{ item.total_cost_limit }}</span>
+                    <v-progress-linear
+                      :model-value="item.cost_usage_ratio * 100"
+                      :color="getCostColor(item.cost_usage_ratio)"
+                      height="8"
+                      rounded
+                      style="min-width: 80px; max-width: 120px"
+                    />
+                    <StatusChip v-if="item.cost_usage_ratio > 1.0" status="error" label="超過" />
+                    <StatusChip
+                      v-else-if="item.cost_usage_ratio > 0.9"
+                      status="warning"
+                      label="警告"
+                    />
+                  </div>
+                </template>
+                <template v-slot:item.first_squad_cost="{ item }">
+                  <div class="d-flex align-center gap-2">
+                    <span v-if="item.first_squad_cost_limit !== null">
+                      {{ item.first_squad_cost }} / {{ item.first_squad_cost_limit }}
+                    </span>
+                    <span v-else class="text-caption text-medium-emphasis">
+                      {{ item.first_squad_cost }} / —
+                    </span>
+                    <v-progress-linear
+                      v-if="item.first_squad_cost_limit"
+                      :model-value="(item.first_squad_cost / item.first_squad_cost_limit) * 100"
+                      :color="getCostColor(item.first_squad_cost / item.first_squad_cost_limit)"
+                      height="8"
+                      rounded
+                      style="min-width: 80px; max-width: 120px"
+                    />
+                  </div>
+                </template>
+              </v-data-table>
+            </DataCard>
+          </v-col>
+        </v-row>
+      </v-window-item>
+    </v-window>
   </v-container>
 </template>
 
@@ -102,10 +165,30 @@ interface AbsenceRecord {
   season_current_date: string
 }
 
+interface CostRecord {
+  team_id: number
+  team_name: string
+  team_type: string
+  total_cost: number
+  total_cost_limit: number
+  first_squad_cost: number
+  first_squad_cost_limit: number | null
+  first_squad_count: number
+  exempt_count: number
+  cost_usage_ratio: number
+}
+
+const activeTab = ref('absences')
+
+// 離脱者
 const absences = ref<AbsenceRecord[]>([])
-const loading = ref(false)
+const absencesLoading = ref(false)
 const searchQuery = ref('')
 const selectedAbsenceType = ref<string | null>(null)
+
+// コスト
+const costs = ref<CostRecord[]>([])
+const costsLoading = ref(false)
 
 const absenceTypeOptions = [
   { title: '負傷', value: 'injury' },
@@ -119,7 +202,7 @@ const absenceTypeLabels: Record<string, string> = {
   reconditioning: 'リコンディショニング',
 }
 
-const headers = [
+const absenceHeaders = [
   { title: 'チーム', key: 'team_name' },
   { title: '選手名', key: 'player_name' },
   { title: '離脱種別', key: 'absence_type' },
@@ -127,6 +210,15 @@ const headers = [
   { title: '開始日', key: 'start_date' },
   { title: '復帰予定日', key: 'effective_end_date' },
   { title: '残り', key: 'remaining', sortable: false },
+]
+
+const costHeaders = [
+  { title: 'チーム', key: 'team_name' },
+  { title: '種別', key: 'team_type' },
+  { title: '合計コスト / 上限', key: 'total_cost', sortable: false },
+  { title: '1軍コスト / 上限', key: 'first_squad_cost', sortable: false },
+  { title: '1軍人数', key: 'first_squad_count' },
+  { title: 'コスト除外', key: 'exempt_count' },
 ]
 
 const filteredAbsences = computed(() => {
@@ -163,19 +255,38 @@ const getRowProps = ({ item }: { item: AbsenceRecord }) => {
   return {}
 }
 
+const getCostColor = (ratio: number): string => {
+  if (ratio > 1.0) return 'error'
+  if (ratio > 0.9) return 'warning'
+  return 'primary'
+}
+
 const fetchAbsences = async () => {
-  loading.value = true
+  absencesLoading.value = true
   try {
     const response = await axios.get('/commissioner/dashboard/absences')
     absences.value = response.data
   } catch (error) {
     console.error('Failed to fetch absences:', error)
   } finally {
-    loading.value = false
+    absencesLoading.value = false
+  }
+}
+
+const fetchCosts = async () => {
+  costsLoading.value = true
+  try {
+    const response = await axios.get('/commissioner/dashboard/costs')
+    costs.value = response.data
+  } catch (error) {
+    console.error('Failed to fetch costs:', error)
+  } finally {
+    costsLoading.value = false
   }
 }
 
 onMounted(() => {
   fetchAbsences()
+  fetchCosts()
 })
 </script>

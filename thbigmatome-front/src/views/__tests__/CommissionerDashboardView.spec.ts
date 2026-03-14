@@ -62,6 +62,33 @@ const mockAbsences = [
   },
 ]
 
+const mockCosts = [
+  {
+    team_id: 1,
+    team_name: 'チームA',
+    team_type: 'normal',
+    total_cost: 185,
+    total_cost_limit: 200,
+    first_squad_cost: 150,
+    first_squad_cost_limit: 170,
+    first_squad_count: 25,
+    exempt_count: 1,
+    cost_usage_ratio: 0.925,
+  },
+  {
+    team_id: 2,
+    team_name: 'チームB',
+    team_type: 'hachinai',
+    total_cost: 210,
+    total_cost_limit: 200,
+    first_squad_cost: 160,
+    first_squad_cost_limit: 170,
+    first_squad_count: 27,
+    exempt_count: 0,
+    cost_usage_ratio: 1.05,
+  },
+]
+
 describe('CommissionerDashboardView', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -86,8 +113,17 @@ describe('CommissionerDashboardView', () => {
     expect(axios.get).toHaveBeenCalledWith('/commissioner/dashboard/absences')
   })
 
+  it('fetches costs on mount', async () => {
+    mount(CommissionerDashboardView, { global: { plugins: [vuetify] } })
+    await flushPromises()
+    expect(axios.get).toHaveBeenCalledWith('/commissioner/dashboard/costs')
+  })
+
   it('displays absence records', async () => {
-    ;(axios.get as ReturnType<typeof vi.fn>).mockResolvedValue({ data: mockAbsences })
+    ;(axios.get as ReturnType<typeof vi.fn>).mockImplementation((url: string) => {
+      if (url.includes('absences')) return Promise.resolve({ data: mockAbsences })
+      return Promise.resolve({ data: [] })
+    })
     const wrapper = mount(CommissionerDashboardView, { global: { plugins: [vuetify] } })
     await flushPromises()
     expect(wrapper.text()).toContain('霧雨魔理沙')
@@ -98,5 +134,25 @@ describe('CommissionerDashboardView', () => {
     const wrapper = mount(CommissionerDashboardView, { global: { plugins: [vuetify] } })
     await flushPromises()
     expect(wrapper.text()).toContain('離脱者一覧')
+  })
+
+  it('displays cost tab', async () => {
+    const wrapper = mount(CommissionerDashboardView, { global: { plugins: [vuetify] } })
+    await flushPromises()
+    expect(wrapper.text()).toContain('コスト状況')
+  })
+
+  it('displays cost records when cost tab is active', async () => {
+    ;(axios.get as ReturnType<typeof vi.fn>).mockImplementation((url: string) => {
+      if (url.includes('costs')) return Promise.resolve({ data: mockCosts })
+      return Promise.resolve({ data: [] })
+    })
+    const wrapper = mount(CommissionerDashboardView, { global: { plugins: [vuetify] } })
+    await flushPromises()
+    // コストタブに切り替え
+    const vm = wrapper.vm as unknown as { activeTab: string }
+    vm.activeTab = 'costs'
+    await wrapper.vm.$nextTick()
+    expect(wrapper.text()).toContain('チーム別コスト使用状況')
   })
 })

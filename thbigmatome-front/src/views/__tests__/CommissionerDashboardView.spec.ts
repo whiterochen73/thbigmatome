@@ -62,6 +62,19 @@ const mockAbsences = [
   },
 ]
 
+const mockCooldowns = [
+  {
+    team_id: 1,
+    team_name: 'チームA',
+    player_id: 20,
+    player_name: '博麗霊夢',
+    demotion_date: '2026-04-10',
+    cooldown_until: '2026-04-20',
+    remaining_days: 3,
+    same_day_exempt: false,
+  },
+]
+
 const mockCosts = [
   {
     team_id: 1,
@@ -136,10 +149,35 @@ describe('CommissionerDashboardView', () => {
     expect(wrapper.text()).toContain('離脱者一覧')
   })
 
+  it('fetches cooldowns on mount', async () => {
+    mount(CommissionerDashboardView, { global: { plugins: [vuetify] } })
+    await flushPromises()
+    expect(axios.get).toHaveBeenCalledWith('/commissioner/dashboard/cooldowns')
+  })
+
   it('displays cost tab', async () => {
     const wrapper = mount(CommissionerDashboardView, { global: { plugins: [vuetify] } })
     await flushPromises()
     expect(wrapper.text()).toContain('コスト状況')
+  })
+
+  it('displays cooldown tab', async () => {
+    const wrapper = mount(CommissionerDashboardView, { global: { plugins: [vuetify] } })
+    await flushPromises()
+    expect(wrapper.text()).toContain('クールダウン')
+  })
+
+  it('displays cooldown records when cooldown tab is active', async () => {
+    ;(axios.get as ReturnType<typeof vi.fn>).mockImplementation((url: string) => {
+      if (url.includes('cooldowns')) return Promise.resolve({ data: mockCooldowns })
+      return Promise.resolve({ data: [] })
+    })
+    const wrapper = mount(CommissionerDashboardView, { global: { plugins: [vuetify] } })
+    await flushPromises()
+    const vm = wrapper.vm as unknown as { activeTab: string }
+    vm.activeTab = 'cooldowns'
+    await wrapper.vm.$nextTick()
+    expect(wrapper.text()).toContain('クールダウン中選手')
   })
 
   it('displays cost records when cost tab is active', async () => {

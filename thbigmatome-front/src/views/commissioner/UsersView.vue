@@ -1,50 +1,42 @@
 <template>
   <v-container>
-    <v-row>
-      <v-col cols="12">
-        <h1 class="text-h4">ユーザー管理</h1>
-      </v-col>
-    </v-row>
+    <PageHeader title="ユーザー管理" />
 
     <v-row>
       <v-col cols="12">
-        <v-card>
-          <v-card-title class="d-flex align-center">
-            ユーザー一覧
-            <v-spacer></v-spacer>
+        <DataCard title="ユーザー一覧">
+          <template #title-actions>
             <v-btn color="accent" variant="flat" @click="openCreateDialog">新規ユーザー作成</v-btn>
-          </v-card-title>
-          <v-card-text>
-            <v-alert
-              v-if="errorMessage"
-              type="error"
-              variant="tonal"
-              class="mb-3"
-              closable
-              @click:close="errorMessage = ''"
-            >
-              {{ errorMessage }}
-            </v-alert>
-            <v-data-table
-              :headers="headers"
-              :items="users"
-              :loading="loading"
-              class="elevation-1"
-              density="compact"
-            >
-              <template v-slot:[`item.role`]="{ item }">
-                <v-chip :color="item.role === 'commissioner' ? 'primary' : 'default'" size="small">
-                  {{ item.role === 'commissioner' ? 'コミッショナー' : '一般' }}
-                </v-chip>
-              </template>
-              <template v-slot:[`item.actions`]="{ item }">
-                <v-icon size="small" @click="openResetDialog(item)" title="パスワードリセット"
-                  >mdi-lock-reset</v-icon
-                >
-              </template>
-            </v-data-table>
-          </v-card-text>
-        </v-card>
+          </template>
+          <v-alert
+            v-if="errorMessage"
+            type="error"
+            variant="tonal"
+            class="mb-3"
+            closable
+            @click:close="errorMessage = ''"
+          >
+            {{ errorMessage }}
+          </v-alert>
+          <v-data-table
+            :headers="headers"
+            :items="users"
+            :loading="loading"
+            class="elevation-1"
+            density="compact"
+          >
+            <template v-slot:[`item.role`]="{ item }">
+              <v-chip :color="item.role === 'commissioner' ? 'primary' : 'default'" size="small">
+                {{ item.role === 'commissioner' ? 'コミッショナー' : '一般' }}
+              </v-chip>
+            </template>
+            <template v-slot:[`item.actions`]="{ item }">
+              <v-icon size="small" @click="openResetDialog(item)" title="パスワードリセット"
+                >mdi-lock-reset</v-icon
+              >
+            </template>
+          </v-data-table>
+        </DataCard>
       </v-col>
     </v-row>
 
@@ -142,6 +134,8 @@
 import { ref, onMounted } from 'vue'
 import axios from 'axios'
 import { useSnackbar } from '@/composables/useSnackbar'
+import PageHeader from '@/components/shared/PageHeader.vue'
+import DataCard from '@/components/shared/DataCard.vue'
 
 interface User {
   id: number

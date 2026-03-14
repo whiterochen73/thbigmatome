@@ -163,22 +163,24 @@
             </div>
 
             <!-- フィルタ -->
-            <div class="d-flex flex-wrap ga-2 mb-3 align-center">
-              <span class="text-caption text-medium-emphasis"
-                >{{ t('teamMembers.positionFilterLabel') }}:</span
-              >
-              <v-btn
-                v-for="f in positionFilters"
-                :key="f.value"
-                size="x-small"
-                :variant="positionFilter === f.value ? 'elevated' : 'outlined'"
-                :color="positionFilter === f.value ? 'primary' : undefined"
-                rounded
-                @click="positionFilter = f.value"
-              >
-                {{ f.label }}
-              </v-btn>
-            </div>
+            <FilterBar>
+              <template #filters>
+                <span class="text-caption text-medium-emphasis"
+                  >{{ t('teamMembers.positionFilterLabel') }}:</span
+                >
+                <v-btn
+                  v-for="f in positionFilters"
+                  :key="f.value"
+                  size="x-small"
+                  :variant="positionFilter === f.value ? 'elevated' : 'outlined'"
+                  :color="positionFilter === f.value ? 'primary' : undefined"
+                  rounded
+                  @click="positionFilter = f.value"
+                >
+                  {{ f.label }}
+                </v-btn>
+              </template>
+            </FilterBar>
 
             <!-- eslint-disable vue/valid-v-slot -->
             <v-data-table
@@ -267,6 +269,7 @@ import { useSnackbar } from '@/composables/useSnackbar'
 import type { Player } from '@/types/player'
 import type { CostList } from '@/types/costList'
 import type { PlayerType } from '@/types/playerType'
+import FilterBar from '@/components/shared/FilterBar.vue'
 
 type CostType =
   | 'normal_cost'

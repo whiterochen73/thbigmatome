@@ -6,8 +6,8 @@
       </template>
     </PageHeader>
 
-    <v-row>
-      <v-col cols="12" sm="4">
+    <FilterBar>
+      <template #filters>
         <v-select
           v-model="filterCompetitionId"
           :items="competitions"
@@ -17,27 +17,21 @@
           density="compact"
           clearable
         ></v-select>
-      </v-col>
-      <v-col cols="12" sm="3">
         <v-text-field
           v-model="filterFrom"
           label="開始日"
           type="date"
           density="compact"
         ></v-text-field>
-      </v-col>
-      <v-col cols="12" sm="3">
         <v-text-field
           v-model="filterTo"
           label="終了日"
           type="date"
           density="compact"
         ></v-text-field>
-      </v-col>
-      <v-col cols="12" sm="2" class="d-flex align-center">
         <v-btn color="accent" variant="flat" @click="fetchGames" :loading="loading">検索</v-btn>
-      </v-col>
-    </v-row>
+      </template>
+    </FilterBar>
 
     <v-row>
       <v-col cols="12">
@@ -88,6 +82,7 @@ import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import axios from 'axios'
 import PageHeader from '@/components/shared/PageHeader.vue'
+import FilterBar from '@/components/shared/FilterBar.vue'
 
 interface Competition {
   id: number

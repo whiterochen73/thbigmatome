@@ -8,8 +8,8 @@
         </v-btn>
       </template>
       <!-- フィルターUI -->
-      <v-row dense class="mb-4">
-        <v-col cols="12" sm="6" md="4">
+      <FilterBar>
+        <template #search>
           <v-text-field
             v-model="searchText"
             :label="t('playerList.filters.searchPlaceholder')"
@@ -18,8 +18,8 @@
             dense
             hide-details
           ></v-text-field>
-        </v-col>
-      </v-row>
+        </template>
+      </FilterBar>
 
       <v-data-table
         :headers="headers"
@@ -58,6 +58,7 @@ import PlayerDialog from '@/components/players/PlayerDialog.vue'
 import { useDisplay } from 'vuetify'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
 import DataCard from '@/components/shared/DataCard.vue'
+import FilterBar from '@/components/shared/FilterBar.vue'
 import type { PlayerDetail } from '@/types/playerDetail'
 import { usePlayersSearchStore } from '@/stores/playersSearch'
 

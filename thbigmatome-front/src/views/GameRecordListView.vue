@@ -7,15 +7,15 @@
     </PageHeader>
 
     <!-- フィルター -->
-    <v-row class="mb-2">
-      <v-col cols="12" sm="4">
+    <FilterBar>
+      <template #filters>
         <v-btn-toggle v-model="filterStatus" density="compact" rounded="sm" color="primary">
           <v-btn value="">全ステータス</v-btn>
           <v-btn value="draft">draft</v-btn>
           <v-btn value="confirmed">confirmed</v-btn>
         </v-btn-toggle>
-      </v-col>
-    </v-row>
+      </template>
+    </FilterBar>
 
     <!-- テーブル -->
     <v-row>
@@ -84,6 +84,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import axios from '@/plugins/axios'
 import PageHeader from '@/components/shared/PageHeader.vue'
+import FilterBar from '@/components/shared/FilterBar.vue'
 
 interface GameRecord {
   id: number

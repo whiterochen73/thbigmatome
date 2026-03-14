@@ -1,72 +1,63 @@
 <template>
   <v-container>
-    <v-card>
-      <v-card-title class="d-flex align-center">
-        {{ t('teamList.title') }}
-        <v-spacer></v-spacer>
+    <DataCard :title="t('teamList.title')">
+      <template #title-actions>
         <v-btn color="accent" variant="flat" @click="openDialog()" prepend-icon="mdi-plus">
           {{ t('teamList.addTeam') }}
         </v-btn>
-      </v-card-title>
-      <v-card-text>
-        <v-data-table
-          :headers="headers"
-          :items="teams"
-          :loading="loading"
-          class="elevation-1"
-          item-value="id"
-          :no-data-text="t('teamList.noData')"
-          :row-props="
-            (row: { item: Team }) => (row.item.is_active ? {} : { class: 'text-medium-emphasis' })
-          "
-        >
-          <template #[`item.team_type`]="{ item }">
-            <v-chip
-              v-if="item.team_type === 'hachinai'"
-              size="small"
-              color="purple"
-              variant="tonal"
-            >
-              {{ t('teamList.teamTypes.hachinai') }}
-            </v-chip>
-            <span v-else class="text-caption text-medium-emphasis">{{
-              t('teamList.teamTypes.normal')
-            }}</span>
-          </template>
+      </template>
+      <v-data-table
+        :headers="headers"
+        :items="teams"
+        :loading="loading"
+        class="elevation-1"
+        item-value="id"
+        :no-data-text="t('teamList.noData')"
+        :row-props="
+          (row: { item: Team }) => (row.item.is_active ? {} : { class: 'text-medium-emphasis' })
+        "
+      >
+        <template #[`item.team_type`]="{ item }">
+          <v-chip v-if="item.team_type === 'hachinai'" size="small" color="purple" variant="tonal">
+            {{ t('teamList.teamTypes.hachinai') }}
+          </v-chip>
+          <span v-else class="text-caption text-medium-emphasis">{{
+            t('teamList.teamTypes.normal')
+          }}</span>
+        </template>
 
-          <template #[`item.is_active`]="{ item }">
-            <v-icon v-if="item.is_active"> mdi-check </v-icon>
-          </template>
+        <template #[`item.is_active`]="{ item }">
+          <v-icon v-if="item.is_active"> mdi-check </v-icon>
+        </template>
 
-          <template #[`item.manager_name`]="{ item }">
-            {{ item.director?.name || '-' }}
-          </template>
+        <template #[`item.manager_name`]="{ item }">
+          {{ item.director?.name || '-' }}
+        </template>
 
-          <template #[`item.actions`]="{ item }">
-            <v-icon
-              size="small"
-              class="mr-2"
-              @click="navigateToSeason(item)"
-              title="シーズンポータル"
-            >
-              mdi-calendar-star
-            </v-icon>
-            <v-icon
-              size="small"
-              class="mr-2"
-              @click="navigateToMembers(item.id)"
-              title="メンバー編集"
-            >
-              mdi-account-group
-            </v-icon>
-            <v-icon size="small" class="mr-2" @click="openDialog(item)" title="チーム編集">
-              mdi-pencil
-            </v-icon>
-            <v-icon size="small" @click="deleteTeam(item.id)" title="削除"> mdi-delete </v-icon>
-          </template>
-        </v-data-table>
-      </v-card-text>
-    </v-card>
+        <template #[`item.actions`]="{ item }">
+          <v-icon
+            size="small"
+            class="mr-2"
+            @click="navigateToSeason(item)"
+            title="シーズンポータル"
+          >
+            mdi-calendar-star
+          </v-icon>
+          <v-icon
+            size="small"
+            class="mr-2"
+            @click="navigateToMembers(item.id)"
+            title="メンバー編集"
+          >
+            mdi-account-group
+          </v-icon>
+          <v-icon size="small" class="mr-2" @click="openDialog(item)" title="チーム編集">
+            mdi-pencil
+          </v-icon>
+          <v-icon size="small" @click="deleteTeam(item.id)" title="削除"> mdi-delete </v-icon>
+        </template>
+      </v-data-table>
+    </DataCard>
 
     <TeamDialog v-model:isVisible="dialogVisible" :team="editingTeam" @save="fetchTeams" />
 
@@ -81,6 +72,7 @@ import { useRouter } from 'vue-router'
 import axios from '@/plugins/axios'
 import { useSnackbar } from '@/composables/useSnackbar'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
+import DataCard from '@/components/shared/DataCard.vue'
 import { type Team } from '@/types/team'
 import TeamDialog from '@/components/TeamDialog.vue'
 import { useTeamSelectionStore } from '@/stores/teamSelection'

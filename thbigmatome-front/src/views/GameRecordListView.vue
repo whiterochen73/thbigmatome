@@ -1,11 +1,10 @@
 <template>
   <v-container>
-    <v-row>
-      <v-col cols="12" class="d-flex align-center">
-        <h1 class="text-h4">パーサー結果レビュー</h1>
-        <v-chip class="ml-3" color="amber-darken-2" size="small" label> β </v-chip>
-      </v-col>
-    </v-row>
+    <PageHeader title="パーサー結果レビュー">
+      <template #actions>
+        <v-chip color="amber-darken-2" size="small" label>β</v-chip>
+      </template>
+    </PageHeader>
 
     <!-- フィルター -->
     <v-row class="mb-2">
@@ -84,6 +83,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import axios from '@/plugins/axios'
+import PageHeader from '@/components/shared/PageHeader.vue'
 
 interface GameRecord {
   id: number

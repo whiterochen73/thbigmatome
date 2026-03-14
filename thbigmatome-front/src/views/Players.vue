@@ -1,50 +1,46 @@
 <!-- eslint-disable vue/multi-word-component-names, vue/valid-v-slot -->
 <template>
   <v-container fluid>
-    <v-card>
-      <v-card-title>
-        {{ t('playerList.title') }}
-        <v-spacer></v-spacer>
+    <DataCard :title="t('playerList.title')">
+      <template #title-actions>
         <v-btn color="accent" variant="flat" @click="openDialog">
           {{ t('playerList.addPlayer') }}
         </v-btn>
-      </v-card-title>
-      <v-card-text>
-        <!-- フィルターUI -->
-        <v-row dense class="mb-4">
-          <v-col cols="12" sm="6" md="4">
-            <v-text-field
-              v-model="searchText"
-              :label="t('playerList.filters.searchPlaceholder')"
-              prepend-inner-icon="mdi-magnify"
-              clearable
-              dense
-              hide-details
-            ></v-text-field>
-          </v-col>
-        </v-row>
+      </template>
+      <!-- フィルターUI -->
+      <v-row dense class="mb-4">
+        <v-col cols="12" sm="6" md="4">
+          <v-text-field
+            v-model="searchText"
+            :label="t('playerList.filters.searchPlaceholder')"
+            prepend-inner-icon="mdi-magnify"
+            clearable
+            dense
+            hide-details
+          ></v-text-field>
+        </v-col>
+      </v-row>
 
-        <v-data-table
-          :headers="headers"
-          :items="filteredPlayers"
-          :loading="loading"
-          :no-data-text="t('playerList.noData')"
-          :class="displayClasses"
-          item-value="id"
-          class="elevation-1"
-        >
-          <template #item.card_count="{ item }">
-            <a href="#" class="card-count-link" @click.prevent="router.push(`/players/${item.id}`)">
-              {{ item.player_cards?.length ?? 0 }}枚
-            </a>
-          </template>
-          <template #item.actions="{ item }">
-            <v-icon size="small" class="me-2" @click="openDialog(item)" icon="mdi-pencil"></v-icon>
-            <v-icon size="small" @click="deletePlayer(item.id!)" icon="mdi-delete"></v-icon>
-          </template>
-        </v-data-table>
-      </v-card-text>
-    </v-card>
+      <v-data-table
+        :headers="headers"
+        :items="filteredPlayers"
+        :loading="loading"
+        :no-data-text="t('playerList.noData')"
+        :class="displayClasses"
+        item-value="id"
+        class="elevation-1"
+      >
+        <template #item.card_count="{ item }">
+          <a href="#" class="card-count-link" @click.prevent="router.push(`/players/${item.id}`)">
+            {{ item.player_cards?.length ?? 0 }}枚
+          </a>
+        </template>
+        <template #item.actions="{ item }">
+          <v-icon size="small" class="me-2" @click="openDialog(item)" icon="mdi-pencil"></v-icon>
+          <v-icon size="small" @click="deletePlayer(item.id!)" icon="mdi-delete"></v-icon>
+        </template>
+      </v-data-table>
+    </DataCard>
 
     <PlayerDialog v-model="dialog" :item="editedItem" @save="onSave" />
 
@@ -61,6 +57,7 @@ import { useSnackbar } from '@/composables/useSnackbar'
 import PlayerDialog from '@/components/players/PlayerDialog.vue'
 import { useDisplay } from 'vuetify'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
+import DataCard from '@/components/shared/DataCard.vue'
 import type { PlayerDetail } from '@/types/playerDetail'
 import { usePlayersSearchStore } from '@/stores/playersSearch'
 

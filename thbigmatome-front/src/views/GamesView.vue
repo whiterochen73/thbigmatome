@@ -1,12 +1,10 @@
 <template>
   <v-container>
-    <v-row>
-      <v-col cols="12" class="d-flex align-center">
-        <h1 class="text-h4">試合記録</h1>
-        <v-spacer></v-spacer>
+    <PageHeader title="試合記録">
+      <template #actions>
         <v-btn color="accent" variant="flat" @click="navigateToImport">ログ取り込み</v-btn>
-      </v-col>
-    </v-row>
+      </template>
+    </PageHeader>
 
     <v-row>
       <v-col cols="12" sm="4">
@@ -89,6 +87,7 @@
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import axios from 'axios'
+import PageHeader from '@/components/shared/PageHeader.vue'
 
 interface Competition {
   id: number

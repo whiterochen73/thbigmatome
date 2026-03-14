@@ -133,6 +133,55 @@ RSpec.describe 'Api::V1::Users', type: :request do
     end
   end
 
+  describe 'POST /api/v1/users/change_password' do
+    context 'ログイン済みユーザーの場合' do
+      before { login_as(player_user) }
+
+      it '正常系: current_password正しい → 200' do
+        post '/api/v1/users/change_password',
+             params: { current_password: password, password: 'newpass789', password_confirmation: 'newpass789' },
+             as: :json
+        expect(response).to have_http_status(:ok)
+        json = JSON.parse(response.body)
+        expect(json['message']).to eq('パスワードを変更しました')
+      end
+
+      it '正常系: 変更後に新パスワードでログインできる' do
+        post '/api/v1/users/change_password',
+             params: { current_password: password, password: 'newpass789', password_confirmation: 'newpass789' },
+             as: :json
+        post '/api/v1/auth/logout', as: :json
+        post '/api/v1/auth/login', params: { name: player_user.name, password: 'newpass789' }, as: :json
+        expect(response).to have_http_status(:ok)
+      end
+
+      it '異常系: current_password誤り → 422' do
+        post '/api/v1/users/change_password',
+             params: { current_password: 'wrongpass', password: 'newpass789', password_confirmation: 'newpass789' },
+             as: :json
+        expect(response).to have_http_status(:unprocessable_content)
+        json = JSON.parse(response.body)
+        expect(json['error']).to eq('現在のパスワードが正しくありません')
+      end
+
+      it '異常系: password/confirmation不一致 → 422' do
+        post '/api/v1/users/change_password',
+             params: { current_password: password, password: 'newpass789', password_confirmation: 'different' },
+             as: :json
+        expect(response).to have_http_status(:unprocessable_content)
+      end
+    end
+
+    context '未認証の場合' do
+      it '401を返す' do
+        post '/api/v1/users/change_password',
+             params: { current_password: password, password: 'newpass789', password_confirmation: 'newpass789' },
+             as: :json
+        expect(response).to have_http_status(:unauthorized)
+      end
+    end
+  end
+
   describe 'PATCH /api/v1/users/:id/reset_password' do
     let!(:target_user) { create(:user) }
 

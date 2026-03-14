@@ -3,7 +3,7 @@ module Api
     class UsersController < Api::V1::BaseController
       before_action :check_commissioner
       before_action :set_user, only: [ :reset_password ]
-      skip_before_action :check_commissioner, only: [ :my_teams ]
+      skip_before_action :check_commissioner, only: [ :my_teams, :change_password ]
 
       # GET /api/v1/users
       def index
@@ -25,6 +25,19 @@ module Api
       def my_teams
         teams = current_user.teams.order(is_active: :desc, created_at: :asc)
         render json: teams.as_json(only: [ :id, :name, :is_active, :user_id, :short_name, :team_type ])
+      end
+
+      # POST /api/v1/users/change_password
+      def change_password
+        unless current_user.authenticate(params[:current_password])
+          return render json: { error: "現在のパスワードが正しくありません" }, status: :unprocessable_content
+        end
+
+        if current_user.update(password: params[:password], password_confirmation: params[:password_confirmation])
+          render json: { message: "パスワードを変更しました" }
+        else
+          render json: { errors: current_user.errors.full_messages }, status: :unprocessable_content
+        end
       end
 
       # PATCH /api/v1/users/:id/reset_password

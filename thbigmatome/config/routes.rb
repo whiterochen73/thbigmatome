@@ -108,6 +108,8 @@ Rails.application.routes.draw do
 
       # 自分のチーム一覧（全ログインユーザー利用可）
       get "users/me/teams", to: "users#my_teams"
+      # 自分のパスワード変更（全ログインユーザー利用可）
+      post "users/change_password", to: "users#change_password"
 
       # ユーザー管理（commissioner専用）
       resources :users, only: [ :index, :create ] do

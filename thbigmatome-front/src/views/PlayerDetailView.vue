@@ -32,7 +32,7 @@
             </div>
           </div>
           <div style="flex: 1"></div>
-          <span class="header-badge">選手マスタ</span>
+          <span class="header-badge">選手一覧</span>
         </div>
 
         <div class="detail-body">

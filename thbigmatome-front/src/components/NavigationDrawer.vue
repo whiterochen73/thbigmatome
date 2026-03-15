@@ -147,21 +147,16 @@ const commissionerMenuItems = [
     value: 'commissionerDashboard',
     to: '/commissioner/dashboard',
   },
-  {
-    title: '大会管理',
-    icon: 'mdi-trophy-outline',
-    value: 'competitions',
-    to: '/commissioner/competitions',
-  },
+  // { title: '大会管理', icon: 'mdi-trophy-outline', value: 'competitions', to: '/commissioner/competitions' }, // メニュー非表示
   {
     title: 'カードセット',
     icon: 'mdi-cards',
     value: 'cardSets',
     to: '/commissioner/card_sets',
   },
-  { title: '球場', icon: 'mdi-stadium', value: 'stadiums', to: '/commissioner/stadiums' },
+  // { title: '球場', icon: 'mdi-stadium', value: 'stadiums', to: '/commissioner/stadiums' }, // メニュー非表示
   {
-    title: '選手マスタ',
+    title: '選手一覧',
     icon: 'mdi-account',
     value: 'commissionerPlayers',
     to: '/commissioner/players',

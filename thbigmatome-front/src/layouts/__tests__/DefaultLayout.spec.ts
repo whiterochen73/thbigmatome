@@ -123,6 +123,7 @@ describe('DefaultLayout.vue', () => {
     vi.clearAllMocks()
     mockUser.value = { id: 1, name: 'testuser', role: 'director' }
     mockIsCommissioner.value = false
+    localStorage.removeItem('commissionerMode')
   })
 
   describe('External links section', () => {
@@ -273,11 +274,12 @@ describe('DefaultLayout.vue', () => {
 
     it('displays commissioner menu when user is commissioner', async () => {
       mockIsCommissioner.value = true
+      localStorage.setItem('commissionerMode', 'true')
 
       const wrapper = mountDefaultLayout()
       await flushPromises()
 
-      expect(wrapper.text()).toContain('大会管理')
+      expect(wrapper.text()).toContain('ダッシュボード')
       expect(wrapper.text()).toContain('ユーザー管理')
     })
   })

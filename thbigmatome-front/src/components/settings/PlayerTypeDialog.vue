@@ -1,10 +1,5 @@
 <template>
-  <v-dialog
-    :model-value="modelValue"
-    @update:model-value="(value) => emit('update:modelValue', value)"
-    max-width="500px"
-    persistent
-  >
+  <v-dialog v-model="isOpen" max-width="500px" persistent>
     <v-card>
       <v-card-title>
         <span class="text-h5">{{ title }}</span>
@@ -57,14 +52,14 @@ import { useSnackbar } from '@/composables/useSnackbar'
 type PlayerTypePayload = Omit<PlayerType, 'id'>
 
 const props = defineProps<{
-  modelValue: boolean
   item: PlayerType | null
 }>()
 
 const emit = defineEmits<{
-  (e: 'update:modelValue', value: boolean): void
   (e: 'save'): void
 }>()
+
+const isOpen = defineModel<boolean>({ default: false })
 
 const { t } = useI18n()
 const { showSnackbar } = useSnackbar()
@@ -88,7 +83,9 @@ const title = computed(() =>
 const rules = { required: (value: string) => !!value || t('validation.required') }
 const isFormValid = computed(() => !!editableItem.value.name)
 
-const closeDialog = () => emit('update:modelValue', false)
+const closeDialog = () => {
+  isOpen.value = false
+}
 
 const saveItem = async () => {
   if (!isFormValid.value) return

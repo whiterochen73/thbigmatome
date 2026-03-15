@@ -1,5 +1,5 @@
 <template>
-  <v-dialog v-model="internalIsVisible" max-width="500px" persistent>
+  <v-dialog v-model="isOpen" max-width="500px" persistent>
     <v-card>
       <v-card-title>
         <span class="text-h5">{{
@@ -90,23 +90,18 @@ const { t } = useI18n()
 const { showSnackbar } = useSnackbar()
 
 interface Props {
-  isVisible: boolean
   team: Team | null
   defaultManagerId?: number | null
 }
 
 const props = withDefaults(defineProps<Props>(), {
-  isVisible: false,
   team: null,
   defaultManagerId: null,
 })
 
-const emit = defineEmits(['update:isVisible', 'save'])
+const emit = defineEmits(['save'])
 
-const internalIsVisible = computed({
-  get: () => props.isVisible,
-  set: (value) => emit('update:isVisible', value),
-})
+const isOpen = defineModel<boolean>({ default: false })
 
 interface EditedTeam {
   name: string
@@ -147,31 +142,28 @@ const fetchManagers = async () => {
   }
 }
 
-watch(
-  () => props.isVisible,
-  (newVal) => {
-    if (newVal) {
-      if (props.team) {
-        // Edit
-        editedTeam.value = {
-          name: props.team.name,
-          short_name: props.team.short_name,
-          is_active: props.team.is_active,
-          team_type: props.team.team_type ?? 'normal',
-          director_id: props.team.director?.id,
-          coach_ids: props.team.coaches?.map((c) => c.id) ?? [],
-        }
-      } else {
-        // New
-        editedTeam.value = { ...defaultTeam, director_id: props.defaultManagerId ?? null }
+watch(isOpen, (newVal) => {
+  if (newVal) {
+    if (props.team) {
+      // Edit
+      editedTeam.value = {
+        name: props.team.name,
+        short_name: props.team.short_name,
+        is_active: props.team.is_active,
+        team_type: props.team.team_type ?? 'normal',
+        director_id: props.team.director?.id,
+        coach_ids: props.team.coaches?.map((c) => c.id) ?? [],
       }
-
-      if (managers.value.length === 0) {
-        fetchManagers()
-      }
+    } else {
+      // New
+      editedTeam.value = { ...defaultTeam, director_id: props.defaultManagerId ?? null }
     }
-  },
-)
+
+    if (managers.value.length === 0) {
+      fetchManagers()
+    }
+  }
+})
 
 watch(
   () => props.defaultManagerId,
@@ -193,7 +185,7 @@ const managerItemProps = (manager: Manager) => {
 }
 
 const close = () => {
-  internalIsVisible.value = false
+  isOpen.value = false
 }
 
 const save = async () => {

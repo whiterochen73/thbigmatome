@@ -48,7 +48,7 @@ import type { ScheduleList } from '@/types/scheduleList'
 type ScheduleListPayload = Omit<ScheduleList, 'id'>
 
 const { t } = useI18n()
-const isOpen = defineModel<boolean>()
+const isOpen = defineModel<boolean>({ default: false })
 const props = defineProps<{
   schedule: ScheduleList | null
 }>()

@@ -1,5 +1,5 @@
 <template>
-  <v-dialog v-model="internalIsVisible" max-width="500px" persistent>
+  <v-dialog v-model="isOpen" max-width="500px" persistent>
     <v-card>
       <v-card-title>
         <span class="text-h5">{{
@@ -66,7 +66,6 @@ const { t } = useI18n()
 const { showSnackbar } = useSnackbar()
 
 interface Props {
-  isVisible: boolean // ダイアログの表示状態を制御
   manager: Manager | null // 編集対象のManagerデータ (新規作成の場合はnull)
 }
 
@@ -74,13 +73,9 @@ interface Props {
 const props = defineProps<Props>()
 
 // Emitsの定義
-const emit = defineEmits(['update:isVisible', 'save']) // update:isVisible イベントを追加
+const emit = defineEmits(['save'])
 
-// ダイアログの内部表示状態 (props.isVisibleを直接変更しないため)
-const internalIsVisible = computed({
-  get: () => props.isVisible,
-  set: (value) => emit('update:isVisible', value),
-})
+const isOpen = defineModel<boolean>({ default: false })
 
 // 編集中のManagerデータ
 const defaultManager: Manager = { id: 0, name: '', short_name: '', irc_name: '', user_id: null } // 新規作成時の初期値
@@ -97,20 +92,17 @@ const rules = {
 // フォームの入力値が有効かどうかの判定 (今回は名前のみチェック)
 const isFormValid = computed(() => !!editedManager.value.name)
 
-watch(
-  () => props.isVisible,
-  (newVal) => {
-    if (newVal) {
-      editedManager.value = props.manager ? { ...props.manager } : { ...defaultManager }
-    }
-  },
-)
+watch(isOpen, (newVal) => {
+  if (newVal) {
+    editedManager.value = props.manager ? { ...props.manager } : { ...defaultManager }
+  }
+})
 
 /**
  * ダイアログを閉じる
  */
 const close = () => {
-  internalIsVisible.value = false
+  isOpen.value = false
 }
 
 /**

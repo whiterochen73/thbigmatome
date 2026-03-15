@@ -1,5 +1,5 @@
 <template>
-  <v-dialog v-model="dialog" max-width="500px" persistent>
+  <v-dialog v-model="isOpen" max-width="500px" persistent>
     <v-card>
       <v-card-title>
         <span class="text-h5">{{
@@ -58,17 +58,13 @@ import { useI18n } from 'vue-i18n'
 const { t } = useI18n()
 
 interface Props {
-  modelValue: boolean
   cost: { name: string; start_date: string | null; end_date: string | null } | null
 }
 
 const props = defineProps<Props>()
-const emit = defineEmits(['update:modelValue', 'save'])
+const emit = defineEmits(['save'])
 
-const dialog = computed({
-  get: () => props.modelValue,
-  set: (value) => emit('update:modelValue', value),
-})
+const isOpen = defineModel<boolean>({ default: false })
 
 const isNew = computed(() => !props.cost)
 
@@ -94,6 +90,8 @@ const rules = {
 }
 
 const isFormValid = computed(() => !!editedCost.value.name && !!editedCost.value.start_date)
-const cancel = () => emit('update:modelValue', false)
+const cancel = () => {
+  isOpen.value = false
+}
 const save = () => emit('save', editedCost.value)
 </script>

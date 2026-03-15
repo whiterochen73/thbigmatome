@@ -38,6 +38,14 @@ export function useAuth() {
         teamStore.setMyTeams([])
       }
     }
+    if (isCommissioner.value && !teamStore.allTeamsLoaded) {
+      try {
+        const response = await axios.get<MyTeam[]>('/teams')
+        teamStore.setAllTeams(response.data)
+      } catch {
+        teamStore.setAllTeams([])
+      }
+    }
     if (isCommissioner.value && teamStore.teamsLoaded && !teamStore.hasTeam) {
       const cmStore = useCommissionerModeStore()
       cmStore.setMode(true)

@@ -7,8 +7,13 @@
     @click="expandDrawer"
   >
     <v-list nav density="compact">
+      <!-- ホーム（単独） -->
+      <v-list-item prepend-icon="mdi-home" title="ホーム" value="dashboard" to="/" link />
+
+      <!-- 試合グループ -->
+      <v-list-subheader v-if="!rail">試合</v-list-subheader>
       <v-list-item
-        v-for="item in mainMenuItems"
+        v-for="item in gameMenuItems"
         :key="item.value"
         :prepend-icon="item.icon"
         :title="item.title"
@@ -16,12 +21,36 @@
         :to="item.to"
         link
       />
+
+      <!-- チームグループ -->
+      <v-list-subheader v-if="!rail">チーム</v-list-subheader>
       <v-list-item
         v-if="teamSelectionStore.selectedTeamId"
         prepend-icon="mdi-calendar-star"
         :title="'シーズン'"
         value="season"
         :to="`/teams/${teamSelectionStore.selectedTeamId}/season`"
+        link
+      />
+      <v-list-item
+        v-for="item in teamMenuItems"
+        :key="item.value"
+        :prepend-icon="item.icon"
+        :title="item.title"
+        :value="item.value"
+        :to="item.to"
+        link
+      />
+
+      <!-- 選手グループ -->
+      <v-list-subheader v-if="!rail">選手</v-list-subheader>
+      <v-list-item
+        v-for="item in playerMenuItems"
+        :key="item.value"
+        :prepend-icon="item.icon"
+        :title="item.title"
+        :value="item.value"
+        :to="item.to"
         link
       />
     </v-list>
@@ -94,12 +123,15 @@ const showCommissionerMenu = computed(
   () => isCommissioner.value && commissionerModeStore.isCommissionerMode,
 )
 
-const mainMenuItems = [
-  { title: 'ホーム', icon: 'mdi-home', value: 'dashboard', to: '/' },
-  { title: '試合ログ', icon: 'mdi-file-import', value: 'gameImport', to: '/games/import' },
+const gameMenuItems = [
+  { title: 'ログ取り込み', icon: 'mdi-file-import', value: 'gameImport', to: '/games/import' },
   { title: 'レビュー', icon: 'mdi-clipboard-check', value: 'gameRecords', to: '/game-records' },
   { title: '試合一覧', icon: 'mdi-scoreboard', value: 'games', to: '/games' },
-  { title: '成績', icon: 'mdi-chart-bar', value: 'stats', to: '/stats' },
+]
+
+const teamMenuItems = [{ title: '成績', icon: 'mdi-chart-bar', value: 'stats', to: '/stats' }]
+
+const playerMenuItems = [
   {
     title: '選手カード',
     icon: 'mdi-card-account-details',

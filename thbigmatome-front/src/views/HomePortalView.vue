@@ -50,6 +50,18 @@ const myTeams = ref<Team[]>([])
 const loading = ref(!teamSelectionStore.teamsLoaded)
 const selectedTeamId = ref<number>(0)
 
+// AppBarのwatchEffectがteamsLoaded後にcommissionerModeをtrueにする場合のリダイレクト対応
+// （チーム未所持コミッショナーの初回ログイン時タイミング問題）
+watch(
+  () => commissionerModeStore.isCommissionerMode,
+  (val) => {
+    if (val) {
+      loading.value = false
+      router.push('/commissioner/dashboard')
+    }
+  },
+)
+
 onMounted(async () => {
   // Fix: コミッショナーモードリダイレクト時はloading=falseを必ず設定してから戻る
   if (commissionerModeStore.isCommissionerMode) {

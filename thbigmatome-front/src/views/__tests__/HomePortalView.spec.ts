@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { nextTick } from 'vue'
 import { mount, flushPromises } from '@vue/test-utils'
 import { createVuetify } from 'vuetify'
 import * as components from 'vuetify/components'
@@ -32,6 +33,7 @@ vi.mock('../SeasonPortal.vue', () => ({
   },
 }))
 
+import { useCommissionerModeStore } from '@/stores/commissionerMode'
 import axiosPlugin from '@/plugins/axios'
 const mockAxios = axiosPlugin as unknown as { get: ReturnType<typeof vi.fn> }
 
@@ -127,5 +129,26 @@ describe('HomePortalView', () => {
 
     expect(pushSpy).toHaveBeenCalledWith('/commissioner/dashboard')
     expect(mockAxios.get).not.toHaveBeenCalled()
+  })
+
+  it('コミッショナーモードが遅延でtrueになった場合もリダイレクトされること', async () => {
+    // チーム0件のコミッショナーユーザー: API応答後にAppBarのwatchEffectがcommissionerModeをtrueにするケース
+    mockAxios.get.mockResolvedValueOnce({ data: [] })
+    const router = createTestRouter()
+    const pushSpy = vi.spyOn(router, 'push')
+    const pinia = createPinia()
+    setActivePinia(pinia)
+    mount(HomePortalView, { global: { plugins: [vuetify, router, pinia] } })
+    await flushPromises()
+
+    // API応答後もcommissionerModeがfalseのためリダイレクトされていない
+    expect(pushSpy).not.toHaveBeenCalled()
+
+    // AppBarのwatchEffectをシミュレート: commissionerModeをtrueに変更
+    const store = useCommissionerModeStore()
+    store.setMode(true)
+    await nextTick()
+
+    expect(pushSpy).toHaveBeenCalledWith('/commissioner/dashboard')
   })
 })

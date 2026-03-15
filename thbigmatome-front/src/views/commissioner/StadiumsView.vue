@@ -37,7 +37,7 @@
     </v-row>
 
     <!-- 新規球場作成ダイアログ -->
-    <v-dialog v-model="createDialog" max-width="500px">
+    <v-dialog v-model="createDialog" max-width="500px" persistent>
       <v-card>
         <v-card-title>
           <span class="text-h5">新規球場作成</span>
@@ -81,7 +81,7 @@
     </v-dialog>
 
     <!-- 球場編集ダイアログ -->
-    <v-dialog v-model="editDialog" max-width="500px">
+    <v-dialog v-model="editDialog" max-width="500px" persistent>
       <v-card>
         <v-card-title>
           <span class="text-h5">球場編集</span>

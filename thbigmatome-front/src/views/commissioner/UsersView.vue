@@ -44,7 +44,7 @@
     </v-row>
 
     <!-- 新規ユーザー作成ダイアログ -->
-    <v-dialog v-model="createDialog" max-width="500px">
+    <v-dialog v-model="createDialog" max-width="500px" persistent>
       <v-card>
         <v-card-title>
           <span class="text-h5">新規ユーザー作成</span>
@@ -102,7 +102,7 @@
     </v-dialog>
 
     <!-- ロール変更ダイアログ -->
-    <v-dialog v-model="roleDialog" max-width="400px">
+    <v-dialog v-model="roleDialog" max-width="400px" persistent>
       <v-card>
         <v-card-title>
           <span class="text-h5">ロール変更</span>
@@ -131,7 +131,7 @@
     </v-dialog>
 
     <!-- パスワードリセットダイアログ -->
-    <v-dialog v-model="resetDialog" max-width="400px">
+    <v-dialog v-model="resetDialog" max-width="400px" persistent>
       <v-card>
         <v-card-title>
           <span class="text-h5">パスワードリセット</span>

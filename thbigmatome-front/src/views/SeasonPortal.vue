@@ -394,7 +394,7 @@
   </v-container>
 
   <!-- 日程詳細ダイアログ (モバイル用タップ詳細) -->
-  <v-dialog v-model="isDayDetailOpen" max-width="400">
+  <v-dialog v-model="isDayDetailOpen" max-width="400px">
     <v-card v-if="selectedDay">
       <v-card-title class="d-flex align-center pt-3 pb-1">
         <span>{{ formatDetailDate(selectedDay.date) }}</span>

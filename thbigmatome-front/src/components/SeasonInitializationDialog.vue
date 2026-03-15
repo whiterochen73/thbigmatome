@@ -1,5 +1,5 @@
 <template>
-  <v-dialog :model-value="isVisible" persistent max-width="600px" @update:model-value="closeDialog">
+  <v-dialog :model-value="isVisible" persistent max-width="640px" @update:model-value="closeDialog">
     <v-card>
       <v-card-title>
         <span class="text-h5">{{ t('topMenu.seasonInitialization.title') }}</span>

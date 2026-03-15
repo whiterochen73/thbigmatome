@@ -514,7 +514,7 @@
     </v-row>
 
     <!-- 離脱中選手の昇格確認ダイアログ -->
-    <v-dialog v-model="absenceConfirmDialog" max-width="480">
+    <v-dialog v-model="absenceConfirmDialog" max-width="400px" persistent>
       <v-card>
         <v-card-title>{{ t('activeRoster.absenceWarning.title') }}</v-card-title>
         <v-card-text v-if="absenceConfirmPlayer">

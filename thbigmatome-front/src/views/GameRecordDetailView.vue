@@ -166,7 +166,7 @@
     <EmptyState v-else-if="!loading" icon="mdi-baseball-bat" message="試合記録が見つかりません" />
 
     <!-- 全打席確定ダイアログ -->
-    <v-dialog v-model="bulkConfirmDialog" max-width="400">
+    <v-dialog v-model="bulkConfirmDialog" max-width="400px" persistent>
       <v-card>
         <v-card-title>全打席を確認済みにする</v-card-title>
         <v-card-text>

@@ -96,7 +96,7 @@
     </v-card-text>
 
     <!-- 削除確認ダイアログ -->
-    <v-dialog v-model="deleteDialog" max-width="360">
+    <v-dialog v-model="deleteDialog" max-width="400px" persistent>
       <v-card>
         <v-card-title>{{ t('lineupTemplate.confirmDelete') }}</v-card-title>
         <v-card-actions>

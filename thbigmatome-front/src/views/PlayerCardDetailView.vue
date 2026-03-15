@@ -298,7 +298,7 @@
     </template>
 
     <!-- ■ 基本情報編集ダイアログ -->
-    <v-dialog v-model="basicEditDialog" max-width="600">
+    <v-dialog v-model="basicEditDialog" max-width="640px" persistent>
       <v-card>
         <v-card-title>基本情報を編集</v-card-title>
         <v-card-text>
@@ -430,7 +430,7 @@
     </v-dialog>
 
     <!-- ■ 守備値編集ダイアログ -->
-    <v-dialog v-model="defenseEditDialog" max-width="700">
+    <v-dialog v-model="defenseEditDialog" max-width="900px" persistent>
       <v-card>
         <v-card-title>守備値を編集</v-card-title>
         <v-card-text>
@@ -524,7 +524,7 @@
     </v-dialog>
 
     <!-- ■ 特徴・能力編集ダイアログ -->
-    <v-dialog v-model="traitEditDialog" max-width="700">
+    <v-dialog v-model="traitEditDialog" max-width="640px" persistent>
       <v-card>
         <v-card-title>特徴・能力を編集</v-card-title>
         <v-card-text>

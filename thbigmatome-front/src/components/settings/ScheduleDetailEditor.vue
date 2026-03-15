@@ -1,5 +1,5 @@
 <template>
-  <v-dialog v-model="isOpen" max-width="600px">
+  <v-dialog v-model="isOpen" max-width="640px" persistent>
     <v-card>
       <v-card-title>{{ t('settings.schedule.detail.title') }}</v-card-title>
       <v-card-text>

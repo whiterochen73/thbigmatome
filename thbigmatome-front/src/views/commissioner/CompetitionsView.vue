@@ -50,7 +50,7 @@
     </v-row>
 
     <!-- 新規大会作成ダイアログ -->
-    <v-dialog v-model="createDialog" max-width="500px">
+    <v-dialog v-model="createDialog" max-width="500px" persistent>
       <v-card>
         <v-card-title>
           <span class="text-h5">新規大会作成</span>
@@ -94,7 +94,7 @@
     </v-dialog>
 
     <!-- 編集ダイアログ -->
-    <v-dialog v-model="editDialog" max-width="500px">
+    <v-dialog v-model="editDialog" max-width="500px" persistent>
       <v-card>
         <v-card-title>
           <span class="text-h5">大会編集</span>

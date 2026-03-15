@@ -134,7 +134,7 @@
     </v-card>
 
     <!-- 選手追加ダイアログ -->
-    <v-dialog v-model="addDialog" max-width="600px">
+    <v-dialog v-model="addDialog" max-width="640px" persistent>
       <v-card>
         <v-card-title
           >選手追加（{{ addTargetSquad === 'first_squad' ? '1軍' : '2軍' }}）</v-card-title

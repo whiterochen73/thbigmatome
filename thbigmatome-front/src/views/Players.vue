@@ -1,12 +1,14 @@
 <!-- eslint-disable vue/multi-word-component-names, vue/valid-v-slot -->
 <template>
   <v-container fluid>
-    <DataCard :title="t('playerList.title')">
-      <template #title-actions>
+    <PageHeader :title="t('playerList.title')">
+      <template #actions>
         <v-btn color="accent" variant="flat" @click="openDialog">
           {{ t('playerList.addPlayer') }}
         </v-btn>
       </template>
+    </PageHeader>
+    <DataCard title="">
       <!-- フィルターUI -->
       <FilterBar>
         <template #search>
@@ -68,6 +70,7 @@ import { useDisplay } from 'vuetify'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
 import DataCard from '@/components/shared/DataCard.vue'
 import FilterBar from '@/components/shared/FilterBar.vue'
+import PageHeader from '@/components/shared/PageHeader.vue'
 import StatusChip from '@/components/shared/StatusChip.vue'
 import type { PlayerDetail } from '@/types/playerDetail'
 import { usePlayersSearchStore } from '@/stores/playersSearch'

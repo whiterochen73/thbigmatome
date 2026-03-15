@@ -1,11 +1,14 @@
 <template>
   <v-container>
-    <DataCard :title="t('managerList.title')">
-      <template #title-actions>
+    <PageHeader :title="t('managerList.title')">
+      <template #actions>
         <v-btn color="accent" variant="flat" @click="openDialog()" prepend-icon="mdi-plus">
           {{ t('managerList.addManager') }}
         </v-btn>
       </template>
+    </PageHeader>
+    <DataCard title="">
+      <FilterBar />
       <v-data-table
         :headers="headers"
         :items="managers"
@@ -117,6 +120,8 @@ import { type PaginatedResponse } from '@/types/pagination'
 import ManagerDialog from '@/components/ManagerDialog.vue'
 import TeamDialog from '@/components/TeamDialog.vue'
 import DataCard from '@/components/shared/DataCard.vue'
+import FilterBar from '@/components/shared/FilterBar.vue'
+import PageHeader from '@/components/shared/PageHeader.vue'
 
 const { t } = useI18n()
 

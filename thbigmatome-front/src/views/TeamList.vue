@@ -1,11 +1,14 @@
 <template>
   <v-container>
-    <DataCard :title="t('teamList.title')">
-      <template #title-actions>
+    <PageHeader :title="t('teamList.title')">
+      <template #actions>
         <v-btn color="accent" variant="flat" @click="openDialog()" prepend-icon="mdi-plus">
           {{ t('teamList.addTeam') }}
         </v-btn>
       </template>
+    </PageHeader>
+    <DataCard title="">
+      <FilterBar />
       <v-data-table
         :headers="headers"
         :items="teams"
@@ -73,6 +76,8 @@ import axios from '@/plugins/axios'
 import { useSnackbar } from '@/composables/useSnackbar'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
 import DataCard from '@/components/shared/DataCard.vue'
+import FilterBar from '@/components/shared/FilterBar.vue'
+import PageHeader from '@/components/shared/PageHeader.vue'
 import { type Team } from '@/types/team'
 import TeamDialog from '@/components/TeamDialog.vue'
 import { useTeamSelectionStore } from '@/stores/teamSelection'

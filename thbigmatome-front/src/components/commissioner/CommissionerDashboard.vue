@@ -1,12 +1,75 @@
 <!-- eslint-disable vue/valid-v-slot -->
 <template>
   <v-tabs v-model="activeTab" color="primary" class="mb-4">
+    <v-tab value="teams">全チーム管理</v-tab>
     <v-tab value="absences">離脱者一覧</v-tab>
     <v-tab value="costs">コスト状況</v-tab>
     <v-tab value="cooldowns">クールダウン</v-tab>
   </v-tabs>
 
   <v-window v-model="activeTab">
+    <!-- 全チーム管理タブ -->
+    <v-window-item value="teams">
+      <v-row>
+        <v-col cols="12">
+          <DataCard title="全チーム管理">
+            <v-data-table
+              :headers="teamHeaders"
+              :items="teams"
+              :loading="teamsLoading"
+              density="compact"
+              item-value="id"
+              no-data-text="チームなし"
+              :row-props="
+                (row: { item: Team }) =>
+                  row.item.is_active ? {} : { class: 'text-medium-emphasis' }
+              "
+            >
+              <template #[`item.team_type`]="{ item }">
+                <v-chip
+                  v-if="item.team_type === 'hachinai'"
+                  size="small"
+                  color="purple"
+                  variant="tonal"
+                >
+                  ハチナイ
+                </v-chip>
+                <span v-else class="text-caption text-medium-emphasis">通常</span>
+              </template>
+              <template #[`item.is_active`]="{ item }">
+                <v-icon v-if="item.is_active">mdi-check</v-icon>
+              </template>
+              <template #[`item.manager_name`]="{ item }">
+                {{ item.director?.name || '-' }}
+              </template>
+              <template #[`item.actions`]="{ item }">
+                <v-icon
+                  size="small"
+                  class="mr-2"
+                  @click="navigateToSeason(item)"
+                  title="シーズンポータル"
+                >
+                  mdi-calendar-star
+                </v-icon>
+                <v-icon
+                  size="small"
+                  class="mr-2"
+                  @click="navigateToMembers(item.id)"
+                  title="メンバー編集"
+                >
+                  mdi-account-group
+                </v-icon>
+                <v-icon size="small" class="mr-2" @click="openTeamDialog(item)" title="チーム編集">
+                  mdi-pencil
+                </v-icon>
+                <v-icon size="small" @click="deleteTeam(item.id)" title="削除"> mdi-delete </v-icon>
+              </template>
+            </v-data-table>
+          </DataCard>
+        </v-col>
+      </v-row>
+    </v-window-item>
+
     <!-- 離脱者一覧タブ -->
     <v-window-item value="absences">
       <v-row>
@@ -186,14 +249,23 @@
       </v-row>
     </v-window-item>
   </v-window>
+
+  <TeamDialog v-model:isVisible="dialogVisible" :team="editingTeam" @save="fetchTeams" />
+  <ConfirmDialog ref="confirmDialog" />
 </template>
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import axios from 'axios'
 import DataCard from '@/components/shared/DataCard.vue'
 import FilterBar from '@/components/shared/FilterBar.vue'
 import StatusChip from '@/components/shared/StatusChip.vue'
+import TeamDialog from '@/components/TeamDialog.vue'
+import ConfirmDialog from '@/components/ConfirmDialog.vue'
+import { useSnackbar } from '@/composables/useSnackbar'
+import { useTeamSelectionStore } from '@/stores/teamSelection'
+import { type Team } from '@/types/team'
 
 interface AbsenceRecord {
   id: number
@@ -236,7 +308,28 @@ interface CooldownRecord {
   same_day_exempt: boolean
 }
 
-const activeTab = ref('absences')
+const router = useRouter()
+const teamSelectionStore = useTeamSelectionStore()
+const { showSnackbar } = useSnackbar()
+
+const activeTab = ref('teams')
+
+// 全チーム管理
+const teams = ref<Team[]>([])
+const teamsLoading = ref(false)
+const dialogVisible = ref(false)
+const editingTeam = ref<Team | null>(null)
+const confirmDialog = ref<InstanceType<typeof ConfirmDialog> | null>(null)
+
+const teamHeaders = [
+  { title: 'ID', key: 'id' },
+  { title: 'チーム名', key: 'name' },
+  { title: '略称', key: 'short_name' },
+  { title: '種別', key: 'team_type', sortable: false },
+  { title: '監督', key: 'manager_name', sortable: false },
+  { title: 'アクティブ', key: 'is_active', sortable: false },
+  { title: '操作', key: 'actions', sortable: false },
+]
 
 // 離脱者
 const absences = ref<AbsenceRecord[]>([])
@@ -341,6 +434,49 @@ const getCostColor = (ratio: number): string => {
   return 'primary'
 }
 
+const fetchTeams = async () => {
+  teamsLoading.value = true
+  try {
+    const response = await axios.get<Team[]>('/teams')
+    teams.value = response.data
+  } catch (error) {
+    console.error('Failed to fetch teams:', error)
+    showSnackbar('チーム一覧の取得に失敗しました', 'error')
+  } finally {
+    teamsLoading.value = false
+  }
+}
+
+const navigateToSeason = (team: Team) => {
+  teamSelectionStore.selectTeam(team.id, team.name)
+  router.push(`/teams/${team.id}/season`)
+}
+
+const navigateToMembers = (teamId: number) => {
+  router.push(`/teams/${teamId}/members`)
+}
+
+const openTeamDialog = (team: Team | null = null) => {
+  editingTeam.value = team ? { ...team } : null
+  dialogVisible.value = true
+}
+
+const deleteTeam = async (id: number) => {
+  if (!confirmDialog.value) return
+  const result = await confirmDialog.value.open('チーム削除', 'このチームを削除しますか？', {
+    color: 'error',
+  })
+  if (!result) return
+  try {
+    await axios.delete(`/teams/${id}`)
+    showSnackbar('チームを削除しました', 'success')
+    fetchTeams()
+  } catch (error) {
+    console.error('Failed to delete team:', error)
+    showSnackbar('チームの削除に失敗しました', 'error')
+  }
+}
+
 const fetchAbsences = async () => {
   absencesLoading.value = true
   try {
@@ -378,6 +514,7 @@ const fetchCooldowns = async () => {
 }
 
 onMounted(() => {
+  fetchTeams()
   fetchAbsences()
   fetchCosts()
   fetchCooldowns()

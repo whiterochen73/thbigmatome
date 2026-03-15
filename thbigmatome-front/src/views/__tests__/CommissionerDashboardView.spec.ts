@@ -3,12 +3,15 @@ import { mount, flushPromises } from '@vue/test-utils'
 import { createVuetify } from 'vuetify'
 import * as components from 'vuetify/components'
 import * as directives from 'vuetify/directives'
+import { createPinia } from 'pinia'
+import { createI18n } from 'vue-i18n'
 import CommissionerDashboardView from '../commissioner/CommissionerDashboardView.vue'
 import CommissionerDashboard from '@/components/commissioner/CommissionerDashboard.vue'
 
 vi.mock('axios', () => {
   const mockAxios = {
     get: vi.fn(),
+    delete: vi.fn(),
     defaults: {
       baseURL: '',
       withCredentials: false,
@@ -24,9 +27,16 @@ vi.mock('axios', () => {
 
 vi.mock('@/plugins/axios', () => ({ default: {} }))
 
+vi.mock('vue-router', () => ({
+  useRouter: () => ({ push: vi.fn() }),
+  useRoute: () => ({ params: {}, query: {} }),
+}))
+
 import axios from 'axios'
 
 const vuetify = createVuetify({ components, directives })
+const pinia = createPinia()
+const i18n = createI18n({ legacy: false, locale: 'ja', messages: {} })
 
 const mockAbsences = [
   {
@@ -110,25 +120,33 @@ describe('CommissionerDashboardView', () => {
   })
 
   it('mounts successfully', async () => {
-    const wrapper = mount(CommissionerDashboardView, { global: { plugins: [vuetify] } })
+    const wrapper = mount(CommissionerDashboardView, {
+      global: { plugins: [vuetify, pinia, i18n], stubs: { TeamDialog: true, ConfirmDialog: true } },
+    })
     await flushPromises()
     expect(wrapper.exists()).toBe(true)
   })
 
   it('displays dashboard title', async () => {
-    const wrapper = mount(CommissionerDashboardView, { global: { plugins: [vuetify] } })
+    const wrapper = mount(CommissionerDashboardView, {
+      global: { plugins: [vuetify, pinia, i18n], stubs: { TeamDialog: true, ConfirmDialog: true } },
+    })
     await flushPromises()
     expect(wrapper.text()).toContain('ダッシュボード')
   })
 
   it('fetches absences on mount', async () => {
-    mount(CommissionerDashboardView, { global: { plugins: [vuetify] } })
+    mount(CommissionerDashboardView, {
+      global: { plugins: [vuetify, pinia, i18n], stubs: { TeamDialog: true, ConfirmDialog: true } },
+    })
     await flushPromises()
     expect(axios.get).toHaveBeenCalledWith('/commissioner/dashboard/absences')
   })
 
   it('fetches costs on mount', async () => {
-    mount(CommissionerDashboardView, { global: { plugins: [vuetify] } })
+    mount(CommissionerDashboardView, {
+      global: { plugins: [vuetify, pinia, i18n], stubs: { TeamDialog: true, ConfirmDialog: true } },
+    })
     await flushPromises()
     expect(axios.get).toHaveBeenCalledWith('/commissioner/dashboard/costs')
   })
@@ -138,32 +156,47 @@ describe('CommissionerDashboardView', () => {
       if (url.includes('absences')) return Promise.resolve({ data: mockAbsences })
       return Promise.resolve({ data: [] })
     })
-    const wrapper = mount(CommissionerDashboardView, { global: { plugins: [vuetify] } })
+    const wrapper = mount(CommissionerDashboardView, {
+      global: { plugins: [vuetify, pinia, i18n], stubs: { TeamDialog: true, ConfirmDialog: true } },
+    })
     await flushPromises()
+    const dashboardVm = wrapper.findComponent(CommissionerDashboard).vm as unknown as {
+      activeTab: string
+    }
+    dashboardVm.activeTab = 'absences'
+    await wrapper.vm.$nextTick()
     expect(wrapper.text()).toContain('霧雨魔理沙')
     expect(wrapper.text()).toContain('博麗霊夢')
   })
 
   it('displays absence list header', async () => {
-    const wrapper = mount(CommissionerDashboardView, { global: { plugins: [vuetify] } })
+    const wrapper = mount(CommissionerDashboardView, {
+      global: { plugins: [vuetify, pinia, i18n], stubs: { TeamDialog: true, ConfirmDialog: true } },
+    })
     await flushPromises()
     expect(wrapper.text()).toContain('離脱者一覧')
   })
 
   it('fetches cooldowns on mount', async () => {
-    mount(CommissionerDashboardView, { global: { plugins: [vuetify] } })
+    mount(CommissionerDashboardView, {
+      global: { plugins: [vuetify, pinia, i18n], stubs: { TeamDialog: true, ConfirmDialog: true } },
+    })
     await flushPromises()
     expect(axios.get).toHaveBeenCalledWith('/commissioner/dashboard/cooldowns')
   })
 
   it('displays cost tab', async () => {
-    const wrapper = mount(CommissionerDashboardView, { global: { plugins: [vuetify] } })
+    const wrapper = mount(CommissionerDashboardView, {
+      global: { plugins: [vuetify, pinia, i18n], stubs: { TeamDialog: true, ConfirmDialog: true } },
+    })
     await flushPromises()
     expect(wrapper.text()).toContain('コスト状況')
   })
 
   it('displays cooldown tab', async () => {
-    const wrapper = mount(CommissionerDashboardView, { global: { plugins: [vuetify] } })
+    const wrapper = mount(CommissionerDashboardView, {
+      global: { plugins: [vuetify, pinia, i18n], stubs: { TeamDialog: true, ConfirmDialog: true } },
+    })
     await flushPromises()
     expect(wrapper.text()).toContain('クールダウン')
   })
@@ -173,7 +206,9 @@ describe('CommissionerDashboardView', () => {
       if (url.includes('cooldowns')) return Promise.resolve({ data: mockCooldowns })
       return Promise.resolve({ data: [] })
     })
-    const wrapper = mount(CommissionerDashboardView, { global: { plugins: [vuetify] } })
+    const wrapper = mount(CommissionerDashboardView, {
+      global: { plugins: [vuetify, pinia, i18n], stubs: { TeamDialog: true, ConfirmDialog: true } },
+    })
     await flushPromises()
     const dashboardVm = wrapper.findComponent(CommissionerDashboard).vm as unknown as {
       activeTab: string
@@ -188,7 +223,9 @@ describe('CommissionerDashboardView', () => {
       if (url.includes('costs')) return Promise.resolve({ data: mockCosts })
       return Promise.resolve({ data: [] })
     })
-    const wrapper = mount(CommissionerDashboardView, { global: { plugins: [vuetify] } })
+    const wrapper = mount(CommissionerDashboardView, {
+      global: { plugins: [vuetify, pinia, i18n], stubs: { TeamDialog: true, ConfirmDialog: true } },
+    })
     await flushPromises()
     // コストタブに切り替え
     const dashboardVm = wrapper.findComponent(CommissionerDashboard).vm as unknown as {

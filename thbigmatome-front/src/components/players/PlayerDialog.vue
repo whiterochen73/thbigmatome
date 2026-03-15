@@ -1,10 +1,5 @@
 <template>
-  <v-dialog
-    :model-value="modelValue"
-    @update:model-value="(value) => emit('update:modelValue', value)"
-    max-width="900px"
-    persistent
-  >
+  <v-dialog v-model="isOpen" max-width="900px" persistent>
     <v-card>
       <v-card-title>
         <span class="text-h5">{{ title }}</span>
@@ -37,13 +32,13 @@ import { useSnackbar } from '@/composables/useSnackbar'
 import type { PlayerDetail } from '@/types/playerDetail'
 import PlayerIdentityForm from './PlayerIdentityForm.vue'
 
+const isOpen = defineModel<boolean>({ default: false })
+
 const props = defineProps<{
-  modelValue: boolean
   item: PlayerDetail | null
 }>()
 
 const emit = defineEmits<{
-  (e: 'update:modelValue', value: boolean): void
   (e: 'save'): void
 }>()
 
@@ -59,16 +54,13 @@ const defaultItem: PlayerDetail = {
 
 const editableItem = ref<PlayerDetail>({ ...defaultItem })
 
-watch(
-  () => props.modelValue,
-  (isOpen) => {
-    if (isOpen && props.item) {
-      editableItem.value = props.item
-    } else {
-      editableItem.value = { ...defaultItem }
-    }
-  },
-)
+watch(isOpen, (value) => {
+  if (value && props.item) {
+    editableItem.value = props.item
+  } else {
+    editableItem.value = { ...defaultItem }
+  }
+})
 
 const title = computed(() =>
   props.item ? t('playerDialog.title.edit') : t('playerDialog.title.add'),
@@ -80,7 +72,7 @@ const isFormValid = computed(() => {
 })
 
 const closeDialog = () => {
-  emit('update:modelValue', false)
+  isOpen.value = false
 }
 
 const saveItem = async () => {

@@ -1,10 +1,5 @@
 <template>
-  <v-dialog
-    :model-value="modelValue"
-    @update:model-value="$emit('update:modelValue', $event)"
-    persistent
-    max-width="1200px"
-  >
+  <v-dialog v-model="isOpen" persistent max-width="1200px">
     <v-card>
       <v-card-title>
         <span class="text-h5">{{ t('startingMemberDialog.title') }}</span>
@@ -124,11 +119,9 @@ interface LineupMember {
   player: Player | null
 }
 
+const isOpen = defineModel<boolean>({ default: false })
+
 const props = defineProps({
-  modelValue: {
-    type: Boolean,
-    required: true,
-  },
   homeTeamId: {
     type: Number,
     required: true,
@@ -151,7 +144,7 @@ const props = defineProps({
   },
 })
 
-const emit = defineEmits(['update:modelValue', 'save'])
+const emit = defineEmits(['save'])
 
 const homeTeamPlayers = ref<Player[]>([])
 const homeLineup = ref<LineupMember[]>([])
@@ -273,7 +266,7 @@ const handlePositionKeydown = (
 }
 
 const closeDialog = () => {
-  emit('update:modelValue', false)
+  isOpen.value = false
 }
 
 const saveLineup = () => {
@@ -281,15 +274,12 @@ const saveLineup = () => {
   closeDialog()
 }
 
-watch(
-  () => props.modelValue,
-  (newVal) => {
-    if (newVal) {
-      initializeLineup()
-      fetchHomeTeamPlayers()
-    }
-  },
-)
+watch(isOpen, (newVal) => {
+  if (newVal) {
+    initializeLineup()
+    fetchHomeTeamPlayers()
+  }
+})
 
 // Remove the old watch for props.teamId as it's replaced by props.homeTeamId and fetchHomeTeamPlayers
 // watch(() => props.teamId, (newVal) => {

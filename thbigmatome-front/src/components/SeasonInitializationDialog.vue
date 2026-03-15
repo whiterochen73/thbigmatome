@@ -1,5 +1,5 @@
 <template>
-  <v-dialog :model-value="isVisible" persistent max-width="640px" @update:model-value="closeDialog">
+  <v-dialog v-model="isOpen" persistent max-width="640px">
     <v-card>
       <v-card-title>
         <span class="text-h5">{{ t('topMenu.seasonInitialization.title') }}</span>
@@ -47,13 +47,14 @@ import axios from 'axios'
 import type { ScheduleList } from '@/types/scheduleList'
 import type { Team } from '@/types/team'
 
+const isOpen = defineModel<boolean>({ default: false })
+
 const props = defineProps<{
-  isVisible: boolean
   schedules: ScheduleList[]
   selectedTeam: Team | null
 }>()
 
-const emit = defineEmits(['update:isVisible', 'save'])
+const emit = defineEmits(['save'])
 
 const { t } = useI18n()
 
@@ -61,7 +62,7 @@ const seasonName = ref('')
 const selectedSchedule = ref<number | null>(null)
 
 const closeDialog = () => {
-  emit('update:isVisible', false)
+  isOpen.value = false
 }
 
 const initializeSeason = async () => {
@@ -90,13 +91,10 @@ const initializeSeasonAndCloseDialog = async () => {
   closeDialog()
 }
 
-watch(
-  () => props.isVisible,
-  (newValue) => {
-    if (!newValue) {
-      seasonName.value = ''
-      selectedSchedule.value = null
-    }
-  },
-)
+watch(isOpen, (newValue) => {
+  if (!newValue) {
+    seasonName.value = ''
+    selectedSchedule.value = null
+  }
+})
 </script>

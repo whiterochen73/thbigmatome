@@ -99,7 +99,6 @@ const isOpen = defineModel({
 })
 
 const props = defineProps<{
-  modelValue: boolean // Controls dialog visibility
   seasonId: number
   teamId: number
   initialStartDate: string // ADDED

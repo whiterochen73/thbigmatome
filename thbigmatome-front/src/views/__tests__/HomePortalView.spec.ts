@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { ref } from 'vue'
 import { mount, flushPromises } from '@vue/test-utils'
 import { createVuetify } from 'vuetify'
 import * as components from 'vuetify/components'
@@ -30,6 +31,26 @@ vi.mock('../SeasonPortal.vue', () => ({
     props: ['teamId'],
     template: '<div class="season-portal-stub" :data-team-id="teamId" />',
   },
+}))
+
+// Stub CommissionerDashboard
+vi.mock('@/components/commissioner/CommissionerDashboard.vue', () => ({
+  default: {
+    name: 'CommissionerDashboard',
+    template: '<div class="commissioner-dashboard-stub" />',
+  },
+}))
+
+// Mock useAuth
+const mockIsCommissioner = ref(false)
+vi.mock('@/composables/useAuth', () => ({
+  useAuth: () => ({
+    isCommissioner: mockIsCommissioner,
+    user: { value: null },
+    login: vi.fn(),
+    logout: vi.fn(),
+    checkAuth: vi.fn(),
+  }),
 }))
 
 import { useTeamSelectionStore } from '@/stores/teamSelection'
@@ -72,6 +93,7 @@ describe('HomePortalView', () => {
     vi.clearAllMocks()
     setActivePinia(createPinia())
     localStorage.clear()
+    mockIsCommissioner.value = false
   })
 
   it('チーム1件時: SeasonPortalがインライン表示されること', async () => {
@@ -133,5 +155,37 @@ describe('HomePortalView', () => {
     const { default: axiosPlugin } = await import('@/plugins/axios')
     const mockAxios = axiosPlugin as unknown as { get: ReturnType<typeof vi.fn> }
     expect(mockAxios.get).not.toHaveBeenCalled()
+  })
+
+  it('コミッショナー時: 自チーム/全チーム管理/ダッシュボードの3タブが表示されること', async () => {
+    mockIsCommissioner.value = true
+    const pinia = createPinia()
+    setActivePinia(pinia)
+    const teamStore = useTeamSelectionStore()
+    teamStore.setMyTeams([teamA])
+
+    const router = createTestRouter()
+    const wrapper = mount(HomePortalView, { global: { plugins: [vuetify, router, pinia] } })
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('自チーム')
+    expect(wrapper.text()).toContain('全チーム管理')
+    expect(wrapper.text()).toContain('ダッシュボード')
+  })
+
+  it('非コミッショナーにはコミッショナー用タブが表示されないこと', async () => {
+    mockIsCommissioner.value = false
+    const pinia = createPinia()
+    setActivePinia(pinia)
+    const teamStore = useTeamSelectionStore()
+    teamStore.setMyTeams([teamA])
+
+    const router = createTestRouter()
+    const wrapper = mount(HomePortalView, { global: { plugins: [vuetify, router, pinia] } })
+    await flushPromises()
+
+    expect(wrapper.text()).not.toContain('自チーム')
+    expect(wrapper.text()).not.toContain('全チーム管理')
+    expect(wrapper.text()).not.toContain('ダッシュボード')
   })
 })

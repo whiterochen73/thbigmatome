@@ -1,0 +1,385 @@
+<!-- eslint-disable vue/valid-v-slot -->
+<template>
+  <v-tabs v-model="activeTab" color="primary" class="mb-4">
+    <v-tab value="absences">離脱者一覧</v-tab>
+    <v-tab value="costs">コスト状況</v-tab>
+    <v-tab value="cooldowns">クールダウン</v-tab>
+  </v-tabs>
+
+  <v-window v-model="activeTab">
+    <!-- 離脱者一覧タブ -->
+    <v-window-item value="absences">
+      <v-row>
+        <v-col cols="12">
+          <DataCard title="離脱者一覧">
+            <FilterBar>
+              <template #search>
+                <v-text-field
+                  v-model="searchQuery"
+                  label="選手名検索"
+                  prepend-inner-icon="mdi-magnify"
+                  variant="outlined"
+                  density="compact"
+                  clearable
+                  hide-details
+                />
+              </template>
+              <template #filters>
+                <v-select
+                  v-model="selectedAbsenceType"
+                  :items="absenceTypeOptions"
+                  label="離脱種別"
+                  variant="outlined"
+                  density="compact"
+                  clearable
+                  hide-details
+                />
+              </template>
+            </FilterBar>
+
+            <v-data-table
+              :headers="absenceHeaders"
+              :items="filteredAbsences"
+              :loading="absencesLoading"
+              density="compact"
+              :row-props="getRowProps"
+            >
+              <template v-slot:item.absence_type="{ item }">
+                <StatusChip
+                  :status="item.absence_type"
+                  :label="absenceTypeLabel(item.absence_type)"
+                />
+              </template>
+              <template v-slot:item.start_date="{ item }">
+                {{ formatDate(item.start_date) }}
+              </template>
+              <template v-slot:item.effective_end_date="{ item }">
+                {{ item.effective_end_date ? formatDate(item.effective_end_date) : '不明' }}
+              </template>
+              <template v-slot:item.remaining="{ item }">
+                <template v-if="getRemainingDisplay(item) !== null">
+                  <v-chip
+                    :color="
+                      getRemainingCount(item) !== null && getRemainingCount(item)! <= 2
+                        ? 'green-darken-1'
+                        : undefined
+                    "
+                    :variant="
+                      getRemainingCount(item) !== null && getRemainingCount(item)! <= 2
+                        ? 'tonal'
+                        : 'text'
+                    "
+                    size="small"
+                  >
+                    {{ getRemainingDisplay(item) }}
+                  </v-chip>
+                </template>
+                <span v-else class="text-caption text-medium-emphasis">不明</span>
+              </template>
+            </v-data-table>
+          </DataCard>
+        </v-col>
+      </v-row>
+    </v-window-item>
+
+    <!-- クールダウンタブ -->
+    <v-window-item value="cooldowns">
+      <v-row>
+        <v-col cols="12">
+          <DataCard title="クールダウン中選手">
+            <FilterBar>
+              <template #search>
+                <v-text-field
+                  v-model="cooldownSearchQuery"
+                  label="選手名検索"
+                  prepend-inner-icon="mdi-magnify"
+                  variant="outlined"
+                  density="compact"
+                  clearable
+                  hide-details
+                />
+              </template>
+            </FilterBar>
+
+            <v-data-table
+              :headers="cooldownHeaders"
+              :items="filteredCooldowns"
+              :loading="cooldownsLoading"
+              density="compact"
+            >
+              <template v-slot:item.demotion_date="{ item }">
+                {{ formatDate(item.demotion_date) }}
+              </template>
+              <template v-slot:item.cooldown_until="{ item }">
+                {{ formatDate(item.cooldown_until) }}
+              </template>
+              <template v-slot:item.remaining_days="{ item }">
+                <v-chip
+                  :color="item.remaining_days <= 2 ? 'green-darken-1' : undefined"
+                  :variant="item.remaining_days <= 2 ? 'tonal' : 'text'"
+                  size="small"
+                >
+                  {{ item.remaining_days }}日
+                </v-chip>
+              </template>
+              <template v-slot:item.same_day_exempt="{ item }">
+                <v-chip v-if="item.same_day_exempt" color="grey" variant="tonal" size="small">
+                  同日免除
+                </v-chip>
+              </template>
+            </v-data-table>
+          </DataCard>
+        </v-col>
+      </v-row>
+    </v-window-item>
+
+    <!-- コスト使用状況タブ -->
+    <v-window-item value="costs">
+      <v-row>
+        <v-col cols="12">
+          <DataCard title="チーム別コスト使用状況">
+            <v-data-table
+              :headers="costHeaders"
+              :items="costs"
+              :loading="costsLoading"
+              density="compact"
+            >
+              <template v-slot:item.total_cost="{ item }">
+                <div class="d-flex align-center gap-2">
+                  <span>{{ item.total_cost }} / {{ item.total_cost_limit }}</span>
+                  <v-progress-linear
+                    :model-value="item.cost_usage_ratio * 100"
+                    :color="getCostColor(item.cost_usage_ratio)"
+                    height="8"
+                    rounded
+                    style="min-width: 80px; max-width: 120px"
+                  />
+                  <StatusChip v-if="item.cost_usage_ratio > 1.0" status="error" label="超過" />
+                  <StatusChip
+                    v-else-if="item.cost_usage_ratio > 0.9"
+                    status="warning"
+                    label="警告"
+                  />
+                </div>
+              </template>
+              <template v-slot:item.first_squad_cost="{ item }">
+                <div class="d-flex align-center gap-2">
+                  <span v-if="item.first_squad_cost_limit !== null">
+                    {{ item.first_squad_cost }} / {{ item.first_squad_cost_limit }}
+                  </span>
+                  <span v-else class="text-caption text-medium-emphasis">
+                    {{ item.first_squad_cost }} / —
+                  </span>
+                  <v-progress-linear
+                    v-if="item.first_squad_cost_limit"
+                    :model-value="(item.first_squad_cost / item.first_squad_cost_limit) * 100"
+                    :color="getCostColor(item.first_squad_cost / item.first_squad_cost_limit)"
+                    height="8"
+                    rounded
+                    style="min-width: 80px; max-width: 120px"
+                  />
+                </div>
+              </template>
+            </v-data-table>
+          </DataCard>
+        </v-col>
+      </v-row>
+    </v-window-item>
+  </v-window>
+</template>
+
+<script setup lang="ts">
+import { ref, computed, onMounted } from 'vue'
+import axios from 'axios'
+import DataCard from '@/components/shared/DataCard.vue'
+import FilterBar from '@/components/shared/FilterBar.vue'
+import StatusChip from '@/components/shared/StatusChip.vue'
+
+interface AbsenceRecord {
+  id: number
+  team_name: string
+  team_id: number
+  player_name: string
+  player_id: number
+  absence_type: string
+  reason: string | null
+  start_date: string
+  duration: number
+  duration_unit: string
+  effective_end_date: string | null
+  remaining_days: number | null
+  remaining_games: number | null
+  season_current_date: string
+}
+
+interface CostRecord {
+  team_id: number
+  team_name: string
+  team_type: string
+  total_cost: number
+  total_cost_limit: number
+  first_squad_cost: number
+  first_squad_cost_limit: number | null
+  first_squad_count: number
+  exempt_count: number
+  cost_usage_ratio: number
+}
+
+interface CooldownRecord {
+  team_id: number
+  team_name: string
+  player_id: number
+  player_name: string
+  demotion_date: string
+  cooldown_until: string
+  remaining_days: number
+  same_day_exempt: boolean
+}
+
+const activeTab = ref('absences')
+
+// 離脱者
+const absences = ref<AbsenceRecord[]>([])
+const absencesLoading = ref(false)
+const searchQuery = ref('')
+const selectedAbsenceType = ref<string | null>(null)
+
+// コスト
+const costs = ref<CostRecord[]>([])
+const costsLoading = ref(false)
+
+// クールダウン
+const cooldowns = ref<CooldownRecord[]>([])
+const cooldownsLoading = ref(false)
+const cooldownSearchQuery = ref('')
+
+const absenceTypeOptions = [
+  { title: '負傷', value: 'injury' },
+  { title: '出場停止', value: 'suspension' },
+  { title: 'リコンディショニング', value: 'reconditioning' },
+]
+
+const absenceTypeLabels: Record<string, string> = {
+  injury: '負傷',
+  suspension: '出場停止',
+  reconditioning: 'リコンディショニング',
+}
+
+const absenceHeaders = [
+  { title: 'チーム', key: 'team_name' },
+  { title: '選手名', key: 'player_name' },
+  { title: '離脱種別', key: 'absence_type' },
+  { title: '理由', key: 'reason' },
+  { title: '開始日', key: 'start_date' },
+  { title: '復帰予定日', key: 'effective_end_date' },
+  { title: '残り', key: 'remaining', sortable: false },
+]
+
+const costHeaders = [
+  { title: 'チーム', key: 'team_name' },
+  { title: '種別', key: 'team_type' },
+  { title: '合計コスト / 上限', key: 'total_cost', sortable: false },
+  { title: '1軍コスト / 上限', key: 'first_squad_cost', sortable: false },
+  { title: '1軍人数', key: 'first_squad_count' },
+  { title: 'コスト除外', key: 'exempt_count' },
+]
+
+const cooldownHeaders = [
+  { title: 'チーム', key: 'team_name' },
+  { title: '選手名', key: 'player_name' },
+  { title: '降格日', key: 'demotion_date' },
+  { title: 'CD終了日', key: 'cooldown_until' },
+  { title: '残り日数', key: 'remaining_days' },
+  { title: '同日免除', key: 'same_day_exempt', sortable: false },
+]
+
+const filteredAbsences = computed(() => {
+  return absences.value.filter((a) => {
+    if (selectedAbsenceType.value && a.absence_type !== selectedAbsenceType.value) return false
+    if (searchQuery.value && !a.player_name.includes(searchQuery.value)) return false
+    return true
+  })
+})
+
+const filteredCooldowns = computed(() => {
+  return cooldowns.value.filter((c) => {
+    if (cooldownSearchQuery.value && !c.player_name.includes(cooldownSearchQuery.value))
+      return false
+    return true
+  })
+})
+
+const absenceTypeLabel = (type: string) => absenceTypeLabels[type] ?? type
+
+const formatDate = (dateStr: string) => {
+  return new Date(dateStr).toLocaleDateString('ja-JP', { month: 'long', day: 'numeric' })
+}
+
+const getRemainingCount = (absence: AbsenceRecord): number | null => {
+  if (absence.duration_unit === 'days') return absence.remaining_days
+  return absence.remaining_games
+}
+
+const getRemainingDisplay = (absence: AbsenceRecord): string | null => {
+  const count = getRemainingCount(absence)
+  if (count === null) return null
+  const unit = absence.duration_unit === 'days' ? '日' : '試合'
+  return `${count}${unit}`
+}
+
+const getRowProps = ({ item }: { item: AbsenceRecord }) => {
+  const count = getRemainingCount(item)
+  if (count !== null && count <= 2) {
+    return { class: 'bg-green-lighten-4' }
+  }
+  return {}
+}
+
+const getCostColor = (ratio: number): string => {
+  if (ratio > 1.0) return 'error'
+  if (ratio > 0.9) return 'warning'
+  return 'primary'
+}
+
+const fetchAbsences = async () => {
+  absencesLoading.value = true
+  try {
+    const response = await axios.get('/commissioner/dashboard/absences')
+    absences.value = response.data
+  } catch (error) {
+    console.error('Failed to fetch absences:', error)
+  } finally {
+    absencesLoading.value = false
+  }
+}
+
+const fetchCosts = async () => {
+  costsLoading.value = true
+  try {
+    const response = await axios.get('/commissioner/dashboard/costs')
+    costs.value = response.data
+  } catch (error) {
+    console.error('Failed to fetch costs:', error)
+  } finally {
+    costsLoading.value = false
+  }
+}
+
+const fetchCooldowns = async () => {
+  cooldownsLoading.value = true
+  try {
+    const response = await axios.get('/commissioner/dashboard/cooldowns')
+    cooldowns.value = response.data
+  } catch (error) {
+    console.error('Failed to fetch cooldowns:', error)
+  } finally {
+    cooldownsLoading.value = false
+  }
+}
+
+onMounted(() => {
+  fetchAbsences()
+  fetchCosts()
+  fetchCooldowns()
+})
+</script>

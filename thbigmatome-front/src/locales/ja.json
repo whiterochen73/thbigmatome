@@ -24,11 +24,6 @@
       "playerRegistration": "出場選手登録",
       "gameResultInput": "試合結果入力"
     },
-    "commissionerMode": {
-      "title": "コミッショナーモード",
-      "button": "コミッショナーモードへ",
-      "switchLabel": "コミッショナーモード（全チーム操作）"
-    },
     "officialWiki": {
       "title": "東方BIG野球 公式Wiki",
       "subtitle": "ルール・選手データはこちら"

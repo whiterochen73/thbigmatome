@@ -4,6 +4,7 @@ import { createVuetify } from 'vuetify'
 import * as components from 'vuetify/components'
 import * as directives from 'vuetify/directives'
 import CommissionerDashboardView from '../commissioner/CommissionerDashboardView.vue'
+import CommissionerDashboard from '@/components/commissioner/CommissionerDashboard.vue'
 
 vi.mock('axios', () => {
   const mockAxios = {
@@ -174,8 +175,10 @@ describe('CommissionerDashboardView', () => {
     })
     const wrapper = mount(CommissionerDashboardView, { global: { plugins: [vuetify] } })
     await flushPromises()
-    const vm = wrapper.vm as unknown as { activeTab: string }
-    vm.activeTab = 'cooldowns'
+    const dashboardVm = wrapper.findComponent(CommissionerDashboard).vm as unknown as {
+      activeTab: string
+    }
+    dashboardVm.activeTab = 'cooldowns'
     await wrapper.vm.$nextTick()
     expect(wrapper.text()).toContain('クールダウン中選手')
   })
@@ -188,8 +191,10 @@ describe('CommissionerDashboardView', () => {
     const wrapper = mount(CommissionerDashboardView, { global: { plugins: [vuetify] } })
     await flushPromises()
     // コストタブに切り替え
-    const vm = wrapper.vm as unknown as { activeTab: string }
-    vm.activeTab = 'costs'
+    const dashboardVm = wrapper.findComponent(CommissionerDashboard).vm as unknown as {
+      activeTab: string
+    }
+    dashboardVm.activeTab = 'costs'
     await wrapper.vm.$nextTick()
     expect(wrapper.text()).toContain('チーム別コスト使用状況')
   })

@@ -84,10 +84,8 @@ watchEffect(() => {
   }
 })
 
-// トグルボタンの表示条件: コミッショナー かつ チーム所持
-const showModeToggle = computed(
-  () => isCommissioner.value && (!teamSelectionStore.teamsLoaded || teamSelectionStore.hasTeam),
-)
+// トグルボタンの表示条件: コミッショナー権限があれば常に表示
+const showModeToggle = computed(() => isCommissioner.value)
 
 const toggleCommissionerMode = () => {
   commissionerModeStore.toggle()

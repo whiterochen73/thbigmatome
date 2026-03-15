@@ -46,17 +46,34 @@ const commissionerModeStore = useCommissionerModeStore()
 const teamSelectionStore = useTeamSelectionStore()
 
 const myTeams = ref<Team[]>([])
-const loading = ref(true)
+// Approach C: teamsLoaded済みならキャッシュを使い、即座にloading=falseで開始する（再マウント時のレースコンディション対策）
+const loading = ref(!teamSelectionStore.teamsLoaded)
 const selectedTeamId = ref<number>(0)
 
 onMounted(async () => {
+  // Fix: コミッショナーモードリダイレクト時はloading=falseを必ず設定してから戻る
   if (commissionerModeStore.isCommissionerMode) {
+    loading.value = false
     router.push('/commissioner/dashboard')
     return
   }
+
+  // キャッシュ済みデータがある場合は再フェッチをスキップ
+  if (teamSelectionStore.teamsLoaded) {
+    myTeams.value = teamSelectionStore.myTeams as Team[]
+    if (myTeams.value.length > 0) {
+      const storedId = teamSelectionStore.selectedTeamId
+      const found = myTeams.value.find((t) => t.id === storedId)
+      selectedTeamId.value = found ? found.id : myTeams.value[0].id
+    }
+    return
+  }
+
   try {
     const response = await axios.get<Team[]>('/users/me/teams')
     myTeams.value = response.data
+    // Storeにキャッシュ（teamsLoaded=trueにする）→ NavigationDrawer/AppBarが正しく制御できる
+    teamSelectionStore.setMyTeams(response.data)
     if (myTeams.value.length > 0) {
       const storedId = teamSelectionStore.selectedTeamId
       const found = myTeams.value.find((t) => t.id === storedId)

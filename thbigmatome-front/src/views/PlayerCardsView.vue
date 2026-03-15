@@ -109,11 +109,23 @@
         <PlayerCardItem :card="card" @click="navigateToDetail(card.id)" />
       </v-col>
     </v-row>
+
+    <!-- グリッドモード用ページネーション（テーブルはv-data-table内蔵を使用） -->
+    <div v-if="viewMode === 'grid'" class="d-flex align-center justify-end mt-2">
+      <span class="text-caption mr-3">全{{ totalCount }}件</span>
+      <v-pagination
+        v-model="currentPage"
+        :length="totalPages"
+        :total-visible="7"
+        size="small"
+        @update:model-value="fetchPlayerCards"
+      ></v-pagination>
+    </div>
   </v-container>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter, onBeforeRouteLeave } from 'vue-router'
 import axios from '@/plugins/axios'
 import PlayerCardItem from '@/components/PlayerCardItem.vue'
@@ -170,6 +182,8 @@ const filterCardType = ref(store.filterCardType)
 const filterName = ref(store.filterName)
 const currentPage = ref(store.currentPage)
 const viewMode = ref<'table' | 'grid'>(store.viewMode)
+
+const totalPages = computed(() => Math.ceil(totalCount.value / perPage) || 1)
 
 onMounted(async () => {
   fetchCardSets()

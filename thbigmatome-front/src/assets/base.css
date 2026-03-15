@@ -2,6 +2,47 @@
 :root {
   --color-home: #2c5f2e;
   --color-visitor: #1b3a6b;
+
+  /* 和色パレット（既存 --color-visitor/--color-home も維持） */
+  --ai: #1B3A6B;       /* 藍色（--color-visitor と同値） */
+  --shu: #C0392B;      /* 朱色 */
+  --chigusa: #4A7A8A;  /* 千草色 */
+  --moegi: #5D8A2F;    /* 萌黄 */
+  --yamabuki: #D4940A; /* 山吹 */
+  --beni: #B01C2A;     /* 紅 */
+  --asagi: #2E86AB;    /* 浅葱 */
+  --fuji: #6b4c8a;     /* 藤色 */
+  --usuiro: #C8B89A;   /* 薄色（薄茶） */
+
+  /* Surface */
+  --bg: #F8F6F1;           /* 和紙色 */
+  --bg-elevated: #FFFFFF;  /* 白 */
+  --bg-inset: #F0EDE5;     /* くぼみ背景 */
+  --bg-stripe: rgba(240,237,229,0.6);  /* テーブル縞模様 */
+  --border: #D8D0C4;
+  --border-light: #E8E2D8;
+
+  /* Text */
+  --text-medium: #6B6058;
+  --text-caption: #9A8E84;
+
+  /* Shadow */
+  --shadow-card: 0 1px 4px rgba(0,0,0,0.08);
+  --shadow-elevated: 0 2px 8px rgba(0,0,0,0.12);
+
+  /* Typography */
+  --font-display: 'Shippori Mincho', 'Noto Serif JP', serif;
+  --font-mono: 'JetBrains Mono', 'Roboto Mono', monospace;
+
+  /* Spacing (8px base) */
+  --sp-1: 4px;
+  --sp-2: 8px;
+  --sp-3: 12px;
+  --sp-4: 16px;
+  --sp-5: 20px;
+  --sp-6: 24px;
+  --sp-8: 32px;
+  --sp-10: 40px;
 }
 
 *,

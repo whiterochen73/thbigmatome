@@ -156,6 +156,12 @@ const commissionerMenuItems = [
     value: 'commissionerDashboard',
     to: '/commissioner/dashboard',
   },
+  {
+    title: 'チーム一覧',
+    icon: 'mdi-shield-account',
+    value: 'teams',
+    to: '/teams',
+  },
   // { title: '大会管理', icon: 'mdi-trophy-outline', value: 'competitions', to: '/commissioner/competitions' }, // メニュー非表示
   {
     title: 'カードセット',

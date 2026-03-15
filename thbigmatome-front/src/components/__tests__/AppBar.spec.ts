@@ -80,37 +80,4 @@ describe('AppBar', () => {
     // isCommissioner=false なので shield-crown アイコンなし
     expect(wrapper.html()).not.toContain('mdi-shield-crown')
   })
-
-  it('コミッショナーユーザーはモードトグルが表示される', async () => {
-    const { useAuth } = await import('@/composables/useAuth')
-    vi.mocked(useAuth).mockReturnValue({
-      user: { value: { id: 1, name: 'admin', role: 'commissioner' } } as ReturnType<
-        typeof import('vue').computed
-      >,
-      isCommissioner: { value: true } as ReturnType<typeof import('vue').computed>,
-      logout: vi.fn(),
-      isAuthenticated: { value: true } as ReturnType<typeof import('vue').computed>,
-      loading: { value: false } as ReturnType<typeof import('vue').computed>,
-      login: vi.fn(),
-      checkAuth: vi.fn(),
-    })
-    const wrapper = mountWithLayout()
-    await flushPromises()
-    // コミッショナーモードボタン（mdi-account: プレイヤーモード or mdi-shield-crown: 管理モード）が存在する
-    expect(wrapper.html()).toMatch(/mdi-account|mdi-shield-crown/)
-  })
-
-  it('commissionerModeStoreのtoggleが正しく動作する', async () => {
-    const pinia = createPinia()
-    setActivePinia(pinia)
-
-    const { useCommissionerModeStore } = await import('@/stores/commissionerMode')
-    const store = useCommissionerModeStore()
-    const initial = store.isCommissionerMode
-
-    store.toggle()
-    expect(store.isCommissionerMode).toBe(!initial)
-    store.toggle()
-    expect(store.isCommissionerMode).toBe(initial)
-  })
 })

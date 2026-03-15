@@ -29,13 +29,6 @@ vi.mock('@/stores/teamSelection', () => ({
   })),
 }))
 
-vi.mock('@/stores/commissionerMode', () => ({
-  useCommissionerModeStore: vi.fn(() => ({
-    isCommissionerMode: false,
-    setMode: vi.fn(),
-  })),
-}))
-
 import axios from 'axios'
 import router from '@/router'
 import { useAuth } from '../useAuth'

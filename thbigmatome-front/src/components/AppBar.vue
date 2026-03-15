@@ -9,22 +9,6 @@
 
     <v-spacer />
 
-    <v-btn
-      v-if="showModeToggle"
-      icon
-      variant="text"
-      @click="toggleCommissionerMode"
-      :title="
-        commissionerModeStore.isCommissionerMode
-          ? '管理モード（クリックでプレイヤーモードへ）'
-          : 'プレイヤーモード（クリックで管理モードへ）'
-      "
-    >
-      <v-icon>{{
-        commissionerModeStore.isCommissionerMode ? 'mdi-shield-crown' : 'mdi-account'
-      }}</v-icon>
-    </v-btn>
-
     <v-btn icon variant="text" @click="toggleTheme">
       <v-icon>{{ isDark ? 'mdi-weather-sunny' : 'mdi-weather-night' }}</v-icon>
     </v-btn>
@@ -64,23 +48,14 @@ import { computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useTheme } from 'vuetify'
 import { useAuth } from '@/composables/useAuth'
-import { useCommissionerModeStore } from '@/stores/commissionerMode'
 
 const emit = defineEmits<{
   'toggle-drawer': []
 }>()
 
 const router = useRouter()
-const { user, logout, isCommissioner } = useAuth()
+const { user, logout } = useAuth()
 const theme = useTheme()
-const commissionerModeStore = useCommissionerModeStore()
-
-// トグルボタンの表示条件: コミッショナー権限があれば常に表示
-const showModeToggle = computed(() => isCommissioner.value)
-
-const toggleCommissionerMode = () => {
-  commissionerModeStore.toggle()
-}
 
 const isDark = computed(() => theme.global.current.value.dark)
 

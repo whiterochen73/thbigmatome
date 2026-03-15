@@ -105,7 +105,6 @@
 import { computed } from 'vue'
 import { useAuth } from '@/composables/useAuth'
 import { useTeamSelectionStore } from '@/stores/teamSelection'
-import { useCommissionerModeStore } from '@/stores/commissionerMode'
 
 const props = defineProps<{
   modelValue: boolean
@@ -119,16 +118,11 @@ const emit = defineEmits<{
 
 const { isCommissioner } = useAuth()
 const teamSelectionStore = useTeamSelectionStore()
-const commissionerModeStore = useCommissionerModeStore()
 
-const showCommissionerMenu = computed(
-  () => isCommissioner.value && commissionerModeStore.isCommissionerMode,
-)
+const showCommissionerMenu = computed(() => isCommissioner.value)
 
 const showTeamMenu = computed(() => {
-  // コミッショナーモード時は常に表示（全チーム代理管理）
-  if (commissionerModeStore.isCommissionerMode) return true
-  // 通常時はチーム所持時のみ
+  if (isCommissioner.value) return true
   return !teamSelectionStore.teamsLoaded || teamSelectionStore.hasTeam
 })
 

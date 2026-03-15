@@ -1,6 +1,5 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import { useCommissionerModeStore } from '@/stores/commissionerMode'
 
 const STORAGE_KEY = 'selectedTeam'
 
@@ -22,11 +21,6 @@ export const useTeamSelectionStore = defineStore('teamSelection', () => {
   const allTeamsLoaded = ref(false)
 
   const hasTeam = computed(() => myTeams.value.length > 0)
-
-  const availableTeams = computed(() => {
-    const cmStore = useCommissionerModeStore()
-    return cmStore.isCommissionerMode ? allTeams.value : myTeams.value
-  })
 
   function selectTeam(teamId: number, teamName: string) {
     selectedTeamId.value = teamId
@@ -65,7 +59,6 @@ export const useTeamSelectionStore = defineStore('teamSelection', () => {
     teamsLoaded,
     allTeams,
     allTeamsLoaded,
-    availableTeams,
     selectTeam,
     clearTeam,
     setMyTeams,

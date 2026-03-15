@@ -2,7 +2,6 @@ import { ref, computed } from 'vue'
 import axios from 'axios'
 import router from '@/router' // Vue Routerをインポート
 import { useTeamSelectionStore } from '@/stores/teamSelection'
-import { useCommissionerModeStore } from '@/stores/commissionerMode'
 
 interface User {
   id: number
@@ -46,10 +45,6 @@ export function useAuth() {
         teamStore.setAllTeams([])
       }
     }
-    if (isCommissioner.value && teamStore.teamsLoaded && !teamStore.hasTeam) {
-      const cmStore = useCommissionerModeStore()
-      cmStore.setMode(true)
-    }
   }
 
   const login = async (name: string, password: string): Promise<LoginResponse> => {
@@ -81,8 +76,6 @@ export function useAuth() {
       const teamStore = useTeamSelectionStore()
       teamStore.clearTeam()
       teamStore.resetTeams()
-      useCommissionerModeStore().setMode(false)
-      localStorage.removeItem('commissionerMode')
       router.push('/login')
     } catch (e) {
       console.error('ログアウト時にエラーが発生しました:', e)

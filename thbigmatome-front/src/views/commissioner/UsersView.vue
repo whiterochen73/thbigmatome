@@ -2,6 +2,20 @@
   <v-container>
     <PageHeader title="ユーザー管理" />
 
+    <FilterBar>
+      <template #search>
+        <v-text-field
+          v-model="filterName"
+          label="ユーザー名検索"
+          prepend-inner-icon="mdi-magnify"
+          density="compact"
+          hide-details
+          variant="outlined"
+          clearable
+        />
+      </template>
+    </FilterBar>
+
     <v-row>
       <v-col cols="12">
         <DataCard title="ユーザー一覧">
@@ -20,7 +34,7 @@
           </v-alert>
           <v-data-table
             :headers="headers"
-            :items="users"
+            :items="filteredUsers"
             :loading="loading"
             class="elevation-1"
             density="compact"
@@ -163,10 +177,11 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import axios from 'axios'
 import { useSnackbar } from '@/composables/useSnackbar'
 import PageHeader from '@/components/shared/PageHeader.vue'
+import FilterBar from '@/components/shared/FilterBar.vue'
 import DataCard from '@/components/shared/DataCard.vue'
 
 interface User {
@@ -181,6 +196,15 @@ const { showSnackbar } = useSnackbar()
 const users = ref<User[]>([])
 const loading = ref(false)
 const errorMessage = ref('')
+const filterName = ref('')
+
+const filteredUsers = computed(() => {
+  if (!filterName.value) return users.value
+  const q = filterName.value.toLowerCase()
+  return users.value.filter(
+    (u) => u.name.toLowerCase().includes(q) || u.display_name.toLowerCase().includes(q),
+  )
+})
 
 const createDialog = ref(false)
 const creating = ref(false)

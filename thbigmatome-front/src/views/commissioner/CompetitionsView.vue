@@ -2,6 +2,20 @@
   <v-container>
     <PageHeader title="大会管理" />
 
+    <FilterBar>
+      <template #search>
+        <v-text-field
+          v-model="filterName"
+          label="大会名検索"
+          prepend-inner-icon="mdi-magnify"
+          density="compact"
+          hide-details
+          variant="outlined"
+          clearable
+        />
+      </template>
+    </FilterBar>
+
     <v-row>
       <v-col cols="12">
         <DataCard title="大会一覧">
@@ -20,7 +34,7 @@
           </v-alert>
           <v-data-table
             :headers="headers"
-            :items="competitions"
+            :items="filteredCompetitions"
             :loading="loading"
             class="elevation-1"
             density="compact"
@@ -140,11 +154,12 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import axios from 'axios'
 import { useRouter } from 'vue-router'
 import { useSnackbar } from '@/composables/useSnackbar'
 import PageHeader from '@/components/shared/PageHeader.vue'
+import FilterBar from '@/components/shared/FilterBar.vue'
 import DataCard from '@/components/shared/DataCard.vue'
 
 interface Competition {
@@ -162,6 +177,13 @@ const competitions = ref<Competition[]>([])
 const userTeamId = ref<number | null>(null)
 const loading = ref(false)
 const errorMessage = ref('')
+const filterName = ref('')
+
+const filteredCompetitions = computed(() => {
+  if (!filterName.value) return competitions.value
+  const q = filterName.value.toLowerCase()
+  return competitions.value.filter((c) => c.name.toLowerCase().includes(q))
+})
 
 const createDialog = ref(false)
 const creating = ref(false)

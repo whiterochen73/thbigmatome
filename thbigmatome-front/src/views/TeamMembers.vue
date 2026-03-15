@@ -1,5 +1,7 @@
 <template>
   <v-container>
+    <PageHeader title="チームメンバー管理" />
+
     <!-- Player Selection -->
     <v-row class="mb-4">
       <v-col cols="12">
@@ -270,6 +272,7 @@ import type { Player } from '@/types/player'
 import type { CostList } from '@/types/costList'
 import type { PlayerType } from '@/types/playerType'
 import FilterBar from '@/components/shared/FilterBar.vue'
+import PageHeader from '@/components/shared/PageHeader.vue'
 
 type CostType =
   | 'normal_cost'

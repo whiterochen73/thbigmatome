@@ -2,6 +2,20 @@
   <v-container>
     <PageHeader title="球場管理" />
 
+    <FilterBar>
+      <template #search>
+        <v-text-field
+          v-model="filterName"
+          label="球場名検索"
+          prepend-inner-icon="mdi-magnify"
+          density="compact"
+          hide-details
+          variant="outlined"
+          clearable
+        />
+      </template>
+    </FilterBar>
+
     <v-row>
       <v-col cols="12">
         <DataCard title="球場一覧">
@@ -20,7 +34,7 @@
           </v-alert>
           <v-data-table
             :headers="headers"
-            :items="stadiums"
+            :items="filteredStadiums"
             :loading="loading"
             class="elevation-1"
             density="compact"
@@ -127,10 +141,11 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import axios from 'axios'
 import { useSnackbar } from '@/composables/useSnackbar'
 import PageHeader from '@/components/shared/PageHeader.vue'
+import FilterBar from '@/components/shared/FilterBar.vue'
 import DataCard from '@/components/shared/DataCard.vue'
 
 interface Stadium {
@@ -146,6 +161,13 @@ const { showSnackbar } = useSnackbar()
 const stadiums = ref<Stadium[]>([])
 const loading = ref(false)
 const errorMessage = ref('')
+const filterName = ref('')
+
+const filteredStadiums = computed(() => {
+  if (!filterName.value) return stadiums.value
+  const q = filterName.value.toLowerCase()
+  return stadiums.value.filter((s) => s.name.toLowerCase().includes(q))
+})
 
 const createDialog = ref(false)
 const creating = ref(false)

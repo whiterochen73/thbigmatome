@@ -137,35 +137,69 @@ describe('HomePortalView', () => {
     expect(mockAxios.get).not.toHaveBeenCalled()
   })
 
-  it('コミッショナーモードON時: リダイレクトされること', async () => {
-    localStorage.setItem('commissionerMode', 'true')
-    const router = createTestRouter()
-    const pushSpy = vi.spyOn(router, 'push')
-    mount(HomePortalView, { global: { plugins: [vuetify, router, createPinia()] } })
-    await flushPromises()
-
-    expect(pushSpy).toHaveBeenCalledWith('/commissioner/dashboard')
-  })
-
-  it('コミッショナーモードが遅延でtrueになった場合もリダイレクトされること', async () => {
+  it('コミッショナーモードON時: リダイレクトせず全チームが表示されること', async () => {
     const pinia = createPinia()
     setActivePinia(pinia)
     const teamStore = useTeamSelectionStore()
-    teamStore.setMyTeams([])
+    teamStore.setMyTeams([teamA])
+    teamStore.setAllTeams([teamA, teamB])
+
+    const cmStore = useCommissionerModeStore()
+    cmStore.setMode(true)
 
     const router = createTestRouter()
     const pushSpy = vi.spyOn(router, 'push')
-    mount(HomePortalView, { global: { plugins: [vuetify, router, pinia] } })
+    const wrapper = mount(HomePortalView, { global: { plugins: [vuetify, router, pinia] } })
     await flushPromises()
 
-    // commissionerModeがfalseのためリダイレクトされていない
+    // リダイレクトしない
+    expect(pushSpy).not.toHaveBeenCalled()
+    // SeasonPortalが表示される
+    expect(wrapper.find('.season-portal-stub').exists()).toBe(true)
+  })
+
+  it('コミッショナーモードON + チーム2件以上: v-selectで切り替えUIが表示されること', async () => {
+    const pinia = createPinia()
+    setActivePinia(pinia)
+    const teamStore = useTeamSelectionStore()
+    teamStore.setMyTeams([teamA])
+    teamStore.setAllTeams([teamA, teamB])
+
+    const cmStore = useCommissionerModeStore()
+    cmStore.setMode(true)
+
+    const router = createTestRouter()
+    const wrapper = mount(HomePortalView, { global: { plugins: [vuetify, router, pinia] } })
+    await flushPromises()
+
+    // v-selectが存在する（タブではない）
+    expect(wrapper.find('.v-select').exists()).toBe(true)
+    expect(wrapper.find('.v-tabs').exists()).toBe(false)
+  })
+
+  it('コミッショナーモードが遅延でtrueになった場合: チーム一覧が再読み込みされること', async () => {
+    const pinia = createPinia()
+    setActivePinia(pinia)
+    const teamStore = useTeamSelectionStore()
+    teamStore.setMyTeams([teamA])
+    teamStore.setAllTeams([teamA, teamB])
+
+    const router = createTestRouter()
+    const pushSpy = vi.spyOn(router, 'push')
+    const wrapper = mount(HomePortalView, { global: { plugins: [vuetify, router, pinia] } })
+    await flushPromises()
+
+    // 通常モード: リダイレクトされていない、チームAのSeasonPortal表示
     expect(pushSpy).not.toHaveBeenCalled()
 
-    // commissionerModeをtrueに変更（watch経由でリダイレクト）
+    // commissionerModeをtrueに変更（watch経由でチーム再読み込み）
     const store = useCommissionerModeStore()
     store.setMode(true)
     await nextTick()
 
-    expect(pushSpy).toHaveBeenCalledWith('/commissioner/dashboard')
+    // リダイレクトしない
+    expect(pushSpy).not.toHaveBeenCalled()
+    // v-selectで全チーム表示
+    expect(wrapper.find('.v-select').exists()).toBe(true)
   })
 })

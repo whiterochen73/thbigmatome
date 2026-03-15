@@ -20,7 +20,20 @@
     <!-- チーム1件: 即SeasonPortal表示 -->
     <SeasonPortal v-else-if="myTeams.length === 1" :key="myTeams[0].id" :team-id="myTeams[0].id" />
 
-    <!-- チーム2件以上: タブ切り替え -->
+    <!-- コミッショナーモード + チーム2件以上: v-selectで切り替え -->
+    <template v-else-if="commissionerModeStore.isCommissionerMode">
+      <v-select
+        v-model="selectedTeamId"
+        :items="myTeams"
+        item-title="name"
+        item-value="id"
+        label="チームを選択"
+        class="mb-2"
+      />
+      <SeasonPortal :key="selectedTeamId" :team-id="selectedTeamId" />
+    </template>
+
+    <!-- チーム2件以上（通常）: タブ切り替え -->
     <template v-else>
       <v-tabs v-model="selectedTeamId" color="primary" class="mb-2">
         <v-tab v-for="team in myTeams" :key="team.id" :value="team.id">
@@ -34,13 +47,11 @@
 
 <script setup lang="ts">
 import { ref, watch, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
 import { useCommissionerModeStore } from '@/stores/commissionerMode'
 import { useTeamSelectionStore } from '@/stores/teamSelection'
 import { type Team } from '@/types/team'
 import SeasonPortal from '@/views/SeasonPortal.vue'
 
-const router = useRouter()
 const commissionerModeStore = useCommissionerModeStore()
 const teamSelectionStore = useTeamSelectionStore()
 
@@ -49,19 +60,28 @@ const myTeams = ref<Team[]>([])
 const loading = ref(false)
 const selectedTeamId = ref<number>(0)
 
-// initializeUserStateが間に合わなかった場合のフォールバック（安全網）
+// コミッショナーモード切り替え時にチーム一覧を再読み込み
 watch(
   () => commissionerModeStore.isCommissionerMode,
   (val) => {
-    if (val) {
-      router.push('/commissioner/dashboard')
+    myTeams.value = (val ? teamSelectionStore.availableTeams : teamSelectionStore.myTeams) as Team[]
+    if (myTeams.value.length > 0) {
+      const storedId = teamSelectionStore.selectedTeamId
+      const found = myTeams.value.find((t) => t.id === storedId)
+      selectedTeamId.value = found ? found.id : myTeams.value[0].id
     }
   },
 )
 
 onMounted(() => {
   if (commissionerModeStore.isCommissionerMode) {
-    router.push('/commissioner/dashboard')
+    // コミッショナーモード時: 全チームから選択可能にする（リダイレクトしない）
+    myTeams.value = teamSelectionStore.availableTeams as Team[]
+    if (myTeams.value.length > 0) {
+      const storedId = teamSelectionStore.selectedTeamId
+      const found = myTeams.value.find((t) => t.id === storedId)
+      selectedTeamId.value = found ? found.id : myTeams.value[0].id
+    }
     return
   }
 

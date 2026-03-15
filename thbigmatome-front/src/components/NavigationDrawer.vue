@@ -22,8 +22,8 @@
         link
       />
 
-      <!-- チームグループ（チーム未所持かつロード完了後のみ非表示） -->
-      <template v-if="!teamSelectionStore.teamsLoaded || teamSelectionStore.hasTeam">
+      <!-- チームグループ（コミッショナーモード時は常に表示、通常時はチーム所持時のみ） -->
+      <template v-if="showTeamMenu">
         <v-list-subheader v-if="!rail">チーム</v-list-subheader>
         <v-list-item
           v-if="teamSelectionStore.selectedTeamId"
@@ -124,6 +124,13 @@ const commissionerModeStore = useCommissionerModeStore()
 const showCommissionerMenu = computed(
   () => isCommissioner.value && commissionerModeStore.isCommissionerMode,
 )
+
+const showTeamMenu = computed(() => {
+  // コミッショナーモード時は常に表示（全チーム代理管理）
+  if (commissionerModeStore.isCommissionerMode) return true
+  // 通常時はチーム所持時のみ
+  return !teamSelectionStore.teamsLoaded || teamSelectionStore.hasTeam
+})
 
 const gameMenuItems = [
   { title: 'ログ取り込み', icon: 'mdi-file-import', value: 'gameImport', to: '/games/import' },

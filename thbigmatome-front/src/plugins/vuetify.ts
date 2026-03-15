@@ -44,6 +44,13 @@ export default createVuetify({
           'text-medium': '#4A4A4A', // 本文（中重要）
           'text-caption': '#777777', // キャプション
           'text-disabled': '#BBBBBB', // 無効テキスト
+
+          // ゲーム固有色
+          'game-home': '#2c5f2e', // ホームチーム色（緑）
+          'game-visitor': '#1B3A6B', // ビジターチーム色（藍）
+          'game-win': '#C0392B', // 勝利（朱）
+          'game-lose': '#1B3A6B', // 敗戦（藍）
+          'game-draw': '#777777', // 引分（灰）
         },
       },
       dark: {
@@ -67,6 +74,13 @@ export default createVuetify({
           'text-medium': '#B8B8D0', // 本文（中重要）
           'text-caption': '#888888', // キャプション
           'text-disabled': '#555555', // 無効テキスト
+
+          // ゲーム固有色
+          'game-home': '#2c5f2e', // ホームチーム色（緑）
+          'game-visitor': '#1B3A6B', // ビジターチーム色（藍）
+          'game-win': '#C0392B', // 勝利（朱）
+          'game-lose': '#1B3A6B', // 敗戦（藍）
+          'game-draw': '#777777', // 引分（灰）
         },
       },
     },
@@ -77,5 +91,21 @@ export default createVuetify({
     VCard: { elevation: 1 },
     VTextField: { density: 'compact', variant: 'outlined' },
     VSelect: { density: 'compact', variant: 'outlined' },
+    // 追加: ダイアログ統一
+    VDialog: { scrollable: true },
+    // 追加: チップ統一
+    VChip: { size: 'small', variant: 'tonal' },
+    // 追加: リスト統一
+    VList: { density: 'compact' },
+    // 追加: ツールチップ統一
+    VTooltip: { location: 'bottom' },
+    // 追加: スナックバー統一
+    VSnackbar: { location: 'top', timeout: 3000 },
+    // 追加: オートコンプリート統一
+    VAutocomplete: { density: 'compact', variant: 'outlined' },
+    // 追加: テキストエリア統一
+    VTextarea: { density: 'compact', variant: 'outlined' },
+    // 追加: タブ統一
+    VTabs: { color: 'primary' },
   },
 })

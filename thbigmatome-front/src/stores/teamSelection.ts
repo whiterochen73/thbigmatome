@@ -37,6 +37,11 @@ export const useTeamSelectionStore = defineStore('teamSelection', () => {
     teamsLoaded.value = true
   }
 
+  function resetTeams() {
+    myTeams.value = []
+    teamsLoaded.value = false
+  }
+
   return {
     selectedTeamId,
     selectedTeamName,
@@ -46,5 +51,6 @@ export const useTeamSelectionStore = defineStore('teamSelection', () => {
     selectTeam,
     clearTeam,
     setMyTeams,
+    resetTeams,
   }
 })

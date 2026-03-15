@@ -15,6 +15,25 @@ vi.mock('@/router', () => ({
   },
 }))
 
+// Mock stores (required by initializeUserState/logout)
+vi.mock('@/stores/teamSelection', () => ({
+  useTeamSelectionStore: vi.fn(() => ({
+    teamsLoaded: false,
+    hasTeam: false,
+    myTeams: [],
+    setMyTeams: vi.fn(),
+    clearTeam: vi.fn(),
+    resetTeams: vi.fn(),
+  })),
+}))
+
+vi.mock('@/stores/commissionerMode', () => ({
+  useCommissionerModeStore: vi.fn(() => ({
+    isCommissionerMode: false,
+    setMode: vi.fn(),
+  })),
+}))
+
 import axios from 'axios'
 import router from '@/router'
 import { useAuth } from '../useAuth'

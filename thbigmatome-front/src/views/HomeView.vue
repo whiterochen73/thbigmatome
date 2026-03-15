@@ -247,7 +247,7 @@ const competitions = ref<Competition[]>([])
 const summary = ref<HomeSummary | null>(null)
 const loading = ref(true)
 const myTeams = ref<MyTeam[]>([])
-const loadingTeams = ref(true)
+const loadingTeams = ref(false)
 
 const progressPercent = computed(() => {
   if (!summary.value) return 0
@@ -256,26 +256,12 @@ const progressPercent = computed(() => {
 })
 
 onMounted(async () => {
-  await fetchMyTeams()
+  // teamsLoadedはuseAuth(login/checkAuth)で保証済み
+  myTeams.value = teamSelectionStore.myTeams as MyTeam[]
   if (myTeams.value.length > 0) {
     fetchCompetitions()
   }
 })
-
-async function fetchMyTeams() {
-  loadingTeams.value = true
-  try {
-    const response = await axios.get<MyTeam[]>('/users/me/teams')
-    myTeams.value = response.data
-    teamSelectionStore.setMyTeams(response.data)
-  } catch (error) {
-    console.error('Error fetching my teams:', error)
-    myTeams.value = []
-    teamSelectionStore.setMyTeams([])
-  } finally {
-    loadingTeams.value = false
-  }
-}
 
 async function fetchCompetitions() {
   loading.value = true

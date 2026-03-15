@@ -4,8 +4,9 @@ import { createVuetify } from 'vuetify'
 import * as components from 'vuetify/components'
 import * as directives from 'vuetify/directives'
 import { createRouter, createMemoryHistory } from 'vue-router'
-import { createPinia } from 'pinia'
+import { createPinia, setActivePinia } from 'pinia'
 import HomeView from '../HomeView.vue'
+import { useTeamSelectionStore } from '@/stores/teamSelection'
 
 // Mock axios
 vi.mock('axios', () => {
@@ -94,13 +95,19 @@ const mockMyTeams = [
   },
 ]
 
+// Piniaインスタンスをテスト間で共有（storeセットアップとmountで同じインスタンスを使う）
+let testPinia: ReturnType<typeof createPinia>
+
 describe('HomeView', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    // チームデータはuseAuth(initializeUserState)がロード済み想定でstoreに直接セット
+    testPinia = createPinia()
+    setActivePinia(testPinia)
+    const teamStore = useTeamSelectionStore()
+    teamStore.setMyTeams(mockMyTeams)
+
     vi.mocked(axios.get).mockImplementation((url: string) => {
-      if (url === '/users/me/teams') {
-        return Promise.resolve({ data: mockMyTeams })
-      }
       if (url === '/competitions') {
         return Promise.resolve({
           data: [{ id: 1, name: '第3回Lペナ', competition_type: 'league_pennant' }],
@@ -115,14 +122,14 @@ describe('HomeView', () => {
 
   it('コンポーネントがレンダリングされること', async () => {
     const router = createTestRouter()
-    const wrapper = mount(HomeView, { global: { plugins: [vuetify, router, createPinia()] } })
+    const wrapper = mount(HomeView, { global: { plugins: [vuetify, router, testPinia] } })
     await flushPromises()
     expect(wrapper.exists()).toBe(true)
   })
 
   it('シーズン進行カードが表示されること', async () => {
     const router = createTestRouter()
-    const wrapper = mount(HomeView, { global: { plugins: [vuetify, router, createPinia()] } })
+    const wrapper = mount(HomeView, { global: { plugins: [vuetify, router, testPinia] } })
     await flushPromises()
 
     const vm = wrapper.vm as unknown as {
@@ -140,7 +147,7 @@ describe('HomeView', () => {
 
   it('直近試合セクションが表示されること', async () => {
     const router = createTestRouter()
-    const wrapper = mount(HomeView, { global: { plugins: [vuetify, router, createPinia()] } })
+    const wrapper = mount(HomeView, { global: { plugins: [vuetify, router, testPinia] } })
     await flushPromises()
 
     const vm = wrapper.vm as unknown as {
@@ -158,7 +165,7 @@ describe('HomeView', () => {
 
   it('成績サマリーセクションが表示されること', async () => {
     const router = createTestRouter()
-    const wrapper = mount(HomeView, { global: { plugins: [vuetify, router, createPinia()] } })
+    const wrapper = mount(HomeView, { global: { plugins: [vuetify, router, testPinia] } })
     await flushPromises()
 
     const vm = wrapper.vm as unknown as {
@@ -176,31 +183,31 @@ describe('HomeView', () => {
   })
 
   it('チーム0件時にEmptyStateが表示されること', async () => {
-    vi.mocked(axios.get).mockImplementation((url: string) => {
-      if (url === '/users/me/teams') return Promise.resolve({ data: [] })
-      return Promise.resolve({ data: [] })
-    })
+    // storeを空チームでリセット
+    const teamStore = useTeamSelectionStore()
+    teamStore.setMyTeams([])
+
     const router = createTestRouter()
-    const wrapper = mount(HomeView, { global: { plugins: [vuetify, router, createPinia()] } })
+    const wrapper = mount(HomeView, { global: { plugins: [vuetify, router, testPinia] } })
     await flushPromises()
     expect(wrapper.text()).toContain('コミッショナーにお問い合わせください')
   })
 
   it('チームあり時に通常ダッシュボードが表示されること', async () => {
     const router = createTestRouter()
-    mount(HomeView, { global: { plugins: [vuetify, router, createPinia()] } })
+    mount(HomeView, { global: { plugins: [vuetify, router, testPinia] } })
     await flushPromises()
-    // チームが1件あるので大会選択が表示される
-    expect(axios.get).toHaveBeenCalledWith('/users/me/teams')
+    // チームが1件あるので大会選択APIが呼ばれる（チームAPIはuseAuthが担当）
+    expect(axios.get).not.toHaveBeenCalledWith('/users/me/teams')
     expect(axios.get).toHaveBeenCalledWith('/competitions')
   })
 
-  it('my_teamsが/users/me/teamsで取得されること（二重プレフィックスなし）', async () => {
+  it('チームデータはuseAuth(initializeUserState)が取得済み（HomeViewはstoreから読む）', async () => {
     const router = createTestRouter()
-    mount(HomeView, { global: { plugins: [vuetify, router, createPinia()] } })
+    mount(HomeView, { global: { plugins: [vuetify, router, testPinia] } })
     await flushPromises()
-    expect(axios.get).toHaveBeenCalledWith('/users/me/teams')
-    // /api/v1/users/me/teams では呼ばれていないことを確認
+    // HomeViewはもう/users/me/teamsを直接呼ばない
+    expect(axios.get).not.toHaveBeenCalledWith('/users/me/teams')
     expect(axios.get).not.toHaveBeenCalledWith('/api/v1/users/me/teams')
   })
 })

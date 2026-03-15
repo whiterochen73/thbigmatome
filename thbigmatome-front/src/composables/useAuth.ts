@@ -1,6 +1,8 @@
 import { ref, computed } from 'vue'
 import axios from 'axios'
 import router from '@/router' // Vue Routerをインポート
+import { useTeamSelectionStore } from '@/stores/teamSelection'
+import { useCommissionerModeStore } from '@/stores/commissionerMode'
 
 interface User {
   id: number
@@ -8,13 +10,15 @@ interface User {
   role: string
 }
 
+interface MyTeam {
+  id: number
+  name: string
+  [key: string]: unknown
+}
+
 interface LoginResponse {
   user: User
   message: string
-}
-
-interface ErrorResponse {
-  error: string
 }
 
 const user = ref<User | null>(null)
@@ -24,18 +28,36 @@ export function useAuth() {
   const isAuthenticated = computed(() => !!user.value)
   const isCommissioner = computed(() => user.value?.role === 'commissioner')
 
+  const initializeUserState = async () => {
+    const teamStore = useTeamSelectionStore()
+    if (!teamStore.teamsLoaded) {
+      try {
+        const response = await axios.get<MyTeam[]>('/users/me/teams')
+        teamStore.setMyTeams(response.data)
+      } catch {
+        teamStore.setMyTeams([])
+      }
+    }
+    if (isCommissioner.value && teamStore.teamsLoaded && !teamStore.hasTeam) {
+      const cmStore = useCommissionerModeStore()
+      cmStore.setMode(true)
+    }
+  }
+
   const login = async (name: string, password: string): Promise<LoginResponse> => {
     loading.value = true
     try {
       const response = await axios.post<LoginResponse>('auth/login', {
         name,
-        password
+        password,
       })
       user.value = response.data.user
+      await initializeUserState()
       return response.data
-    } catch (error: any) {
-      if (error.response?.data?.error) {
-        throw new Error(error.response.data.error)
+    } catch (error: unknown) {
+      const axiosError = error as { response?: { data?: { error?: string } } }
+      if (axiosError.response?.data?.error) {
+        throw new Error(axiosError.response.data.error)
       }
       throw new Error('ログインに失敗しました')
     } finally {
@@ -47,12 +69,16 @@ export function useAuth() {
     loading.value = true
     try {
       await axios.post('auth/logout')
-      user.value = null // 認証状態をクリア
-      // ログアウト成功後、明示的にログインページへリダイレクト
-      router.push('/login') // ★ここを追加★
-    } catch (error) {
-      console.error('ログアウト時にエラーが発生しました:', error)
-      user.value = null // エラー時も一応認証状態をクリアしておく
+      user.value = null
+      const teamStore = useTeamSelectionStore()
+      teamStore.clearTeam()
+      teamStore.resetTeams()
+      useCommissionerModeStore().setMode(false)
+      localStorage.removeItem('commissionerMode')
+      router.push('/login')
+    } catch (e) {
+      console.error('ログアウト時にエラーが発生しました:', e)
+      user.value = null
     } finally {
       loading.value = false
     }
@@ -62,7 +88,8 @@ export function useAuth() {
     try {
       const response = await axios.get<{ user: User }>('auth/current_user')
       user.value = response.data.user
-    } catch (error) {
+      await initializeUserState()
+    } catch {
       user.value = null
     }
   }
@@ -74,6 +101,6 @@ export function useAuth() {
     loading: computed(() => loading.value),
     login,
     logout,
-    checkAuth
+    checkAuth,
   }
 }

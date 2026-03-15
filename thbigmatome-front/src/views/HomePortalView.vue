@@ -35,7 +35,6 @@
 <script setup lang="ts">
 import { ref, watch, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import axios from '@/plugins/axios'
 import { useCommissionerModeStore } from '@/stores/commissionerMode'
 import { useTeamSelectionStore } from '@/stores/teamSelection'
 import { type Team } from '@/types/team'
@@ -46,53 +45,32 @@ const commissionerModeStore = useCommissionerModeStore()
 const teamSelectionStore = useTeamSelectionStore()
 
 const myTeams = ref<Team[]>([])
-// Approach C: teamsLoaded済みならキャッシュを使い、即座にloading=falseで開始する（再マウント時のレースコンディション対策）
-const loading = ref(!teamSelectionStore.teamsLoaded)
+// teamsLoadedはuseAuth(login/checkAuth)で保証済み → loading初期値はfalse固定
+const loading = ref(false)
 const selectedTeamId = ref<number>(0)
 
-// AppBarのwatchEffectがteamsLoaded後にcommissionerModeをtrueにする場合のリダイレクト対応
-// （チーム未所持コミッショナーの初回ログイン時タイミング問題）
+// initializeUserStateが間に合わなかった場合のフォールバック（安全網）
 watch(
   () => commissionerModeStore.isCommissionerMode,
   (val) => {
     if (val) {
-      loading.value = false
       router.push('/commissioner/dashboard')
     }
   },
 )
 
-onMounted(async () => {
-  // Fix: コミッショナーモードリダイレクト時はloading=falseを必ず設定してから戻る
+onMounted(() => {
   if (commissionerModeStore.isCommissionerMode) {
-    loading.value = false
     router.push('/commissioner/dashboard')
     return
   }
 
-  // キャッシュ済みデータがある場合は再フェッチをスキップ
-  if (teamSelectionStore.teamsLoaded) {
-    myTeams.value = teamSelectionStore.myTeams as Team[]
-    if (myTeams.value.length > 0) {
-      const storedId = teamSelectionStore.selectedTeamId
-      const found = myTeams.value.find((t) => t.id === storedId)
-      selectedTeamId.value = found ? found.id : myTeams.value[0].id
-    }
-    return
-  }
-
-  try {
-    const response = await axios.get<Team[]>('/users/me/teams')
-    myTeams.value = response.data
-    // Storeにキャッシュ（teamsLoaded=trueにする）→ NavigationDrawer/AppBarが正しく制御できる
-    teamSelectionStore.setMyTeams(response.data)
-    if (myTeams.value.length > 0) {
-      const storedId = teamSelectionStore.selectedTeamId
-      const found = myTeams.value.find((t) => t.id === storedId)
-      selectedTeamId.value = found ? found.id : myTeams.value[0].id
-    }
-  } finally {
-    loading.value = false
+  // teamsLoadedはuseAuth(login/checkAuth)で初期化済み
+  myTeams.value = teamSelectionStore.myTeams as Team[]
+  if (myTeams.value.length > 0) {
+    const storedId = teamSelectionStore.selectedTeamId
+    const found = myTeams.value.find((t) => t.id === storedId)
+    selectedTeamId.value = found ? found.id : myTeams.value[0].id
   }
 })
 

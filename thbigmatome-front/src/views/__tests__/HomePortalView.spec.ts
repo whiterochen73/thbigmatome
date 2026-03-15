@@ -8,7 +8,7 @@ import { createRouter, createMemoryHistory } from 'vue-router'
 import { createPinia, setActivePinia } from 'pinia'
 import HomePortalView from '../HomePortalView.vue'
 
-// Mock @/plugins/axios
+// Mock @/plugins/axios (unused by HomePortalView after refactor, kept for safety)
 vi.mock('@/plugins/axios', () => {
   const mockAxios = {
     get: vi.fn(),
@@ -34,8 +34,7 @@ vi.mock('../SeasonPortal.vue', () => ({
 }))
 
 import { useCommissionerModeStore } from '@/stores/commissionerMode'
-import axiosPlugin from '@/plugins/axios'
-const mockAxios = axiosPlugin as unknown as { get: ReturnType<typeof vi.fn> }
+import { useTeamSelectionStore } from '@/stores/teamSelection'
 
 const vuetify = createVuetify({ components, directives })
 
@@ -78,9 +77,13 @@ describe('HomePortalView', () => {
   })
 
   it('チーム1件時: SeasonPortalがインライン表示されること', async () => {
-    mockAxios.get.mockResolvedValueOnce({ data: [teamA] })
+    const pinia = createPinia()
+    setActivePinia(pinia)
+    const teamStore = useTeamSelectionStore()
+    teamStore.setMyTeams([teamA])
+
     const router = createTestRouter()
-    const wrapper = mount(HomePortalView, { global: { plugins: [vuetify, router, createPinia()] } })
+    const wrapper = mount(HomePortalView, { global: { plugins: [vuetify, router, pinia] } })
     await flushPromises()
 
     expect(wrapper.find('.season-portal-stub').exists()).toBe(true)
@@ -88,9 +91,13 @@ describe('HomePortalView', () => {
   })
 
   it('チーム2件時: タブが表示されてチーム切り替えができること', async () => {
-    mockAxios.get.mockResolvedValueOnce({ data: [teamA, teamB] })
+    const pinia = createPinia()
+    setActivePinia(pinia)
+    const teamStore = useTeamSelectionStore()
+    teamStore.setMyTeams([teamA, teamB])
+
     const router = createTestRouter()
-    const wrapper = mount(HomePortalView, { global: { plugins: [vuetify, router, createPinia()] } })
+    const wrapper = mount(HomePortalView, { global: { plugins: [vuetify, router, pinia] } })
     await flushPromises()
 
     // タブが表示される
@@ -101,26 +108,36 @@ describe('HomePortalView', () => {
   })
 
   it('チーム0件時: EmptyStateが表示されること', async () => {
-    mockAxios.get.mockResolvedValueOnce({ data: [] })
+    const pinia = createPinia()
+    setActivePinia(pinia)
+    const teamStore = useTeamSelectionStore()
+    teamStore.setMyTeams([])
+
     const router = createTestRouter()
-    const wrapper = mount(HomePortalView, { global: { plugins: [vuetify, router, createPinia()] } })
+    const wrapper = mount(HomePortalView, { global: { plugins: [vuetify, router, pinia] } })
     await flushPromises()
 
     expect(wrapper.find('.season-portal-stub').exists()).toBe(false)
     expect(wrapper.text()).toContain('コミッショナーにお問い合わせください')
   })
 
-  it('my_teamsが/users/me/teamsで取得されること（二重プレフィックスなし）', async () => {
-    mockAxios.get.mockResolvedValueOnce({ data: [teamA] })
+  it('チームデータはuseAuth(initializeUserState)がロード済み想定でstoreから読む', async () => {
+    const pinia = createPinia()
+    setActivePinia(pinia)
+    const teamStore = useTeamSelectionStore()
+    teamStore.setMyTeams([teamA])
+
     const router = createTestRouter()
-    mount(HomePortalView, { global: { plugins: [vuetify, router, createPinia()] } })
+    mount(HomePortalView, { global: { plugins: [vuetify, router, pinia] } })
     await flushPromises()
 
-    expect(mockAxios.get).toHaveBeenCalledWith('/users/me/teams')
-    expect(mockAxios.get).not.toHaveBeenCalledWith('/api/v1/users/me/teams')
+    // HomePortalViewはaxiosを直接呼ばない（useAuthが処理済み）
+    const { default: axiosPlugin } = await import('@/plugins/axios')
+    const mockAxios = axiosPlugin as unknown as { get: ReturnType<typeof vi.fn> }
+    expect(mockAxios.get).not.toHaveBeenCalled()
   })
 
-  it('コミッショナーモードON時: my_teamsを取得せずリダイレクトされること', async () => {
+  it('コミッショナーモードON時: リダイレクトされること', async () => {
     localStorage.setItem('commissionerMode', 'true')
     const router = createTestRouter()
     const pushSpy = vi.spyOn(router, 'push')
@@ -128,23 +145,23 @@ describe('HomePortalView', () => {
     await flushPromises()
 
     expect(pushSpy).toHaveBeenCalledWith('/commissioner/dashboard')
-    expect(mockAxios.get).not.toHaveBeenCalled()
   })
 
   it('コミッショナーモードが遅延でtrueになった場合もリダイレクトされること', async () => {
-    // チーム0件のコミッショナーユーザー: API応答後にAppBarのwatchEffectがcommissionerModeをtrueにするケース
-    mockAxios.get.mockResolvedValueOnce({ data: [] })
-    const router = createTestRouter()
-    const pushSpy = vi.spyOn(router, 'push')
     const pinia = createPinia()
     setActivePinia(pinia)
+    const teamStore = useTeamSelectionStore()
+    teamStore.setMyTeams([])
+
+    const router = createTestRouter()
+    const pushSpy = vi.spyOn(router, 'push')
     mount(HomePortalView, { global: { plugins: [vuetify, router, pinia] } })
     await flushPromises()
 
-    // API応答後もcommissionerModeがfalseのためリダイレクトされていない
+    // commissionerModeがfalseのためリダイレクトされていない
     expect(pushSpy).not.toHaveBeenCalled()
 
-    // AppBarのwatchEffectをシミュレート: commissionerModeをtrueに変更
+    // commissionerModeをtrueに変更（watch経由でリダイレクト）
     const store = useCommissionerModeStore()
     store.setMode(true)
     await nextTick()

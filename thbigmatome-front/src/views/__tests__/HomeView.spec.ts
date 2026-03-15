@@ -4,6 +4,7 @@ import { createVuetify } from 'vuetify'
 import * as components from 'vuetify/components'
 import * as directives from 'vuetify/directives'
 import { createRouter, createMemoryHistory } from 'vue-router'
+import { createPinia } from 'pinia'
 import HomeView from '../HomeView.vue'
 
 // Mock axios
@@ -114,14 +115,14 @@ describe('HomeView', () => {
 
   it('コンポーネントがレンダリングされること', async () => {
     const router = createTestRouter()
-    const wrapper = mount(HomeView, { global: { plugins: [vuetify, router] } })
+    const wrapper = mount(HomeView, { global: { plugins: [vuetify, router, createPinia()] } })
     await flushPromises()
     expect(wrapper.exists()).toBe(true)
   })
 
   it('シーズン進行カードが表示されること', async () => {
     const router = createTestRouter()
-    const wrapper = mount(HomeView, { global: { plugins: [vuetify, router] } })
+    const wrapper = mount(HomeView, { global: { plugins: [vuetify, router, createPinia()] } })
     await flushPromises()
 
     const vm = wrapper.vm as unknown as {
@@ -139,7 +140,7 @@ describe('HomeView', () => {
 
   it('直近試合セクションが表示されること', async () => {
     const router = createTestRouter()
-    const wrapper = mount(HomeView, { global: { plugins: [vuetify, router] } })
+    const wrapper = mount(HomeView, { global: { plugins: [vuetify, router, createPinia()] } })
     await flushPromises()
 
     const vm = wrapper.vm as unknown as {
@@ -157,7 +158,7 @@ describe('HomeView', () => {
 
   it('成績サマリーセクションが表示されること', async () => {
     const router = createTestRouter()
-    const wrapper = mount(HomeView, { global: { plugins: [vuetify, router] } })
+    const wrapper = mount(HomeView, { global: { plugins: [vuetify, router, createPinia()] } })
     await flushPromises()
 
     const vm = wrapper.vm as unknown as {
@@ -180,14 +181,14 @@ describe('HomeView', () => {
       return Promise.resolve({ data: [] })
     })
     const router = createTestRouter()
-    const wrapper = mount(HomeView, { global: { plugins: [vuetify, router] } })
+    const wrapper = mount(HomeView, { global: { plugins: [vuetify, router, createPinia()] } })
     await flushPromises()
     expect(wrapper.text()).toContain('コミッショナーにお問い合わせください')
   })
 
   it('チームあり時に通常ダッシュボードが表示されること', async () => {
     const router = createTestRouter()
-    mount(HomeView, { global: { plugins: [vuetify, router] } })
+    mount(HomeView, { global: { plugins: [vuetify, router, createPinia()] } })
     await flushPromises()
     // チームが1件あるので大会選択が表示される
     expect(axios.get).toHaveBeenCalledWith('/users/me/teams')
@@ -196,7 +197,7 @@ describe('HomeView', () => {
 
   it('my_teamsが/users/me/teamsで取得されること（二重プレフィックスなし）', async () => {
     const router = createTestRouter()
-    mount(HomeView, { global: { plugins: [vuetify, router] } })
+    mount(HomeView, { global: { plugins: [vuetify, router, createPinia()] } })
     await flushPromises()
     expect(axios.get).toHaveBeenCalledWith('/users/me/teams')
     // /api/v1/users/me/teams では呼ばれていないことを確認

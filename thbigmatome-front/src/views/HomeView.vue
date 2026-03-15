@@ -181,6 +181,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import axios from 'axios'
+import { useTeamSelectionStore } from '@/stores/teamSelection'
 
 interface MyTeam {
   id: number
@@ -239,6 +240,8 @@ interface HomeSummary {
   team_summary: TeamSummary | null
 }
 
+const teamSelectionStore = useTeamSelectionStore()
+
 const selectedCompetitionId = ref<number | null>(null)
 const competitions = ref<Competition[]>([])
 const summary = ref<HomeSummary | null>(null)
@@ -264,9 +267,11 @@ async function fetchMyTeams() {
   try {
     const response = await axios.get<MyTeam[]>('/users/me/teams')
     myTeams.value = response.data
+    teamSelectionStore.setMyTeams(response.data)
   } catch (error) {
     console.error('Error fetching my teams:', error)
     myTeams.value = []
+    teamSelectionStore.setMyTeams([])
   } finally {
     loadingTeams.value = false
   }

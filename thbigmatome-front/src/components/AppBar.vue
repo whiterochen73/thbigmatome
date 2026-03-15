@@ -10,7 +10,7 @@
     <v-spacer />
 
     <v-btn
-      v-if="isCommissioner"
+      v-if="showModeToggle"
       icon
       variant="text"
       @click="toggleCommissionerMode"
@@ -60,11 +60,12 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, watchEffect } from 'vue'
 import { useRouter } from 'vue-router'
 import { useTheme } from 'vuetify'
 import { useAuth } from '@/composables/useAuth'
 import { useCommissionerModeStore } from '@/stores/commissionerMode'
+import { useTeamSelectionStore } from '@/stores/teamSelection'
 
 const emit = defineEmits<{
   'toggle-drawer': []
@@ -74,6 +75,19 @@ const router = useRouter()
 const { user, logout, isCommissioner } = useAuth()
 const theme = useTheme()
 const commissionerModeStore = useCommissionerModeStore()
+const teamSelectionStore = useTeamSelectionStore()
+
+// チーム未所持コミッショナーは運営モードに自動固定
+watchEffect(() => {
+  if (isCommissioner.value && teamSelectionStore.teamsLoaded && !teamSelectionStore.hasTeam) {
+    commissionerModeStore.setMode(true)
+  }
+})
+
+// トグルボタンの表示条件: コミッショナー かつ チーム所持
+const showModeToggle = computed(
+  () => isCommissioner.value && (!teamSelectionStore.teamsLoaded || teamSelectionStore.hasTeam),
+)
 
 const toggleCommissionerMode = () => {
   commissionerModeStore.toggle()

@@ -1,7 +1,13 @@
 import { defineStore } from 'pinia'
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 
 const STORAGE_KEY = 'selectedTeam'
+
+interface MyTeam {
+  id: number
+  name: string
+  [key: string]: unknown
+}
 
 export const useTeamSelectionStore = defineStore('teamSelection', () => {
   const stored = localStorage.getItem(STORAGE_KEY)
@@ -9,6 +15,10 @@ export const useTeamSelectionStore = defineStore('teamSelection', () => {
 
   const selectedTeamId = ref<number | null>(initialData?.teamId ?? null)
   const selectedTeamName = ref<string>(initialData?.teamName ?? '')
+  const myTeams = ref<MyTeam[]>([])
+  const teamsLoaded = ref(false)
+
+  const hasTeam = computed(() => myTeams.value.length > 0)
 
   function selectTeam(teamId: number, teamName: string) {
     selectedTeamId.value = teamId
@@ -22,5 +32,19 @@ export const useTeamSelectionStore = defineStore('teamSelection', () => {
     localStorage.removeItem(STORAGE_KEY)
   }
 
-  return { selectedTeamId, selectedTeamName, selectTeam, clearTeam }
+  function setMyTeams(teams: MyTeam[]) {
+    myTeams.value = teams
+    teamsLoaded.value = true
+  }
+
+  return {
+    selectedTeamId,
+    selectedTeamName,
+    myTeams,
+    hasTeam,
+    teamsLoaded,
+    selectTeam,
+    clearTeam,
+    setMyTeams,
+  }
 })

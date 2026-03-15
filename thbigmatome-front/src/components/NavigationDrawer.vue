@@ -22,25 +22,27 @@
         link
       />
 
-      <!-- チームグループ -->
-      <v-list-subheader v-if="!rail">チーム</v-list-subheader>
-      <v-list-item
-        v-if="teamSelectionStore.selectedTeamId"
-        prepend-icon="mdi-calendar-star"
-        :title="'シーズン'"
-        value="season"
-        :to="`/teams/${teamSelectionStore.selectedTeamId}/season`"
-        link
-      />
-      <v-list-item
-        v-for="item in teamMenuItems"
-        :key="item.value"
-        :prepend-icon="item.icon"
-        :title="item.title"
-        :value="item.value"
-        :to="item.to"
-        link
-      />
+      <!-- チームグループ（チーム未所持かつロード完了後のみ非表示） -->
+      <template v-if="!teamSelectionStore.teamsLoaded || teamSelectionStore.hasTeam">
+        <v-list-subheader v-if="!rail">チーム</v-list-subheader>
+        <v-list-item
+          v-if="teamSelectionStore.selectedTeamId"
+          prepend-icon="mdi-calendar-star"
+          :title="'シーズン'"
+          value="season"
+          :to="`/teams/${teamSelectionStore.selectedTeamId}/season`"
+          link
+        />
+        <v-list-item
+          v-for="item in teamMenuItems"
+          :key="item.value"
+          :prepend-icon="item.icon"
+          :title="item.title"
+          :value="item.value"
+          :to="item.to"
+          link
+        />
+      </template>
 
       <!-- 選手グループ -->
       <v-list-subheader v-if="!rail">選手</v-list-subheader>

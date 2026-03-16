@@ -50,7 +50,6 @@ services:
       - "5173:5173"
     volumes:
       - ./thbigmatome-front:/app
-      - /app/node_modules
     environment:
       VITE_API_BASE_URL: http://localhost:3000/api/v1
     command: yarn dev -- --host 0.0.0.0
@@ -89,7 +88,6 @@ services:
     restart: unless-stopped
     volumes:
       - ./thbig-irc:/app
-      - /app/node_modules
     env_file:
       - ./thbig-irc/.env
 

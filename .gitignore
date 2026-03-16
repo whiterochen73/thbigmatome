@@ -22,5 +22,9 @@
 # Temp
 /tmp/
 
+# Blog drafts and temporary reference materials
+/docs/blog/
+/docs/tmp/
+
 # Coverage
 coverage/

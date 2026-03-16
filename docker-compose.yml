@@ -1,8 +1,7 @@
 # Docker Compose for thbigmatome development environment
 # Usage:
-#   docker compose up                        # db + rails + frontend + parser
+#   docker compose up                        # db + rails + frontend + parser + irc
 #   docker compose run --rm parser pytest    # run parser tests
-#   docker compose --profile irc up irc
 
 services:
   db:
@@ -87,11 +86,10 @@ services:
     ports:
       - "8080:8080"
       - "5174:5173"
+    restart: unless-stopped
     volumes:
       - ./thbig-irc:/app
       - /app/node_modules
-    profiles:
-      - irc
     env_file:
       - ./thbig-irc/.env
 

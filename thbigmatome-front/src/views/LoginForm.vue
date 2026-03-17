@@ -40,7 +40,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuth } from '@/composables/useAuth'
 import { useI18n } from 'vue-i18n'
@@ -66,6 +66,7 @@ const handleLogin = async () => {
 
   try {
     await login(form.value.loginName, form.value.password)
+    await nextTick() // リアクティビティ伝播を待つ
     router.push('/') // ログイン成功後のリダイレクト先
   } catch (err: unknown) {
     error.value = err instanceof Error ? err.message : t('loginForm.loginFailed')

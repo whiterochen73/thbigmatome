@@ -6,11 +6,6 @@ export async function authGuard(to: RouteLocationNormalized) {
   const { isAuthenticated, checkAuth, isCommissioner } = useAuth()
 
   if (to.path === '/login') {
-    // 未認証状態でも既存セッションがある場合はリダイレクト
-    // (App.vueのcheckAuth廃止に伴い、authGuardで一元管理)
-    if (!isAuthenticated.value) {
-      await checkAuth()
-    }
     if (isAuthenticated.value) {
       return '/'
     }

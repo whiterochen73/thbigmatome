@@ -2,7 +2,7 @@
 import { type RouteLocationNormalized } from 'vue-router'
 import { useAuth } from '@/composables/useAuth'
 
-export async function authGuard(to: RouteLocationNormalized) {
+export async function authGuard(to: RouteLocationNormalized, from: RouteLocationNormalized) {
   const { isAuthenticated, checkAuth, isCommissioner } = useAuth()
 
   if (to.path === '/login') {
@@ -12,9 +12,13 @@ export async function authGuard(to: RouteLocationNormalized) {
     return true
   }
 
-  // 認証済みの場合はキャッシュ済み状態を使い、不要なHTTPリクエストをスキップ
-  // (タブ切替など同一ルート内ナビゲーションの警告を防ぐ)
-  if (!isAuthenticated.value) {
+  // /login からの遷移（ログイン直後）は必ずcheckAuthを呼ぶ。
+  // 理由: login()でuser.valueをguard外でセットしても、Vue RouterのNavigationが
+  // コミットしてDefaultLayout/NavigationDrawerがマウントされるタイミングまでに
+  // Vueのリアクティビティ伝播が確実に完了しない場合がある。
+  // F5リロード時と同じく「guard内でcheckAuth完了→navigation commit→コンポーネントmount」
+  // の順序にすることで、NavigationDrawerマウント時に確実にisCommissioner=trueになる。
+  if (!isAuthenticated.value || from.path === '/login') {
     await checkAuth()
   }
 

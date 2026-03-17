@@ -7,13 +7,10 @@
 <script setup lang="ts">
 import { onMounted } from 'vue'
 import { useTheme } from 'vuetify'
-import { useAuth } from '@/composables/useAuth'
 
-// アプリケーション起動時に認証状態をチェック
-const { checkAuth } = useAuth()
 const theme = useTheme()
 
-onMounted(async () => {
+onMounted(() => {
   const saved = localStorage.getItem('theme')
   if (saved) {
     // 旧テーマ名(thbigLight/thbigDark)をVuetify標準名に移行
@@ -21,14 +18,9 @@ onMounted(async () => {
     theme.change(validTheme)
     if (validTheme !== saved) localStorage.setItem('theme', validTheme)
   }
-
-  try {
-    await checkAuth()
-  } catch (error) {
-    // 認証チェックに失敗した場合のエラーハンドリング
-    // 例: エラーページにリダイレクト、トースト通知の表示など
-    console.error('Authentication check failed:', error)
-  }
+  // 認証チェックはauthGuardに一本化（App.vueでの非同期checkAuth削除）
+  // 理由: App.vueのonMountedとlogin()の間でレースコンディションが発生し、
+  // login()完了後にcheckAuth()の401レスポンスがuser.valueをnullにリセットしていた
 })
 </script>
 

@@ -27,8 +27,10 @@ axios.interceptors.response.use(
       error.response?.status,
     )
     if (error.response?.status === 401) {
-      console.warn('Authentication error (401). Redirecting to login page.')
-      router.push('/login')
+      if (router.currentRoute.value.path !== '/login') {
+        console.warn('Authentication error (401). Redirecting to login page.')
+        router.push('/login')
+      }
     } else if (error.response?.status === 403) {
       console.warn('Authorization error (403). Redirecting to home.')
       const { showSnackbar } = useSnackbar()

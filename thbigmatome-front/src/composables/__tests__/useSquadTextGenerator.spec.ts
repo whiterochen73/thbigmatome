@@ -24,8 +24,7 @@ function makePlayer(overrides: Partial<RosterPlayer>): RosterPlayer {
     cost: 0,
     selected_cost_type: 'normal',
     position: 'RF',
-    throwing_hand: 'right_throw',
-    batting_hand: 'right_bat',
+    handedness: 'right_throw/right_bat',
     player_types: [],
     is_absent: false,
     ...overrides,
@@ -102,8 +101,7 @@ describe('useSquadTextGenerator', () => {
         number: 'F72',
         player_name: '志摩リン',
         position: 'RF',
-        throwing_hand: 'right_throw',
-        batting_hand: 'right_bat',
+        handedness: 'right_throw/right_bat',
       })
       store.startingLineup = [{ battingOrder: 1, playerId: 42, position: 'RF' }]
 
@@ -227,8 +225,7 @@ describe('useSquadTextGenerator', () => {
         player_id: 1,
         number: 'F01',
         player_name: '選手C',
-        throwing_hand: 'left_throw',
-        batting_hand: 'right_bat',
+        handedness: 'left_throw/right_bat',
       })
       store.startingLineup = [{ battingOrder: 1, playerId: 1, position: 'CF' }]
 
@@ -254,8 +251,7 @@ describe('useSquadTextGenerator', () => {
         number: 'F10',
         player_name: '夢美',
         position: '1B',
-        throwing_hand: 'right_throw',
-        batting_hand: 'left_bat',
+        handedness: 'right_throw/left_bat',
       })
       store.benchPlayers = [10]
 
@@ -283,8 +279,7 @@ describe('useSquadTextGenerator', () => {
         player_name: '水着投手',
         position: 'P',
         player_types: ['中継ぎ契約'],
-        throwing_hand: 'right_throw',
-        batting_hand: 'right_bat',
+        handedness: 'right_throw/right_bat',
       })
       store.reliefPitcherIds = [20]
 
@@ -303,8 +298,7 @@ describe('useSquadTextGenerator', () => {
         player_name: '先発投手',
         position: 'P',
         player_types: [],
-        throwing_hand: 'right_throw',
-        batting_hand: 'right_bat',
+        handedness: 'right_throw/right_bat',
       })
       store.reliefPitcherIds = [21]
 
@@ -324,8 +318,7 @@ describe('useSquadTextGenerator', () => {
         number: 'F30',
         player_name: '先発A',
         position: 'P',
-        throwing_hand: 'right_throw',
-        batting_hand: 'right_bat',
+        handedness: 'right_throw/right_bat',
       })
       store.starterBenchPitcherIds = [30]
 
@@ -345,8 +338,7 @@ describe('useSquadTextGenerator', () => {
         number: 'F40',
         player_name: 'オフ野手',
         position: '3B',
-        throwing_hand: 'right_throw',
-        batting_hand: 'right_bat',
+        handedness: 'right_throw/right_bat',
       })
       store.offPlayers = [40]
 
@@ -489,8 +481,7 @@ describe('useSquadTextGenerator', () => {
         number: 'F70',
         player_name: '投手テスト',
         position: 'pitcher',
-        throwing_hand: 'right_throw',
-        batting_hand: 'right_bat',
+        handedness: 'right_throw/right_bat',
       })
       store.offPlayers = [70]
 

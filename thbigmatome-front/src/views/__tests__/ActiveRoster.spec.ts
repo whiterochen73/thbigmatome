@@ -166,8 +166,7 @@ function makePlayer(overrides: Partial<RosterPlayer> = {}): RosterPlayer {
     cost: 5,
     selected_cost_type: 'normal_cost',
     position: 'pitcher',
-    throwing_hand: 'right_throw',
-    batting_hand: 'right_bat',
+    handedness: 'right_throw/right_bat',
     player_types: ['投手'],
     ...overrides,
   }

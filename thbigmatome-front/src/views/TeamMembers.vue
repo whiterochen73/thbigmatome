@@ -288,6 +288,11 @@ interface TeamPlayer extends Player {
   display_name?: string | null
 }
 
+interface TeamPlayersSaveResponse {
+  message?: string
+  warnings?: string[]
+}
+
 const { t } = useI18n()
 const route = useRoute()
 const router = useRouter()
@@ -640,8 +645,15 @@ const saveTeamMembers = async () => {
         display_name: p.display_name || null,
       })),
     }
-    await axios.post(`/teams/${teamId.value}/team_players`, payload)
+    const response = await axios.post<TeamPlayersSaveResponse>(
+      `/teams/${teamId.value}/team_players`,
+      payload,
+    )
     showSnackbar(t('teamMembers.notifications.saveSuccess'), 'success')
+    const warnings = response.data?.warnings ?? []
+    for (const warning of warnings) {
+      showSnackbar(`警告: ${warning}`, 'warning')
+    }
   } catch (error: unknown) {
     const axiosError = error as {
       response?: { data?: { errors?: { player_id?: string[] }; message?: string; error?: string } }

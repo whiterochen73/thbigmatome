@@ -7,6 +7,10 @@ import { createI18n } from 'vue-i18n'
 import { createRouter, createMemoryHistory } from 'vue-router'
 import TeamMembers from '../TeamMembers.vue'
 
+const { mockShowSnackbar } = vi.hoisted(() => ({
+  mockShowSnackbar: vi.fn(),
+}))
+
 // Mock axios (via @/plugins/axios) — factory must not reference outer variables (hoisting)
 vi.mock('@/plugins/axios', () => {
   return {
@@ -29,7 +33,7 @@ vi.mock('@/plugins/axios', () => {
 // Mock useSnackbar
 vi.mock('@/composables/useSnackbar', () => ({
   useSnackbar: () => ({
-    showSnackbar: vi.fn(),
+    showSnackbar: mockShowSnackbar,
   }),
 }))
 
@@ -213,6 +217,7 @@ async function mountTeamMembers(teamPlayers: Record<string, unknown>[] = []) {
 describe('TeamMembers.vue', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockShowSnackbar.mockClear()
   })
 
   it('チームメンバー一覧のタイトルが表示される', async () => {
@@ -347,5 +352,26 @@ describe('TeamMembers.vue', () => {
 
     const saveBtn = wrapper.findAll('.v-btn').find((b) => b.text().includes('保存'))
     expect(saveBtn).toBeTruthy()
+  })
+
+  it('保存成功時にwarnings配列があれば警告Snackbarを表示する', async () => {
+    vi.mocked(axios.post).mockResolvedValue({
+      data: {
+        message: 'saved',
+        warnings: ['チーム総コストが上限を超えています (210/200)'],
+      },
+    })
+    const wrapper = await mountTeamMembers()
+
+    const saveBtn = wrapper.findAll('.v-btn').find((b) => b.text().includes('保存'))
+    expect(saveBtn).toBeTruthy()
+    await saveBtn!.trigger('click')
+    await flushPromises()
+
+    expect(mockShowSnackbar).toHaveBeenCalledWith('選手情報を保存しました。', 'success')
+    expect(mockShowSnackbar).toHaveBeenCalledWith(
+      '警告: チーム総コストが上限を超えています (210/200)',
+      'warning',
+    )
   })
 })

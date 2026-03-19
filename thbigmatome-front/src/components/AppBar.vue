@@ -2,9 +2,8 @@
   <v-app-bar color="primary" elevation="2" :height="64">
     <v-app-bar-nav-icon @click.stop="emit('toggle-drawer')" />
 
-    <v-app-bar-title @click="router.push('/')" style="cursor: pointer">
-      <v-icon start>mdi-baseball</v-icon>
-      THBIG Dugout
+    <v-app-bar-title class="app-bar-title" @click="router.push('/')">
+      <img class="header-logo" src="/logo-thbig-dugout.svg" alt="THBIG Dugout" />
     </v-app-bar-title>
 
     <v-spacer />
@@ -70,3 +69,17 @@ const handleLogout = async () => {
   router.push('/login')
 }
 </script>
+
+<style scoped>
+.app-bar-title {
+  cursor: pointer;
+  min-width: 0;
+}
+
+.header-logo {
+  display: block;
+  height: 36px;
+  max-width: min(240px, 52vw);
+  width: auto;
+}
+</style>

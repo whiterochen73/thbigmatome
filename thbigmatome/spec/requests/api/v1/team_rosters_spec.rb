@@ -510,4 +510,123 @@ RSpec.describe "Api::V1::TeamRosters", type: :request do
       expect(json["error"]).to include("Season")
     end
   end
+
+  # ============================================================
+  # POST /api/v1/teams/:team_id/roster (commissioner mode)
+  # ============================================================
+
+  describe "POST /api/v1/teams/:team_id/roster (commissioner override)" do
+    include_context "authenticated commissioner"
+
+    let(:target_date) { Date.new(2026, 5, 15) }
+
+    let!(:season_start_schedule) do
+      create(:season_schedule, season: season, date: Date.new(2026, 4, 1), date_type: "game_day")
+    end
+    let!(:game_day_schedule) do
+      create(:season_schedule, season: season, date: target_date, date_type: "game_day")
+    end
+
+    before { team.update!(user: user) }
+
+    def post_roster_update(team_id, roster_updates, date: target_date)
+      post "/api/v1/teams/#{team_id}/roster",
+        params: {
+          roster_updates: roster_updates,
+          target_date: date.to_s
+        },
+        as: :json
+    end
+
+    context "commissioner が1軍コスト超過でもrosterを更新できる" do
+      it "returns 200 with commissioner_override warning" do
+        # 25 players in first squad, each cost 4 = 100; limit for 26 = 117
+        # promoting player with cost 18 → total 118 > 117
+        25.times { add_player_to_team(team: team, cost: cost, squad: "first", cost_value: 4) }
+        result = add_player_to_team(team: team, cost: cost, squad: "second", cost_value: 18)
+
+        post_roster_update(team.id, [
+          { team_membership_id: result[:membership].id, squad: "first" }
+        ])
+
+        expect(response).to have_http_status(:ok)
+        json = response.parsed_body
+        expect(json["warnings"]).to be_an(Array)
+        expect(json["warnings"].any? { |w| w["type"] == "commissioner_override" }).to be true
+        expect(result[:membership].reload.squad).to eq("first")
+      end
+    end
+
+    context "commissioner が外の世界枠超過でもrosterを更新できる" do
+      it "returns 200 with commissioner_override warning when outside world limit exceeded" do
+        # normal team: native series = ["touhou"], 外の世界枠上限 = 4
+        # 4 outside-world players already in first squad (exactly at limit)
+        # Promoting a 5th outside-world player would exceed the limit
+        21.times { add_player_to_team(team: team, cost: cost, squad: "first", cost_value: 3) }
+        4.times do
+          p = create(:player, series: "original")
+          tm = create(:team_membership, team: team, player: p, squad: "first", selected_cost_type: "normal_cost")
+          create(:cost_player, cost: cost, player: p, normal_cost: 3)
+        end
+        # 5th outside-world player in second squad → promote
+        outside_player = create(:player, series: "original")
+        outside_membership = create(:team_membership, team: team, player: outside_player, squad: "second", selected_cost_type: "normal_cost")
+        create(:cost_player, cost: cost, player: outside_player, normal_cost: 3)
+
+        post_roster_update(team.id, [
+          { team_membership_id: outside_membership.id, squad: "first" }
+        ])
+
+        expect(response).to have_http_status(:ok)
+        json = response.parsed_body
+        expect(json["warnings"].any? { |w| w["type"] == "commissioner_override" }).to be true
+      end
+    end
+
+    context "非commissionerは1軍コスト超過で422が返る" do
+      include_context "authenticated user"
+      before { team.update!(user: user) }
+
+      it "returns 422 when cost limit exceeded" do
+        25.times { add_player_to_team(team: team, cost: cost, squad: "first", cost_value: 4) }
+        result = add_player_to_team(team: team, cost: cost, squad: "second", cost_value: 18)
+
+        post_roster_update(team.id, [
+          { team_membership_id: result[:membership].id, squad: "first" }
+        ])
+
+        expect(response).to have_http_status(:unprocessable_content)
+        json = response.parsed_body
+        expect(json["error"]).to include("コスト")
+      end
+    end
+
+    context "commissioner でも cooldown は維持される" do
+      it "returns 422 when player is on cooldown" do
+        25.times { add_player_to_team(team: team, cost: cost, squad: "first", cost_value: 4) }
+        result = add_player_to_team(team: team, cost: cost, squad: "second", cost_value: 3)
+
+        create(:season_roster,
+          season: season,
+          team_membership: result[:membership],
+          squad: "first",
+          registered_on: Date.new(2026, 5, 1)
+        )
+        create(:season_roster,
+          season: season,
+          team_membership: result[:membership],
+          squad: "second",
+          registered_on: Date.new(2026, 5, 10)
+        )
+
+        post_roster_update(team.id, [
+          { team_membership_id: result[:membership].id, squad: "first" }
+        ])
+
+        expect(response).to have_http_status(:unprocessable_content)
+        json = response.parsed_body
+        expect(json["error"]).to include("cooldown")
+      end
+    end
+  end
 end

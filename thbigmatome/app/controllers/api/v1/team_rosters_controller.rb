@@ -90,6 +90,9 @@ module Api
         target_date = Date.parse(params[:target_date]) # Date for which the roster is being set
         season_start_date = season.season_schedules.minimum(:date) # Calculate season start date once
 
+        is_commissioner = current_user.commissioner?
+        commissioner_warnings = []
+
         ActiveRecord::Base.transaction do
           # Phase 1: Apply all squad changes (cooldown check only, no cost validation yet)
           roster_updates.each do |update|
@@ -105,7 +108,7 @@ module Api
                 registered_on: target_date
               )
             elsif team_membership.squad == "second" && new_squad == "first"
-              # Check reconditioning: block promotion for reconditioning players
+              # Check reconditioning: block promotion for reconditioning players (even commissioners)
               absence = absence_info_for(team_membership, target_date)
               if absence[:is_absent] && absence[:absence_info][:absence_type] == "reconditioning"
                 raise "#{team_membership.player.name}は再調整中のため1軍登録できません。"
@@ -130,22 +133,34 @@ module Api
 
           # Phase 2: Validate final state of 1st squad after all changes
           final_first_squad = team.team_memberships.reload.select { |tm| tm.squad == "first" }
-          validate_first_squad_constraints(final_first_squad, target_date, season, season_start_date)
+          validate_first_squad_constraints(final_first_squad, target_date, season, season_start_date,
+            commissioner_mode: is_commissioner, commissioner_warnings: commissioner_warnings)
 
           # Phase 3: Validate outside world constraints
           team.reload
           team.errors.clear
           unless team.validate_outside_world_limit
-            raise team.errors.full_messages.first
+            msg = team.errors.full_messages.first
+            if is_commissioner
+              commissioner_warnings << msg
+            else
+              raise msg
+            end
           end
           team.errors.clear
           unless team.validate_outside_world_balance
-            raise team.errors.full_messages.first
+            msg = team.errors.full_messages.first
+            if is_commissioner
+              commissioner_warnings << msg
+            else
+              raise msg
+            end
           end
         end
 
         # Collect warnings for absent players being promoted
         warnings = collect_absence_warnings(team, target_date, roster_updates)
+        warnings.concat(commissioner_warnings.map { |msg| { type: "commissioner_override", message: msg } })
 
         render json: { message: "Roster updated successfully", warnings: warnings }, status: :ok
       rescue ActiveRecord::RecordNotFound => e
@@ -218,7 +233,7 @@ module Api
       end
 
       # Rule 4 & 5: Validate 1st team constraints
-      def validate_first_squad_constraints(first_squad_memberships, target_date, season, season_start_date)
+      def validate_first_squad_constraints(first_squad_memberships, target_date, season, season_start_date, commissioner_mode: false, commissioner_warnings: [])
         player_count = first_squad_memberships.count
         total_cost = first_squad_memberships.sum { |tm| tm.player.cost_players.find { |pc| pc.cost_id == @current_cost_list.id }.send(tm.selected_cost_type) }
 
@@ -235,18 +250,21 @@ module Api
           if is_first_game_day_of_season && player_count < minimum_players
             # Do not raise error for minimum player count on the first game day during initial setup
           elsif player_count < minimum_players
-            raise "試合日には1軍に最低#{minimum_players}人を登録する必要があります。"
+            msg = "試合日には1軍に最低#{minimum_players}人を登録する必要があります。"
+            commissioner_mode ? (commissioner_warnings << msg) : raise(msg)
           end
         end
 
         if player_count > max_players
-          raise "1軍に登録できる選手の最大数（#{max_players}人）を超えています。"
+          msg = "1軍に登録できる選手の最大数（#{max_players}人）を超えています。"
+          commissioner_mode ? (commissioner_warnings << msg) : raise(msg)
         end
 
         # 1軍コスト上限: 人数別段階制（config/cost_limits.yml）
         max_cost = Team.first_squad_cost_limit_for_count(player_count)
         if max_cost && total_cost > max_cost
-          raise "1軍に登録されている選手の合計コストが上限（#{max_cost}）を超えています。"
+          msg = "1軍に登録されている選手の合計コストが上限（#{max_cost}）を超えています。"
+          commissioner_mode ? (commissioner_warnings << msg) : raise(msg)
         end
       end
     end

@@ -2,7 +2,7 @@
   "topMenu": {
     "welcome": {
       "title": "ようこそ！",
-      "subtitle": "東方BIG野球まとめツールへ",
+      "subtitle": "THBIG Dugoutへ",
       "message": "左側のナビゲーションメニューから各機能をご利用ください。"
     },
     "teamSelection": {
@@ -284,7 +284,7 @@
     "loginFailed": "ログインに失敗しました"
   },
   "layout": {
-    "appTitle": "東方BIG野球まとめツール",
+    "appTitle": "THBIG Dugout",
     "logout": "ログアウト"
   },
   "navigation": {

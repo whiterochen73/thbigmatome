@@ -66,7 +66,7 @@ const i18n = createI18n({
   messages: {
     ja: {
       layout: {
-        appTitle: '東方BIG野球まとめツール',
+        appTitle: 'THBIG Dugout',
         logout: 'ログアウト',
       },
       navigation: {
@@ -287,7 +287,7 @@ describe('DefaultLayout.vue', () => {
       const wrapper = mountDefaultLayout()
       await flushPromises()
 
-      expect(wrapper.text()).toContain('東方BIG野球まとめツール')
+      expect(wrapper.text()).toContain('THBIG Dugout')
     })
   })
 })

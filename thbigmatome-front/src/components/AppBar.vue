@@ -4,7 +4,7 @@
 
     <v-app-bar-title @click="router.push('/')" style="cursor: pointer">
       <v-icon start>mdi-baseball</v-icon>
-      東方BIG野球まとめツール
+      THBIG Dugout
     </v-app-bar-title>
 
     <v-spacer />

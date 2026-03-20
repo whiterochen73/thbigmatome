@@ -123,6 +123,7 @@
               :game-date="gameData.game_date"
               :game-result="pitcherGameResult"
               :schedule-id="Number(scheduleId)"
+              :announced-starter-id="gameData.announced_starter_id"
             />
           </v-card-text>
         </v-card>

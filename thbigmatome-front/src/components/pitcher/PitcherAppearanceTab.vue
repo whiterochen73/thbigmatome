@@ -1,44 +1,37 @@
 <template>
   <div>
     <!-- 試合結果 -->
-    <v-row class="mb-3">
-      <v-col cols="12" sm="6" class="d-flex align-center">
-        <span class="text-caption text-grey mr-2">試合結果:</span>
-        <v-chip :color="gameResultColor" size="small">{{ gameResultLabel }}</v-chip>
-      </v-col>
-    </v-row>
+    <div class="d-flex align-center mb-3">
+      <span class="text-caption text-grey mr-2">試合結果:</span>
+      <v-chip :color="gameResultColor" size="small">{{ gameResultLabel }}</v-chip>
+    </div>
 
     <template v-if="loadingPitchers">
       <v-progress-circular indeterminate color="primary" size="24" class="d-block mx-auto" />
     </template>
 
     <template v-else>
-      <!-- 投手行リスト -->
+      <!-- 投手行リスト（コンパクトレイアウト） -->
       <div
         v-for="(row, idx) in pitcherRows"
         :key="idx"
-        class="pitcher-row pa-3 mb-2 rounded"
+        class="pitcher-row pa-2 mb-1 rounded"
         :class="{ 'bg-grey-lighten-4': idx % 2 === 0 }"
       >
-        <div class="d-flex align-center justify-space-between mb-2">
-          <span class="text-caption text-medium-emphasis font-weight-bold">
-            {{ idx === 0 ? '先発（1番手）' : `リリーフ（${idx + 1}番手）` }}
-          </span>
-          <v-btn
-            v-if="idx > 0"
-            icon
-            size="x-small"
-            variant="text"
-            color="error"
-            @click="removeRow(idx)"
-          >
-            <v-icon>mdi-close</v-icon>
-          </v-btn>
-        </div>
+        <!-- メイン行 -->
+        <v-row dense align="center">
+          <!-- 番手ラベル -->
+          <v-col cols="auto">
+            <span
+              class="text-caption font-weight-bold text-medium-emphasis"
+              style="min-width: 42px; display: inline-block"
+            >
+              {{ idx + 1 }}番手
+            </span>
+          </v-col>
 
-        <v-row dense>
           <!-- 投手選択 -->
-          <v-col cols="12" sm="6">
+          <v-col cols="12" sm="4">
             <v-autocomplete
               v-model="row.pitcher_id"
               :items="pitcherItems"
@@ -47,103 +40,153 @@
               label="投手"
               variant="outlined"
               density="compact"
+              hide-details
               :item-props="(item: PitcherItem) => ({ disabled: item.disabled })"
             >
               <template #item="{ props, item }">
                 <v-list-item v-bind="props" :disabled="item.raw.disabled">
                   <template #append>
-                    <span class="ml-2 text-caption">{{ item.raw.statusBadge }}</span>
-                    <span v-if="item.raw.preGameInfo" class="ml-1 text-caption text-grey">
-                      {{ item.raw.preGameInfo }}
-                    </span>
+                    <span class="ml-1 text-caption text-grey">{{ item.raw.preGameInfo }}</span>
                   </template>
                 </v-list-item>
-              </template>
-              <template #prepend-inner>
-                <span v-if="row.pitcher_id" class="mr-1 text-caption">
-                  {{ getPitcherStatusBadge(row.pitcher_id) }}
-                </span>
               </template>
             </v-autocomplete>
           </v-col>
 
-          <!-- ロール -->
-          <v-col cols="12" sm="6">
+          <!-- 区分（1番手: 先発/オープナー, 2番手: リリーフ/第二先発, 3番手以降: リリーフ固定） -->
+          <v-col cols="6" sm="2">
             <v-select
+              v-if="idx === 0"
               v-model="row.role"
-              :items="idx === 0 ? starterRoleOptions : reliefRoleOptions"
+              :items="starterRoleOptions"
               item-title="label"
               item-value="value"
-              label="役割"
+              label="区分"
               variant="outlined"
               density="compact"
+              hide-details
+            />
+            <v-select
+              v-else-if="idx === 1"
+              :model-value="row.is_second_starter ? 'second_starter' : 'reliever'"
+              @update:model-value="
+                (v: string) => {
+                  row.is_second_starter = v === 'second_starter'
+                }
+              "
+              :items="secondPitcherRoleOptions"
+              item-title="label"
+              item-value="value"
+              label="区分"
+              variant="outlined"
+              density="compact"
+              hide-details
+            />
+            <v-text-field
+              v-else
+              model-value="リリーフ"
+              label="区分"
+              variant="outlined"
+              density="compact"
+              hide-details
+              readonly
             />
           </v-col>
 
-          <!-- オープナー / 第二先発チェックボックス -->
-          <v-col
-            cols="12"
-            v-if="row.role === 'opener' || (idx === 1 && pitcherRows[0]?.role === 'opener')"
-          >
-            <div class="d-flex align-center gap-3">
-              <v-checkbox
-                v-if="row.role === 'opener'"
-                v-model="row.is_opener"
-                label="オープナー本人（リリーフルール適用）"
-                density="compact"
-                hide-details
-              />
-              <v-checkbox
-                v-if="idx === 1 && pitcherRows[0]?.role === 'opener'"
-                v-model="row.is_second_starter"
-                label="第二先発"
-                density="compact"
-                hide-details
-              />
-            </div>
-          </v-col>
-
-          <!-- 投球回 -->
-          <v-col cols="4">
+          <!-- 投球回（整数） -->
+          <v-col cols="3" sm="1">
             <v-text-field
-              v-model.number="row.innings_pitched"
-              label="投球回"
+              v-model.number="row.innings_int"
+              label="回"
               type="number"
-              step="0.1"
+              step="1"
               min="0"
               variant="outlined"
-              density="compact"
-            />
-          </v-col>
-
-          <!-- 登板開始後アウト無し降板 -->
-          <v-col cols="4" class="d-flex align-center">
-            <v-checkbox
-              v-model="row.no_out_exit"
-              label="登板後アウト無し降板"
               density="compact"
               hide-details
             />
           </v-col>
 
-          <!-- 勝敗投手 -->
-          <v-col cols="4">
+          <!-- 端数セレクト -->
+          <v-col cols="4" sm="1">
             <v-select
-              v-model="row.decision"
-              :items="getDecisionOptions(idx)"
+              v-model="row.innings_frac"
+              :items="fracOptions"
               item-title="label"
               item-value="value"
-              label="W/L/S/H"
+              label="端数"
               variant="outlined"
               density="compact"
-              clearable
+              hide-details
             />
           </v-col>
 
-          <!-- result_category 自動計算 -->
-          <v-col cols="12" class="d-flex align-center">
+          <!-- 責任投手チップ（W/L/S/H/—） -->
+          <v-col cols="12" sm="3">
+            <div class="d-flex align-center gap-1 flex-wrap">
+              <v-chip
+                v-for="opt in getDecisionChipOptions(idx)"
+                :key="String(opt.value)"
+                :color="getChipColor(opt.value, row.decision)"
+                :variant="row.decision === opt.value ? 'elevated' : 'outlined'"
+                :disabled="opt.disabled"
+                size="small"
+                style="cursor: pointer"
+                @click="!opt.disabled && toggleDecision(row, opt.value)"
+              >
+                {{ opt.label }}
+              </v-chip>
+            </div>
+          </v-col>
+
+          <!-- 削除ボタン -->
+          <v-col cols="auto">
+            <v-btn
+              v-if="idx > 0"
+              icon
+              size="x-small"
+              variant="text"
+              color="error"
+              @click="removeRow(idx)"
+            >
+              <v-icon>mdi-close</v-icon>
+            </v-btn>
+          </v-col>
+        </v-row>
+
+        <!-- サブ情報行 -->
+        <v-row dense align="center" class="mt-1">
+          <!-- アウト無し降板 -->
+          <v-col cols="auto">
+            <v-checkbox
+              v-model="row.no_out_exit"
+              label="アウト無し降板"
+              density="compact"
+              hide-details
+            />
+          </v-col>
+
+          <!-- オープナー本人チェック（1番手のopener選択時のみ） -->
+          <v-col v-if="idx === 0 && row.role === 'opener'" cols="auto">
+            <v-checkbox
+              v-model="row.is_opener"
+              label="オープナー（リリーフルール適用）"
+              density="compact"
+              hide-details
+            />
+          </v-col>
+
+          <!-- 試合前状態テキスト -->
+          <v-col cols="auto">
+            <span v-if="getPitcherPreGameInfo(row.pitcher_id)" class="text-caption text-grey">
+              {{ getPitcherPreGameInfo(row.pitcher_id) }}
+            </span>
+          </v-col>
+
+          <!-- 結果区分チップ -->
+          <v-col cols="auto" class="ml-auto">
             <span class="text-caption text-medium-emphasis mr-1">結果区分:</span>
-            <v-chip size="small" :color="resultCategoryColor(computeResultCategory(idx))">
+            <v-chip size="x-small" :color="resultCategoryColor(computeResultCategory(idx))">
               {{ resultCategoryLabel(computeResultCategory(idx)) }}
             </v-chip>
           </v-col>
@@ -155,7 +198,7 @@
         投手を追加
       </v-btn>
 
-      <!-- エラー/警告 -->
+      <!-- エラー/警告/成功 -->
       <v-alert v-if="errors.length > 0" type="error" density="compact" class="mt-3">
         <div v-for="e in errors" :key="e">{{ e }}</div>
       </v-alert>
@@ -173,8 +216,8 @@
           variant="elevated"
           :loading="saving"
           :disabled="!canSave"
-          @click="saveAll"
           prepend-icon="mdi-content-save"
+          @click="saveAll"
         >
           登板記録を保存
         </v-btn>
@@ -186,13 +229,18 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import axios from 'axios'
-import type { PitcherAppearanceInput, PitcherRole } from '@/types/pitcherAppearance'
+import type {
+  PitcherAppearanceInput,
+  PitcherRole,
+  PitcherDecision,
+} from '@/types/pitcherAppearance'
 
 const props = defineProps<{
   teamId: number
   gameDate: string
   gameResult: 'win' | 'lose' | 'draw'
   scheduleId: number
+  announcedStarterId?: number | null
 }>()
 
 // ─────────────────────────────────────────
@@ -218,6 +266,8 @@ interface PitcherItem {
 interface PitcherRow extends PitcherAppearanceInput {
   is_second_starter: boolean
   no_out_exit: boolean
+  innings_int: number | null
+  innings_frac: '' | '0' | '1' | '2'
 }
 
 // ─────────────────────────────────────────
@@ -262,9 +312,16 @@ const starterRoleOptions = [
   { label: 'オープナー', value: 'opener' },
 ]
 
-const reliefRoleOptions = [
+const secondPitcherRoleOptions = [
   { label: 'リリーフ', value: 'reliever' },
-  { label: 'オープナー', value: 'opener' },
+  { label: '第二先発', value: 'second_starter' },
+]
+
+const fracOptions = [
+  { label: '—', value: '' },
+  { label: '0/3', value: '0' },
+  { label: '1/3', value: '1' },
+  { label: '2/3', value: '2' },
 ]
 
 // ─────────────────────────────────────────
@@ -284,7 +341,16 @@ function createEmptyRow(role: PitcherRole): PitcherRow {
     no_out_exit: false,
     consecutive_short_rest_count: 0,
     pre_injury_days_excluded: 0,
+    innings_int: null,
+    innings_frac: '',
   }
+}
+
+function computeIPFromRow(row: PitcherRow): number | null {
+  if (row.innings_int === null) return null
+  if (row.innings_frac === '1') return row.innings_int + 0.1
+  if (row.innings_frac === '2') return row.innings_int + 0.2
+  return row.innings_int
 }
 
 function addRow() {
@@ -295,17 +361,17 @@ function removeRow(idx: number) {
   pitcherRows.value.splice(idx, 1)
 }
 
-function getPitcherStatusBadge(pitcherId: number | null): string {
+function getPitcherPreGameInfo(pitcherId: number | null): string {
   if (!pitcherId) return ''
   const state = preGameStates.value.find((s) => s.player_id === pitcherId)
-  return state?.is_injured ? '🏥' : '🟢'
+  return buildPreGameInfo(state)
 }
 
 function computeResultCategory(idx: number): string | null {
   const row = pitcherRows.value[idx]
   if (props.gameResult === 'no_game') return 'no_game'
   if (row.role !== 'starter') return 'normal'
-  const innings = row.innings_pitched ?? 0
+  const innings = computeIPFromRow(row) ?? 0
   const hasSuccessor = pitcherRows.value.length > 1
   const fatigueP = row.fatigue_p_used ?? 0
   if (innings > 0 && innings < 5 && hasSuccessor) return 'ko'
@@ -313,7 +379,7 @@ function computeResultCategory(idx: number): string | null {
   return 'normal'
 }
 
-function getDecisionOptions(idx: number) {
+function getDecisionChipOptions(idx: number) {
   const hasW = pitcherRows.value.some((r, i) => i !== idx && r.decision === 'W')
   const hasL = pitcherRows.value.some((r, i) => i !== idx && r.decision === 'L')
   const hasS = pitcherRows.value.some((r, i) => i !== idx && r.decision === 'S')
@@ -322,16 +388,26 @@ function getDecisionOptions(idx: number) {
   const isLastPitcher = idx === pitcherRows.value.length - 1
   const result = props.gameResult
   return [
-    { label: '—', value: null },
-    { label: 'W（勝利投手）', value: 'W', disabled: result !== 'win' || hasW },
-    { label: 'L（敗戦投手）', value: 'L', disabled: result !== 'lose' || hasL },
+    { label: 'W', value: 'W' as PitcherDecision, disabled: result !== 'win' || hasW },
+    { label: 'L', value: 'L' as PitcherDecision, disabled: result !== 'lose' || hasL },
     {
-      label: 'S（セーブ）',
-      value: 'S',
+      label: 'S',
+      value: 'S' as PitcherDecision,
       disabled: isStarter || hasS || result !== 'win' || !isLastPitcher,
     },
-    { label: 'H（ホールド）', value: 'H', disabled: isStarter || isLastPitcher },
+    { label: 'H', value: 'H' as PitcherDecision, disabled: isStarter || isLastPitcher },
+    { label: '—', value: null as PitcherDecision, disabled: false },
   ]
+}
+
+function getChipColor(value: PitcherDecision, current: PitcherDecision): string {
+  if (value !== current) return 'default'
+  const map: Record<string, string> = { W: 'warning', L: 'primary', S: 'success', H: 'info' }
+  return value ? (map[value] ?? 'default') : 'default'
+}
+
+function toggleDecision(row: PitcherRow, value: PitcherDecision) {
+  row.decision = row.decision === value ? null : value
 }
 
 function resultCategoryLabel(cat: string | null): string {
@@ -372,7 +448,11 @@ function buildPreGameInfo(state: PreGameState | undefined): string {
 
 async function fetchPitchersAndStates() {
   loadingPitchers.value = true
-  pitcherRows.value = [createEmptyRow('starter')]
+  const initialRow = createEmptyRow('starter')
+  if (props.announcedStarterId) {
+    initialRow.pitcher_id = props.announcedStarterId
+  }
+  pitcherRows.value = [initialRow]
   errors.value = []
   warnings.value = []
   savedMessage.value = ''
@@ -452,7 +532,7 @@ async function saveAll() {
           team_id: props.teamId,
           game_id: props.scheduleId,
           role: row.role,
-          innings_pitched: row.innings_pitched,
+          innings_pitched: computeIPFromRow(row),
           earned_runs: row.earned_runs,
           fatigue_p_used: row.fatigue_p_used,
           decision: row.decision,
@@ -484,7 +564,7 @@ async function saveAll() {
 }
 
 // ─────────────────────────────────────────
-// Lifecycle / Watchers
+// Lifecycle
 // ─────────────────────────────────────────
 
 onMounted(() => {

@@ -124,6 +124,7 @@
               :game-result="pitcherGameResult"
               :schedule-id="Number(scheduleId)"
               :announced-starter-id="gameData.announced_starter_id"
+              :competition-id="gameData.competition_id ?? null"
             />
           </v-card-text>
         </v-card>

@@ -241,6 +241,7 @@ const props = defineProps<{
   gameResult: 'win' | 'lose' | 'draw'
   scheduleId: number
   announcedStarterId?: number | null
+  competitionId?: number | null
 }>()
 
 // ─────────────────────────────────────────
@@ -448,11 +449,7 @@ function buildPreGameInfo(state: PreGameState | undefined): string {
 
 async function fetchPitchersAndStates() {
   loadingPitchers.value = true
-  const initialRow = createEmptyRow('starter')
-  if (props.announcedStarterId) {
-    initialRow.pitcher_id = props.announcedStarterId
-  }
-  pitcherRows.value = [initialRow]
+  pitcherRows.value = [createEmptyRow('starter')]
   errors.value = []
   warnings.value = []
   savedMessage.value = ''
@@ -504,6 +501,10 @@ async function fetchPitchersAndStates() {
             preGameInfo,
           }
         })
+      // pitcherItems構築後に予告先発を設定することでv-autocompleteが名前を表示できる
+      if (props.announcedStarterId) {
+        pitcherRows.value[0].pitcher_id = props.announcedStarterId
+      }
     }
   } finally {
     loadingPitchers.value = false
@@ -530,7 +531,7 @@ async function saveAll() {
         pitcher_appearance: {
           pitcher_id: row.pitcher_id,
           team_id: props.teamId,
-          game_id: props.scheduleId,
+          competition_id: props.competitionId,
           role: row.role,
           innings_pitched: computeIPFromRow(row),
           earned_runs: row.earned_runs,

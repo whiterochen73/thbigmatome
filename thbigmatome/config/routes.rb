@@ -92,6 +92,9 @@ Rails.application.routes.draw do
       # 選手カード
       resources :player_cards, only: [ :index, :show, :update ]
 
+      # 投手登板管理
+      resources :pitcher_appearances, only: [ :create ]
+
       # ホーム画面
       get "home/summary", to: "home#summary"
 

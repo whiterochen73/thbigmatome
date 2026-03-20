@@ -85,9 +85,9 @@ RSpec.describe PitcherGameState, type: :model do
     end
 
     context "starter で innings < 5 かつ 後続投手あり（pitchers_in_game > 1）のとき" do
-      it "ko を返す" do
+      it "ko を返す（負け試合かつ decision='L'）" do
         expect(described_class.calculate_result_category(
-          role: "starter", innings_pitched: 4.2, game_result: "lose", pitchers_in_game: 2
+          role: "starter", innings_pitched: 4.2, game_result: "lose", pitchers_in_game: 2, decision: "L"
         )).to eq("ko")
       end
     end
@@ -115,9 +115,9 @@ RSpec.describe PitcherGameState, type: :model do
         )).to eq("normal")
       end
 
-      it "innings==4.2 は KO（< 5 かつ後続あり）" do
+      it "innings==4.2 は KO（< 5 かつ後続あり かつ decision='L'）" do
         expect(described_class.calculate_result_category(
-          role: "starter", innings_pitched: 4.2, game_result: "lose", pitchers_in_game: 2
+          role: "starter", innings_pitched: 4.2, game_result: "lose", pitchers_in_game: 2, decision: "L"
         )).to eq("ko")
       end
 
@@ -136,6 +136,24 @@ RSpec.describe PitcherGameState, type: :model do
       it "pitchers_in_game==1（完投）は KO にならない" do
         expect(described_class.calculate_result_category(
           role: "starter", innings_pitched: 4.0, game_result: "win", pitchers_in_game: 1
+        )).to eq("normal")
+      end
+
+      it "勝ち試合で先発が4回降板 → KO にならない（normal）" do
+        expect(described_class.calculate_result_category(
+          role: "starter", innings_pitched: 4.0, game_result: "win", pitchers_in_game: 2, decision: nil
+        )).to eq("normal")
+      end
+
+      it "負け試合で先発が4回降板 + decision='L' → KO" do
+        expect(described_class.calculate_result_category(
+          role: "starter", innings_pitched: 4.0, game_result: "lose", pitchers_in_game: 2, decision: "L"
+        )).to eq("ko")
+      end
+
+      it "負け試合で先発が4回降板 + decision=nil（リリーフがLを持つ） → KO にならない" do
+        expect(described_class.calculate_result_category(
+          role: "starter", innings_pitched: 4.0, game_result: "lose", pitchers_in_game: 2, decision: nil
         )).to eq("normal")
       end
     end

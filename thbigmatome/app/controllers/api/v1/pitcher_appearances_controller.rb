@@ -20,7 +20,8 @@ class Api::V1::PitcherAppearancesController < Api::V1::BaseController
         innings_pitched: innings,
         game_result: game_result,
         pitchers_in_game: pitchers_count,
-        fatigue_p: appearance_params_hash[:fatigue_p_used].to_i
+        fatigue_p: appearance_params_hash[:fatigue_p_used].to_i,
+        decision: appearance_params_hash[:decision]
       )
     end
 

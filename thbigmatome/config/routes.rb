@@ -30,6 +30,7 @@ Rails.application.routes.draw do
         resource :game_lineup, only: [ :show, :update ]
         resource :squad_text_settings, only: [ :show, :update ]
         resources :roster_changes, only: [ :index ]
+        resources :pitcher_game_states, only: [ :index ]
       end
 
       resources :game, only: [ :show, :update ]

@@ -129,7 +129,7 @@ RSpec.describe "Api::V1::PitcherAppearancesController", type: :request do
         params = valid_params.deep_merge(pitcher_appearance: {
           role: "starter",
           innings_pitched: 3.0,
-          decision: nil,
+          decision: "L",
           game_result: "lose"
         })
         post "/api/v1/pitcher_appearances", params: params, as: :json

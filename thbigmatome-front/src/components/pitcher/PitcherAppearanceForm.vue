@@ -169,7 +169,7 @@
             <v-col cols="6">
               <v-select
                 v-model="row.decision"
-                :items="decisionOptions"
+                :items="getDecisionOptions(idx)"
                 item-title="label"
                 item-value="value"
                 label="W/L/S/H"
@@ -294,14 +294,6 @@ const reliefRoleOptions = [
   { label: 'オープナー', value: 'opener' },
 ]
 
-const decisionOptions = [
-  { label: '—', value: null },
-  { label: 'W（勝利投手）', value: 'W' },
-  { label: 'L（敗戦投手）', value: 'L' },
-  { label: 'S（セーブ）', value: 'S' },
-  { label: 'H（ホールド）', value: 'H' },
-]
-
 // ─────────────────────────────────────────
 // Computed
 // ─────────────────────────────────────────
@@ -359,9 +351,33 @@ function computeResultCategory(idx: number): string | null {
 
   const innings = row.innings_pitched ?? 0
   const hasSuccessor = pitcherRows.value.length > 1
+  const fatigueP = row.fatigue_p_used ?? 0
   if (innings > 0 && innings < 5 && hasSuccessor) return 'ko'
-  if (gameResult.value === 'lose' && innings > 0) return 'long_loss'
+  if (gameResult.value === 'lose' && fatigueP > 0 && innings > fatigueP + 1) return 'long_loss'
   return 'normal'
+}
+
+function getDecisionOptions(idx: number) {
+  const hasW = pitcherRows.value.some((r, i) => i !== idx && r.decision === 'W')
+  const hasL = pitcherRows.value.some((r, i) => i !== idx && r.decision === 'L')
+  const hasS = pitcherRows.value.some((r, i) => i !== idx && r.decision === 'S')
+  const row = pitcherRows.value[idx]
+  const isStarter = row.role === 'starter'
+  const isLastPitcher = idx === pitcherRows.value.length - 1
+  const result = gameResult.value
+  return [
+    { label: '—', value: null },
+    { label: 'W（勝利投手）', value: 'W', disabled: result !== 'win' || hasW },
+    { label: 'L（敗戦投手）', value: 'L', disabled: result !== 'lose' || hasL },
+    // S: 先発以外・勝ち試合のみ・試合に1人のみ・最後の投手のみ
+    {
+      label: 'S（セーブ）',
+      value: 'S',
+      disabled: isStarter || hasS || result !== 'win' || !isLastPitcher,
+    },
+    // H: 先発以外・最後の投手には付与不可（手渡した投手に付く）
+    { label: 'H（ホールド）', value: 'H', disabled: isStarter || isLastPitcher },
+  ]
 }
 
 function resultCategoryLabel(cat: string | null): string {

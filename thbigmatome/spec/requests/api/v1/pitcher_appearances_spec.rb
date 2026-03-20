@@ -138,6 +138,136 @@ RSpec.describe "Api::V1::PitcherAppearancesController", type: :request do
         json = response.parsed_body
         expect(json["pitcher_appearance"]["result_category"]).to eq("ko")
       end
+
+      it "game_result == no_game の場合 no_game になる" do
+        params = valid_params.deep_merge(pitcher_appearance: {
+          role: "starter",
+          innings_pitched: 3.0,
+          decision: nil,
+          game_result: "no_game",
+          result_category: nil
+        })
+        post "/api/v1/pitcher_appearances", params: params, as: :json
+
+        expect(response).to have_http_status(:created)
+        json = response.parsed_body
+        expect(json["pitcher_appearance"]["result_category"]).to eq("no_game")
+      end
+
+      it "先発で疲労P > 0 かつ innings > fatigue_p + 1 かつ敗戦の場合 long_loss になる" do
+        params = valid_params.deep_merge(pitcher_appearance: {
+          role: "starter",
+          innings_pitched: 8.0,
+          fatigue_p_used: 5,
+          decision: nil,
+          game_result: "lose",
+          result_category: nil
+        })
+        post "/api/v1/pitcher_appearances", params: params, as: :json
+
+        expect(response).to have_http_status(:created)
+        json = response.parsed_body
+        expect(json["pitcher_appearance"]["result_category"]).to eq("long_loss")
+      end
+
+      it "疲労P == 0 の場合 long_loss にならず normal になる" do
+        params = valid_params.deep_merge(pitcher_appearance: {
+          role: "starter",
+          innings_pitched: 8.0,
+          fatigue_p_used: 0,
+          decision: nil,
+          game_result: "lose",
+          result_category: nil
+        })
+        post "/api/v1/pitcher_appearances", params: params, as: :json
+
+        expect(response).to have_http_status(:created)
+        json = response.parsed_body
+        expect(json["pitcher_appearance"]["result_category"]).to eq("normal")
+      end
+
+      it "先発で通常パターンの場合 normal になる" do
+        params = valid_params.deep_merge(pitcher_appearance: {
+          role: "starter",
+          innings_pitched: 7.0,
+          fatigue_p_used: 5,
+          decision: nil,
+          game_result: "win",
+          result_category: nil
+        })
+        post "/api/v1/pitcher_appearances", params: params, as: :json
+
+        expect(response).to have_http_status(:created)
+        json = response.parsed_body
+        expect(json["pitcher_appearance"]["result_category"]).to eq("normal")
+      end
+    end
+
+    context "validate_decision: W/L/S 試合結果制約" do
+      before { game }
+
+      it "Wは勝ち試合以外でwarningを返す" do
+        params = valid_params.deep_merge(pitcher_appearance: {
+          decision: "W",
+          game_result: "lose"
+        })
+        post "/api/v1/pitcher_appearances", params: params, as: :json
+
+        expect(response).to have_http_status(:created)
+        json = response.parsed_body
+        expect(json["warnings"]).to include("W（勝利投手）は勝ち試合のみです")
+      end
+
+      it "Lは負け試合以外でwarningを返す" do
+        params = valid_params.deep_merge(pitcher_appearance: {
+          decision: "L",
+          game_result: "win"
+        })
+        post "/api/v1/pitcher_appearances", params: params, as: :json
+
+        expect(response).to have_http_status(:created)
+        json = response.parsed_body
+        expect(json["warnings"]).to include("L（敗戦投手）は負け試合のみです")
+      end
+
+      it "Sは勝ち試合以外でwarningを返す" do
+        params = valid_params.deep_merge(pitcher_appearance: {
+          role: "reliever",
+          decision: "S",
+          game_result: "lose"
+        })
+        post "/api/v1/pitcher_appearances", params: params, as: :json
+
+        expect(response).to have_http_status(:created)
+        json = response.parsed_body
+        expect(json["warnings"]).to include("S（セーブ）は勝ち試合のみです")
+      end
+
+      it "Sを先発に付与するとwarningを返す" do
+        params = valid_params.deep_merge(pitcher_appearance: {
+          role: "starter",
+          decision: "S",
+          game_result: "win"
+        })
+        post "/api/v1/pitcher_appearances", params: params, as: :json
+
+        expect(response).to have_http_status(:created)
+        json = response.parsed_body
+        expect(json["warnings"]).to include("S（セーブ）は先発以外（リリーフ/オープナー）のみです")
+      end
+
+      it "Hを先発に付与するとwarningを返す" do
+        params = valid_params.deep_merge(pitcher_appearance: {
+          role: "starter",
+          decision: "H",
+          game_result: "win"
+        })
+        post "/api/v1/pitcher_appearances", params: params, as: :json
+
+        expect(response).to have_http_status(:created)
+        json = response.parsed_body
+        expect(json["warnings"]).to include("H（ホールド）は先発以外（リリーフ/オープナー）のみです")
+      end
     end
 
     context "必須パラメータ不足" do

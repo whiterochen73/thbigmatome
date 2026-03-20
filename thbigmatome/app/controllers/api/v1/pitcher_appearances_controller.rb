@@ -19,12 +19,13 @@ class Api::V1::PitcherAppearancesController < Api::V1::BaseController
         role: role,
         innings_pitched: innings,
         game_result: game_result,
-        pitchers_in_game: pitchers_count
+        pitchers_in_game: pitchers_count,
+        fatigue_p: appearance_params_hash[:fatigue_p_used].to_i
       )
     end
 
     state = PitcherGameState.new(appearance_params_hash)
-    warnings = validate_decision(state)
+    warnings = validate_decision(state, game_result)
 
     if state.save
       render json: { pitcher_appearance: state.as_json, warnings: warnings }, status: :created
@@ -77,7 +78,7 @@ class Api::V1::PitcherAppearancesController < Api::V1::BaseController
     nil
   end
 
-  def validate_decision(state)
+  def validate_decision(state, game_result)
     warnings = []
     return warnings unless state.decision.present?
 
@@ -85,13 +86,18 @@ class Api::V1::PitcherAppearancesController < Api::V1::BaseController
 
     case state.decision
     when "W"
+      warnings << "W（勝利投手）は勝ち試合のみです" if game_result != "win"
       warnings << "W（勝利投手）は試合に1人のみです" if game_states.where(decision: "W").exists?
     when "L"
+      warnings << "L（敗戦投手）は負け試合のみです" if game_result != "lose"
       warnings << "L（敗戦投手）は試合に1人のみです" if game_states.where(decision: "L").exists?
     when "S"
+      warnings << "S（セーブ）は先発以外（リリーフ/オープナー）のみです" if state.role == "starter"
       warnings << "S（セーブ）は試合に1人のみです" if game_states.where(decision: "S").exists?
+      warnings << "S（セーブ）は勝ち試合のみです" if game_result != "win"
     when "H"
-      # H（ホールド）は複数可
+      warnings << "H（ホールド）は先発以外（リリーフ/オープナー）のみです" if state.role == "starter"
+      # H（ホールド）は複数可・最後の投手でないことはFE側で制御
     end
 
     warnings

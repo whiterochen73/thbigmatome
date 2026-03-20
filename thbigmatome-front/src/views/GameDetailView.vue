@@ -29,109 +29,136 @@
         </v-col>
       </v-row>
 
-      <!-- 試合基本情報 -->
-      <v-row>
-        <v-col cols="12">
-          <v-card>
-            <v-card-title>試合情報</v-card-title>
-            <v-card-text>
-              <v-row>
-                <v-col cols="12" sm="6" md="3">
-                  <div class="text-caption text-grey">日付</div>
-                  <div>{{ game.real_date }}</div>
-                </v-col>
-                <v-col cols="12" sm="6" md="3">
-                  <div class="text-caption text-grey">大会ID</div>
-                  <div>{{ game.competition_id }}</div>
-                </v-col>
-                <v-col cols="12" sm="6" md="3">
-                  <div class="text-caption text-grey">ホームチームID</div>
-                  <div>{{ game.home_team_id }}</div>
-                </v-col>
-                <v-col cols="12" sm="6" md="3">
-                  <div class="text-caption text-grey">ビジターチームID</div>
-                  <div>{{ game.visitor_team_id }}</div>
-                </v-col>
-                <v-col cols="12" sm="6" md="3">
-                  <div class="text-caption text-grey">ステータス</div>
-                  <v-chip :color="game.status === 'confirmed' ? 'success' : 'warning'" size="small">
-                    {{ game.status === 'confirmed' ? '確定' : '下書き' }}
-                  </v-chip>
-                </v-col>
-                <v-col cols="12" sm="6" md="3">
-                  <div class="text-caption text-grey">出典</div>
-                  <div>{{ game.source }}</div>
-                </v-col>
-              </v-row>
-            </v-card-text>
-          </v-card>
-        </v-col>
-      </v-row>
+      <!-- タブ -->
+      <v-tabs v-model="activeTab" color="primary" class="mb-2">
+        <v-tab value="summary">試合概要</v-tab>
+        <v-tab value="pitching">登板記録</v-tab>
+      </v-tabs>
 
-      <!-- イニングスコアボード -->
-      <v-row>
-        <v-col cols="12">
-          <v-card>
-            <v-card-title>スコアボード</v-card-title>
-            <v-card-text>
-              <v-table density="compact" class="elevation-1">
-                <thead>
-                  <tr>
-                    <th>チーム</th>
-                    <th v-for="inning in innings" :key="inning" class="text-center">
-                      {{ inning }}
-                    </th>
-                    <th class="text-center font-weight-bold">計</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr>
-                    <td class="font-weight-medium">ビジター ({{ game.visitor_team_id }})</td>
-                    <td v-for="inning in innings" :key="inning" class="text-center">
-                      {{ scoreBoard.visitor[inning] ?? 0 }}
-                    </td>
-                    <td class="text-center font-weight-bold">{{ visitorTotal }}</td>
-                  </tr>
-                  <tr>
-                    <td class="font-weight-medium">ホーム ({{ game.home_team_id }})</td>
-                    <td v-for="inning in innings" :key="inning" class="text-center">
-                      {{ scoreBoard.home[inning] ?? 0 }}
-                    </td>
-                    <td class="text-center font-weight-bold">{{ homeTotal }}</td>
-                  </tr>
-                </tbody>
-              </v-table>
-            </v-card-text>
-          </v-card>
-        </v-col>
-      </v-row>
+      <v-window v-model="activeTab">
+        <!-- タブ1: 試合概要 -->
+        <v-window-item value="summary">
+          <!-- 試合基本情報 -->
+          <v-row>
+            <v-col cols="12">
+              <v-card>
+                <v-card-title>試合情報</v-card-title>
+                <v-card-text>
+                  <v-row>
+                    <v-col cols="12" sm="6" md="3">
+                      <div class="text-caption text-grey">日付</div>
+                      <div>{{ game.real_date }}</div>
+                    </v-col>
+                    <v-col cols="12" sm="6" md="3">
+                      <div class="text-caption text-grey">大会ID</div>
+                      <div>{{ game.competition_id }}</div>
+                    </v-col>
+                    <v-col cols="12" sm="6" md="3">
+                      <div class="text-caption text-grey">ホームチームID</div>
+                      <div>{{ game.home_team_id }}</div>
+                    </v-col>
+                    <v-col cols="12" sm="6" md="3">
+                      <div class="text-caption text-grey">ビジターチームID</div>
+                      <div>{{ game.visitor_team_id }}</div>
+                    </v-col>
+                    <v-col cols="12" sm="6" md="3">
+                      <div class="text-caption text-grey">ステータス</div>
+                      <v-chip
+                        :color="game.status === 'confirmed' ? 'success' : 'warning'"
+                        size="small"
+                      >
+                        {{ game.status === 'confirmed' ? '確定' : '下書き' }}
+                      </v-chip>
+                    </v-col>
+                    <v-col cols="12" sm="6" md="3">
+                      <div class="text-caption text-grey">出典</div>
+                      <div>{{ game.source }}</div>
+                    </v-col>
+                  </v-row>
+                </v-card-text>
+              </v-card>
+            </v-col>
+          </v-row>
 
-      <!-- 打席一覧 -->
-      <v-row>
-        <v-col cols="12">
+          <!-- イニングスコアボード -->
+          <v-row>
+            <v-col cols="12">
+              <v-card>
+                <v-card-title>スコアボード</v-card-title>
+                <v-card-text>
+                  <v-table density="compact" class="elevation-1">
+                    <thead>
+                      <tr>
+                        <th>チーム</th>
+                        <th v-for="inning in innings" :key="inning" class="text-center">
+                          {{ inning }}
+                        </th>
+                        <th class="text-center font-weight-bold">計</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr>
+                        <td class="font-weight-medium">ビジター ({{ game.visitor_team_id }})</td>
+                        <td v-for="inning in innings" :key="inning" class="text-center">
+                          {{ scoreBoard.visitor[inning] ?? 0 }}
+                        </td>
+                        <td class="text-center font-weight-bold">{{ visitorTotal }}</td>
+                      </tr>
+                      <tr>
+                        <td class="font-weight-medium">ホーム ({{ game.home_team_id }})</td>
+                        <td v-for="inning in innings" :key="inning" class="text-center">
+                          {{ scoreBoard.home[inning] ?? 0 }}
+                        </td>
+                        <td class="text-center font-weight-bold">{{ homeTotal }}</td>
+                      </tr>
+                    </tbody>
+                  </v-table>
+                </v-card-text>
+              </v-card>
+            </v-col>
+          </v-row>
+
+          <!-- 打席一覧 -->
+          <v-row>
+            <v-col cols="12">
+              <v-card>
+                <v-card-title>打席一覧</v-card-title>
+                <v-card-text>
+                  <v-data-table
+                    :headers="atBatHeaders"
+                    :items="game.at_bats"
+                    density="compact"
+                    class="elevation-1"
+                  >
+                    <template v-slot:[`item.half`]="{ item }">
+                      {{ item.half === 'top' ? '表' : '裏' }}
+                    </template>
+                    <template v-slot:[`item.rolls`]="{ item }">
+                      {{ item.rolls.join(', ') }}
+                    </template>
+                    <template v-slot:[`item.scored`]="{ item }">
+                      {{ item.scored ? '○' : '' }}
+                    </template>
+                  </v-data-table>
+                </v-card-text>
+              </v-card>
+            </v-col>
+          </v-row>
+        </v-window-item>
+
+        <!-- タブ2: 登板記録 -->
+        <v-window-item value="pitching">
           <v-card>
-            <v-card-title>打席一覧</v-card-title>
+            <v-card-title>
+              <v-icon start>mdi-baseball</v-icon>
+              投手登板記録
+            </v-card-title>
             <v-card-text>
-              <v-data-table
-                :headers="atBatHeaders"
-                :items="game.at_bats"
-                density="compact"
-                class="elevation-1"
-              >
-                <template v-slot:[`item.half`]="{ item }">
-                  {{ item.half === 'top' ? '表' : '裏' }}
-                </template>
-                <template v-slot:[`item.rolls`]="{ item }">
-                  {{ item.rolls.join(', ') }}
-                </template>
-                <template v-slot:[`item.scored`]="{ item }">
-                  {{ item.scored ? '○' : '' }}
-                </template>
-              </v-data-table>
+              <PitcherAppearanceTab :game="gameForTab" />
             </v-card-text>
           </v-card>
-        </v-col>
-      </v-row>
+        </v-window-item>
+      </v-window>
     </template>
 
     <v-row v-if="loading">
@@ -146,6 +173,7 @@
 import { ref, onMounted, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import axios from 'axios'
+import PitcherAppearanceTab from '@/components/pitcher/PitcherAppearanceTab.vue'
 
 interface AtBat {
   id: number
@@ -182,6 +210,7 @@ const router = useRouter()
 const game = ref<Game | null>(null)
 const loading = ref(false)
 const errorMessage = ref('')
+const activeTab = ref('summary')
 
 const atBatHeaders = [
   { title: '回', key: 'inning', width: '60px' },
@@ -211,10 +240,8 @@ const scoreBoard = computed(() => {
 
   for (const ab of game.value.at_bats) {
     if (ab.half === 'top') {
-      // 表 = ビジター攻撃
       visitor[ab.inning] = (visitor[ab.inning] ?? 0) + ab.rbi
     } else {
-      // 裏 = ホーム攻撃
       home[ab.inning] = (home[ab.inning] ?? 0) + ab.rbi
     }
   }
@@ -227,6 +254,20 @@ const visitorTotal = computed(() =>
 const homeTotal = computed(() =>
   Object.values(scoreBoard.value.home).reduce((sum, v) => sum + v, 0),
 )
+
+// PitcherAppearanceTab に渡すゲームサマリー
+const gameForTab = computed(() => {
+  if (!game.value) return null
+  return {
+    id: game.value.id,
+    competition_id: game.value.competition_id,
+    home_team_id: game.value.home_team_id,
+    visitor_team_id: game.value.visitor_team_id,
+    real_date: game.value.real_date,
+    home_total: homeTotal.value,
+    visitor_total: visitorTotal.value,
+  }
+})
 
 async function fetchGame(id: string | string[]) {
   loading.value = true

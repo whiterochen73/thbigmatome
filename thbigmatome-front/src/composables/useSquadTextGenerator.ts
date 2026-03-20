@@ -94,11 +94,20 @@ const DEFAULT_SETTINGS: SquadTextSettingData = {
   },
 }
 
+interface PitcherPreGameState {
+  player_id: number
+  rest_days: number | null
+  cumulative_innings: number
+  last_role: string | null
+  is_injured: boolean
+}
+
 export function useSquadTextGenerator(teamId: Ref<number>) {
   const store = useSquadTextStore()
 
   const battingStats = ref<Record<number, Record<string, number | null>>>({})
   const pitchingStats = ref<Record<number, Record<string, number | null>>>({})
+  const pitcherPreGameStates = ref<Record<number, PitcherPreGameState>>({})
   const settings = ref<SquadTextSettingData>({
     ...DEFAULT_SETTINGS,
     batting_stats_config: { ...DEFAULT_SETTINGS.batting_stats_config },
@@ -228,6 +237,8 @@ export function useSquadTextGenerator(teamId: Ref<number>) {
       const parts = [`${prefix}${formatNum(p.number)}`, p.player_name, formatHand(p.handedness)]
       const pLine = pitchingLine(id)
       if (pLine) parts.push(pLine)
+      const state = pitcherPreGameStates.value[id]
+      if (state && state.cumulative_innings > 0) parts.push(`累積${state.cumulative_innings}`)
       lines.push(parts.join(' '))
     }
     return lines.join('\n')
@@ -242,6 +253,8 @@ export function useSquadTextGenerator(teamId: Ref<number>) {
       const parts = [formatNum(p.number), p.player_name, formatHand(p.handedness)]
       const pLine = pitchingLine(id)
       if (pLine) parts.push(pLine)
+      const state = pitcherPreGameStates.value[id]
+      if (state && state.rest_days != null) parts.push(`中${state.rest_days}日`)
       lines.push(parts.join(' '))
     }
     return lines.join('\n')
@@ -296,18 +309,15 @@ export function useSquadTextGenerator(teamId: Ref<number>) {
   async function fetchPitcherGameStates(pitcherIds: number[]) {
     if (pitcherIds.length === 0) return
     try {
-      const res = await axios.get<{ player_id: number; stats: Record<string, number | null> }[]>(
+      const res = await axios.get<PitcherPreGameState[]>(
         `/teams/${teamId.value}/pitcher_game_states`,
         { params: { player_ids: pitcherIds } },
       )
       for (const item of res.data) {
-        pitchingStats.value[item.player_id] = {
-          ...pitchingStats.value[item.player_id],
-          ...item.stats,
-        }
+        pitcherPreGameStates.value[item.player_id] = item
       }
     } catch {
-      // API unavailable
+      // API unavailable — pre-game state will not be shown
     }
   }
 
@@ -391,6 +401,7 @@ export function useSquadTextGenerator(teamId: Ref<number>) {
     reliefPitcherText,
     starterBenchText,
     offText,
+    pitcherPreGameStates,
     fetchStats,
     fetchPitcherGameStates,
     fetchSettings,

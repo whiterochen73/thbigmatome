@@ -62,15 +62,22 @@ module Api
       end
 
       def build_injured_set(pitcher_ids, target_date)
+        tm_map = @team.team_memberships
+          .where(player_id: pitcher_ids)
+          .each_with_object({}) { |tm, h| h[tm.id] = tm.player_id }
+
+        return Set.new if tm_map.empty?
+
         PlayerAbsence
-          .where(player_id: pitcher_ids, team_id: @team.id)
+          .where(team_membership_id: tm_map.keys)
           .select { |pa|
             start = pa.start_date&.to_date
             end_d = pa.respond_to?(:effective_end_date) ? pa.effective_end_date&.to_date : pa.end_date&.to_date
             next false unless start && start <= target_date
             end_d.nil? || end_d >= target_date
           }
-          .map(&:player_id)
+          .map { |pa| tm_map[pa.team_membership_id] }
+          .compact
           .to_set
       end
 

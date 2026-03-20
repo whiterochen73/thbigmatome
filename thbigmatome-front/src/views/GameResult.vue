@@ -22,89 +22,113 @@
       </template>
     </v-toolbar>
 
-    <v-row>
-      <v-col>
-        <v-card>
-          <v-card-title>{{ t('gameResult.basicInfo') }}</v-card-title>
-          <v-card-text>
-            <v-row>
-              <v-col>
-                <TeamMemberSelect
-                  v-model="gameData.announced_starter_id"
-                  :team-id="gameData.team_id"
-                  v-if="gameData.team_id"
-                  :label="t('gameResult.announcedStarter')"
+    <v-tabs v-model="activeTab" color="primary" class="mt-2">
+      <v-tab value="overview">試合概要</v-tab>
+      <v-tab value="pitchers">登板記録</v-tab>
+    </v-tabs>
+
+    <v-window v-model="activeTab">
+      <v-window-item value="overview">
+        <v-row class="mt-2">
+          <v-col>
+            <v-card>
+              <v-card-title>{{ t('gameResult.basicInfo') }}</v-card-title>
+              <v-card-text>
+                <v-row>
+                  <v-col>
+                    <TeamMemberSelect
+                      v-model="gameData.announced_starter_id"
+                      :team-id="gameData.team_id"
+                      v-if="gameData.team_id"
+                      :label="t('gameResult.announcedStarter')"
+                    />
+                  </v-col>
+                  <v-col>
+                    <TeamSelect
+                      v-model="gameData.opponent_team_id"
+                      :teams="allTeams"
+                      display-name-type="short_name"
+                      :label="t('gameResult.opponentTeam')"
+                    />
+                  </v-col>
+                  <v-col>
+                    <v-select
+                      v-model="gameData.home_away"
+                      :items="homeAwayItems"
+                      item-title="name"
+                      item-value="value"
+                      :label="t('gameResult.homeAway.title')"
+                    >
+                    </v-select>
+                  </v-col>
+                  <v-col>
+                    <v-text-field v-model="gameData.stadium" :label="t('gameResult.stadium')">
+                    </v-text-field>
+                  </v-col>
+                  <v-col>
+                    <v-select
+                      v-model="gameData.designated_hitter_enabled"
+                      :items="dhItems"
+                      item-title="name"
+                      item-value="value"
+                      :label="t('gameResult.dhSystem.title')"
+                    >
+                    </v-select>
+                  </v-col>
+                </v-row>
+              </v-card-text>
+              <v-card-title>{{ t('gameResult.gameInfo') }}</v-card-title>
+              <v-card-text>
+                <Scoreboard
+                  v-if="gameData.scoreboard"
+                  v-model="gameData.scoreboard"
+                  :home-team-name="homeTeamName"
+                  :away-team-name="awayTeamName"
                 />
-              </v-col>
-              <v-col>
-                <TeamSelect
-                  v-model="gameData.opponent_team_id"
-                  :teams="allTeams"
-                  display-name-type="short_name"
-                  :label="t('gameResult.opponentTeam')"
-                />
-              </v-col>
-              <v-col>
-                <v-select
-                  v-model="gameData.home_away"
-                  :items="homeAwayItems"
-                  item-title="name"
-                  item-value="value"
-                  :label="t('gameResult.homeAway.title')"
-                >
-                </v-select>
-              </v-col>
-              <v-col>
-                <v-text-field v-model="gameData.stadium" :label="t('gameResult.stadium')">
-                </v-text-field>
-              </v-col>
-              <v-col>
-                <v-select
-                  v-model="gameData.designated_hitter_enabled"
-                  :items="dhItems"
-                  item-title="name"
-                  item-value="value"
-                  :label="t('gameResult.dhSystem.title')"
-                >
-                </v-select>
-              </v-col>
-            </v-row>
-          </v-card-text>
-          <v-card-title>{{ t('gameResult.gameInfo') }}</v-card-title>
+                <v-row class="mt-4">
+                  <v-col>
+                    <PlayerSelect
+                      v-model="gameData.winning_pitcher_id"
+                      :players="allPlayers"
+                      :label="t('gameResult.winningPitcher')"
+                    />
+                  </v-col>
+                  <v-col>
+                    <PlayerSelect
+                      v-model="gameData.losing_pitcher_id"
+                      :players="allPlayers"
+                      :label="t('gameResult.losingPitcher')"
+                    />
+                  </v-col>
+                  <v-col>
+                    <PlayerSelect
+                      v-model="gameData.save_pitcher_id"
+                      :players="allPlayers"
+                      :label="t('gameResult.savePitcher')"
+                    />
+                  </v-col>
+                </v-row>
+              </v-card-text>
+            </v-card>
+          </v-col>
+        </v-row>
+      </v-window-item>
+
+      <v-window-item value="pitchers">
+        <v-card class="mt-2">
           <v-card-text>
-            <Scoreboard
-              v-if="gameData.scoreboard"
-              v-model="gameData.scoreboard"
-              :home-team-name="homeTeamName"
-              :away-team-name="awayTeamName"
+            <PitcherAppearanceTab
+              v-if="gameData.team_id"
+              :team-id="Number(teamId)"
+              :game-date="gameData.game_date"
+              :game-result="pitcherGameResult"
+              :schedule-id="Number(scheduleId)"
             />
-            <v-row class="mt-4">
-              <v-col>
-                <PlayerSelect
-                  v-model="gameData.winning_pitcher_id"
-                  :players="allPlayers"
-                  :label="t('gameResult.winningPitcher')"
-                />
-              </v-col>
-              <v-col>
-                <PlayerSelect
-                  v-model="gameData.losing_pitcher_id"
-                  :players="allPlayers"
-                  :label="t('gameResult.losingPitcher')"
-                />
-              </v-col>
-              <v-col>
-                <PlayerSelect
-                  v-model="gameData.save_pitcher_id"
-                  :players="allPlayers"
-                  :label="t('gameResult.savePitcher')"
-                />
-              </v-col>
-            </v-row>
           </v-card-text>
         </v-card>
-      </v-col>
-    </v-row>
+      </v-window-item>
+    </v-window>
+
     <v-snackbar v-model="snackbar" :color="snackbarColor" :timeout="3000">
       {{ snackbarText }}
     </v-snackbar>
@@ -123,10 +147,12 @@ import TeamMemberSelect from '@/components/shared/TeamMemberSelect.vue'
 import TeamSelect from '@/components/shared/TeamSelect.vue'
 import PlayerSelect from '@/components/shared/PlayerSelect.vue'
 import Scoreboard from '@/components/Scoreboard.vue'
+import PitcherAppearanceTab from '@/components/pitcher/PitcherAppearanceTab.vue'
 
 const { t } = useI18n()
 const route = useRoute()
 const gameDate = ref(new Date())
+const activeTab = ref('overview')
 
 const snackbar = ref(false)
 const snackbarText = ref('')
@@ -190,6 +216,17 @@ const dhItems = [
   { name: t('gameResult.dhSystem.enabled'), value: true },
   { name: t('gameResult.dhSystem.disabled'), value: false },
 ]
+
+const pitcherGameResult = computed<'win' | 'lose' | 'draw'>(() => {
+  const sb = gameData.value.scoreboard
+  if (!sb) return 'draw'
+  const homeTotal = sb.home.reduce((acc: number, v) => acc + (Number(v) || 0), 0)
+  const visitorTotal = sb.away.reduce((acc: number, v) => acc + (Number(v) || 0), 0)
+  if (homeTotal === visitorTotal) return 'draw'
+  const isHome = gameData.value.home_away === 'home'
+  if (isHome) return homeTotal > visitorTotal ? 'win' : 'lose'
+  return visitorTotal > homeTotal ? 'win' : 'lose'
+})
 
 const homeTeamName = computed(() => {
   if (!gameData.value) return ''

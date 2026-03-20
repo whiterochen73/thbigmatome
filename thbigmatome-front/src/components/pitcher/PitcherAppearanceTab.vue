@@ -1,19 +1,7 @@
 <template>
   <div>
-    <!-- チーム選択 -->
+    <!-- 試合結果 -->
     <v-row class="mb-3">
-      <v-col cols="12" sm="6">
-        <v-btn-toggle
-          v-model="selectedTeamType"
-          mandatory
-          color="primary"
-          variant="outlined"
-          density="compact"
-        >
-          <v-btn value="home" size="small">ホーム ({{ game.home_team_id }})</v-btn>
-          <v-btn value="visitor" size="small">ビジター ({{ game.visitor_team_id }})</v-btn>
-        </v-btn-toggle>
-      </v-col>
       <v-col cols="12" sm="6" class="d-flex align-center">
         <span class="text-caption text-grey mr-2">試合結果:</span>
         <v-chip :color="gameResultColor" size="small">{{ gameResultLabel }}</v-chip>
@@ -196,22 +184,15 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import axios from 'axios'
 import type { PitcherAppearanceInput, PitcherRole } from '@/types/pitcherAppearance'
 
-interface GameSummary {
-  id: number
-  competition_id: number
-  home_team_id: number
-  visitor_team_id: number
-  real_date: string
-  home_total: number
-  visitor_total: number
-}
-
 const props = defineProps<{
-  game: GameSummary
+  teamId: number
+  gameDate: string
+  gameResult: 'win' | 'lose' | 'draw'
+  scheduleId: number
 }>()
 
 // ─────────────────────────────────────────
@@ -243,7 +224,6 @@ interface PitcherRow extends PitcherAppearanceInput {
 // State
 // ─────────────────────────────────────────
 
-const selectedTeamType = ref<'home' | 'visitor'>('home')
 const pitcherItems = ref<PitcherItem[]>([])
 const preGameStates = ref<PreGameState[]>([])
 const loadingPitchers = ref(false)
@@ -257,26 +237,16 @@ const pitcherRows = ref<PitcherRow[]>([createEmptyRow('starter')])
 // Computed
 // ─────────────────────────────────────────
 
-const selectedTeamId = computed(() =>
-  selectedTeamType.value === 'home' ? props.game.home_team_id : props.game.visitor_team_id,
-)
-
-const gameResult = computed<string>(() => {
-  const h = props.game.home_total
-  const v = props.game.visitor_total
-  if (h === v) return 'draw'
-  if (selectedTeamType.value === 'home') return h > v ? 'win' : 'lose'
-  return v > h ? 'win' : 'lose'
-})
+const selectedTeamId = computed(() => props.teamId)
 
 const gameResultLabel = computed(() => {
   const map: Record<string, string> = { win: '勝利 ○', lose: '敗戦 ●', draw: '引き分け △' }
-  return map[gameResult.value] ?? gameResult.value
+  return map[props.gameResult] ?? props.gameResult
 })
 
 const gameResultColor = computed(() => {
   const map: Record<string, string> = { win: 'success', lose: 'error', draw: 'grey' }
-  return map[gameResult.value] ?? 'default'
+  return map[props.gameResult] ?? 'default'
 })
 
 const canSave = computed(
@@ -333,13 +303,13 @@ function getPitcherStatusBadge(pitcherId: number | null): string {
 
 function computeResultCategory(idx: number): string | null {
   const row = pitcherRows.value[idx]
-  if (gameResult.value === 'no_game') return 'no_game'
+  if (props.gameResult === 'no_game') return 'no_game'
   if (row.role !== 'starter') return 'normal'
   const innings = row.innings_pitched ?? 0
   const hasSuccessor = pitcherRows.value.length > 1
   const fatigueP = row.fatigue_p_used ?? 0
   if (innings > 0 && innings < 5 && hasSuccessor) return 'ko'
-  if (gameResult.value === 'lose' && fatigueP > 0 && innings > fatigueP + 1) return 'long_loss'
+  if (props.gameResult === 'lose' && fatigueP > 0 && innings > fatigueP + 1) return 'long_loss'
   return 'normal'
 }
 
@@ -350,7 +320,7 @@ function getDecisionOptions(idx: number) {
   const row = pitcherRows.value[idx]
   const isStarter = row.role === 'starter'
   const isLastPitcher = idx === pitcherRows.value.length - 1
-  const result = gameResult.value
+  const result = props.gameResult
   return [
     { label: '—', value: null },
     { label: 'W（勝利投手）', value: 'W', disabled: result !== 'win' || hasW },
@@ -411,7 +381,7 @@ async function fetchPitchersAndStates() {
     const [playersRes, statesRes, absencesRes] = await Promise.allSettled([
       axios.get(`/teams/${selectedTeamId.value}/team_players`),
       axios.get(`/teams/${selectedTeamId.value}/pitcher_game_states`, {
-        params: { date: props.game.real_date },
+        params: { date: props.gameDate },
       }),
       axios.get(`/player_absences?team_id=${selectedTeamId.value}`),
     ])
@@ -419,7 +389,7 @@ async function fetchPitchersAndStates() {
     // 負傷中選手ID
     const injuredIds = new Set<number>()
     if (absencesRes.status === 'fulfilled') {
-      const today = props.game.real_date
+      const today = props.gameDate
       for (const pa of absencesRes.value.data) {
         const start = pa.start_date
         const end = pa.end_date
@@ -479,19 +449,18 @@ async function saveAll() {
       const payload = {
         pitcher_appearance: {
           pitcher_id: row.pitcher_id,
-          team_id: selectedTeamId.value,
-          competition_id: props.game.competition_id,
-          game_id: props.game.id,
+          team_id: props.teamId,
+          game_id: props.scheduleId,
           role: row.role,
           innings_pitched: row.innings_pitched,
           earned_runs: row.earned_runs,
           fatigue_p_used: row.fatigue_p_used,
           decision: row.decision,
-          schedule_date: props.game.real_date,
+          schedule_date: props.gameDate,
           is_opener: row.is_opener,
           consecutive_short_rest_count: row.consecutive_short_rest_count,
           pre_injury_days_excluded: row.pre_injury_days_excluded,
-          game_result: gameResult.value,
+          game_result: props.gameResult,
         },
       }
       const res = await axios.post('/pitcher_appearances', payload)
@@ -517,10 +486,6 @@ async function saveAll() {
 // ─────────────────────────────────────────
 // Lifecycle / Watchers
 // ─────────────────────────────────────────
-
-watch(selectedTeamType, () => {
-  fetchPitchersAndStates()
-})
 
 onMounted(() => {
   fetchPitchersAndStates()

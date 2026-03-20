@@ -222,6 +222,47 @@
           登板記録を保存
         </v-btn>
       </div>
+
+      <!-- 投手状態一覧 -->
+      <v-divider class="my-4" />
+      <div class="d-flex align-center mb-2">
+        <span class="text-subtitle-2 font-weight-bold">投手状態一覧（1軍）</span>
+        <v-btn
+          icon
+          size="x-small"
+          variant="text"
+          class="ml-1"
+          :loading="loadingFatigue"
+          @click="fetchFatigueSummary"
+        >
+          <v-icon>mdi-refresh</v-icon>
+        </v-btn>
+      </div>
+      <v-table density="compact" v-if="fatigueSummary.length > 0">
+        <thead>
+          <tr>
+            <th>投手名</th>
+            <th>区分</th>
+            <th>中日数 / 累積IP</th>
+            <th>負傷</th>
+            <th>登板時ステータス</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="row in fatigueSummary" :key="row.player_id">
+            <td>{{ row.player_name }}</td>
+            <td>{{ lastRoleLabel(row.last_role) }}</td>
+            <td>{{ fatigueDetail(row) }}</td>
+            <td>{{ row.is_injured ? '🏥' : '' }}</td>
+            <td>
+              <v-chip :color="projectedStatusColor(row.projected_status)" size="x-small">
+                {{ projectedStatusLabel(row.projected_status) }}
+              </v-chip>
+            </td>
+          </tr>
+        </tbody>
+      </v-table>
+      <div v-else-if="!loadingFatigue" class="text-caption text-grey">データなし</div>
     </template>
   </div>
 </template>
@@ -271,6 +312,18 @@ interface PitcherRow extends PitcherAppearanceInput {
   innings_frac: '' | '0' | '1' | '2'
 }
 
+interface FatigueSummaryRow {
+  player_id: number
+  player_name: string
+  last_role: string | null
+  rest_days: number | null
+  cumulative_innings: number | null
+  last_result_category: string | null
+  is_injured: boolean
+  is_unavailable: boolean
+  projected_status: string
+}
+
 // ─────────────────────────────────────────
 // State
 // ─────────────────────────────────────────
@@ -283,6 +336,8 @@ const errors = ref<string[]>([])
 const warnings = ref<string[]>([])
 const savedMessage = ref('')
 const pitcherRows = ref<PitcherRow[]>([createEmptyRow('starter')])
+const fatigueSummary = ref<FatigueSummaryRow[]>([])
+const loadingFatigue = ref(false)
 
 // ─────────────────────────────────────────
 // Computed
@@ -443,9 +498,60 @@ function buildPreGameInfo(state: PreGameState | undefined): string {
   return ''
 }
 
+function lastRoleLabel(role: string | null): string {
+  const map: Record<string, string> = {
+    starter: '先発',
+    reliever: 'リリーフ',
+    opener: 'オープナー',
+  }
+  return role ? (map[role] ?? role) : '未登板'
+}
+
+function fatigueDetail(row: FatigueSummaryRow): string {
+  if (row.is_injured) return '—'
+  if (row.last_role === 'starter') return row.rest_days != null ? `中${row.rest_days}日` : '—'
+  if (row.last_role === 'reliever' || row.last_role === 'opener')
+    return row.cumulative_innings != null ? `累積${row.cumulative_innings}` : '—'
+  return '—'
+}
+
+function projectedStatusLabel(status: string): string {
+  if (status === 'full') return '✅ 全快'
+  if (status === 'injury_check') return '⚠️ 負傷CK'
+  if (status === 'unavailable') return '🚫 不可'
+  if (status === 'injured') return '🏥 負傷中'
+  if (status.startsWith('reduced_')) {
+    const n = status.replace('reduced_', '')
+    return n === '0' ? '⚡ P0' : `⚡ P-${n}`
+  }
+  return status
+}
+
+function projectedStatusColor(status: string): string {
+  if (status === 'full') return 'success'
+  if (status === 'injury_check') return 'warning'
+  if (status === 'unavailable' || status === 'injured') return 'error'
+  return 'info'
+}
+
 // ─────────────────────────────────────────
 // Data fetching
 // ─────────────────────────────────────────
+
+async function fetchFatigueSummary() {
+  if (!props.gameDate) return
+  loadingFatigue.value = true
+  try {
+    const res = await axios.get(`/teams/${props.teamId}/pitcher_game_states/fatigue_summary`, {
+      params: { date: props.gameDate },
+    })
+    fatigueSummary.value = res.data
+  } catch {
+    fatigueSummary.value = []
+  } finally {
+    loadingFatigue.value = false
+  }
+}
 
 async function fetchPitchersAndStates() {
   loadingPitchers.value = true
@@ -570,6 +676,7 @@ async function saveAll() {
 
 onMounted(() => {
   fetchPitchersAndStates()
+  fetchFatigueSummary()
 })
 </script>
 

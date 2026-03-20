@@ -126,6 +126,154 @@ RSpec.describe "Api::V1::PitcherGameStatesController", type: :request do
       end
     end
 
+    describe "GET /api/v1/teams/:team_id/pitcher_game_states/fatigue_summary" do
+      let(:card_set) { create(:card_set) }
+      let(:pitcher_first) { create(:player, :pitcher) }
+      let!(:pitcher_first_card) { create(:player_card, player: pitcher_first, card_set: card_set, card_type: "pitcher") }
+      let!(:tm_first) { create(:team_membership, :first_squad, team: team, player: pitcher_first) }
+
+      def get_fatigue_summary(date:)
+        get "/api/v1/teams/#{team.id}/pitcher_game_states/fatigue_summary",
+          params: { date: date }
+      end
+
+      it "1軍投手のみ返す（squad=firstのみ）" do
+        other_pitcher = create(:player, :pitcher)
+        create(:player_card, player: other_pitcher, card_set: card_set, card_type: "pitcher")
+        create(:team_membership, team: team, player: other_pitcher, squad: "second")
+
+        get_fatigue_summary(date: "2026-03-10")
+        ids = response.parsed_body.map { |e| e["player_id"] }
+        expect(ids).to include(pitcher_first.id)
+        expect(ids).not_to include(other_pitcher.id)
+      end
+
+      it "登板歴なし → projected_status: full, last_role: nil" do
+        get_fatigue_summary(date: "2026-03-10")
+
+        entry = response.parsed_body.find { |e| e["player_id"] == pitcher_first.id }
+        expect(entry["projected_status"]).to eq("full")
+        expect(entry["last_role"]).to be_nil
+      end
+
+      context "先発投手 (projected_status 計算)" do
+        def create_starter_pgs(schedule_date:, result_category: "normal", consecutive: 0)
+          game = create(:game, competition: competition, home_team: team, visitor_team: create(:team))
+          create(:pitcher_game_state,
+            pitcher: pitcher_first, team: team, competition: competition, game: game,
+            role: "starter", schedule_date: schedule_date,
+            result_category: result_category,
+            consecutive_short_rest_count: consecutive
+          )
+        end
+
+        it "中2日以内 → unavailable" do
+          create_starter_pgs(schedule_date: "2026-03-08")
+          get_fatigue_summary(date: "2026-03-10") # 中1日
+          entry = response.parsed_body.find { |e| e["player_id"] == pitcher_first.id }
+          expect(entry["projected_status"]).to eq("unavailable")
+          expect(entry["is_unavailable"]).to be true
+        end
+
+        it "通常/中3日 → injury_check" do
+          create_starter_pgs(schedule_date: "2026-03-06")
+          get_fatigue_summary(date: "2026-03-10") # 中3日
+          entry = response.parsed_body.find { |e| e["player_id"] == pitcher_first.id }
+          expect(entry["projected_status"]).to eq("injury_check")
+        end
+
+        it "通常/中4日(連続でない) → reduced_3" do
+          create_starter_pgs(schedule_date: "2026-03-05", consecutive: 0)
+          get_fatigue_summary(date: "2026-03-10") # 中4日
+          entry = response.parsed_body.find { |e| e["player_id"] == pitcher_first.id }
+          expect(entry["projected_status"]).to eq("reduced_3")
+        end
+
+        it "通常/中4日(2回連続) → injury_check" do
+          create_starter_pgs(schedule_date: "2026-03-05", consecutive: 1)
+          get_fatigue_summary(date: "2026-03-10") # 中4日
+          entry = response.parsed_body.find { |e| e["player_id"] == pitcher_first.id }
+          expect(entry["projected_status"]).to eq("injury_check")
+        end
+
+        it "通常/中5日 → reduced_1" do
+          create_starter_pgs(schedule_date: "2026-03-04")
+          get_fatigue_summary(date: "2026-03-10") # 中5日
+          entry = response.parsed_body.find { |e| e["player_id"] == pitcher_first.id }
+          expect(entry["projected_status"]).to eq("reduced_1")
+        end
+
+        it "通常/中6日以上 → full" do
+          create_starter_pgs(schedule_date: "2026-03-03")
+          get_fatigue_summary(date: "2026-03-10") # 中6日
+          entry = response.parsed_body.find { |e| e["player_id"] == pitcher_first.id }
+          expect(entry["projected_status"]).to eq("full")
+        end
+
+        it "KO/中3日 → reduced_3" do
+          create_starter_pgs(schedule_date: "2026-03-06", result_category: "ko")
+          get_fatigue_summary(date: "2026-03-10")
+          entry = response.parsed_body.find { |e| e["player_id"] == pitcher_first.id }
+          expect(entry["projected_status"]).to eq("reduced_3")
+        end
+
+        it "KO/中4日以上 → full" do
+          create_starter_pgs(schedule_date: "2026-03-05", result_category: "ko")
+          get_fatigue_summary(date: "2026-03-10")
+          entry = response.parsed_body.find { |e| e["player_id"] == pitcher_first.id }
+          expect(entry["projected_status"]).to eq("full")
+        end
+
+        it "長イニング敗戦/中4日 → reduced_4" do
+          create_starter_pgs(schedule_date: "2026-03-05", result_category: "long_loss")
+          get_fatigue_summary(date: "2026-03-10")
+          entry = response.parsed_body.find { |e| e["player_id"] == pitcher_first.id }
+          expect(entry["projected_status"]).to eq("reduced_4")
+        end
+
+        it "長イニング敗戦/中7日以上 → full" do
+          create_starter_pgs(schedule_date: "2026-03-02", result_category: "long_loss")
+          get_fatigue_summary(date: "2026-03-10")
+          entry = response.parsed_body.find { |e| e["player_id"] == pitcher_first.id }
+          expect(entry["projected_status"]).to eq("full")
+        end
+      end
+
+      context "リリーフ投手 (projected_status 計算)" do
+        def create_reliever_pgs(schedule_date:)
+          game = create(:game, competition: competition, home_team: team, visitor_team: create(:team))
+          create(:pitcher_game_state,
+            pitcher: pitcher_first, team: team, competition: competition, game: game,
+            role: "reliever", schedule_date: schedule_date
+          )
+        end
+
+        it "累積0 → full" do
+          # 長期休養後は累積0になる
+          create_reliever_pgs(schedule_date: "2026-03-01")
+          get_fatigue_summary(date: "2026-03-10") # 8日休み → 累積0
+          entry = response.parsed_body.find { |e| e["player_id"] == pitcher_first.id }
+          expect(entry["projected_status"]).to eq("full")
+        end
+
+        it "累積1 → reduced_0" do
+          create_reliever_pgs(schedule_date: "2026-03-09")
+          get_fatigue_summary(date: "2026-03-10")
+          entry = response.parsed_body.find { |e| e["player_id"] == pitcher_first.id }
+          expect(entry["projected_status"]).to eq("reduced_0")
+        end
+
+        it "累積3以上 → injury_check" do
+          create_reliever_pgs(schedule_date: "2026-03-07")
+          create_reliever_pgs(schedule_date: "2026-03-08")
+          create_reliever_pgs(schedule_date: "2026-03-09")
+          get_fatigue_summary(date: "2026-03-10")
+          entry = response.parsed_body.find { |e| e["player_id"] == pitcher_first.id }
+          expect(entry["projected_status"]).to eq("injury_check")
+        end
+      end
+    end
+
     describe "build_injured_set: 離脱判定" do
       let(:pitcher2) { create(:player, :pitcher) }
       let!(:team_membership2) { create(:team_membership, team: team, player: pitcher2) }

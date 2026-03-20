@@ -9,6 +9,13 @@ class Api::V1::GameController < Api::V1::BaseController
       return
     end
 
+    year = season_schedule.date.year
+    competition_entry = CompetitionEntry.joins(:competition)
+                                        .where(team_id: team.id)
+                                        .where(competitions: { year: year, competition_type: "league_pennant" })
+                                        .first
+    competition_id = competition_entry&.competition_id
+
     render json: {
       team_id: team.id,
       team_name: team.name,
@@ -16,6 +23,7 @@ class Api::V1::GameController < Api::V1::BaseController
       game_date: season_schedule.date,
       game_number: season_schedule.calculated_game_number,
       announced_starter_id: season_schedule.announced_starter&.id,
+      competition_id: competition_id,
       stadium: season_schedule.stadium,
       home_away: season_schedule.home_away,
       designated_hitter_enabled: season_schedule.designated_hitter_enabled,

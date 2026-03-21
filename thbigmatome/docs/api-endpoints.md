@@ -1,6 +1,6 @@
 # API エンドポイント仕様
 
-最終更新日: 2026-03-10
+最終更新日: 2026-03-21
 
 ## 参照ソースファイル
 
@@ -889,3 +889,80 @@
 - **認証**: Commissioner必須
 - **Body Params**: `password` (string)
 - **Response**: `{ message: "パスワードをリセットしました" }`
+
+### PATCH /api/v1/users/:id/update_role
+
+- **Controller**: `Api::V1::UsersController#update_role`
+- **認証**: Commissioner必須
+- **Body Params**: `role` (string)
+- **Response**: `{ id, name, display_name, role }`
+
+### POST /api/v1/users/change_password
+
+- **Controller**: `Api::V1::UsersController#change_password`
+- **認証**: ログイン済みユーザー全員
+- **Body Params**: `current_password` (string), `new_password` (string)
+- **Response**: `{ message: "パスワードを変更しました" }` / 422 on error
+
+---
+
+## 投手登板管理 (Pitcher Appearances)
+
+### POST /api/v1/pitcher_appearances
+
+- **Controller**: `Api::V1::PitcherAppearancesController#create`
+- **Body Params**:
+  ```json
+  {
+    "pitcher_appearance": {
+      "pitcher_id": int,
+      "team_id": int,
+      "schedule_date": "YYYY-MM-DD",
+      "role": "starter"|"relief"|"closer",
+      "innings_pitched": float,
+      "decision": "W"|"L"|"S"|"H"|null,
+      "game_result": "win"|"lose"|"draw",
+      "fatigue_p_used": int,
+      "result_category": "完投"|"QS"|"先発中退"|"中継ぎ"|"セーブ"|"ホールド"|"KO"|null
+    }
+  }
+  ```
+  ※ `result_category` は省略可（自動計算）
+- **Response**: `{ pitcher_appearance: {...}, warnings: [...] }` 201
+
+---
+
+## 投手登板状態 (Pitcher Game States)
+
+### GET /api/v1/teams/:team_id/pitcher_game_states
+
+- **Controller**: `Api::V1::PitcherGameStatesController#index`
+- **Query Params**: `date` (YYYY-MM-DD, default: 今日), `player_ids[]` (integer array, optional)
+- **Response**: 各投手の登板状態・疲労情報・クールダウン・推定コンディション
+
+### GET /api/v1/teams/:team_id/pitcher_game_states/fatigue_summary
+
+- **Controller**: `Api::V1::PitcherGameStatesController#fatigue_summary`
+- **Query Params**: `date` (YYYY-MM-DD, default: 今日)
+- **Response**: チーム全投手のシーズン疲労サマリー（累積投球回・平均登板間隔等）
+
+---
+
+## コミッショナーダッシュボード (Commissioner Dashboard)
+
+以下のエンドポイントはすべて Commissioner ロール必須。
+
+### GET /api/v1/commissioner/dashboard/absences
+
+- **Controller**: `Api::V1::Commissioner::DashboardController#absences`
+- **Response**: 全アクティブチームの現在有効な離脱者一覧（チーム名・選手名・離脱タイプ・期間・残日数）
+
+### GET /api/v1/commissioner/dashboard/costs
+
+- **Controller**: `Api::V1::Commissioner::DashboardController#costs`
+- **Response**: 全アクティブチームのコスト使用状況（合計コスト・上限・外の世界枠等）
+
+### GET /api/v1/commissioner/dashboard/cooldowns
+
+- **Controller**: `Api::V1::Commissioner::DashboardController#cooldowns`
+- **Response**: 全アクティブチームのクールダウン中選手一覧（選手名・解除日・残日数）

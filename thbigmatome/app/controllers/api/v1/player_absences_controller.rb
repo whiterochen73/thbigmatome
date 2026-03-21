@@ -5,12 +5,25 @@ module Api
 
       # GET /api/v1/player_absences
       def index
-        if params[:season_id].blank?
-          render json: { error: "season_id is required" }, status: :bad_request
+        if params[:season_id].present?
+          @player_absences = PlayerAbsence.where(season_id: params[:season_id]).includes(team_membership: :player)
+        elsif params[:team_id].present?
+          team = Team.find(params[:team_id])
+          season = team.season
+          if season.nil?
+            render json: { error: "team has no season" }, status: :unprocessable_entity
+            return
+          end
+          @player_absences = PlayerAbsence
+            .where(season_id: season.id)
+            .joins(team_membership: :team)
+            .where(team_memberships: { team_id: team.id })
+            .includes(team_membership: :player)
+        else
+          render json: { error: "season_id or team_id is required" }, status: :bad_request
           return
         end
 
-        @player_absences = PlayerAbsence.where(season_id: params[:season_id]).includes(team_membership: :player)
         render json: @player_absences
       end
 

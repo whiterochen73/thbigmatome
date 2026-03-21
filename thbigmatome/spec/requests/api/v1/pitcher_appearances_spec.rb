@@ -521,4 +521,82 @@ RSpec.describe "Api::V1::PitcherAppearancesController", type: :request do
       end
     end
   end
+
+  describe "GET /api/v1/pitcher_appearances" do
+    include_context "authenticated user"
+
+    let(:competition) { create(:competition) }
+    let(:team) { create(:team) }
+    let(:pitcher) { create(:player, :pitcher) }
+    let(:game) do
+      create(:game, competition: competition, home_team: team, visitor_team: create(:team),
+                    home_schedule_date: "2026-03-22")
+    end
+
+    context "team_id と schedule_date を指定" do
+      it "一致する登板記録を返す" do
+        create(:pitcher_game_state,
+          pitcher: pitcher,
+          team: team,
+          game: game,
+          competition: competition,
+          schedule_date: "2026-03-22",
+          role: "starter",
+          innings_pitched: 6.0,
+          earned_runs: 1
+        )
+
+        get "/api/v1/pitcher_appearances",
+          params: { team_id: team.id, schedule_date: "2026-03-22" }
+
+        expect(response).to have_http_status(:ok)
+        json = response.parsed_body
+        expect(json.length).to eq(1)
+        expect(json[0]["pitcher_id"]).to eq(pitcher.id)
+        expect(json[0]["role"]).to eq("starter")
+        expect(json[0]["innings_pitched"]).to eq(6.0)
+      end
+    end
+
+    context "該当日に登板記録なし" do
+      it "空配列を返す" do
+        get "/api/v1/pitcher_appearances",
+          params: { team_id: team.id, schedule_date: "2026-03-22" }
+
+        expect(response).to have_http_status(:ok)
+        expect(response.parsed_body).to eq([])
+      end
+    end
+
+    context "パラメータなし" do
+      it "空配列を返す" do
+        get "/api/v1/pitcher_appearances"
+
+        expect(response).to have_http_status(:ok)
+        expect(response.parsed_body).to eq([])
+      end
+    end
+
+    context "別チームの登板記録は含まない" do
+      it "指定チームのレコードのみ返す" do
+        other_team = create(:team)
+        other_game = create(:game, competition: competition, home_team: other_team,
+                                   visitor_team: create(:team), home_schedule_date: "2026-03-22")
+        create(:pitcher_game_state,
+          pitcher: pitcher,
+          team: other_team,
+          game: other_game,
+          competition: competition,
+          schedule_date: "2026-03-22",
+          role: "starter"
+        )
+
+        get "/api/v1/pitcher_appearances",
+          params: { team_id: team.id, schedule_date: "2026-03-22" }
+
+        expect(response).to have_http_status(:ok)
+        expect(response.parsed_body).to eq([])
+      end
+    end
+  end
 end

@@ -272,6 +272,7 @@ import { ref, computed, onMounted } from 'vue'
 import axios from 'axios'
 import type {
   PitcherAppearanceInput,
+  PitcherAppearanceRecord,
   PitcherRole,
   PitcherDecision,
 } from '@/types/pitcherAppearance'
@@ -561,13 +562,19 @@ async function fetchPitchersAndStates() {
   savedMessage.value = ''
 
   try {
-    const [playersRes, statesRes, absencesRes] = await Promise.allSettled([
-      axios.get(`/teams/${selectedTeamId.value}/team_players`),
-      axios.get(`/teams/${selectedTeamId.value}/pitcher_game_states`, {
-        params: { date: props.gameDate },
-      }),
-      axios.get(`/player_absences?team_id=${selectedTeamId.value}`),
-    ])
+    const [playersRes, statesRes, absencesRes, savedRes, membershipsRes] = await Promise.allSettled(
+      [
+        axios.get(`/teams/${selectedTeamId.value}/team_players`),
+        axios.get(`/teams/${selectedTeamId.value}/pitcher_game_states`, {
+          params: { date: props.gameDate },
+        }),
+        axios.get(`/player_absences?team_id=${selectedTeamId.value}`),
+        axios.get('/pitcher_appearances', {
+          params: { team_id: selectedTeamId.value, schedule_date: props.gameDate },
+        }),
+        axios.get(`/teams/${selectedTeamId.value}/team_memberships`),
+      ],
+    )
 
     // 負傷中選手ID
     const injuredIds = new Set<number>()
@@ -607,9 +614,49 @@ async function fetchPitchersAndStates() {
             preGameInfo,
           }
         })
-      // pitcherItems構築後に予告先発を設定することでv-autocompleteが名前を表示できる
-      if (props.announcedStarterId) {
-        pitcherRows.value[0].pitcher_id = props.announcedStarterId
+    }
+
+    // pitcherItems構築後に保存済み登板記録または予告先発をセット
+    const savedAppearances =
+      savedRes.status === 'fulfilled' ? (savedRes.value.data as PitcherAppearanceRecord[]) : []
+
+    if (savedAppearances.length > 0) {
+      // 保存済みデータを復元（投手順序を維持）
+      pitcherRows.value = savedAppearances.map((app, idx) => {
+        const ip = app.innings_pitched
+        let innings_int: number | null = null
+        let innings_frac: '' | '0' | '1' | '2' = ''
+        if (ip !== null && ip !== undefined) {
+          innings_int = Math.floor(ip)
+          const fracDigit = Math.round((ip - innings_int) * 10)
+          innings_frac = fracDigit === 1 ? '1' : fracDigit === 2 ? '2' : ''
+        }
+        return {
+          pitcher_id: app.pitcher_id,
+          role: (idx === 0 ? app.role : 'reliever') as PitcherRole,
+          innings_pitched: ip ?? null,
+          earned_runs: app.earned_runs ?? 0,
+          fatigue_p_used: app.fatigue_p_used ?? 0,
+          decision: (app.decision as PitcherDecision) ?? null,
+          is_opener: app.is_opener ?? false,
+          is_second_starter: false,
+          no_out_exit: false,
+          consecutive_short_rest_count: app.consecutive_short_rest_count ?? 0,
+          pre_injury_days_excluded: app.pre_injury_days_excluded ?? 0,
+          innings_int,
+          innings_frac,
+        }
+      })
+    } else if (props.announcedStarterId) {
+      // 保存済みデータなし → 予告先発を1番手にセット
+      // announcedStarterIdはteam_membership_idのため、team_membershipsからplayer_idに変換する
+      const memberships =
+        membershipsRes.status === 'fulfilled'
+          ? (membershipsRes.value.data as { id: number; player_id: number }[])
+          : []
+      const membership = memberships.find((m) => m.id === props.announcedStarterId)
+      if (membership) {
+        pitcherRows.value[0].pitcher_id = membership.player_id
       }
     }
   } finally {

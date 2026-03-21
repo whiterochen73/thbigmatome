@@ -1,4 +1,40 @@
 class Api::V1::PitcherAppearancesController < Api::V1::BaseController
+  # GET /api/v1/pitcher_appearances?team_id=X&schedule_date=YYYY-MM-DD
+  def index
+    team_id = params[:team_id]
+    schedule_date = params[:schedule_date]
+
+    unless team_id.present? && schedule_date.present?
+      render json: [], status: :ok
+      return
+    end
+
+    appearances = PitcherGameState
+      .where(team_id: team_id, schedule_date: schedule_date)
+      .order(:id)
+
+    render json: appearances.map { |a|
+      {
+        id: a.id,
+        pitcher_id: a.pitcher_id,
+        role: a.role,
+        innings_pitched: a.innings_pitched&.to_f,
+        earned_runs: a.earned_runs,
+        fatigue_p_used: a.fatigue_p_used,
+        decision: a.decision,
+        is_opener: a.is_opener,
+        consecutive_short_rest_count: a.consecutive_short_rest_count,
+        pre_injury_days_excluded: a.pre_injury_days_excluded,
+        result_category: a.result_category,
+        injury_check: a.injury_check,
+        schedule_date: a.schedule_date,
+        team_id: a.team_id,
+        game_id: a.game_id,
+        competition_id: a.competition_id
+      }
+    }
+  end
+
   # POST /api/v1/pitcher_appearances/bulk_save
   def bulk_save
     bulk = params[:pitcher_appearances_bulk]

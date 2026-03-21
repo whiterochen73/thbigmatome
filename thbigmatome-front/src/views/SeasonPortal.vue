@@ -212,11 +212,11 @@
                       {{ t(`settings.schedule.dateTypes.${item.type}`) }}
                     </span>
                     <span class="legend-results ml-auto">
-                      <span class="result-mark result-win">○</span
+                      <span class="result-mark result-win">W</span
                       >{{ t('seasonPortal.legendWin') }}&nbsp;
-                      <span class="result-mark result-lose">●</span
+                      <span class="result-mark result-lose">L</span
                       >{{ t('seasonPortal.legendLose') }}&nbsp;
-                      <span class="result-mark result-draw">△</span
+                      <span class="result-mark result-draw">D</span
                       >{{ t('seasonPortal.legendDraw') }}
                     </span>
                   </div>
@@ -750,22 +750,23 @@ const dateTypes = [
 const legendItems = [
   { type: 'game_day', color: 'primary' },
   { type: 'interleague_game_day', color: 'info' },
-  { type: 'playoff_day', color: 'warning' },
-  { type: 'travel_day', color: 'secondary' },
-  { type: 'reserve_day', color: 'warning' },
-  { type: 'no_game_day', color: 'error' },
-  { type: 'postponed', color: 'accent' },
-  { type: 'no_game', color: 'success' },
+  { type: 'reserve_day', color: 'secondary' },
+  { type: 'interleague_reserve_day', color: 'info' },
+  { type: 'travel_day', color: 'warning' },
+  { type: 'no_game_day', color: 'surface-variant' },
+  { type: 'no_game', color: 'surface-variant' },
 ]
 
 // 日程種別カテゴリ (チップ/バッジのスタイルに使用)
+// 7カテゴリ: game / inter / reserve / inter-reserve / travel / off / no-game
 const getTypeCategory = (dateType?: string) => {
   if (!dateType) return 'empty'
+  if (['game_day', 'playoff_day'].includes(dateType)) return 'game'
   if (['interleague_game_day'].includes(dateType)) return 'inter'
-  if (['playoff_day'].includes(dateType)) return 'playoff'
-  if (['game_day'].includes(dateType)) return 'game'
-  if (['travel_day', 'interleague_reserve_day'].includes(dateType)) return 'travel'
   if (['reserve_day'].includes(dateType)) return 'reserve'
+  if (['interleague_reserve_day'].includes(dateType)) return 'inter-reserve'
+  if (['travel_day'].includes(dateType)) return 'travel'
+  if (['no_game', 'postponed'].includes(dateType)) return 'no-game'
   return 'off'
 }
 
@@ -783,7 +784,7 @@ const isGameType = (dateType?: string) => {
 
 // 勝敗マーク
 const resultMark = (result: string) => {
-  return ({ win: '○', lose: '●', draw: '△' } as Record<string, string>)[result] || ''
+  return ({ win: 'W', lose: 'L', draw: 'D' } as Record<string, string>)[result] || ''
 }
 
 const isDateBeforeCurrent = (date: Date) => {
@@ -1006,39 +1007,64 @@ onMounted(async () => {
 }
 
 /* ===== 日程種別カラー (chip/badge共通) ===== */
+/* UD配慮: 赤緑対比不使用、青系⇔暖色系の色相差を最大活用 */
+
+/* 試合日・プレーオフ日: 藍色（primary）強 */
 .chip-game,
 .badge-game {
-  background: rgba(var(--v-theme-primary), 0.15);
+  background: rgba(var(--v-theme-primary), 0.18);
   color: rgb(var(--v-theme-primary));
-  font-weight: 600;
+  font-weight: 700;
 }
+
+/* 交流戦試合日: 浅葱色（info）強 */
 .chip-inter,
 .badge-inter {
-  background: rgba(var(--v-theme-info), 0.15);
+  background: rgba(var(--v-theme-info), 0.18);
   color: rgb(var(--v-theme-info));
-  font-weight: 600;
+  font-weight: 700;
 }
-.chip-playoff,
-.badge-playoff {
-  background: rgba(var(--v-theme-warning), 0.2);
-  color: rgb(var(--v-theme-warning));
-  font-weight: 600;
-}
-.chip-travel,
-.badge-travel {
-  background: rgba(var(--v-theme-secondary), 0.15);
-  color: rgb(var(--v-theme-secondary));
-}
+
+/* 予備日（通常ペナント）: 千草色（secondary=teal）中間色 */
 .chip-reserve,
 .badge-reserve {
-  background: rgba(var(--v-theme-warning), 0.12);
-  color: rgb(var(--v-theme-warning));
+  background: rgba(var(--v-theme-secondary), 0.18);
+  color: rgb(var(--v-theme-secondary));
+  font-weight: 500;
 }
+
+/* 交流戦予備日: 浅葱色（info）淡め — interの軽量版 */
+.chip-inter-reserve,
+.badge-inter-reserve {
+  background: rgba(var(--v-theme-info), 0.09);
+  color: rgb(var(--v-theme-info));
+  font-weight: 400;
+}
+
+/* 移動日: 山吹色（warning=amber）暖色 */
+.chip-travel,
+.badge-travel {
+  background: rgba(var(--v-theme-warning), 0.18);
+  color: rgb(var(--v-theme-warning));
+  font-weight: 500;
+}
+
+/* 試合不可日（off系）: 無彩色 */
 .chip-off,
 .badge-off {
   background: rgb(var(--v-theme-surface-variant));
   color: rgb(var(--v-theme-on-surface-variant));
 }
+
+/* 雨天ノーゲーム・雨天中止: 取消線 + 薄い無彩色 */
+.chip-no-game,
+.badge-no-game {
+  background: rgb(var(--v-theme-surface-variant));
+  color: rgb(var(--v-theme-on-surface-variant));
+  opacity: 0.7;
+  text-decoration: line-through;
+}
+
 .chip-empty,
 .badge-empty {
   background: transparent;

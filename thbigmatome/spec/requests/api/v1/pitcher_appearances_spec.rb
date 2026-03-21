@@ -311,6 +311,200 @@ RSpec.describe "Api::V1::PitcherAppearancesController", type: :request do
         expect(response).to have_http_status(:unprocessable_entity)
       end
     end
+  end
+
+  describe "POST /api/v1/pitcher_appearances/bulk_save" do
+    include_context "authenticated user"
+
+    let(:competition) { create(:competition) }
+    let(:team) { create(:team) }
+    let(:pitcher1) { create(:player, :pitcher) }
+    let(:pitcher2) { create(:player, :pitcher) }
+    let(:game) do
+      create(:game, competition: competition, home_team: team, visitor_team: create(:team),
+                    home_schedule_date: "2026-03-20")
+    end
+
+    let(:bulk_params) do
+      {
+        pitcher_appearances_bulk: {
+          team_id: team.id,
+          competition_id: competition.id,
+          game_id: game.id,
+          schedule_date: "2026-03-20",
+          game_result: "win",
+          appearances: [
+            {
+              pitcher_id: pitcher1.id,
+              role: "starter",
+              innings_pitched: 6.0,
+              earned_runs: 1,
+              fatigue_p_used: 4,
+              decision: "W",
+              is_opener: false,
+              consecutive_short_rest_count: 0,
+              pre_injury_days_excluded: 0
+            },
+            {
+              pitcher_id: pitcher2.id,
+              role: "reliever",
+              innings_pitched: 3.0,
+              earned_runs: 0,
+              fatigue_p_used: 0,
+              decision: "S",
+              is_opener: false,
+              consecutive_short_rest_count: 0,
+              pre_injury_days_excluded: 0
+            }
+          ]
+        }
+      }
+    end
+
+    context "正常系: 複数投手を一括保存" do
+      it "200を返し全投手を登録する" do
+        post "/api/v1/pitcher_appearances/bulk_save", params: bulk_params, as: :json
+
+        expect(response).to have_http_status(:ok)
+        json = response.parsed_body
+        expect(json["pitcher_appearances"].length).to eq(2)
+        expect(json["warnings"]).to be_an(Array)
+      end
+
+      it "DBに2件レコードが作成される" do
+        expect {
+          post "/api/v1/pitcher_appearances/bulk_save", params: bulk_params, as: :json
+        }.to change(PitcherGameState, :count).by(2)
+      end
+    end
+
+    context "upsert: 既存レコードを更新する" do
+      it "既存レコードがある投手は更新される" do
+        existing = create(:pitcher_game_state,
+          game: game, team: team, pitcher: pitcher1, competition: competition,
+          role: "starter", earned_runs: 3, innings_pitched: 5.0)
+
+        post "/api/v1/pitcher_appearances/bulk_save", params: bulk_params, as: :json
+
+        expect(response).to have_http_status(:ok)
+        expect { existing.reload }.not_to raise_error
+        expect(existing.reload.earned_runs).to eq(1)
+        expect(PitcherGameState.where(game: game, team: team).count).to eq(2)
+      end
+    end
+
+    context "トランザクション: 1件でもエラーなら全件ロールバック" do
+      it "バリデーションエラーで全件ロールバックされる" do
+        invalid_params = bulk_params.deep_merge(
+          pitcher_appearances_bulk: {
+            appearances: bulk_params[:pitcher_appearances_bulk][:appearances].map.with_index do |ap, i|
+              i == 1 ? ap.merge(role: "invalid_role") : ap
+            end
+          }
+        )
+
+        expect {
+          post "/api/v1/pitcher_appearances/bulk_save", params: invalid_params, as: :json
+        }.not_to change(PitcherGameState, :count)
+
+        expect(response).to have_http_status(:unprocessable_entity)
+        json = response.parsed_body
+        expect(json["errors"]).to be_present
+        expect(json["pitcher_id"]).to eq(pitcher2.id)
+      end
+    end
+
+    context "game_idなし: schedule_dateからGame自動検索" do
+      let(:params_without_game_id) do
+        {
+          pitcher_appearances_bulk: {
+            team_id: team.id,
+            competition_id: competition.id,
+            schedule_date: "2026-03-20",
+            game_result: "win",
+            appearances: [
+              {
+                pitcher_id: pitcher1.id,
+                role: "starter",
+                innings_pitched: 9.0,
+                earned_runs: 0,
+                fatigue_p_used: 0,
+                decision: "W",
+                is_opener: false,
+                consecutive_short_rest_count: 0,
+                pre_injury_days_excluded: 0
+              }
+            ]
+          }
+        }
+      end
+
+      it "既存Gameを利用して登録できる" do
+        game  # ensure game exists
+
+        expect {
+          post "/api/v1/pitcher_appearances/bulk_save", params: params_without_game_id, as: :json
+        }.not_to change(Game, :count)
+
+        expect(response).to have_http_status(:ok)
+      end
+    end
+
+    context "appearances が空の場合" do
+      it "0件で成功する" do
+        params = { pitcher_appearances_bulk: { team_id: team.id, game_id: game.id, game_result: "win", appearances: [] } }
+        post "/api/v1/pitcher_appearances/bulk_save", params: params, as: :json
+
+        expect(response).to have_http_status(:ok)
+        json = response.parsed_body
+        expect(json["pitcher_appearances"]).to be_empty
+      end
+    end
+  end
+
+  describe "POST /api/v1/pitcher_appearances" do
+    include_context "authenticated user"
+
+    let(:competition) { create(:competition) }
+    let(:team) { create(:team) }
+    let(:pitcher) { create(:player, :pitcher) }
+    let(:game) do
+      create(:game, competition: competition, home_team: team, visitor_team: create(:team),
+                    home_schedule_date: "2026-03-20")
+    end
+
+    let(:valid_params) do
+      {
+        pitcher_appearance: {
+          pitcher_id: pitcher.id,
+          team_id: team.id,
+          competition_id: competition.id,
+          game_id: game.id,
+          role: "starter",
+          innings_pitched: 7.0,
+          earned_runs: 1,
+          fatigue_p_used: 5,
+          decision: "W",
+          schedule_date: "2026-03-20",
+          is_opener: false
+        }
+      }
+    end
+
+    context "game_idあり" do
+      it "game_idもschedule_dateもなければエラー" do
+        params = {
+          pitcher_appearance: {
+            pitcher_id: pitcher.id,
+            role: "starter",
+            earned_runs: 0
+          }
+        }
+        post "/api/v1/pitcher_appearances", params: params, as: :json
+
+        expect(response).to have_http_status(:unprocessable_entity)
+      end
+    end
 
     context "新規カラム is_opener" do
       it "is_opener: true で登録できる" do

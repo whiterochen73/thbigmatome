@@ -628,46 +628,50 @@ async function saveAll() {
   warnings.value = []
   savedMessage.value = ''
 
-  const allWarnings: string[] = []
+  const appearances = pitcherRows.value
+    .filter((row) => !!row.pitcher_id)
+    .map((row) => ({
+      pitcher_id: row.pitcher_id,
+      role: row.role,
+      innings_pitched: computeIPFromRow(row),
+      earned_runs: row.earned_runs,
+      fatigue_p_used: row.fatigue_p_used,
+      decision: row.decision,
+      is_opener: row.is_opener,
+      consecutive_short_rest_count: row.consecutive_short_rest_count,
+      pre_injury_days_excluded: row.pre_injury_days_excluded,
+    }))
 
-  for (const row of pitcherRows.value) {
-    if (!row.pitcher_id) continue
-    try {
-      const payload = {
-        pitcher_appearance: {
-          pitcher_id: row.pitcher_id,
-          team_id: props.teamId,
-          competition_id: props.competitionId,
-          role: row.role,
-          innings_pitched: computeIPFromRow(row),
-          earned_runs: row.earned_runs,
-          fatigue_p_used: row.fatigue_p_used,
-          decision: row.decision,
-          schedule_date: props.gameDate,
-          is_opener: row.is_opener,
-          consecutive_short_rest_count: row.consecutive_short_rest_count,
-          pre_injury_days_excluded: row.pre_injury_days_excluded,
-          game_result: props.gameResult,
-        },
-      }
-      const res = await axios.post('/pitcher_appearances', payload)
-      if (res.data.warnings?.length > 0) {
-        allWarnings.push(...res.data.warnings)
-      }
-    } catch (err: unknown) {
-      const axiosErr = err as { response?: { data?: { errors?: string[] } } }
-      const errMsgs = axiosErr.response?.data?.errors ?? ['登録に失敗しました']
+  const payload = {
+    pitcher_appearances_bulk: {
+      team_id: props.teamId,
+      competition_id: props.competitionId,
+      schedule_date: props.gameDate,
+      game_result: props.gameResult,
+      appearances,
+    },
+  }
+
+  try {
+    const res = await axios.post('/pitcher_appearances/bulk_save', payload)
+    warnings.value = res.data.warnings ?? []
+    savedMessage.value = '登板記録を保存しました'
+    await fetchPitchersAndStates()
+  } catch (err: unknown) {
+    const axiosErr = err as { response?: { data?: { errors?: string[]; pitcher_id?: number } } }
+    const data = axiosErr.response?.data
+    const errMsgs = data?.errors ?? ['登録に失敗しました']
+    if (data?.pitcher_id) {
+      const pitcherName =
+        pitcherItems.value.find((p) => p.id === data.pitcher_id)?.label ??
+        `pitcher_id=${data.pitcher_id}`
+      errors.value.push(`${pitcherName}: ${errMsgs.join(', ')}`)
+    } else {
       errors.value.push(...errMsgs)
     }
   }
 
   saving.value = false
-
-  if (errors.value.length === 0) {
-    warnings.value = allWarnings
-    savedMessage.value = '登板記録を保存しました'
-    await fetchPitchersAndStates()
-  }
 }
 
 // ─────────────────────────────────────────

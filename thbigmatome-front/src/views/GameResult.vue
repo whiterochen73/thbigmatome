@@ -2,14 +2,31 @@
   <v-container>
     <v-toolbar color="primary" density="compact">
       <template #prepend>
-        <span class="text-subtitle-1 font-weight-bold mx-3">{{ gameData.team_name }}</span>
-        <v-divider vertical class="mx-2" />
-        <span class="text-subtitle-2 mx-2">Game {{ gameData.game_number }}</span>
-        <span class="text-subtitle-2 mx-2 text-medium-emphasis">{{ formattedGameDate }}</span>
+        <div class="d-flex align-center ml-2 flex-wrap">
+          <v-btn
+            variant="text"
+            size="small"
+            :to="seasonPortalRoute"
+            class="text-white pa-1 text-caption"
+            style="min-width: 0; text-decoration: underline; text-underline-offset: 2px"
+          >
+            {{ t('seasonPortal.title') }}
+          </v-btn>
+          <v-icon size="x-small" class="text-white mx-1" style="opacity: 0.7"
+            >mdi-chevron-right</v-icon
+          >
+          <span class="text-subtitle-2 font-weight-bold text-white mx-1">{{
+            gameData.team_name
+          }}</span>
+          <v-icon size="x-small" class="text-white mx-1" style="opacity: 0.7"
+            >mdi-chevron-right</v-icon
+          >
+          <span class="text-subtitle-2 text-white mx-1">Game {{ gameData.game_number }}</span>
+          <span class="text-caption text-white mx-1" style="opacity: 0.9">{{
+            formattedGameDate
+          }}</span>
+        </div>
       </template>
-      <v-btn class="mx-1" variant="text" size="small" :to="seasonPortalRoute">
-        {{ t('seasonPortal.title') }}
-      </v-btn>
       <template #append>
         <v-btn
           @click="saveGame"

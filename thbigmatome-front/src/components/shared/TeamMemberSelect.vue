@@ -6,6 +6,7 @@
     item-title="name"
     item-value="id"
     :label="label"
+    :custom-filter="filter"
     v-bind="$attrs"
   ></v-autocomplete>
 </template>
@@ -17,6 +18,7 @@ import axios from 'axios'
 interface TeamMember {
   id: number
   name: string
+  number: string
   player_id: number
 }
 
@@ -42,6 +44,13 @@ const fetchTeamMembers = async () => {
   } catch (error) {
     console.error('Failed to fetch team members:', error)
   }
+}
+
+const filter = (_text: string, queryText: string, item: unknown) => {
+  const queryTextLower = queryText.toLowerCase()
+  const member = (item as { raw: TeamMember }).raw
+  const searchText = [member.number, member.name].join(' ').toLowerCase()
+  return searchText.includes(queryTextLower)
 }
 
 onMounted(fetchTeamMembers)

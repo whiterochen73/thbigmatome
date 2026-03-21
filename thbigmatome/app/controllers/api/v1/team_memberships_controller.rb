@@ -22,6 +22,7 @@ module Api
             {
               id: member.id,
               name: "#{player.number} #{player.name}",
+              number: player.number,
               player_id: player.id
             }
           end

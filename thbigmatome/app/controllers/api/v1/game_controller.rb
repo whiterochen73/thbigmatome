@@ -70,9 +70,6 @@ class Api::V1::GameController < Api::V1::BaseController
       :score,
       :opponent_score,
       :opponent_team_id,
-      :winning_pitcher_id,
-      :losing_pitcher_id,
-      :save_pitcher_id,
       scoreboard: { home: [], away: [] },
       starting_lineup: [ :player_id, :position, :order ],
       opponent_starting_lineup: [ :player_id, :position, :order ]

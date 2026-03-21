@@ -1,117 +1,115 @@
 <template>
   <v-container>
-    <v-toolbar color="primary">
+    <v-toolbar color="primary" density="compact">
       <template #prepend>
-        <span class="text-h5 mx-4">{{ gameData.team_name }}</span>
-        <span class="text-h6 mx-4">{{ t('gameResult.game') }}: {{ gameData.game_number }}</span>
-        <span class="text-h6 mx-4">{{ formattedGameDate }}</span>
+        <span class="text-subtitle-1 font-weight-bold mx-3">{{ gameData.team_name }}</span>
+        <v-divider vertical class="mx-2" />
+        <span class="text-subtitle-2 mx-2">Game {{ gameData.game_number }}</span>
+        <span class="text-subtitle-2 mx-2 text-medium-emphasis">{{ formattedGameDate }}</span>
       </template>
-      <v-btn class="mx-2" variant="text" :to="seasonPortalRoute">
+      <v-btn class="mx-1" variant="text" size="small" :to="seasonPortalRoute">
         {{ t('seasonPortal.title') }}
       </v-btn>
-      <v-btn :to="scoreSheetRoute" color="info" variant="flat" class="mr-4"> スコアシート </v-btn>
+      <v-btn :to="scoreSheetRoute" color="info" variant="tonal" size="small" class="mr-2">
+        スコアシート
+      </v-btn>
       <template #append>
         <v-btn
           @click="saveGame"
-          color="primary"
+          color="success"
           variant="flat"
+          size="small"
           prepend-icon="mdi-content-save-outline"
+          class="mr-2"
         >
           {{ t('gameResult.save') }}
         </v-btn>
       </template>
     </v-toolbar>
 
-    <v-tabs v-model="activeTab" color="primary" class="mt-2">
+    <v-tabs v-model="activeTab" color="primary" density="compact" class="mt-2">
       <v-tab value="overview">試合概要</v-tab>
       <v-tab value="pitchers">登板記録</v-tab>
     </v-tabs>
 
     <v-window v-model="activeTab">
       <v-window-item value="overview">
-        <v-row class="mt-2">
-          <v-col>
-            <v-card>
-              <v-card-title>{{ t('gameResult.basicInfo') }}</v-card-title>
-              <v-card-text>
-                <v-row>
-                  <v-col>
-                    <TeamMemberSelect
-                      v-model="gameData.announced_starter_id"
-                      :team-id="gameData.team_id"
-                      v-if="gameData.team_id"
-                      :label="t('gameResult.announcedStarter')"
-                    />
-                  </v-col>
-                  <v-col>
-                    <TeamSelect
-                      v-model="gameData.opponent_team_id"
-                      :teams="allTeams"
-                      display-name-type="short_name"
-                      :label="t('gameResult.opponentTeam')"
-                    />
-                  </v-col>
-                  <v-col>
-                    <v-select
-                      v-model="gameData.home_away"
-                      :items="homeAwayItems"
-                      item-title="name"
-                      item-value="value"
-                      :label="t('gameResult.homeAway.title')"
-                    >
-                    </v-select>
-                  </v-col>
-                  <v-col>
-                    <v-text-field v-model="gameData.stadium" :label="t('gameResult.stadium')">
-                    </v-text-field>
-                  </v-col>
-                  <v-col>
-                    <v-select
-                      v-model="gameData.designated_hitter_enabled"
-                      :items="dhItems"
-                      item-title="name"
-                      item-value="value"
-                      :label="t('gameResult.dhSystem.title')"
-                    >
-                    </v-select>
-                  </v-col>
-                </v-row>
-              </v-card-text>
-              <v-card-title>{{ t('gameResult.gameInfo') }}</v-card-title>
-              <v-card-text>
-                <Scoreboard
-                  v-if="gameData.scoreboard"
-                  v-model="gameData.scoreboard"
-                  :home-team-name="homeTeamName"
-                  :away-team-name="awayTeamName"
+        <v-card class="mt-2" variant="outlined">
+          <v-card-title class="text-subtitle-1 py-2 px-4 bg-surface-variant">
+            {{ t('gameResult.basicInfo') }}
+          </v-card-title>
+          <v-card-text class="pt-4">
+            <v-row dense>
+              <v-col cols="12" sm="6" md="4">
+                <TeamMemberSelect
+                  v-model="gameData.announced_starter_id"
+                  :team-id="gameData.team_id"
+                  v-if="gameData.team_id"
+                  :label="t('gameResult.announcedStarter')"
+                  :starter-eligible="true"
+                  clearable
                 />
-                <v-row class="mt-4">
-                  <v-col>
-                    <PlayerSelect
-                      v-model="gameData.winning_pitcher_id"
-                      :players="allPlayers"
-                      :label="t('gameResult.winningPitcher')"
-                    />
-                  </v-col>
-                  <v-col>
-                    <PlayerSelect
-                      v-model="gameData.losing_pitcher_id"
-                      :players="allPlayers"
-                      :label="t('gameResult.losingPitcher')"
-                    />
-                  </v-col>
-                  <v-col>
-                    <PlayerSelect
-                      v-model="gameData.save_pitcher_id"
-                      :players="allPlayers"
-                      :label="t('gameResult.savePitcher')"
-                    />
-                  </v-col>
-                </v-row>
-              </v-card-text>
-            </v-card>
-          </v-col>
-        </v-row>
+              </v-col>
+              <v-col cols="12" sm="6" md="4">
+                <TeamSelect
+                  v-model="gameData.opponent_team_id"
+                  :teams="allTeams"
+                  display-name-type="short_name"
+                  :label="t('gameResult.opponentTeam')"
+                />
+              </v-col>
+              <v-col cols="12" sm="6" md="4">
+                <v-select
+                  v-model="gameData.home_away"
+                  :items="homeAwayItems"
+                  item-title="name"
+                  item-value="value"
+                  :label="t('gameResult.homeAway.title')"
+                />
+              </v-col>
+              <v-col cols="12" sm="6" md="4">
+                <v-text-field v-model="gameData.stadium" :label="t('gameResult.stadium')" />
+              </v-col>
+              <v-col cols="12" sm="6" md="4">
+                <v-select
+                  v-model="gameData.designated_hitter_enabled"
+                  :items="dhItems"
+                  item-title="name"
+                  item-value="value"
+                  :label="t('gameResult.dhSystem.title')"
+                />
+              </v-col>
+            </v-row>
+          </v-card-text>
+        </v-card>
+
+        <v-card class="mt-3" variant="outlined">
+          <v-card-title class="text-subtitle-1 py-2 px-4 bg-surface-variant">
+            {{ t('gameResult.gameInfo') }}
+          </v-card-title>
+          <v-card-text class="pt-4">
+            <v-row dense>
+              <v-col cols="6" sm="4" md="3">
+                <v-text-field
+                  v-model.number="gameData.score"
+                  :label="t('gameResult.score')"
+                  type="number"
+                  min="0"
+                  hide-details
+                />
+              </v-col>
+              <v-col cols="6" sm="4" md="3">
+                <v-text-field
+                  v-model.number="gameData.opponent_score"
+                  :label="t('gameResult.opponentScore')"
+                  type="number"
+                  min="0"
+                  hide-details
+                />
+              </v-col>
+            </v-row>
+          </v-card-text>
+        </v-card>
       </v-window-item>
 
       <v-window-item value="pitchers">
@@ -143,12 +141,9 @@ import { useRoute } from 'vue-router'
 import axios from 'axios'
 import { useI18n } from 'vue-i18n'
 import type { GameData } from '@/types/gameData'
-import type { Player } from '@/types/player'
 import type { Team } from '@/types/team'
 import TeamMemberSelect from '@/components/shared/TeamMemberSelect.vue'
 import TeamSelect from '@/components/shared/TeamSelect.vue'
-import PlayerSelect from '@/components/shared/PlayerSelect.vue'
-import Scoreboard from '@/components/Scoreboard.vue'
 import PitcherAppearanceTab from '@/components/pitcher/PitcherAppearanceTab.vue'
 
 const { t } = useI18n()
@@ -177,36 +172,20 @@ const defaultGameData: GameData = {
   opponent_team_name: '',
   score: null,
   opponent_score: null,
-  winning_pitcher_id: null,
-  losing_pitcher_id: null,
-  save_pitcher_id: null,
-  scoreboard: {
-    home: Array(9).fill(null),
-    away: Array(9).fill(null),
-  },
+  starting_lineup: null,
 }
 
-const seasonPortalRoute = computed(() => {
-  return {
-    name: 'SeasonPortal',
-    params: {
-      teamId: teamId,
-    },
-  }
-})
+const seasonPortalRoute = computed(() => ({
+  name: 'SeasonPortal',
+  params: { teamId: teamId },
+}))
 
-const scoreSheetRoute = computed(() => {
-  return {
-    name: 'ScoreSheet',
-    params: {
-      teamId: teamId,
-      scheduleId: scheduleId,
-    },
-  }
-})
+const scoreSheetRoute = computed(() => ({
+  name: 'ScoreSheet',
+  params: { teamId: teamId, scheduleId: scheduleId },
+}))
 
 const gameData = ref<GameData>(defaultGameData)
-const allPlayers = ref<Player[]>([])
 const allTeams = ref<Team[]>([])
 
 const homeAwayItems = [
@@ -220,28 +199,11 @@ const dhItems = [
 ]
 
 const pitcherGameResult = computed<'win' | 'lose' | 'draw'>(() => {
-  const sb = gameData.value.scoreboard
-  if (!sb) return 'draw'
-  const homeTotal = sb.home.reduce((acc: number, v) => acc + (Number(v) || 0), 0)
-  const visitorTotal = sb.away.reduce((acc: number, v) => acc + (Number(v) || 0), 0)
-  if (homeTotal === visitorTotal) return 'draw'
-  const isHome = gameData.value.home_away === 'home'
-  if (isHome) return homeTotal > visitorTotal ? 'win' : 'lose'
-  return visitorTotal > homeTotal ? 'win' : 'lose'
-})
-
-const homeTeamName = computed(() => {
-  if (!gameData.value) return ''
-  return gameData.value.home_away === 'home'
-    ? gameData.value.team_name
-    : gameData.value.opponent_team_name
-})
-
-const awayTeamName = computed(() => {
-  if (!gameData.value) return ''
-  return gameData.value.home_away === 'visitor'
-    ? gameData.value.team_name
-    : gameData.value.opponent_team_name
+  const myScore = gameData.value.score
+  const oppScore = gameData.value.opponent_score
+  if (myScore === null || oppScore === null) return 'draw'
+  if (myScore === oppScore) return 'draw'
+  return myScore > oppScore ? 'win' : 'lose'
 })
 
 watch(
@@ -264,24 +226,9 @@ const fetchSeason = async () => {
     gameData.value = response.data
     if (gameData.value) {
       gameDate.value = new Date(gameData.value.game_date)
-      if (!gameData.value.scoreboard) {
-        gameData.value.scoreboard = {
-          home: Array(9).fill(null),
-          away: Array(9).fill(null),
-        }
-      }
     }
   } catch (error) {
     console.error('Failed to fetch season data:', error)
-  }
-}
-
-const fetchAllPlayers = async () => {
-  try {
-    const response = await axios.get('/players')
-    allPlayers.value = response.data
-  } catch (error) {
-    console.error('Failed to fetch players:', error)
   }
 }
 
@@ -301,35 +248,6 @@ const showSnackbar = (text: string, color: string = 'success') => {
 }
 
 const saveGame = async () => {
-  if (!gameData.value.scoreboard) return
-
-  const homeTeamScore = gameData.value.scoreboard.home.reduce(
-    (acc: number, val) => acc + (Number(val) || 0),
-    0,
-  )
-  const awayTeamScore = gameData.value.scoreboard.away.reduce(
-    (acc: number, val) => acc + (Number(val) || 0),
-    0,
-  )
-
-  const isScoreboardEmpty = (scoreboardArray: (number | null)[]) => {
-    return scoreboardArray.every((val) => val === null || val === 0)
-  }
-
-  const homeScoreboardEmpty = isScoreboardEmpty(gameData.value.scoreboard.home)
-  const awayScoreboardEmpty = isScoreboardEmpty(gameData.value.scoreboard.away)
-
-  if (homeScoreboardEmpty && awayScoreboardEmpty) {
-    gameData.value.score = null
-    gameData.value.opponent_score = null
-  } else if (gameData.value.home_away === 'home') {
-    gameData.value.score = homeTeamScore
-    gameData.value.opponent_score = awayTeamScore
-  } else {
-    gameData.value.score = awayTeamScore
-    gameData.value.opponent_score = homeTeamScore
-  }
-
   try {
     await axios.put(`/game/${scheduleId}`, gameData.value)
     showSnackbar(t('gameResult.saveSuccess'))
@@ -349,7 +267,6 @@ const formattedGameDate = computed(() => {
 
 onMounted(() => {
   fetchSeason()
-  fetchAllPlayers()
   fetchAllTeams()
 })
 </script>

@@ -479,7 +479,12 @@
               block
               class="mt-2"
               prepend-icon="mdi-baseball"
-              @click="openPitcherForm(selectedDay)"
+              :to="{
+                name: 'GameResult',
+                params: { teamId, scheduleId: selectedDay.schedule.id },
+                query: { tab: 'pitchers' },
+              }"
+              @click="isDayDetailOpen = false"
             >
               投手登板登録
             </v-btn>
@@ -491,14 +496,6 @@
       </v-card-text>
     </v-card>
   </v-dialog>
-
-  <!-- 投手登板登録ダイアログ -->
-  <PitcherAppearanceForm
-    v-model="isPitcherFormOpen"
-    :team-id="teamId"
-    :schedule-date="pitcherFormDate"
-    @saved="onPitcherFormSaved"
-  />
 </template>
 
 <script setup lang="ts">
@@ -515,7 +512,6 @@ import EmptyState from '@/components/EmptyState.vue'
 import TeamMembers from '@/views/TeamMembers.vue'
 import LineupTemplateEditor from '@/components/squad/LineupTemplateEditor.vue'
 import SquadTextGenerator from '@/components/squad/SquadTextGenerator.vue'
-import PitcherAppearanceForm from '@/components/pitcher/PitcherAppearanceForm.vue'
 import { useTeamSelectionStore } from '@/stores/teamSelection'
 
 const props = defineProps<{ teamId?: number }>()
@@ -573,21 +569,6 @@ type CalendarDay = {
 }
 const isDayDetailOpen = ref(false)
 const selectedDay = ref<CalendarDay | null>(null)
-
-// 投手登板登録ダイアログ
-const isPitcherFormOpen = ref(false)
-const pitcherFormDate = ref('')
-
-const openPitcherForm = (day: CalendarDay | null) => {
-  if (!day?.schedule?.date) return
-  pitcherFormDate.value = day.schedule.date
-  isDayDetailOpen.value = false
-  isPitcherFormOpen.value = true
-}
-
-const onPitcherFormSaved = () => {
-  // 必要に応じてデータ再取得
-}
 
 const openDayDetail = (day: CalendarDay) => {
   if (!day.isCurrentMonth) return

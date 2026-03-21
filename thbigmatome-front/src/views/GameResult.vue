@@ -154,7 +154,7 @@ import PitcherAppearanceTab from '@/components/pitcher/PitcherAppearanceTab.vue'
 const { t } = useI18n()
 const route = useRoute()
 const gameDate = ref(new Date())
-const activeTab = ref('overview')
+const activeTab = ref((route.query.tab as string) || 'overview')
 
 const snackbar = ref(false)
 const snackbarText = ref('')

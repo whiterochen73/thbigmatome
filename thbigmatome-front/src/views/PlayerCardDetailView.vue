@@ -302,7 +302,7 @@
       <v-card>
         <v-card-title>基本情報を編集</v-card-title>
         <v-card-text>
-          <v-row dense>
+          <v-row density="compact">
             <v-col cols="6">
               <v-select
                 v-model="basicForm.card_type"
@@ -541,7 +541,7 @@
               <template v-if="t.condition_name">{{ t.condition_name }}/</template>{{ t.name }}
             </v-chip>
           </div>
-          <v-row dense>
+          <v-row density="compact">
             <v-col cols="5">
               <v-text-field
                 v-model.number="newTraitDefId"
@@ -581,7 +581,7 @@
               <template v-if="a.condition_name">{{ a.condition_name }}/</template>{{ a.name }}
             </v-chip>
           </div>
-          <v-row dense>
+          <v-row density="compact">
             <v-col cols="5">
               <v-text-field
                 v-model.number="newAbilityDefId"

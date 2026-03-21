@@ -1,6 +1,6 @@
 <template>
   <div>
-    <v-row dense>
+    <v-row density="compact">
       <v-col cols="12" sm="3">
         <v-text-field
           v-model="editableItem.number"

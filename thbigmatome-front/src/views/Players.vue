@@ -17,7 +17,6 @@
             :label="t('playerList.filters.searchPlaceholder')"
             prepend-inner-icon="mdi-magnify"
             clearable
-            dense
             hide-details
           ></v-text-field>
         </template>

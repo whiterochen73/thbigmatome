@@ -64,7 +64,7 @@
             </v-btn>
           </div>
 
-          <v-row dense>
+          <v-row density="compact">
             <!-- 投手選択 -->
             <v-col cols="12" sm="6">
               <v-autocomplete
@@ -78,9 +78,9 @@
                 :item-props="(item: PitcherItem) => ({ disabled: item.injured })"
               >
                 <template #item="{ props, item }">
-                  <v-list-item v-bind="props" :disabled="item.raw.injured">
+                  <v-list-item v-bind="props" :disabled="item.injured">
                     <template #append>
-                      <span class="status-badge ml-2">{{ item.raw.statusBadge }}</span>
+                      <span class="status-badge ml-2">{{ item.statusBadge }}</span>
                     </template>
                   </v-list-item>
                 </template>

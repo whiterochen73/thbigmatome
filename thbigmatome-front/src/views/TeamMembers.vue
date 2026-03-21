@@ -57,15 +57,15 @@
                   <template #prepend>
                     <v-chip
                       size="x-small"
-                      :color="item.raw.position === 'pitcher' ? 'blue' : 'green'"
+                      :color="item.position === 'pitcher' ? 'blue' : 'green'"
                       variant="tonal"
                       class="mr-2"
                     >
-                      {{ t(`baseball.positions.${item.raw.position}`) }}
+                      {{ t(`baseball.positions.${item.position}`) }}
                     </v-chip>
                   </template>
                   <template #subtitle>
-                    {{ getPlayerCostLabel(item.raw) }}
+                    {{ getPlayerCostLabel(item) }}
                   </template>
                 </v-list-item>
               </template>

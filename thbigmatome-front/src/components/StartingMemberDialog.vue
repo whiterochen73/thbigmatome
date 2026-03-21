@@ -30,7 +30,6 @@
                       :items="availablePositions(member.position, homeLineup)"
                       item-title="name"
                       item-value="key"
-                      dense
                       hide-details
                       @keydown="handlePositionKeydown(member, homeLineup, $event)"
                     ></v-select>
@@ -41,7 +40,6 @@
                       :items="homeTeamPlayers"
                       :item-props="playerItemProps"
                       return-object
-                      dense
                       hide-details
                     ></v-autocomplete>
                   </td>
@@ -74,7 +72,6 @@
                       :items="availablePositions(member.position, opponentLineup)"
                       item-title="name"
                       item-value="key"
-                      dense
                       hide-details
                       @keydown="handlePositionKeydown(member, opponentLineup, $event)"
                     ></v-select>
@@ -85,7 +82,6 @@
                       :items="allPlayers"
                       :item-props="playerItemProps"
                       return-object
-                      dense
                       hide-details
                     ></v-autocomplete>
                   </td>

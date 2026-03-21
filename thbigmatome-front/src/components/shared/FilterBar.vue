@@ -1,6 +1,6 @@
 <template>
   <div class="filter-bar-wrap">
-    <v-row class="mb-0" dense>
+    <v-row class="mb-0" density="compact">
       <v-col v-if="$slots.search" cols="12" sm="4">
         <slot name="search" />
       </v-col>

@@ -19,7 +19,7 @@
         :class="{ 'bg-grey-lighten-4': idx % 2 === 0 }"
       >
         <!-- メイン行 -->
-        <v-row dense align="center">
+        <v-row density="compact" align="center">
           <!-- 番手ラベル -->
           <v-col cols="auto">
             <span
@@ -44,9 +44,9 @@
               :item-props="(item: PitcherItem) => ({ disabled: item.disabled })"
             >
               <template #item="{ props, item }">
-                <v-list-item v-bind="props" :disabled="item.raw.disabled">
+                <v-list-item v-bind="props" :disabled="item.disabled">
                   <template #append>
-                    <span class="ml-1 text-caption text-grey">{{ item.raw.preGameInfo }}</span>
+                    <span class="ml-1 text-caption text-grey">{{ item.preGameInfo }}</span>
                   </template>
                 </v-list-item>
               </template>
@@ -155,7 +155,7 @@
         </v-row>
 
         <!-- サブ情報行 -->
-        <v-row dense align="center" class="mt-1">
+        <v-row density="compact" align="center" class="mt-1">
           <!-- アウト無し降板 -->
           <v-col cols="auto">
             <v-checkbox

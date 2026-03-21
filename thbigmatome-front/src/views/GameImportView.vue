@@ -100,7 +100,7 @@
           <v-card class="game-settings-card">
             <v-card-title class="text-subtitle-1 pb-1">試合設定</v-card-title>
             <v-card-text>
-              <v-row dense>
+              <v-row density="compact">
                 <v-col cols="12" sm="4">
                   <v-text-field
                     v-model="pregameForm.venue"
@@ -378,7 +378,7 @@
           <v-card>
             <v-card-title class="text-subtitle-1 pb-1">DB紐付け（必須）</v-card-title>
             <v-card-text>
-              <v-row dense>
+              <v-row density="compact">
                 <v-col cols="12" sm="6" md="3">
                   <v-select
                     v-model="formData.competition_id"

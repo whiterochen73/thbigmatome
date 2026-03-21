@@ -71,7 +71,7 @@
       <!-- 編集フォーム -->
       <template v-if="isEditing">
         <div class="edit-form mx-3 my-2 pa-3">
-          <v-row dense>
+          <v-row density="compact">
             <v-col cols="12" sm="4">
               <v-text-field
                 v-model="editForm.result_code"
@@ -244,7 +244,7 @@
         <!-- レガシー表示 (source_eventsなし) -->
         <template v-else>
           <div class="legacy-fields pa-3">
-            <v-row dense align="center">
+            <v-row density="compact" align="center">
               <v-col cols="auto" class="d-flex align-center gap-1">
                 <span class="text-caption text-grey">結果:</span>
                 <v-chip :color="resultColor(ab.result_code)" size="x-small" label>

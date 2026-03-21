@@ -21,6 +21,7 @@ class Api::V1::PitcherAppearancesController < Api::V1::BaseController
         hash = bulk_appearance_params(ap).to_h.symbolize_keys
         hash[:game_id] = game.id
         hash[:team_id] = team_id
+        hash[:schedule_date] = bulk[:schedule_date]
         hash[:competition_id] ||= game.competition_id
 
         if hash[:result_category].blank?

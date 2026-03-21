@@ -10,9 +10,6 @@
       <v-btn class="mx-1" variant="text" size="small" :to="seasonPortalRoute">
         {{ t('seasonPortal.title') }}
       </v-btn>
-      <v-btn :to="scoreSheetRoute" color="info" variant="tonal" size="small" class="mr-2">
-        スコアシート
-      </v-btn>
       <template #append>
         <v-btn
           @click="saveGame"
@@ -178,11 +175,6 @@ const defaultGameData: GameData = {
 const seasonPortalRoute = computed(() => ({
   name: 'SeasonPortal',
   params: { teamId: teamId },
-}))
-
-const scoreSheetRoute = computed(() => ({
-  name: 'ScoreSheet',
-  params: { teamId: teamId, scheduleId: scheduleId },
 }))
 
 const gameData = ref<GameData>(defaultGameData)

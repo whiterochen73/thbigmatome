@@ -1,0 +1,2268 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>THBIG Dugout — 投手登板管理</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@400;500;600;700&family=Noto+Sans+JP:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --primary: #1B3A6B;
+    --primary-light: #2a5299;
+    --primary-faint: rgba(27, 58, 107, 0.08);
+    --accent: #C0392B;
+    --accent-light: #e74c3c;
+    --warning: #D4940A;
+    --warning-light: #f0a500;
+    --warning-faint: rgba(212, 148, 10, 0.12);
+    --success: #5D8A2F;
+    --success-light: #73a839;
+    --success-faint: rgba(93, 138, 47, 0.10);
+    --error: #B01C2A;
+    --error-faint: rgba(176, 28, 42, 0.10);
+    --info: #2E86AB;
+    --info-faint: rgba(46, 134, 171, 0.10);
+    --bg: #F8F6F1;
+    --surface: #FFFFFF;
+    --surface-dim: #F0EDE5;
+    --border: #D8D0C4;
+    --border-light: #E8E2D8;
+    --text: #1a1a1a;
+    --text-secondary: #5a564e;
+    --text-muted: #8a857c;
+    --font-display: 'Shippori Mincho', 'Noto Serif JP', serif;
+    --font-body: 'Noto Sans JP', -apple-system, sans-serif;
+    --sp-1: 4px; --sp-2: 8px; --sp-3: 12px; --sp-4: 16px;
+    --sp-5: 20px; --sp-6: 24px; --sp-8: 32px; --sp-10: 40px;
+    --shadow-card: 0 1px 4px rgba(0,0,0,0.08);
+    --shadow-elevated: 0 2px 8px rgba(0,0,0,0.12);
+    --shadow-deep: 0 4px 16px rgba(0,0,0,0.14);
+    --radius-sm: 4px;
+    --radius-md: 8px;
+    --radius-lg: 12px;
+    --orange: #D46A0A;
+    --orange-faint: rgba(212, 106, 10, 0.12);
+    --injured-bg: #6b6b6b;
+    --injured-faint: rgba(107, 107, 107, 0.10);
+    --unavailable: #8B1A1A;
+    --unavailable-faint: rgba(139, 26, 26, 0.10);
+  }
+
+  body {
+    font-family: var(--font-body);
+    background: var(--bg);
+    color: var(--text);
+    font-size: 14px;
+    line-height: 1.5;
+    min-height: 100vh;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 9999;
+    opacity: 0.018;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='256' height='256' filter='url(%23n)' opacity='1'/%3E%3C/svg%3E");
+    background-size: 256px 256px;
+  }
+
+  /* ===== APP BAR ===== */
+  .app-bar {
+    background: linear-gradient(135deg, var(--primary) 0%, #0f2347 100%);
+    color: white;
+    padding: 0 var(--sp-6);
+    height: 56px;
+    display: flex;
+    align-items: center;
+    gap: var(--sp-4);
+    box-shadow: 0 2px 8px rgba(27, 58, 107, 0.3);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+
+  .app-bar-brand {
+    font-family: var(--font-display);
+    font-size: 20px;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    display: flex;
+    align-items: center;
+    gap: var(--sp-2);
+  }
+
+  .app-bar-brand .accent-mark {
+    display: inline-block;
+    width: 3px;
+    height: 20px;
+    background: var(--accent);
+    border-radius: 2px;
+    margin-right: var(--sp-1);
+  }
+
+  .app-bar-divider {
+    width: 1px;
+    height: 24px;
+    background: rgba(255,255,255,0.2);
+  }
+
+  .app-bar-title {
+    font-size: 14px;
+    font-weight: 400;
+    opacity: 0.85;
+    letter-spacing: 0.04em;
+  }
+
+  .app-bar-spacer { flex: 1; }
+
+  .app-bar-date {
+    font-size: 12px;
+    opacity: 0.6;
+    font-weight: 300;
+  }
+
+  /* ===== MAIN LAYOUT ===== */
+  .main-content {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: var(--sp-6);
+  }
+
+  /* ===== TABS ===== */
+  .tabs-container {
+    display: flex;
+    gap: 0;
+    border-bottom: 2px solid var(--border);
+    margin-bottom: var(--sp-6);
+  }
+
+  .tab-btn {
+    font-family: var(--font-body);
+    font-size: 14px;
+    font-weight: 500;
+    padding: var(--sp-3) var(--sp-6);
+    border: none;
+    background: transparent;
+    color: var(--text-secondary);
+    cursor: pointer;
+    position: relative;
+    transition: color 0.2s;
+    letter-spacing: 0.02em;
+  }
+
+  .tab-btn:hover {
+    color: var(--primary);
+    background: var(--primary-faint);
+  }
+
+  .tab-btn.active {
+    color: var(--primary);
+    font-weight: 600;
+  }
+
+  .tab-btn.active::after {
+    content: '';
+    position: absolute;
+    bottom: -2px;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: var(--primary);
+  }
+
+  .tab-panel { display: none; }
+  .tab-panel.active { display: block; animation: fadeIn 0.25s ease; }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(4px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* ===== CARD ===== */
+  .card {
+    background: var(--surface);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-card);
+    border: 1px solid var(--border-light);
+  }
+
+  .card-header {
+    padding: var(--sp-4) var(--sp-5);
+    border-bottom: 1px solid var(--border-light);
+    display: flex;
+    align-items: center;
+    gap: var(--sp-3);
+  }
+
+  .card-header h3 {
+    font-family: var(--font-display);
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--primary);
+  }
+
+  .card-body {
+    padding: var(--sp-4) var(--sp-5);
+  }
+
+  /* ===== COMPETITION SELECTOR ===== */
+  .competition-bar {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-3);
+    margin-bottom: var(--sp-4);
+    padding: var(--sp-3) var(--sp-4);
+    background: var(--surface);
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border-light);
+    box-shadow: var(--shadow-card);
+    flex-wrap: wrap;
+  }
+
+  .competition-bar label {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    letter-spacing: 0.04em;
+    white-space: nowrap;
+  }
+
+  /* ===== FORM CONTROLS ===== */
+  .form-select, .form-input, .form-date {
+    font-family: var(--font-body);
+    font-size: 13px;
+    padding: 6px 12px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    background: var(--surface);
+    color: var(--text);
+    outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+
+  .form-select:focus, .form-input:focus, .form-date:focus {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 2px var(--primary-faint);
+  }
+
+  .form-select { cursor: pointer; padding-right: 28px; }
+
+  .form-select:disabled {
+    background: var(--surface-dim);
+    color: var(--text-muted);
+    cursor: not-allowed;
+  }
+
+  /* ===== FILTER BAR ===== */
+  .filter-bar {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-3);
+    padding: var(--sp-3) var(--sp-4);
+    flex-wrap: wrap;
+  }
+
+  .filter-label {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+
+  .filter-chip {
+    font-family: var(--font-body);
+    font-size: 12px;
+    padding: 3px 10px;
+    border-radius: 12px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all 0.15s;
+    font-weight: 400;
+  }
+
+  .filter-chip:hover {
+    border-color: var(--primary);
+    color: var(--primary);
+  }
+
+  .filter-chip.active {
+    background: var(--primary);
+    color: white;
+    border-color: var(--primary);
+    font-weight: 500;
+  }
+
+  /* ===== DATA TABLE ===== */
+  .data-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+  }
+
+  .data-table thead th {
+    padding: var(--sp-2) var(--sp-3);
+    text-align: left;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    border-bottom: 2px solid var(--border);
+    white-space: nowrap;
+    position: sticky;
+    top: 56px;
+    background: var(--surface);
+    z-index: 10;
+  }
+
+  .data-table tbody tr {
+    border-bottom: 1px solid var(--border-light);
+    cursor: pointer;
+    transition: background 0.12s;
+  }
+
+  .data-table tbody tr:nth-child(even of :not(.expanded-row)) {
+    background: rgba(240, 237, 229, 0.35);
+  }
+
+  .data-table tbody tr:hover:not(.expanded-row) {
+    background: var(--primary-faint);
+  }
+
+  .data-table tbody td {
+    padding: var(--sp-2) var(--sp-3);
+    vertical-align: middle;
+    white-space: nowrap;
+  }
+
+  .data-table .col-team {
+    font-weight: 500;
+    color: var(--primary);
+    max-width: 100px;
+  }
+
+  .data-table .col-pitcher { font-weight: 500; }
+
+  /* ===== CHIPS ===== */
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-size: 11px;
+    font-weight: 500;
+    line-height: 1.4;
+  }
+
+  .chip-starter { background: var(--primary-faint); color: var(--primary); }
+  .chip-reliever { background: var(--info-faint); color: var(--info); }
+  .chip-slash { background: var(--warning-faint); color: var(--warning); }
+
+  /* ===== STATUS BADGES ===== */
+  .status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 10px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 600;
+    line-height: 1.3;
+    letter-spacing: 0.01em;
+  }
+
+  .status-badge .status-icon { font-size: 12px; line-height: 1; }
+
+  .status-full { background: var(--success-faint); color: var(--success); }
+  .status-reduced { background: var(--warning-faint); color: #b07d00; }
+  .status-fatigued { background: var(--orange-faint); color: var(--orange); }
+  .status-injury-check { background: var(--error-faint); color: var(--accent); }
+  .status-unavailable { background: var(--unavailable-faint); color: var(--unavailable); }
+  .status-injured { background: var(--injured-faint); color: var(--injured-bg); }
+
+  /* ===== FATIGUE VALUE ===== */
+  .fatigue-val {
+    font-weight: 600;
+    font-size: 13px;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .fatigue-val .fatigue-label {
+    font-size: 10px;
+    font-weight: 400;
+    color: var(--text-muted);
+    margin-left: 2px;
+  }
+
+  .fatigue-full { color: var(--success); }
+  .fatigue-reduced { color: var(--warning); }
+  .fatigue-zero { color: var(--accent); }
+  .fatigue-na { color: var(--text-muted); font-weight: 400; font-style: italic; }
+
+  /* ===== 7-DAY SCHEDULE GRID ===== */
+  .week-grid {
+    display: inline-grid;
+    grid-template-columns: repeat(7, 20px);
+    gap: 2px;
+    align-items: center;
+  }
+
+  .week-grid .day-cell {
+    width: 20px;
+    height: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    position: relative;
+  }
+
+  .day-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    position: relative;
+  }
+
+  .day-dot.starter { background: var(--success); box-shadow: 0 0 0 2px var(--success-faint); }
+  .day-dot.reliever { background: var(--info); box-shadow: 0 0 0 2px var(--info-faint); }
+  .day-dot.rest { background: var(--border-light); width: 6px; height: 6px; }
+  .day-dot.no-game { background: transparent; width: 10px; height: 10px; border: 1.5px dashed var(--border); }
+
+  .day-cell[data-tooltip]:hover::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    bottom: calc(100% + 6px);
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 3px 8px;
+    background: var(--text);
+    color: white;
+    font-size: 10px;
+    border-radius: var(--radius-sm);
+    white-space: nowrap;
+    z-index: 50;
+    pointer-events: none;
+    animation: tooltipIn 0.15s ease;
+  }
+
+  @keyframes tooltipIn {
+    from { opacity: 0; transform: translateX(-50%) translateY(2px); }
+    to { opacity: 1; transform: translateX(-50%) translateY(0); }
+  }
+
+  /* Schedule day header */
+  .schedule-day-header {
+    font-size: 9px;
+    color: var(--text-muted);
+    text-align: center;
+    font-weight: 500;
+    line-height: 1;
+  }
+
+  .schedule-day-header.has-game {
+    color: var(--primary);
+    font-weight: 600;
+  }
+
+  /* ===== EXPANDED ROW ===== */
+  .expanded-row td {
+    padding: 0 !important;
+    background: var(--surface-dim) !important;
+    cursor: default !important;
+  }
+
+  .expanded-content {
+    padding: var(--sp-3) var(--sp-5) var(--sp-4);
+    margin-left: var(--sp-8);
+    border-left: 3px solid var(--primary);
+  }
+
+  .expanded-content h4 {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    margin-bottom: var(--sp-2);
+    letter-spacing: 0.04em;
+  }
+
+  .history-table {
+    width: auto;
+    border-collapse: collapse;
+    font-size: 12px;
+  }
+
+  .history-table th {
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    padding: var(--sp-1) var(--sp-3);
+    text-align: left;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .history-table td {
+    padding: var(--sp-1) var(--sp-3);
+    border-bottom: 1px solid var(--border-light);
+    color: var(--text-secondary);
+  }
+
+  .expand-arrow {
+    display: inline-block;
+    font-size: 10px;
+    color: var(--text-muted);
+    transition: transform 0.2s;
+    width: 16px;
+    text-align: center;
+  }
+
+  .expand-arrow.open { transform: rotate(90deg); }
+
+  /* ===== TABLE SUMMARY ===== */
+  .table-summary {
+    padding: var(--sp-3) var(--sp-4);
+    border-top: 1px solid var(--border-light);
+    display: flex;
+    align-items: center;
+    gap: var(--sp-4);
+    font-size: 12px;
+    color: var(--text-muted);
+  }
+
+  .summary-stat {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-1);
+  }
+
+  .summary-stat .stat-count {
+    font-weight: 600;
+    color: var(--text);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .status-count {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    padding: 1px 6px;
+    border-radius: 8px;
+    font-size: 11px;
+    font-weight: 500;
+  }
+
+  .status-count-full { background: var(--success-faint); color: var(--success); }
+  .status-count-warn { background: var(--warning-faint); color: #b07d00; }
+  .status-count-alert { background: var(--error-faint); color: var(--accent); }
+  .status-count-na { background: var(--unavailable-faint); color: var(--unavailable); }
+  .status-count-injured { background: var(--injured-faint); color: var(--injured-bg); }
+
+  .expanded-row:hover td { background: var(--surface-dim) !important; }
+
+  /* ===== SCREEN 2: CALENDAR + REGISTRATION ===== */
+  .register-layout {
+    display: grid;
+    grid-template-columns: 340px 1fr;
+    gap: var(--sp-5);
+    align-items: start;
+  }
+
+  @media (max-width: 960px) {
+    .register-layout {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  /* Calendar sidebar */
+  .calendar-sidebar .card { position: sticky; top: 72px; }
+
+  .team-selector-bar {
+    padding: var(--sp-3) var(--sp-4);
+    border-bottom: 1px solid var(--border-light);
+    display: flex;
+    flex-direction: column;
+    gap: var(--sp-2);
+  }
+
+  .team-selector-bar label {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+
+  .team-selector-bar .form-select { width: 100%; }
+
+  /* Calendar grid */
+  .calendar-container { padding: var(--sp-3) var(--sp-4) var(--sp-4); }
+
+  .calendar-month-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: var(--sp-3);
+  }
+
+  .calendar-month-header h4 {
+    font-family: var(--font-display);
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--primary);
+  }
+
+  .calendar-nav-btn {
+    font-family: var(--font-body);
+    font-size: 16px;
+    width: 28px;
+    height: 28px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    background: var(--surface);
+    color: var(--text-secondary);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.15s;
+  }
+
+  .calendar-nav-btn:hover {
+    border-color: var(--primary);
+    color: var(--primary);
+    background: var(--primary-faint);
+  }
+
+  .calendar-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 2px;
+  }
+
+  .calendar-weekday {
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-align: center;
+    padding: var(--sp-1) 0;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+
+  .calendar-day {
+    aspect-ratio: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--radius-sm);
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--text-muted);
+    cursor: default;
+    transition: all 0.15s;
+    position: relative;
+    gap: 2px;
+  }
+
+  .calendar-day.has-game {
+    color: var(--text);
+    cursor: pointer;
+    font-weight: 600;
+  }
+
+  .calendar-day.has-game:hover {
+    box-shadow: var(--shadow-card);
+  }
+
+  .calendar-day.selected {
+    background: var(--primary);
+    color: white;
+    box-shadow: var(--shadow-elevated);
+  }
+
+  .calendar-day.selected .cal-schedule-label {
+    color: rgba(255,255,255,0.8);
+  }
+
+  .calendar-day.empty {
+    color: transparent;
+    pointer-events: none;
+  }
+
+  .cal-schedule-label {
+    font-size: 8px;
+    font-weight: 500;
+    color: var(--text-muted);
+    line-height: 1;
+  }
+
+  .cal-game-dot {
+    width: 4px;
+    height: 4px;
+    border-radius: 50%;
+    background: var(--accent);
+    position: absolute;
+    bottom: 3px;
+  }
+
+  .calendar-legend {
+    display: flex;
+    gap: var(--sp-3);
+    margin-top: var(--sp-3);
+    padding-top: var(--sp-2);
+    border-top: 1px solid var(--border-light);
+    font-size: 10px;
+    color: var(--text-muted);
+  }
+
+  .calendar-legend-item {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .legend-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+  }
+
+  .legend-dot.game { background: var(--primary); }
+  .legend-dot.inter { background: var(--info); }
+  .legend-dot.playoff { background: var(--orange); }
+  .legend-dot.travel { background: #7B68AE; }
+  .legend-dot.reserve { background: var(--warning); }
+  .legend-dot.off { background: var(--border); }
+
+  /* Calendar day type colors (SeasonPortal unified) */
+  .calendar-day.type-game {
+    background: rgba(27, 58, 107, 0.12);
+    color: var(--primary);
+  }
+  .calendar-day.type-game:hover { background: rgba(27, 58, 107, 0.20); }
+
+  .calendar-day.type-inter {
+    background: rgba(46, 134, 171, 0.12);
+    color: var(--info);
+  }
+  .calendar-day.type-inter:hover { background: rgba(46, 134, 171, 0.20); }
+
+  .calendar-day.type-playoff {
+    background: rgba(212, 106, 10, 0.12);
+    color: var(--orange);
+  }
+  .calendar-day.type-playoff:hover { background: rgba(212, 106, 10, 0.20); }
+
+  .calendar-day.type-travel {
+    background: rgba(123, 104, 174, 0.12);
+    color: #7B68AE;
+  }
+
+  .calendar-day.type-reserve {
+    background: rgba(212, 148, 10, 0.10);
+    color: var(--warning);
+  }
+
+  .calendar-day.type-off {
+    background: var(--surface-dim);
+    color: var(--text-muted);
+  }
+
+  /* Current date marker */
+  .calendar-day.is-current-date {
+    outline: 2.5px solid var(--accent);
+    outline-offset: -2px;
+    font-weight: 700;
+  }
+
+  .calendar-day.is-current-date .cal-current-marker {
+    font-size: 7px;
+    font-weight: 700;
+    color: var(--accent);
+    line-height: 1;
+    letter-spacing: 0.02em;
+  }
+
+  /* Announced starter in calendar */
+  .cal-starter-name {
+    font-size: 7px;
+    font-weight: 500;
+    color: var(--text-secondary);
+    line-height: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 38px;
+  }
+
+  /* ===== REGISTRATION FORM (Right panel) ===== */
+  .register-form-panel .card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .game-date-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--sp-2);
+    padding: 4px 12px;
+    border-radius: 14px;
+    background: var(--primary-faint);
+    color: var(--primary);
+    font-size: 12px;
+    font-weight: 600;
+  }
+
+  .game-date-badge .schedule-num {
+    font-family: var(--font-display);
+    font-size: 14px;
+  }
+
+  .form-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: var(--sp-4);
+  }
+
+  .form-grid-2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--sp-4);
+  }
+
+  .form-group {
+    display: flex;
+    flex-direction: column;
+    gap: var(--sp-1);
+  }
+
+  .form-group label {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    letter-spacing: 0.02em;
+  }
+
+  .form-group .form-select,
+  .form-group .form-input,
+  .form-group .form-date {
+    width: 100%;
+  }
+
+  .form-divider {
+    height: 1px;
+    background: var(--border);
+    margin: var(--sp-5) 0;
+  }
+
+  .section-title {
+    font-family: var(--font-display);
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--primary);
+    margin-bottom: var(--sp-4);
+    display: flex;
+    align-items: center;
+    gap: var(--sp-2);
+  }
+
+  .section-title .section-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    border-radius: var(--radius-sm);
+    background: var(--primary-faint);
+    font-size: 13px;
+  }
+
+  /* ===== PITCHER STATUS CARD (inline) ===== */
+  .pitcher-status-inline {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-3);
+    padding: var(--sp-2) var(--sp-3);
+    background: var(--surface-dim);
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border-light);
+    margin-top: var(--sp-2);
+    font-size: 12px;
+    animation: fadeIn 0.2s ease;
+  }
+
+  .pitcher-status-inline .ps-item {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    white-space: nowrap;
+  }
+
+  .pitcher-status-inline .ps-label {
+    color: var(--text-muted);
+    font-size: 10px;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+
+  .pitcher-status-inline .ps-value {
+    font-weight: 600;
+    font-size: 12px;
+  }
+
+  .pitcher-status-inline.injured {
+    background: var(--injured-faint);
+    border-color: rgba(107, 107, 107, 0.25);
+    opacity: 0.7;
+  }
+
+  .pitcher-status-inline .ps-warning {
+    color: var(--accent);
+    font-size: 11px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 3px;
+    margin-left: auto;
+    padding-left: var(--sp-3);
+  }
+
+  /* ===== DECISION CHIPS ===== */
+  .decision-group {
+    display: flex;
+    gap: var(--sp-2);
+    align-items: center;
+    flex-wrap: wrap;
+  }
+
+  .decision-chip {
+    font-family: var(--font-body);
+    font-size: 12px;
+    font-weight: 600;
+    padding: 4px 14px;
+    border-radius: 14px;
+    border: 1.5px solid var(--border);
+    background: var(--surface);
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all 0.15s;
+    position: relative;
+  }
+
+  .decision-chip:hover:not(.disabled) {
+    border-color: var(--primary);
+    color: var(--primary);
+  }
+
+  .decision-chip.disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+    pointer-events: none;
+  }
+
+  .decision-chip.selected-w { background: var(--accent); color: white; border-color: var(--accent); }
+  .decision-chip.selected-l { background: var(--primary); color: white; border-color: var(--primary); }
+  .decision-chip.selected-s { background: var(--success); color: white; border-color: var(--success); }
+  .decision-chip.selected-h { background: var(--info); color: white; border-color: var(--info); }
+
+  /* Decision constraint tooltip */
+  .decision-chip[data-rule]::before {
+    content: attr(data-rule);
+    position: absolute;
+    bottom: calc(100% + 6px);
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 3px 8px;
+    background: var(--text);
+    color: white;
+    font-size: 9px;
+    font-weight: 400;
+    border-radius: var(--radius-sm);
+    white-space: nowrap;
+    z-index: 50;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.15s;
+  }
+
+  .decision-chip[data-rule]:hover::before { opacity: 1; }
+
+  /* ===== RESULT CATEGORY AUTO ===== */
+  .result-auto-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 10px;
+    border-radius: 10px;
+    font-size: 11px;
+    font-weight: 500;
+    background: var(--surface-dim);
+    color: var(--text-secondary);
+    border: 1px solid var(--border-light);
+  }
+
+  .result-auto-badge.result-ko {
+    background: var(--error-faint);
+    color: var(--error);
+    border-color: rgba(176, 28, 42, 0.2);
+  }
+
+  .result-auto-badge.result-no-game {
+    background: var(--injured-faint);
+    color: var(--injured-bg);
+    border-color: rgba(107, 107, 107, 0.2);
+  }
+
+  .result-auto-badge.result-long-loss {
+    background: var(--warning-faint);
+    color: #8a6d00;
+    border-color: rgba(212, 148, 10, 0.2);
+  }
+
+  /* ===== VALIDATION RULES PANEL ===== */
+  .validation-rules {
+    padding: var(--sp-3) var(--sp-4);
+    background: var(--surface-dim);
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border-light);
+    margin-top: var(--sp-4);
+  }
+
+  .validation-rules h5 {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-bottom: var(--sp-2);
+  }
+
+  .validation-rules table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 11px;
+  }
+
+  .validation-rules th {
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-align: left;
+    padding: 3px 8px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .validation-rules td {
+    padding: 3px 8px;
+    border-bottom: 1px solid var(--border-light);
+    color: var(--text-secondary);
+  }
+
+  .validation-rules .rule-active {
+    color: var(--text);
+    font-weight: 500;
+  }
+
+  .validation-rules .rule-check {
+    color: var(--success);
+    font-weight: 600;
+  }
+
+  .validation-rules .rule-error {
+    color: var(--error);
+    font-weight: 600;
+  }
+
+  /* ===== CHECKBOXES ===== */
+  .checkbox-row {
+    display: flex;
+    gap: var(--sp-4);
+    align-items: center;
+    flex-wrap: wrap;
+  }
+
+  .checkbox-label {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-1);
+    font-size: 13px;
+    color: var(--text-secondary);
+    cursor: pointer;
+  }
+
+  .checkbox-label input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+    accent-color: var(--primary);
+    cursor: pointer;
+  }
+
+  /* ===== RELIEF ROW ===== */
+  .relief-section {
+    display: flex;
+    flex-direction: column;
+    gap: var(--sp-3);
+  }
+
+  .relief-row {
+    display: grid;
+    grid-template-columns: 2fr 80px 1fr auto;
+    gap: var(--sp-3);
+    align-items: start;
+    padding: var(--sp-3);
+    background: var(--surface-dim);
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border-light);
+    position: relative;
+    transition: box-shadow 0.15s;
+  }
+
+  .relief-row:hover { box-shadow: var(--shadow-card); }
+
+  .relief-row .row-badge {
+    position: absolute;
+    left: -8px;
+    top: 12px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+  }
+
+  .relief-row .row-number {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: var(--primary);
+    color: white;
+    font-size: 10px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: var(--shadow-card);
+  }
+
+  .relief-row .row-role-label {
+    font-size: 8px;
+    font-weight: 600;
+    color: var(--info);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    white-space: nowrap;
+  }
+
+  .relief-row .row-role-label.role-second-starter {
+    color: var(--accent);
+  }
+
+  .relief-remove-btn {
+    font-family: var(--font-body);
+    font-size: 18px;
+    line-height: 1;
+    width: 28px;
+    height: 28px;
+    border: none;
+    background: transparent;
+    color: var(--text-muted);
+    cursor: pointer;
+    border-radius: var(--radius-sm);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.15s;
+    margin-top: 18px;
+  }
+
+  .relief-remove-btn:hover {
+    background: var(--error-faint);
+    color: var(--error);
+  }
+
+  /* ===== BUTTONS ===== */
+  .btn {
+    font-family: var(--font-body);
+    font-size: 13px;
+    font-weight: 500;
+    padding: 8px 20px;
+    border-radius: var(--radius-sm);
+    border: none;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: var(--sp-2);
+    transition: all 0.15s;
+    letter-spacing: 0.02em;
+  }
+
+  .btn-primary {
+    background: var(--primary);
+    color: white;
+    box-shadow: var(--shadow-card);
+  }
+
+  .btn-primary:hover {
+    background: var(--primary-light);
+    box-shadow: var(--shadow-elevated);
+  }
+
+  .btn-outlined {
+    background: transparent;
+    color: var(--primary);
+    border: 1px solid var(--border);
+  }
+
+  .btn-outlined:hover {
+    border-color: var(--primary);
+    background: var(--primary-faint);
+  }
+
+  .btn-accent {
+    background: var(--accent);
+    color: white;
+    box-shadow: var(--shadow-card);
+  }
+
+  .btn-accent:hover {
+    background: var(--accent-light);
+    box-shadow: var(--shadow-elevated);
+  }
+
+  .btn-add {
+    background: transparent;
+    color: var(--primary);
+    border: 1.5px dashed var(--border);
+    padding: 10px 20px;
+    border-radius: var(--radius-md);
+    width: 100%;
+    justify-content: center;
+    font-weight: 500;
+  }
+
+  .btn-add:hover {
+    border-color: var(--primary);
+    background: var(--primary-faint);
+  }
+
+  .form-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: var(--sp-3);
+    padding-top: var(--sp-5);
+    border-top: 1px solid var(--border-light);
+    margin-top: var(--sp-5);
+  }
+
+  /* ===== RESPONSIVE ===== */
+  .table-wrapper { overflow-x: auto; }
+
+  /* ===== HELPERS ===== */
+  .text-muted { color: var(--text-muted); }
+  .text-sm { font-size: 12px; }
+  .text-xs { font-size: 11px; }
+  .fw-500 { font-weight: 500; }
+  .fw-600 { font-weight: 600; }
+  .mt-1 { margin-top: var(--sp-1); }
+  .mt-2 { margin-top: var(--sp-2); }
+  .mt-3 { margin-top: var(--sp-3); }
+  .ml-2 { margin-left: var(--sp-2); }
+
+  .form-hint {
+    font-size: 11px;
+    color: var(--text-muted);
+    margin-top: 2px;
+  }
+
+  /* Grayed-out pitcher option */
+  .pitcher-option-injured {
+    color: var(--text-muted);
+    background: var(--injured-faint);
+  }
+
+  /* Empty state */
+  .empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: var(--sp-10) var(--sp-6);
+    color: var(--text-muted);
+    text-align: center;
+  }
+
+  .empty-state-icon {
+    font-size: 36px;
+    margin-bottom: var(--sp-3);
+    opacity: 0.5;
+  }
+
+  .empty-state-text {
+    font-size: 13px;
+    line-height: 1.6;
+  }
+
+  /* ===== OPENER UI ===== */
+  .opener-banner {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-2);
+    padding: var(--sp-2) var(--sp-3);
+    background: var(--info-faint);
+    border-radius: var(--radius-sm);
+    border: 1px solid rgba(46, 134, 171, 0.2);
+    font-size: 11px;
+    color: var(--info);
+    font-weight: 500;
+    margin-bottom: var(--sp-3);
+  }
+
+  /* Game result input for auto-calc */
+  .game-result-bar {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-4);
+    padding: var(--sp-3) var(--sp-4);
+    background: var(--surface-dim);
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border-light);
+    margin-bottom: var(--sp-4);
+  }
+
+  .game-result-bar label {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    white-space: nowrap;
+  }
+
+  .game-result-chips {
+    display: flex;
+    gap: var(--sp-2);
+  }
+
+  .result-chip {
+    font-family: var(--font-body);
+    font-size: 12px;
+    font-weight: 600;
+    padding: 4px 14px;
+    border-radius: 14px;
+    border: 1.5px solid var(--border);
+    background: var(--surface);
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  .result-chip:hover { border-color: var(--primary); color: var(--primary); }
+  .result-chip.active-win { background: var(--accent); color: white; border-color: var(--accent); }
+  .result-chip.active-lose { background: var(--primary); color: white; border-color: var(--primary); }
+  .result-chip.active-draw { background: var(--warning); color: white; border-color: var(--warning); }
+  .result-chip.active-void { background: var(--injured-bg); color: white; border-color: var(--injured-bg); }
+</style>
+</head>
+<body>
+
+<!-- ===== APP BAR ===== -->
+<header class="app-bar">
+  <div class="app-bar-brand">
+    <span class="accent-mark"></span>
+    THBIG Dugout
+  </div>
+  <div class="app-bar-divider"></div>
+  <span class="app-bar-title">投手登板管理</span>
+  <div class="app-bar-spacer"></div>
+  <span class="app-bar-date">2026年3月20日（金）</span>
+</header>
+
+<!-- ===== MAIN ===== -->
+<main class="main-content">
+
+  <!-- TABS -->
+  <nav class="tabs-container">
+    <button class="tab-btn active" onclick="switchTab('overview')">📋 登板状況一覧</button>
+    <button class="tab-btn" onclick="switchTab('register')">✏️ 登板登録</button>
+  </nav>
+
+  <!-- ========== SCREEN 1: OVERVIEW ========== -->
+  <div id="tab-overview" class="tab-panel active">
+
+    <!-- Competition / Team Selector -->
+    <div class="competition-bar">
+      <label>大会</label>
+      <select class="form-select">
+        <option selected>第14回東方BIG野球大会（進行中）</option>
+        <option>第13回東方BIG野球大会</option>
+      </select>
+      <div style="flex:1"></div>
+      <label>チーム</label>
+      <select class="form-select" id="overview-team-select">
+        <option>全チーム</option>
+        <option selected>博麗神社</option>
+        <option>紅魔館</option>
+        <option>白玉楼</option>
+        <option>永遠亭</option>
+        <option>八雲家</option>
+        <option>守矢神社</option>
+      </select>
+      <div style="width: 1px; height: 20px; background: var(--border); margin: 0 4px;"></div>
+      <label>基準日</label>
+      <input type="date" class="form-date" value="2026-03-20">
+    </div>
+
+    <!-- Table Card -->
+    <div class="card">
+      <!-- Filter bar -->
+      <div class="filter-bar">
+        <span class="filter-label">ステータス</span>
+        <button class="filter-chip active">全て</button>
+        <button class="filter-chip">✅ 全快</button>
+        <button class="filter-chip">⚡ 疲労</button>
+        <button class="filter-chip">⚠️ 要CK</button>
+        <button class="filter-chip">🚫 不可</button>
+        <button class="filter-chip">🏥 負傷</button>
+      </div>
+
+      <!-- Data Table -->
+      <div class="table-wrapper">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th style="width:20px;"></th>
+              <th>チーム</th>
+              <th>投手名</th>
+              <th>区分</th>
+              <th>ステータス</th>
+              <th>疲労P / 累積IP</th>
+              <th>前回種別</th>
+              <!-- ゲーム内日付ベースの直近7日 -->
+              <th colspan="7" style="text-align:center;">
+                直近7日<span style="font-size:9px;font-weight:400;text-transform:none;letter-spacing:0;margin-left:4px;color:var(--text-muted);">（ゲーム内日付）</span>
+                <div style="display:grid; grid-template-columns:repeat(7,20px); gap:2px; margin-top:2px;">
+                  <span class="schedule-day-header has-game" style="color:var(--primary);">3/14</span>
+                  <span class="schedule-day-header" style="color:var(--text-muted);">3/15</span>
+                  <span class="schedule-day-header has-game" style="color:var(--primary);">3/16</span>
+                  <span class="schedule-day-header has-game" style="color:var(--primary);">3/17</span>
+                  <span class="schedule-day-header" style="color:var(--text-muted);">3/18</span>
+                  <span class="schedule-day-header has-game" style="color:var(--primary);">3/19</span>
+                  <span class="schedule-day-header has-game" style="color:var(--accent);font-weight:700;">3/20</span>
+                </div>
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            <!-- Row 1: 博麗神社 霊夢 — Full recovery (expanded) -->
+            <tr onclick="toggleExpand(this)" style="background: var(--primary-faint);">
+              <td><span class="expand-arrow open">▶</span></td>
+              <td class="col-team">博麗神社</td>
+              <td class="col-pitcher">博麗 霊夢</td>
+              <td><span class="chip chip-starter">先発</span></td>
+              <td><span class="status-badge status-full"><span class="status-icon">✅</span> 全快</span></td>
+              <td><span class="fatigue-val fatigue-full">5<span class="fatigue-label">P</span></span></td>
+              <td><span class="chip chip-starter">先発</span></td>
+              <td colspan="7">
+                <div class="week-grid">
+                  <div class="day-cell" data-tooltip="3/14 先発 7.0回 W"><div class="day-dot starter"></div></div>
+                  <div class="day-cell"><div class="day-dot no-game"></div></div>
+                  <div class="day-cell"><div class="day-dot rest"></div></div>
+                  <div class="day-cell"><div class="day-dot rest"></div></div>
+                  <div class="day-cell"><div class="day-dot no-game"></div></div>
+                  <div class="day-cell"><div class="day-dot rest"></div></div>
+                  <div class="day-cell"><div class="day-dot rest"></div></div>
+                </div>
+              </td>
+            </tr>
+            <!-- Expanded detail for 霊夢 -->
+            <tr class="expanded-row">
+              <td colspan="15">
+                <div class="expanded-content">
+                  <h4>📖 直近登板履歴</h4>
+                  <table class="history-table">
+                    <thead>
+                      <tr>
+                        <th>日程</th>
+                        <th>種別</th>
+                        <th>投球回</th>
+                        <th>自責点</th>
+                        <th>勝敗</th>
+                        <th>結果区分</th>
+                        <th>疲労P消費</th>
+                        <th>負傷CK</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr>
+                        <td>3/14（土）</td>
+                        <td><span class="chip chip-starter">先発</span></td>
+                        <td>7.0</td>
+                        <td>1</td>
+                        <td class="fw-600" style="color:var(--accent)">W</td>
+                        <td><span class="result-auto-badge">通常</span></td>
+                        <td>5P</td>
+                        <td>—</td>
+                      </tr>
+                      <tr>
+                        <td>3/8（日）</td>
+                        <td><span class="chip chip-starter">先発</span></td>
+                        <td>6.0</td>
+                        <td>3</td>
+                        <td class="fw-600" style="color:var(--primary)">L</td>
+                        <td><span class="result-auto-badge">通常</span></td>
+                        <td>5P</td>
+                        <td>—</td>
+                      </tr>
+                      <tr>
+                        <td>3/1（日）</td>
+                        <td><span class="chip chip-starter">先発</span></td>
+                        <td>8.0</td>
+                        <td>0</td>
+                        <td class="fw-600" style="color:var(--accent)">W</td>
+                        <td><span class="result-auto-badge">通常</span></td>
+                        <td>5P</td>
+                        <td>—</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                  <div class="mt-2 text-xs text-muted">
+                    適用ルール: 先発→先発 通常（中6日以上 → カード記載疲労P）｜ 中日数: 4日（ゲーム内日付ベース）
+                  </div>
+                </div>
+              </td>
+            </tr>
+
+            <!-- Row 2: 魔理沙 — Reduced P -->
+            <tr onclick="toggleExpand(this)">
+              <td><span class="expand-arrow">▶</span></td>
+              <td class="col-team">博麗神社</td>
+              <td class="col-pitcher">霧雨 魔理沙</td>
+              <td><span class="chip chip-starter">先発</span></td>
+              <td><span class="status-badge status-reduced"><span class="status-icon">⚡</span> P減少</span></td>
+              <td><span class="fatigue-val fatigue-reduced">3<span class="fatigue-label">P</span></span></td>
+              <td><span class="chip chip-starter">先発</span></td>
+              <td colspan="7">
+                <div class="week-grid">
+                  <div class="day-cell"><div class="day-dot rest"></div></div>
+                  <div class="day-cell"><div class="day-dot no-game"></div></div>
+                  <div class="day-cell" data-tooltip="3/16 先発 5.0回 L"><div class="day-dot starter"></div></div>
+                  <div class="day-cell"><div class="day-dot rest"></div></div>
+                  <div class="day-cell"><div class="day-dot no-game"></div></div>
+                  <div class="day-cell"><div class="day-dot rest"></div></div>
+                  <div class="day-cell"><div class="day-dot rest"></div></div>
+                </div>
+              </td>
+            </tr>
+
+            <!-- Row 3: 咲夜 — Injury check required -->
+            <tr onclick="toggleExpand(this)">
+              <td><span class="expand-arrow">▶</span></td>
+              <td class="col-team">紅魔館</td>
+              <td class="col-pitcher">十六夜 咲夜</td>
+              <td><span class="chip chip-starter">先発</span></td>
+              <td><span class="status-badge status-injury-check"><span class="status-icon">⚠️</span> 負傷CK要</span></td>
+              <td><span class="fatigue-val fatigue-zero">0<span class="fatigue-label">P</span></span></td>
+              <td><span class="chip chip-starter">先発</span></td>
+              <td colspan="7">
+                <div class="week-grid">
+                  <div class="day-cell"><div class="day-dot rest"></div></div>
+                  <div class="day-cell"><div class="day-dot no-game"></div></div>
+                  <div class="day-cell"><div class="day-dot rest"></div></div>
+                  <div class="day-cell" data-tooltip="3/17 先発 9.0回 L"><div class="day-dot starter"></div></div>
+                  <div class="day-cell"><div class="day-dot no-game"></div></div>
+                  <div class="day-cell"><div class="day-dot rest"></div></div>
+                  <div class="day-cell"><div class="day-dot rest"></div></div>
+                </div>
+              </td>
+            </tr>
+
+            <!-- Row 4: パチュリー — Slash, full recovery -->
+            <tr onclick="toggleExpand(this)">
+              <td><span class="expand-arrow">▶</span></td>
+              <td class="col-team">紅魔館</td>
+              <td class="col-pitcher">パチュリー</td>
+              <td><span class="chip chip-slash">スラッシュ</span></td>
+              <td><span class="status-badge status-full"><span class="status-icon">✅</span> 全快</span></td>
+              <td><span class="fatigue-val fatigue-full">4<span class="fatigue-label">P</span></span></td>
+              <td><span class="chip chip-reliever">リリーフ</span></td>
+              <td colspan="7">
+                <div class="week-grid">
+                  <div class="day-cell"><div class="day-dot rest"></div></div>
+                  <div class="day-cell"><div class="day-dot no-game"></div></div>
+                  <div class="day-cell"><div class="day-dot rest"></div></div>
+                  <div class="day-cell"><div class="day-dot rest"></div></div>
+                  <div class="day-cell"><div class="day-dot no-game"></div></div>
+                  <div class="day-cell"><div class="day-dot rest"></div></div>
+                  <div class="day-cell"><div class="day-dot rest"></div></div>
+                </div>
+              </td>
+            </tr>
+
+            <!-- Row 5: 美鈴 — Reliever fatigued -->
+            <tr onclick="toggleExpand(this)">
+              <td><span class="expand-arrow">▶</span></td>
+              <td class="col-team">紅魔館</td>
+              <td class="col-pitcher">紅 美鈴</td>
+              <td><span class="chip chip-reliever">リリーフ</span></td>
+              <td><span class="status-badge status-fatigued"><span class="status-icon">⚡</span> 疲労状態＊</span></td>
+              <td><span class="fatigue-val fatigue-reduced">累積<span class="fatigue-label">2IP</span></span></td>
+              <td><span class="chip chip-reliever">リリーフ</span></td>
+              <td colspan="7">
+                <div class="week-grid">
+                  <div class="day-cell"><div class="day-dot rest"></div></div>
+                  <div class="day-cell"><div class="day-dot no-game"></div></div>
+                  <div class="day-cell"><div class="day-dot rest"></div></div>
+                  <div class="day-cell" data-tooltip="3/17 リリーフ 1.0回"><div class="day-dot reliever"></div></div>
+                  <div class="day-cell"><div class="day-dot no-game"></div></div>
+                  <div class="day-cell" data-tooltip="3/19 リリーフ 1.0回"><div class="day-dot reliever"></div></div>
+                  <div class="day-cell"><div class="day-dot rest"></div></div>
+                </div>
+              </td>
+            </tr>
+
+            <!-- Row 6: 妖夢 — Unavailable -->
+            <tr onclick="toggleExpand(this)">
+              <td><span class="expand-arrow">▶</span></td>
+              <td class="col-team">白玉楼</td>
+              <td class="col-pitcher">魂魄 妖夢</td>
+              <td><span class="chip chip-starter">先発</span></td>
+              <td><span class="status-badge status-unavailable"><span class="status-icon">🚫</span> 不可</span></td>
+              <td><span class="fatigue-val fatigue-na">—</span></td>
+              <td><span class="chip chip-starter">先発</span></td>
+              <td colspan="7">
+                <div class="week-grid">
+                  <div class="day-cell"><div class="day-dot rest"></div></div>
+                  <div class="day-cell"><div class="day-dot no-game"></div></div>
+                  <div class="day-cell"><div class="day-dot rest"></div></div>
+                  <div class="day-cell"><div class="day-dot rest"></div></div>
+                  <div class="day-cell"><div class="day-dot no-game"></div></div>
+                  <div class="day-cell" data-tooltip="3/19 先発 6.0回 W"><div class="day-dot starter"></div></div>
+                  <div class="day-cell"><div class="day-dot rest"></div></div>
+                </div>
+              </td>
+            </tr>
+
+            <!-- Row 7: 幽々子 — Reliever full -->
+            <tr onclick="toggleExpand(this)">
+              <td><span class="expand-arrow">▶</span></td>
+              <td class="col-team">白玉楼</td>
+              <td class="col-pitcher">西行寺 幽々子</td>
+              <td><span class="chip chip-reliever">リリーフ</span></td>
+              <td><span class="status-badge status-full"><span class="status-icon">✅</span> 全快</span></td>
+              <td><span class="fatigue-val fatigue-full">累積<span class="fatigue-label">0IP</span></span></td>
+              <td><span class="chip chip-reliever">リリーフ</span></td>
+              <td colspan="7">
+                <div class="week-grid">
+                  <div class="day-cell"><div class="day-dot rest"></div></div>
+                  <div class="day-cell"><div class="day-dot no-game"></div></div>
+                  <div class="day-cell"><div class="day-dot rest"></div></div>
+                  <div class="day-cell"><div class="day-dot rest"></div></div>
+                  <div class="day-cell"><div class="day-dot no-game"></div></div>
+                  <div class="day-cell"><div class="day-dot rest"></div></div>
+                  <div class="day-cell"><div class="day-dot rest"></div></div>
+                </div>
+              </td>
+            </tr>
+
+            <!-- Row 8: 永琳 — Injured -->
+            <tr onclick="toggleExpand(this)">
+              <td><span class="expand-arrow">▶</span></td>
+              <td class="col-team">永遠亭</td>
+              <td class="col-pitcher">八意 永琳</td>
+              <td><span class="chip chip-starter">先発</span></td>
+              <td><span class="status-badge status-injured"><span class="status-icon">🏥</span> 負傷中</span></td>
+              <td><span class="fatigue-val fatigue-na">—</span></td>
+              <td><span class="chip chip-starter">先発</span></td>
+              <td colspan="7">
+                <div class="week-grid">
+                  <div class="day-cell"><div class="day-dot rest"></div></div>
+                  <div class="day-cell"><div class="day-dot no-game"></div></div>
+                  <div class="day-cell"><div class="day-dot rest"></div></div>
+                  <div class="day-cell"><div class="day-dot rest"></div></div>
+                  <div class="day-cell"><div class="day-dot no-game"></div></div>
+                  <div class="day-cell"><div class="day-dot rest"></div></div>
+                  <div class="day-cell"><div class="day-dot rest"></div></div>
+                </div>
+              </td>
+            </tr>
+
+            <!-- Row 9: 鈴仙 — Reliever reduced -->
+            <tr onclick="toggleExpand(this)">
+              <td><span class="expand-arrow">▶</span></td>
+              <td class="col-team">永遠亭</td>
+              <td class="col-pitcher">鈴仙</td>
+              <td><span class="chip chip-reliever">リリーフ</span></td>
+              <td><span class="status-badge status-reduced"><span class="status-icon">⚡</span> P減少</span></td>
+              <td><span class="fatigue-val fatigue-reduced">累積<span class="fatigue-label">1IP</span></span></td>
+              <td><span class="chip chip-reliever">リリーフ</span></td>
+              <td colspan="7">
+                <div class="week-grid">
+                  <div class="day-cell"><div class="day-dot rest"></div></div>
+                  <div class="day-cell"><div class="day-dot no-game"></div></div>
+                  <div class="day-cell"><div class="day-dot rest"></div></div>
+                  <div class="day-cell"><div class="day-dot rest"></div></div>
+                  <div class="day-cell"><div class="day-dot no-game"></div></div>
+                  <div class="day-cell" data-tooltip="3/19 リリーフ 1.0回 S"><div class="day-dot reliever"></div></div>
+                  <div class="day-cell"><div class="day-dot rest"></div></div>
+                </div>
+              </td>
+            </tr>
+
+            <!-- Row 10: 藍 — Full -->
+            <tr onclick="toggleExpand(this)">
+              <td><span class="expand-arrow">▶</span></td>
+              <td class="col-team">八雲家</td>
+              <td class="col-pitcher">八雲 藍</td>
+              <td><span class="chip chip-starter">先発</span></td>
+              <td><span class="status-badge status-full"><span class="status-icon">✅</span> 全快</span></td>
+              <td><span class="fatigue-val fatigue-full">6<span class="fatigue-label">P</span></span></td>
+              <td><span class="chip chip-starter">先発</span></td>
+              <td colspan="7">
+                <div class="week-grid">
+                  <div class="day-cell" data-tooltip="3/14 先発 8.0回 W"><div class="day-dot starter"></div></div>
+                  <div class="day-cell"><div class="day-dot no-game"></div></div>
+                  <div class="day-cell"><div class="day-dot rest"></div></div>
+                  <div class="day-cell"><div class="day-dot rest"></div></div>
+                  <div class="day-cell"><div class="day-dot no-game"></div></div>
+                  <div class="day-cell"><div class="day-dot rest"></div></div>
+                  <div class="day-cell"><div class="day-dot rest"></div></div>
+                </div>
+              </td>
+            </tr>
+
+            <!-- Row 11: 橙 — Reliever injury check -->
+            <tr onclick="toggleExpand(this)">
+              <td><span class="expand-arrow">▶</span></td>
+              <td class="col-team">八雲家</td>
+              <td class="col-pitcher">橙</td>
+              <td><span class="chip chip-reliever">リリーフ</span></td>
+              <td><span class="status-badge status-injury-check"><span class="status-icon">⚠️</span> 負傷CK要</span></td>
+              <td><span class="fatigue-val fatigue-zero">累積<span class="fatigue-label">3IP</span></span></td>
+              <td><span class="chip chip-reliever">リリーフ</span></td>
+              <td colspan="7">
+                <div class="week-grid">
+                  <div class="day-cell"><div class="day-dot rest"></div></div>
+                  <div class="day-cell"><div class="day-dot no-game"></div></div>
+                  <div class="day-cell" data-tooltip="3/16 リリーフ 1.0回"><div class="day-dot reliever"></div></div>
+                  <div class="day-cell" data-tooltip="3/17 リリーフ 1.0回"><div class="day-dot reliever"></div></div>
+                  <div class="day-cell"><div class="day-dot no-game"></div></div>
+                  <div class="day-cell" data-tooltip="3/19 リリーフ 1.0回 H"><div class="day-dot reliever"></div></div>
+                  <div class="day-cell"><div class="day-dot rest"></div></div>
+                </div>
+              </td>
+            </tr>
+
+            <!-- Row 12: 早苗 — Full -->
+            <tr onclick="toggleExpand(this)">
+              <td><span class="expand-arrow">▶</span></td>
+              <td class="col-team">守矢神社</td>
+              <td class="col-pitcher">東風谷 早苗</td>
+              <td><span class="chip chip-starter">先発</span></td>
+              <td><span class="status-badge status-full"><span class="status-icon">✅</span> 全快</span></td>
+              <td><span class="fatigue-val fatigue-full">5<span class="fatigue-label">P</span></span></td>
+              <td><span class="chip chip-starter">先発</span></td>
+              <td colspan="7">
+                <div class="week-grid">
+                  <div class="day-cell"><div class="day-dot rest"></div></div>
+                  <div class="day-cell"><div class="day-dot no-game"></div></div>
+                  <div class="day-cell"><div class="day-dot rest"></div></div>
+                  <div class="day-cell"><div class="day-dot rest"></div></div>
+                  <div class="day-cell"><div class="day-dot no-game"></div></div>
+                  <div class="day-cell"><div class="day-dot rest"></div></div>
+                  <div class="day-cell"><div class="day-dot rest"></div></div>
+                </div>
+              </td>
+            </tr>
+
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Summary -->
+      <div class="table-summary">
+        <span class="summary-stat">全 <span class="stat-count">12</span> 名</span>
+        <span class="status-count status-count-full">✅ 5</span>
+        <span class="status-count status-count-warn">⚡ 4</span>
+        <span class="status-count status-count-alert">⚠️ 2</span>
+        <span class="status-count status-count-na">🚫 1</span>
+        <span class="status-count status-count-injured">🏥 1</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========== SCREEN 2: REGISTER (Calendar + Form) ========== -->
+  <div id="tab-register" class="tab-panel">
+
+    <div class="register-layout">
+
+      <!-- LEFT: Calendar Sidebar -->
+      <div class="calendar-sidebar">
+        <div class="card">
+          <!-- Team selector -->
+          <div class="team-selector-bar">
+            <label>チーム選択</label>
+            <select class="form-select" id="register-team-select">
+              <option value="">チームを選択…</option>
+              <option value="hakurei" selected>博麗神社</option>
+              <option value="koumakan">紅魔館</option>
+              <option value="hakugyokurou">白玉楼</option>
+              <option value="eientei">永遠亭</option>
+              <option value="yakumo">八雲家</option>
+              <option value="moriya">守矢神社</option>
+            </select>
+            <label style="margin-top:var(--sp-1);">大会</label>
+            <select class="form-select">
+              <option selected>第14回東方BIG野球大会</option>
+            </select>
+          </div>
+
+          <!-- Calendar -->
+          <div class="calendar-container">
+            <div class="calendar-month-header">
+              <button class="calendar-nav-btn">‹</button>
+              <h4>2026年 3月</h4>
+              <button class="calendar-nav-btn">›</button>
+            </div>
+
+            <div class="calendar-grid">
+              <!-- Weekday headers -->
+              <div class="calendar-weekday">日</div>
+              <div class="calendar-weekday">月</div>
+              <div class="calendar-weekday">火</div>
+              <div class="calendar-weekday">水</div>
+              <div class="calendar-weekday">木</div>
+              <div class="calendar-weekday">金</div>
+              <div class="calendar-weekday">土</div>
+              <!-- Week 1: March starts on Sunday (ゲーム内日付ベース + 日程種別色分け) -->
+              <div class="calendar-day has-game type-game">1<span class="cal-schedule-label">3/1（日）</span><span class="cal-game-dot"></span></div>
+              <div class="calendar-day type-off">2<span class="cal-schedule-label">休み</span></div>
+              <div class="calendar-day has-game type-game">3<span class="cal-schedule-label">3/3（火）</span><span class="cal-game-dot"></span></div>
+              <div class="calendar-day has-game type-game">4<span class="cal-schedule-label">3/4（水）</span><span class="cal-game-dot"></span></div>
+              <div class="calendar-day type-travel">5<span class="cal-schedule-label">移動日</span></div>
+              <div class="calendar-day has-game type-game">6<span class="cal-schedule-label">3/6（金）</span><span class="cal-game-dot"></span></div>
+              <div class="calendar-day has-game type-game">7<span class="cal-schedule-label">3/7（土）</span><span class="cal-game-dot"></span></div>
+              <!-- Week 2 -->
+              <div class="calendar-day has-game type-game">8<span class="cal-schedule-label">3/8（日）</span><span class="cal-game-dot"></span></div>
+              <div class="calendar-day type-off">9<span class="cal-schedule-label">休み</span></div>
+              <div class="calendar-day has-game type-inter">10<span class="cal-schedule-label">3/10 交流</span><span class="cal-game-dot"></span></div>
+              <div class="calendar-day has-game type-inter">11<span class="cal-schedule-label">3/11 交流</span><span class="cal-game-dot"></span></div>
+              <div class="calendar-day type-off">12<span class="cal-schedule-label">休み</span></div>
+              <div class="calendar-day has-game type-game">13<span class="cal-schedule-label">3/13（金）</span><span class="cal-game-dot"></span></div>
+              <div class="calendar-day has-game type-game">14<span class="cal-schedule-label">3/14（土）</span><span class="cal-game-dot"></span></div>
+              <!-- Week 3 -->
+              <div class="calendar-day has-game type-game">15<span class="cal-schedule-label">3/15（日）</span><span class="cal-game-dot"></span></div>
+              <div class="calendar-day type-off">16<span class="cal-schedule-label">休み</span></div>
+              <div class="calendar-day has-game type-game">17<span class="cal-schedule-label">3/17（火）</span><span class="cal-game-dot"></span></div>
+              <div class="calendar-day has-game type-game">18<span class="cal-schedule-label">3/18（水）</span><span class="cal-game-dot"></span></div>
+              <div class="calendar-day type-reserve">19<span class="cal-schedule-label">予備日</span></div>
+              <!-- current_date マーカー + 選択状態 -->
+              <div class="calendar-day has-game type-game selected is-current-date">20<span class="cal-current-marker">TODAY</span><span class="cal-schedule-label">3/20（金）</span><span class="cal-starter-name">予: 霊夢</span></div>
+              <div class="calendar-day has-game type-game">21<span class="cal-schedule-label">3/21（土）</span><span class="cal-starter-name">予: 魔理沙</span></div>
+              <!-- Week 4 -->
+              <div class="calendar-day has-game type-game">22<span class="cal-schedule-label">3/22（日）</span><span class="cal-game-dot"></span></div>
+              <div class="calendar-day type-off">23<span class="cal-schedule-label">休み</span></div>
+              <div class="calendar-day has-game type-game">24<span class="cal-schedule-label">3/24（火）</span><span class="cal-game-dot"></span></div>
+              <div class="calendar-day has-game type-game">25<span class="cal-schedule-label">3/25（水）</span><span class="cal-game-dot"></span></div>
+              <div class="calendar-day type-off">26<span class="cal-schedule-label">休み</span></div>
+              <div class="calendar-day has-game type-playoff">27<span class="cal-schedule-label">PO</span><span class="cal-game-dot"></span></div>
+              <div class="calendar-day has-game type-playoff">28<span class="cal-schedule-label">PO</span><span class="cal-game-dot"></span></div>
+              <!-- Week 5 -->
+              <div class="calendar-day has-game type-playoff">29<span class="cal-schedule-label">PO</span><span class="cal-game-dot"></span></div>
+              <div class="calendar-day type-off">30<span class="cal-schedule-label">休み</span></div>
+              <div class="calendar-day has-game type-game">31<span class="cal-schedule-label">3/31（火）</span><span class="cal-game-dot"></span></div>
+              <div class="calendar-day empty"></div>
+              <div class="calendar-day empty"></div>
+              <div class="calendar-day empty"></div>
+              <div class="calendar-day empty"></div>
+            </div>
+
+            <div class="calendar-legend">
+              <div class="calendar-legend-item"><span class="legend-dot game"></span>試合日</div>
+              <div class="calendar-legend-item"><span class="legend-dot inter"></span>交流戦</div>
+              <div class="calendar-legend-item"><span class="legend-dot playoff"></span>PO</div>
+              <div class="calendar-legend-item"><span class="legend-dot travel"></span>移動日</div>
+              <div class="calendar-legend-item"><span class="legend-dot reserve"></span>予備日</div>
+              <div class="calendar-legend-item"><span class="legend-dot off"></span>休み</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- RIGHT: Registration Form -->
+      <div class="register-form-panel">
+        <div class="card">
+          <div class="card-header">
+            <div>
+              <h3>登板登録</h3>
+              <span class="text-sm text-muted">博麗神社</span>
+            </div>
+            <div style="display:flex; align-items:center; gap:var(--sp-3);">
+              <div class="game-date-badge">
+                <span class="schedule-num">3月20日（金）</span>
+                <span style="font-size:11px;opacity:0.7;">試合日</span>
+              </div>
+            </div>
+          </div>
+          <div class="card-body">
+
+            <!-- 改修点5: 試合結果（自動計算の入力元） -->
+            <div class="game-result-bar">
+              <label>試合結果</label>
+              <div class="game-result-chips">
+                <span class="result-chip active-win">勝ち</span>
+                <span class="result-chip">負け</span>
+                <span class="result-chip">引分</span>
+                <span class="result-chip">中止</span>
+              </div>
+              <div style="flex:1"></div>
+              <span class="text-xs text-muted">※ 勝敗選択の制約・result_category自動計算に使用</span>
+            </div>
+
+            <!-- ===== STARTER SECTION ===== -->
+            <div class="section-title">
+              <span class="section-icon">🔥</span>
+              先発投手
+            </div>
+
+            <!-- 改修点4: オープナー宣言は先発セクション（1番手）にのみ表示 -->
+            <div style="display:grid; grid-template-columns: 2fr 80px 1fr; gap: var(--sp-4); align-items: start;">
+              <div class="form-group">
+                <label>投手名</label>
+                <!-- 改修点3: ドロップダウン選択（チーム所属投手一覧） -->
+                <select class="form-select" id="starter-pitcher-select">
+                  <option value="">投手を選択…</option>
+                  <option value="reimu" selected>博麗 霊夢（先発 / 疲労P5）</option>
+                  <option value="marisa">霧雨 魔理沙（先発 / 疲労P6）</option>
+                  <option value="alice">アリス（リリーフ / 疲労P3）</option>
+                  <option value="cirno">チルノ（リリーフ / 疲労P2）</option>
+                  <option value="daiyousei" class="pitcher-option-injured" disabled>大妖精（リリーフ / 🏥負傷中）</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>投球回</label>
+                <input type="number" class="form-input" step="0.1" min="0" max="12" value="7.0" style="width:100%;">
+              </div>
+              <div class="form-group">
+                <label>勝敗</label>
+                <!-- 改修点6: バリデーション制約表示 -->
+                <div class="decision-group">
+                  <span class="decision-chip selected-w" data-rule="勝ち試合・1人のみ">W</span>
+                  <span class="decision-chip disabled" data-rule="負け試合のみ">L</span>
+                  <span class="decision-chip disabled" data-rule="先発以外・最終投手のみ">S</span>
+                  <span class="decision-chip disabled" data-rule="先発以外・途中投手のみ">H</span>
+                  <span class="decision-chip" style="border-style:dashed">—</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- 改修点4: オープナー宣言チェックボックス（先発=1番手のみ） -->
+            <div class="checkbox-row mt-2">
+              <label class="checkbox-label"><input type="checkbox" id="opener-check"> オープナー宣言あり</label>
+              <span class="text-xs text-muted">※ オン時：先発投手にリリーフルール適用</span>
+            </div>
+
+            <!-- 改修点3: 投手ステータス表示 -->
+            <div class="pitcher-status-inline">
+              <div class="ps-item">
+                <span class="status-badge status-full" style="padding:2px 6px;font-size:10px;"><span class="status-icon">✅</span> 全快</span>
+              </div>
+              <div class="ps-item">
+                <span class="ps-label">疲労P</span>
+                <span class="ps-value fatigue-full">5</span>
+              </div>
+              <div class="ps-item">
+                <span class="ps-label">区分</span>
+                <span class="ps-value">先発</span>
+              </div>
+              <div class="ps-item">
+                <span class="ps-label">中日数</span>
+                <span class="ps-value">6日</span>
+              </div>
+              <div class="ps-item">
+                <span class="ps-label">累積IP</span>
+                <span class="ps-value">—</span>
+              </div>
+            </div>
+
+            <!-- 改修点5: result_category 自動計算結果表示 -->
+            <div style="margin-top: var(--sp-2); display: flex; align-items: center; gap: var(--sp-2);">
+              <span class="text-xs fw-600 text-muted">結果区分（自動）:</span>
+              <span class="result-auto-badge">通常</span>
+              <span class="text-xs text-muted">— 7.0回・投球回 >= 5 → KO非該当</span>
+            </div>
+
+            <div class="form-divider"></div>
+
+            <!-- ===== RELIEF SECTION ===== -->
+            <div class="section-title">
+              <span class="section-icon">💨</span>
+              リリーフ投手
+            </div>
+
+            <div class="relief-section">
+              <!-- Relief row 1 (2番手投手 — 第二先発チェック対象) -->
+              <div class="relief-row">
+                <div class="row-badge">
+                  <div class="row-number">1</div>
+                  <span class="row-role-label">リリーフ</span>
+                </div>
+                <div class="form-group" style="margin-left: 16px;">
+                  <label>投手名</label>
+                  <select class="form-select">
+                    <option value="">投手を選択…</option>
+                    <option value="alice" selected>アリス（リリーフ / 疲労P3）</option>
+                    <option value="cirno">チルノ（リリーフ / 疲労P2）</option>
+                    <option value="daiyousei" class="pitcher-option-injured" disabled>大妖精（リリーフ / 🏥負傷中）</option>
+                  </select>
+                  <!-- 第二先発チェックボックス（2番手のみ表示・手動ON/OFF） -->
+                  <div class="checkbox-row mt-1">
+                    <label class="checkbox-label"><input type="checkbox" class="second-starter-check"> 第二先発</label>
+                    <span class="text-xs text-muted">※ チェックあり→先発ルール適用（中○日等）/ なし→リリーフ扱い</span>
+                  </div>
+                  <!-- 改修点3: 選択時にステータス表示 -->
+                  <div class="pitcher-status-inline" style="margin-top:4px;">
+                    <div class="ps-item">
+                      <span class="status-badge status-full" style="padding:2px 6px;font-size:10px;"><span class="status-icon">✅</span> 全快</span>
+                    </div>
+                    <div class="ps-item">
+                      <span class="ps-label">疲労P</span>
+                      <span class="ps-value fatigue-full">3</span>
+                    </div>
+                    <div class="ps-item">
+                      <span class="ps-label">累積IP</span>
+                      <span class="ps-value">0</span>
+                    </div>
+                  </div>
+                </div>
+                <div class="form-group">
+                  <label>投球回</label>
+                  <input type="number" class="form-input" step="0.1" min="0" value="1.0" style="width:100%;">
+                </div>
+                <div class="form-group">
+                  <label>勝敗</label>
+                  <div class="decision-group">
+                    <span class="decision-chip disabled" data-rule="勝ち試合・1人・先発で使用済み">W</span>
+                    <span class="decision-chip disabled" data-rule="負け試合のみ">L</span>
+                    <span class="decision-chip disabled" data-rule="最終投手のみ">S</span>
+                    <span class="decision-chip selected-h" data-rule="先発以外・途中投手">H</span>
+                    <span class="decision-chip" style="border-style:dashed">—</span>
+                  </div>
+                </div>
+                <button class="relief-remove-btn" title="削除">×</button>
+              </div>
+
+              <!-- Relief row 2 (Last pitcher — S eligible) -->
+              <div class="relief-row">
+                <div class="row-badge">
+                  <div class="row-number">2</div>
+                  <span class="row-role-label">リリーフ</span>
+                </div>
+                <div class="form-group" style="margin-left: 16px;">
+                  <label>投手名</label>
+                  <select class="form-select">
+                    <option value="">投手を選択…</option>
+                    <option value="cirno" selected>チルノ（リリーフ / 疲労P2）</option>
+                    <option value="daiyousei" class="pitcher-option-injured" disabled>大妖精（リリーフ / 🏥負傷中）</option>
+                  </select>
+                  <div class="pitcher-status-inline" style="margin-top:4px;">
+                    <div class="ps-item">
+                      <span class="status-badge status-reduced" style="padding:2px 6px;font-size:10px;"><span class="status-icon">⚡</span> P減少</span>
+                    </div>
+                    <div class="ps-item">
+                      <span class="ps-label">疲労P</span>
+                      <span class="ps-value fatigue-reduced">0</span>
+                    </div>
+                    <div class="ps-item">
+                      <span class="ps-label">累積IP</span>
+                      <span class="ps-value">1</span>
+                    </div>
+                  </div>
+                </div>
+                <div class="form-group">
+                  <label>投球回</label>
+                  <input type="number" class="form-input" step="0.1" min="0" value="2.0" style="width:100%;">
+                </div>
+                <div class="form-group">
+                  <label>勝敗</label>
+                  <!-- 改修点6: 最終投手なのでS選択可、Hは不可 -->
+                  <div class="decision-group">
+                    <span class="decision-chip disabled" data-rule="先発で使用済み">W</span>
+                    <span class="decision-chip disabled" data-rule="負け試合のみ">L</span>
+                    <span class="decision-chip selected-s" data-rule="勝ち試合・先発以外・最終投手">S</span>
+                    <span class="decision-chip disabled" data-rule="最終投手はH不可">H</span>
+                    <span class="decision-chip" style="border-style:dashed">—</span>
+                  </div>
+                </div>
+                <button class="relief-remove-btn" title="削除">×</button>
+              </div>
+
+              <button class="btn btn-add">＋ リリーフ追加</button>
+            </div>
+
+            <!-- 改修点6: 勝敗バリデーションルール表 -->
+            <div class="validation-rules">
+              <h5>勝敗バリデーションルール</h5>
+              <table>
+                <thead>
+                  <tr>
+                    <th>Decision</th>
+                    <th>人数</th>
+                    <th>試合結果</th>
+                    <th>対象投手</th>
+                    <th>状態</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr class="rule-active">
+                    <td class="fw-600" style="color:var(--accent)">W（勝利）</td>
+                    <td>1人のみ</td>
+                    <td>勝ち試合</td>
+                    <td>制限なし</td>
+                    <td><span class="rule-check">✓ 霊夢</span></td>
+                  </tr>
+                  <tr>
+                    <td class="fw-600" style="color:var(--primary)">L（敗戦）</td>
+                    <td>1人のみ</td>
+                    <td>負け試合</td>
+                    <td>制限なし</td>
+                    <td class="text-muted">—（勝ち試合）</td>
+                  </tr>
+                  <tr class="rule-active">
+                    <td class="fw-600" style="color:var(--success)">S（セーブ）</td>
+                    <td>1人のみ</td>
+                    <td>勝ち試合</td>
+                    <td>先発以外・最終投手</td>
+                    <td><span class="rule-check">✓ チルノ</span></td>
+                  </tr>
+                  <tr class="rule-active">
+                    <td class="fw-600" style="color:var(--info)">H（ホールド）</td>
+                    <td>複数可</td>
+                    <td>問わず</td>
+                    <td>先発以外・最終投手以外</td>
+                    <td><span class="rule-check">✓ アリス</span></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <!-- Form actions -->
+            <div class="form-actions">
+              <button class="btn btn-outlined">キャンセル</button>
+              <button class="btn btn-accent">登録</button>
+            </div>
+
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+</main>
+
+<script>
+  function switchTab(tabId) {
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById('tab-' + tabId).classList.add('active');
+    event.target.classList.add('active');
+  }
+
+  function toggleExpand(row) {
+    const arrow = row.querySelector('.expand-arrow');
+    const next = row.nextElementSibling;
+    if (next && next.classList.contains('expanded-row')) {
+      const isOpen = next.style.display !== 'none';
+      next.style.display = isOpen ? 'none' : 'table-row';
+      arrow.classList.toggle('open', !isOpen);
+    }
+  }
+
+  // Initialize: hide all expanded rows except first
+  document.querySelectorAll('.expanded-row').forEach((row, i) => {
+    if (i > 0) row.style.display = 'none';
+  });
+
+  // Decision chip toggle
+  document.querySelectorAll('.decision-chip:not(.disabled)').forEach(chip => {
+    chip.addEventListener('click', () => {
+      const group = chip.parentElement;
+      group.querySelectorAll('.decision-chip').forEach(c => {
+        c.className = c.className.replace(/selected-[wlsh]/g, '').trim();
+        if (!c.classList.contains('decision-chip')) c.classList.add('decision-chip');
+      });
+      const val = chip.textContent.trim();
+      const classMap = { 'W': 'selected-w', 'L': 'selected-l', 'S': 'selected-s', 'H': 'selected-h' };
+      if (classMap[val]) chip.classList.add(classMap[val]);
+    });
+  });
+
+  // Filter chip toggle
+  document.querySelectorAll('.filter-chip').forEach(chip => {
+    chip.addEventListener('click', () => {
+      document.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'));
+      chip.classList.add('active');
+    });
+  });
+
+  // Calendar day selection
+  document.querySelectorAll('.calendar-day.has-game').forEach(day => {
+    day.addEventListener('click', () => {
+      document.querySelectorAll('.calendar-day').forEach(d => d.classList.remove('selected'));
+      day.classList.add('selected');
+    });
+  });
+
+  // Game result chip toggle
+  document.querySelectorAll('.game-result-chips .result-chip').forEach(chip => {
+    chip.addEventListener('click', () => {
+      const group = chip.parentElement;
+      group.querySelectorAll('.result-chip').forEach(c => {
+        c.className = 'result-chip';
+      });
+      const text = chip.textContent.trim();
+      const map = { '勝ち': 'active-win', '負け': 'active-lose', '引分': 'active-draw', '中止': 'active-void' };
+      if (map[text]) chip.classList.add(map[text]);
+    });
+  });
+
+  // Opener checkbox: only toggles 1st pitcher label (no auto second-starter)
+  document.getElementById('opener-check')?.addEventListener('change', function() {
+    const rows = document.querySelectorAll('.relief-row');
+    if (rows.length > 0) {
+      const firstLabel = rows[0].querySelector('.row-role-label');
+      if (firstLabel) {
+        firstLabel.textContent = this.checked ? 'オープナー' : 'リリーフ';
+      }
+    }
+  });
+
+  // Second-starter checkbox: manual toggle on 2nd pitcher (relief row 1)
+  document.querySelectorAll('.second-starter-check').forEach(check => {
+    check.addEventListener('change', function() {
+      const row = this.closest('.relief-row');
+      if (row) {
+        const label = row.querySelector('.row-role-label');
+        if (label) {
+          label.textContent = this.checked ? '第二先発' : 'リリーフ';
+          label.classList.toggle('role-second-starter', this.checked);
+        }
+      }
+    });
+  });
+</script>
+</body>
+</html>

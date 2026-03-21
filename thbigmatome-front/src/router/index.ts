@@ -129,12 +129,6 @@ const routes: RouteRecordRaw[] = [
         meta: { requiresAuth: true, title: '試合結果入力' },
       },
       {
-        path: '/teams/:teamId/season/games/:scheduleId/scoresheet',
-        name: 'ScoreSheet',
-        component: () => import('@/views/ScoreSheet.vue'),
-        meta: { requiresAuth: true, title: 'スコアシート' },
-      },
-      {
         path: '/teams/:teamId/season/player_absences',
         redirect: (to) => ({
           path: `/teams/${to.params.teamId}/season`,

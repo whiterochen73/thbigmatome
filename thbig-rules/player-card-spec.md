@@ -578,7 +578,7 @@ def validate_batting_card(card_data):
 
 本ドキュメントは知識整理・文書作成タスク（Haikuモデル向け難易度）として作成。
 コード変更なし（ドキュメント創作のみ）のため QC 不要。
-実装時には、このドキュメント + Memory 情報 + context/thbig-irc.md を並行参照して進めることを推奨。
+実装時には、このドキュメント + Memory 情報 + thbig-rules/ 配下のルール資料（procedures.md, game-flow.md 等）を並行参照して進めることを推奨。
 
 不明点・矛盾があれば「要P確認事項」セクションに記載。
 既存の thbig-irc.md と重複する内容は参照リンクで対応済み。

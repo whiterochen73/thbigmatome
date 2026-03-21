@@ -89,6 +89,33 @@ RSpec.describe "Api::V1::PitcherAppearancesController", type: :request do
       end
     end
 
+    context "game_idなし・competition_idなし（CompetitionEntry未登録チーム）" do
+      let(:params_without_competition) do
+        {
+          pitcher_appearance: {
+            pitcher_id: pitcher.id,
+            team_id: team.id,
+            role: "reliever",
+            innings_pitched: 2.0,
+            earned_runs: 0,
+            fatigue_p_used: 0,
+            schedule_date: "2026-04-01",
+            is_opener: false
+          }
+        }
+      end
+
+      it "competition_idなしでもGameを作成して登板を登録できる" do
+        expect {
+          post "/api/v1/pitcher_appearances", params: params_without_competition, as: :json
+        }.to change(Game, :count).by(1).and change(PitcherGameState, :count).by(1)
+
+        expect(response).to have_http_status(:created)
+        created_game = Game.last
+        expect(created_game.competition_id).to be_nil
+      end
+    end
+
     context "バリデーション: W/L/S/H制約" do
       before { game }  # ensure game exists
 

@@ -1,7 +1,7 @@
 class PitcherGameState < ApplicationRecord
   belongs_to :game
   belongs_to :pitcher, class_name: "Player"
-  belongs_to :competition
+  belongs_to :competition, optional: true
   belongs_to :team
 
   VALID_DECISIONS = %w[W L S H].freeze

@@ -6,6 +6,8 @@ class Api::V1::PitcherAppearancesController < Api::V1::BaseController
 
     appearance_params_hash = pitcher_appearance_params.to_h
     appearance_params_hash[:game_id] = game.id
+    # competition_idがparams未指定の場合、gameから補完
+    appearance_params_hash[:competition_id] ||= game.competition_id
 
     # result_category の自動計算
     if appearance_params_hash[:result_category].blank?
@@ -52,16 +54,32 @@ class Api::V1::PitcherAppearancesController < Api::V1::BaseController
       return game
     end
 
-    unless team_id.present? && competition_id.present? && schedule_date.present?
-      render json: { errors: [ "game_id or (team_id, competition_id, schedule_date) is required" ] }, status: :unprocessable_entity
+    unless team_id.present? && schedule_date.present?
+      render json: { errors: [ "game_id or (team_id, schedule_date) is required" ] }, status: :unprocessable_entity
       return nil
     end
 
+    # competition_idが未指定の場合、team_id + yearからleague_pennantを自動検索
+    if competition_id.blank?
+      year = Date.parse(schedule_date.to_s).year
+      competition_entry = CompetitionEntry.joins(:competition)
+                                          .where(team_id: team_id)
+                                          .where(competitions: { year: year, competition_type: "league_pennant" })
+                                          .first
+      competition_id = competition_entry&.competition_id
+    end
+
     # home / visitor 両側を探す
-    game = Game.where(competition_id: competition_id)
-               .where("home_team_id = ? OR visitor_team_id = ?", team_id, team_id)
-               .where("home_schedule_date = ? OR visitor_schedule_date = ?", schedule_date, schedule_date)
-               .first
+    game = if competition_id.present?
+      Game.where(competition_id: competition_id)
+          .where("home_team_id = ? OR visitor_team_id = ?", team_id, team_id)
+          .where("home_schedule_date = ? OR visitor_schedule_date = ?", schedule_date, schedule_date)
+          .first
+    else
+      Game.where("home_team_id = ? OR visitor_team_id = ?", team_id, team_id)
+          .where("home_schedule_date = ? OR visitor_schedule_date = ?", schedule_date, schedule_date)
+          .first
+    end
 
     game ||= Game.create!(
       competition_id: competition_id,

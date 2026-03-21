@@ -2,7 +2,7 @@ require "rails_helper"
 
 RSpec.describe Game, type: :model do
   describe "アソシエーション" do
-    it { is_expected.to belong_to(:competition) }
+    it { is_expected.to belong_to(:competition).optional }
     it { is_expected.to belong_to(:home_team).class_name("Team") }
     it { is_expected.to belong_to(:visitor_team).class_name("Team") }
     it { is_expected.to belong_to(:stadium).optional }

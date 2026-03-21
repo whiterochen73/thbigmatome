@@ -4,7 +4,7 @@ RSpec.describe PitcherGameState, type: :model do
   describe "アソシエーション" do
     it { is_expected.to belong_to(:game) }
     it { is_expected.to belong_to(:pitcher).class_name("Player") }
-    it { is_expected.to belong_to(:competition) }
+    it { is_expected.to belong_to(:competition).optional }
     it { is_expected.to belong_to(:team) }
   end
 

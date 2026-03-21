@@ -15,8 +15,9 @@ module Api
           player_ids
         else
           @team.team_memberships
-               .joins(:player)
-               .where(players: { position: "pitcher" })
+               .joins(player: :player_cards)
+               .where(player_cards: { is_pitcher: true })
+               .distinct
                .pluck(:player_id)
         end
 

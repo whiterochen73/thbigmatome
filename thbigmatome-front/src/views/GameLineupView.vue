@@ -45,7 +45,10 @@
                   <tr v-for="entry in starters" :key="entry.id">
                     <td>{{ entry.batting_order }}</td>
                     <td>
-                      {{ entry.player_name }}
+                      <PlayerNameLink
+                        :player-id="entry.player_id"
+                        :player-name="entry.player_name"
+                      />
                       <v-chip v-if="entry.is_dh_pitcher" size="x-small" color="purple" class="ml-1"
                         >P/DH</v-chip
                       >
@@ -75,7 +78,10 @@
                 <tbody>
                   <tr v-for="entry in bench" :key="entry.id">
                     <td>
-                      {{ entry.player_name }}
+                      <PlayerNameLink
+                        :player-id="entry.player_id"
+                        :player-name="entry.player_name"
+                      />
                       <span v-if="entry.is_reliever" class="text-caption text-grey">（中継）</span>
                     </td>
                     <td>{{ entry.position }}</td>
@@ -105,7 +111,12 @@
                 </thead>
                 <tbody>
                   <tr v-for="entry in off" :key="entry.id">
-                    <td>{{ entry.player_name }}</td>
+                    <td>
+                      <PlayerNameLink
+                        :player-id="entry.player_id"
+                        :player-name="entry.player_name"
+                      />
+                    </td>
                     <td>{{ entry.position }}</td>
                   </tr>
                   <tr v-if="off.length === 0">
@@ -134,7 +145,10 @@
                 <tbody>
                   <tr v-for="entry in designated" :key="entry.id">
                     <td>
-                      {{ entry.player_name }}
+                      <PlayerNameLink
+                        :player-id="entry.player_id"
+                        :player-name="entry.player_name"
+                      />
                       <span class="text-caption text-grey">（指定）</span>
                     </td>
                     <td>{{ entry.position }}</td>
@@ -156,10 +170,12 @@
 import { ref, onMounted, computed } from 'vue'
 import { useRoute } from 'vue-router'
 import axios from 'axios'
+import PlayerNameLink from '@/components/shared/PlayerNameLink.vue'
 
 interface LineupEntry {
   id: number
   player_card_id: number
+  player_id: number
   player_name: string
   batting_order: number | null
   position: string

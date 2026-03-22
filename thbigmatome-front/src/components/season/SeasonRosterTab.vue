@@ -200,7 +200,10 @@
                     <td>
                       <div class="d-flex flex-column">
                         <div class="d-flex align-center flex-wrap ga-1">
-                          <span class="text-body-2">{{ item.player_name }}</span>
+                          <PlayerNameLink
+                            :player-id="item.player_id"
+                            :player-name="item.player_name"
+                          />
                           <v-icon v-if="isKeyPlayer(item)" color="deep-purple" size="x-small"
                             >mdi-star</v-icon
                           >
@@ -445,7 +448,10 @@
                   <td>
                     <div class="d-flex flex-column">
                       <div class="d-flex align-center flex-wrap ga-1">
-                        <span class="text-body-2">{{ item.player_name }}</span>
+                        <PlayerNameLink
+                          :player-id="item.player_id"
+                          :player-name="item.player_name"
+                        />
                         <v-chip
                           v-if="item.is_outside_world"
                           size="x-small"
@@ -551,6 +557,7 @@ import axios from 'axios'
 import { useI18n } from 'vue-i18n'
 import AbsenceInfo from '@/components/AbsenceInfo.vue'
 import PromotionCooldownInfo from '@/components/PromotionCooldownInfo.vue'
+import PlayerNameLink from '@/components/shared/PlayerNameLink.vue'
 import type { RosterPlayer } from '@/types/rosterPlayer'
 
 const props = defineProps<{

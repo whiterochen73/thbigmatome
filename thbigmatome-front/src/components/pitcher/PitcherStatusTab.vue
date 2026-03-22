@@ -47,7 +47,9 @@
               @dragend="onDragEnd"
             >
               <td class="text-center text-grey" style="cursor: grab">☰</td>
-              <td>{{ pitcher.player_name }}</td>
+              <td>
+                <PlayerNameLink :player-id="pitcher.player_id" :player-name="pitcher.player_name" />
+              </td>
               <td class="text-center">{{ pitcher.rest_days != null ? pitcher.rest_days : '-' }}</td>
               <td class="text-center text-grey">-</td>
               <td class="text-center">{{ starterFatiguePLabel(pitcher) }}</td>
@@ -100,7 +102,9 @@
               @dragend="onDragEnd"
             >
               <td class="text-center text-grey" style="cursor: grab">☰</td>
-              <td>{{ pitcher.player_name }}</td>
+              <td>
+                <PlayerNameLink :player-id="pitcher.player_id" :player-name="pitcher.player_name" />
+              </td>
               <td class="text-center">{{ pitcher.rest_days != null ? pitcher.rest_days : '-' }}</td>
               <td class="text-center">
                 {{ pitcher.cumulative_innings != null ? pitcher.cumulative_innings : '-' }}
@@ -125,6 +129,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
 import axios from 'axios'
+import PlayerNameLink from '@/components/shared/PlayerNameLink.vue'
 
 interface PitcherStatus {
   player_id: number

@@ -271,7 +271,7 @@
         </thead>
         <tbody>
           <tr v-for="row in fatigueSummary" :key="row.player_id">
-            <td>{{ row.player_name }}</td>
+            <td><PlayerNameLink :player-id="row.player_id" :player-name="row.player_name" /></td>
             <td>{{ lastRoleLabel(row.last_role) }}</td>
             <td>{{ fatigueDetail(row) }}</td>
             <td>{{ row.is_injured ? '🏥' : '' }}</td>
@@ -291,6 +291,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import axios from 'axios'
+import PlayerNameLink from '@/components/shared/PlayerNameLink.vue'
 import type {
   PitcherAppearanceInput,
   PitcherAppearanceRecord,

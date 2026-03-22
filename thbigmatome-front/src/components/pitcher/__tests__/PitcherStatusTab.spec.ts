@@ -4,7 +4,16 @@ import { nextTick } from 'vue'
 import { createVuetify } from 'vuetify'
 import * as components from 'vuetify/components'
 import * as directives from 'vuetify/directives'
+import { createRouter, createWebHistory } from 'vue-router'
 import PitcherStatusTab from '../PitcherStatusTab.vue'
+
+const router = createRouter({
+  history: createWebHistory(),
+  routes: [
+    { path: '/', component: { template: '<div />' } },
+    { path: '/player-cards/:id', name: 'PlayerCardDetail', component: { template: '<div />' } },
+  ],
+})
 
 vi.mock('axios', () => ({
   default: {
@@ -70,7 +79,7 @@ const mountComponent = (props = {}) =>
       ...props,
     },
     global: {
-      plugins: [vuetify],
+      plugins: [vuetify, router],
     },
   })
 

@@ -220,7 +220,7 @@
                 </v-chip-group>
               </template>
               <template #item.position="{ item }">
-                {{ item.position ? t(`baseball.shortPositions.${item.position}`) : '—' }}
+                {{ item.position ? t(`baseball.positions.${item.position}`) : '—' }}
               </template>
               <template #item.throws="{ item }">
                 {{

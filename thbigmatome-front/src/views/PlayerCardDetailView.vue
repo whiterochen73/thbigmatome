@@ -58,8 +58,8 @@
               <v-img
                 v-if="card.image_url"
                 :src="card.image_url"
-                width="108"
-                height="150"
+                width="150"
+                height="210"
                 cover
                 class="rounded"
                 :style="{ cursor: 'pointer' }"
@@ -1031,12 +1031,14 @@ function extractErrorMessage(error: unknown): string {
 
 /* ── カードヘッダー (藍色帯) ── */
 .detail-card-header {
-  background: var(--ai);
+  background: #2a5298;
   color: white;
   padding: 7px 14px;
   display: flex;
   align-items: center;
   gap: 10px;
+  border-top: 3px solid #4a7fd4;
+  box-shadow: 0 3px 6px rgba(0, 0, 0, 0.4);
 }
 
 .detail-player-name {
@@ -1104,12 +1106,12 @@ function extractErrorMessage(error: unknown): string {
 
 .card-img-wrap {
   flex-shrink: 0;
-  width: 108px;
+  width: 150px;
 }
 
 .card-img-placeholder {
-  width: 108px;
-  height: 150px;
+  width: 150px;
+  height: 210px;
   background: linear-gradient(160deg, #e8e0d4 0%, #d0c0a8 100%);
   border: 2px solid var(--usuiro);
   border-radius: 4px;

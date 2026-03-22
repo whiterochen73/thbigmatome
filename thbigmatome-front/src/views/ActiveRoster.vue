@@ -213,7 +213,7 @@
                 </v-btn>
               </template>
               <template #item.player_name="{ item }">
-                <span>{{ item.player_name }}</span>
+                <PlayerNameLink :player-id="item.player_id" :player-name="item.player_name" />
                 <v-icon v-if="isKeyPlayer(item)" color="deep-purple" size="small" class="ml-1"
                   >mdi-star</v-icon
                 >
@@ -232,8 +232,12 @@
                 {{ item.position ? t(`baseball.shortPositions.${item.position}`) : '—' }}
               </template>
               <template #item.handedness="{ item }">
-                {{ t(`baseball.throwingHands.${item.handedness?.split('/')[0]}`) }}/{{
-                  t(`baseball.battingHands.${item.handedness?.split('/')[1]}`)
+                {{
+                  item.handedness
+                    ? t(`baseball.throwingHands.${item.handedness.split('/')[0]}`) +
+                      '/' +
+                      t(`baseball.battingHands.${item.handedness.split('/')[1]}`)
+                    : '—'
                 }}
               </template>
               <template #item.selected_cost_type="{ item }">
@@ -349,7 +353,7 @@
                 </v-btn>
               </template>
               <template #item.player_name="{ item }">
-                <span>{{ item.player_name }}</span>
+                <PlayerNameLink :player-id="item.player_id" :player-name="item.player_name" />
               </template>
               <template #item.player_types="{ item }">
                 <v-chip
@@ -365,8 +369,12 @@
                 {{ item.position ? t(`baseball.shortPositions.${item.position}`) : '—' }}
               </template>
               <template #item.handedness="{ item }">
-                {{ t(`baseball.throwingHands.${item.handedness?.split('/')[0]}`) }}/{{
-                  t(`baseball.battingHands.${item.handedness?.split('/')[1]}`)
+                {{
+                  item.handedness
+                    ? t(`baseball.throwingHands.${item.handedness.split('/')[0]}`) +
+                      '/' +
+                      t(`baseball.battingHands.${item.handedness.split('/')[1]}`)
+                    : '—'
                 }}
               </template>
               <template #item.selected_cost_type="{ item }">
@@ -426,6 +434,7 @@ import { useI18n } from 'vue-i18n'
 import AbsenceInfo from '@/components/AbsenceInfo.vue'
 import PromotionCooldownInfo from '@/components/PromotionCooldownInfo.vue'
 import TeamNavigation from '@/components/TeamNavigation.vue'
+import PlayerNameLink from '@/components/shared/PlayerNameLink.vue'
 import type { RosterPlayer } from '@/types/rosterPlayer'
 
 const { t } = useI18n()

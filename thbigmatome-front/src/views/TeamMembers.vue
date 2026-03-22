@@ -193,6 +193,9 @@
               items-per-page="-1"
               :disable-sort="false"
             >
+              <template #item.name="{ item }">
+                <PlayerNameLink :player-id="item.id" :player-name="item.name" />
+              </template>
               <template #item.display_name="{ item }">
                 <v-text-field
                   v-model="item.display_name"
@@ -216,10 +219,18 @@
                 {{ item.position ? t(`baseball.shortPositions.${item.position}`) : '—' }}
               </template>
               <template #item.throws="{ item }">
-                {{ t(`baseball.throwingHands.${item.handedness?.split('/')[0]}`) }}
+                {{
+                  item.handedness
+                    ? t(`baseball.throwingHands.${item.handedness.split('/')[0]}`)
+                    : '—'
+                }}
               </template>
               <template #item.bats="{ item }">
-                {{ t(`baseball.battingHands.${item.handedness?.split('/')[1]}`) }}
+                {{
+                  item.handedness
+                    ? t(`baseball.battingHands.${item.handedness.split('/')[1]}`)
+                    : '—'
+                }}
               </template>
               <template #item.cost="{ item }">
                 <div class="d-flex align-center">
@@ -273,6 +284,7 @@ import type { CostList } from '@/types/costList'
 import type { PlayerType } from '@/types/playerType'
 import FilterBar from '@/components/shared/FilterBar.vue'
 import PageHeader from '@/components/shared/PageHeader.vue'
+import PlayerNameLink from '@/components/shared/PlayerNameLink.vue'
 
 type CostType =
   | 'normal_cost'

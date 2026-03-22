@@ -4,7 +4,7 @@
     open-on-hover
     :close-on-content-click="false"
     :close-delay="200"
-    :open-delay="0"
+    :open-delay="400"
     location="bottom start"
     :offset="4"
   >
@@ -14,7 +14,8 @@
         class="player-name-link"
         @mouseenter="onHover"
         @click="onNameClick"
-        >{{ playerName }}</span
+        >{{ playerName
+        }}<v-icon size="x-small" class="ml-1">mdi-card-account-details-outline</v-icon></span
       >
     </template>
     <v-card width="280" elevation="4">
@@ -115,9 +116,6 @@ function onNameClick() {
 .player-name-link {
   cursor: pointer;
   color: rgb(var(--v-theme-primary));
-}
-
-.player-name-link:hover {
   text-decoration: underline;
 }
 </style>

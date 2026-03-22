@@ -144,7 +144,7 @@ interface LocalStorageOrder {
 
 const props = defineProps<{
   teamId: number
-  gameDate: string
+  scheduleDate: string
   competitionId: number | null
 }>()
 
@@ -226,7 +226,7 @@ async function fetchPitcherStatuses() {
   error.value = false
   try {
     const params: Record<string, string> = {}
-    if (props.gameDate) params.date = props.gameDate
+    if (props.scheduleDate) params.date = props.scheduleDate
     const response = await axios.get(`/teams/${props.teamId}/pitcher_game_states/fatigue_summary`, {
       params,
     })
@@ -243,7 +243,7 @@ onMounted(() => {
 })
 
 watch(
-  () => [props.teamId, props.gameDate],
+  () => [props.teamId, props.scheduleDate],
   () => fetchPitcherStatuses(),
 )
 

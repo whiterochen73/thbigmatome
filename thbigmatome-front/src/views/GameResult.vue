@@ -149,7 +149,7 @@
             <PitcherStatusTab
               v-if="gameData.team_id"
               :team-id="Number(teamId)"
-              :game-date="gameData.game_date"
+              :schedule-date="gameData.game_date"
               :competition-id="gameData.competition_id ?? null"
             />
           </v-card-text>

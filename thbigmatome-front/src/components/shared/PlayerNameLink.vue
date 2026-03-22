@@ -48,6 +48,7 @@ const props = defineProps<{
   playerName: string
   imageUrl?: string
   cardId?: number
+  cardType?: 'pitcher' | 'batter'
 }>()
 
 const router = useRouter()
@@ -58,12 +59,13 @@ const resolvedCardId = ref<number | null>(props.cardId ?? null)
 const fetchDone = ref(!!props.imageUrl)
 
 // Module-level cache shared across all instances
-const cache = new Map<number, { cardId: number | null; imageUrl: string | null }>()
+const cache = new Map<string, { cardId: number | null; imageUrl: string | null }>()
 
 async function fetchCardData() {
   if (fetchDone.value) return
 
-  const cached = cache.get(props.playerId)
+  const cacheKey = `${props.playerId}_${props.cardType ?? 'any'}`
+  const cached = cache.get(cacheKey)
   if (cached) {
     resolvedImageUrl.value = cached.imageUrl
     resolvedCardId.value = cached.cardId
@@ -73,17 +75,26 @@ async function fetchCardData() {
 
   loadingCard.value = true
   try {
-    const res = await axios.get('/player_cards', {
-      params: { player_id: props.playerId, per_page: 1 },
-    })
-    const cards: Array<{ id: number; image_url: string | null }> = res.data.player_cards ?? []
+    const params: Record<string, unknown> = { player_id: props.playerId, per_page: 1 }
+    if (props.cardType) params.card_type = props.cardType
+    const res = await axios.get('/player_cards', { params })
+    let cards: Array<{ id: number; image_url: string | null }> = res.data.player_cards ?? []
+
+    // Fallback: card_type指定で結果0件の場合、card_type無しで再取得
+    if (cards.length === 0 && props.cardType) {
+      const fallbackRes = await axios.get('/player_cards', {
+        params: { player_id: props.playerId, per_page: 1 },
+      })
+      cards = fallbackRes.data.player_cards ?? []
+    }
+
     const card = cards[0] ?? null
     const result = { cardId: card?.id ?? null, imageUrl: card?.image_url ?? null }
-    cache.set(props.playerId, result)
+    cache.set(cacheKey, result)
     resolvedImageUrl.value = result.imageUrl
     resolvedCardId.value = result.cardId
   } catch {
-    cache.set(props.playerId, { cardId: null, imageUrl: null })
+    cache.set(cacheKey, { cardId: null, imageUrl: null })
   } finally {
     loadingCard.value = false
     fetchDone.value = true

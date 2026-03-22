@@ -271,7 +271,13 @@
         </thead>
         <tbody>
           <tr v-for="row in fatigueSummary" :key="row.player_id">
-            <td><PlayerNameLink :player-id="row.player_id" :player-name="row.player_name" /></td>
+            <td>
+              <PlayerNameLink
+                :player-id="row.player_id"
+                :player-name="row.player_name"
+                card-type="pitcher"
+              />
+            </td>
             <td>{{ lastRoleLabel(row.last_role) }}</td>
             <td>{{ fatigueDetail(row) }}</td>
             <td>{{ row.is_injured ? '🏥' : '' }}</td>

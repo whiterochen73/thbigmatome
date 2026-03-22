@@ -48,7 +48,11 @@
             >
               <td class="text-center text-grey" style="cursor: grab">☰</td>
               <td>
-                <PlayerNameLink :player-id="pitcher.player_id" :player-name="pitcher.player_name" />
+                <PlayerNameLink
+                  :player-id="pitcher.player_id"
+                  :player-name="pitcher.player_name"
+                  card-type="pitcher"
+                />
               </td>
               <td class="text-center">{{ pitcher.rest_days != null ? pitcher.rest_days : '-' }}</td>
               <td class="text-center text-grey">-</td>
@@ -103,7 +107,11 @@
             >
               <td class="text-center text-grey" style="cursor: grab">☰</td>
               <td>
-                <PlayerNameLink :player-id="pitcher.player_id" :player-name="pitcher.player_name" />
+                <PlayerNameLink
+                  :player-id="pitcher.player_id"
+                  :player-name="pitcher.player_name"
+                  card-type="pitcher"
+                />
               </td>
               <td class="text-center">{{ pitcher.rest_days != null ? pitcher.rest_days : '-' }}</td>
               <td class="text-center">

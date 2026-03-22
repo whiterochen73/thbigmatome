@@ -75,7 +75,19 @@ namespace :import do
 
       handedness_val = derive_handedness(row["throwing_hand"], row["batting_hand"])
 
-      # PlayerCard
+      # 重複防止: 同一カードセット+irc_macro_name+card_typeのカードが既存の場合、既存レコードを再利用
+      # （選手名の正規化マッチ失敗で別playerが作成されたケースに対応）
+      if row["irc_macro_name"].present?
+        existing_by_macro = PlayerCard.where(card_set_id: card_set.id, irc_macro_name: row["irc_macro_name"], card_type: card_type)
+                                      .where.not(player_id: player.id).first
+        if existing_by_macro
+          puts "  WARN: irc_macro_name=#{row['irc_macro_name']} (#{card_type}) already assigned to player=#{existing_by_macro.player&.name}(#{existing_by_macro.player_id}), skipping new record for #{player_name}"
+          player_card_map[row["card_seq"]] = existing_by_macro
+          next
+        end
+      end
+
+      # PlayerCard (upsert: 同一card_set+player+card_typeは更新、新規は作成)
       pc = PlayerCard.find_or_create_by!(card_set_id: card_set.id, player_id: player.id, card_type: card_type) do |c|
         c.is_pitcher    = row["is_pitcher"] == "true"
         c.handedness    = handedness_val

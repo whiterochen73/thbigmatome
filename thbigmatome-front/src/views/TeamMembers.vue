@@ -432,6 +432,7 @@ const filteredAvailablePlayers = computed(() => {
 
 const getPlayerCostLabel = (player: Player): string => {
   if (!selectedCostListId.value) return ''
+  if (!player?.cost_players) return ''
   const costPlayer = player.cost_players.find((cp) => cp.cost_id === selectedCostListId.value)
   if (!costPlayer) return t('teamMembers.costDisplayLabels.noData')
 

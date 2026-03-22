@@ -44,6 +44,7 @@
     <v-tabs v-model="activeTab" color="primary" density="compact" class="mt-2">
       <v-tab value="overview">試合概要</v-tab>
       <v-tab value="pitchers">登板記録</v-tab>
+      <v-tab value="pitcher_status">投手状態</v-tab>
     </v-tabs>
 
     <v-window v-model="activeTab">
@@ -141,6 +142,19 @@
           </v-card-text>
         </v-card>
       </v-window-item>
+
+      <v-window-item value="pitcher_status">
+        <v-card class="mt-2">
+          <v-card-text>
+            <PitcherStatusTab
+              v-if="gameData.team_id"
+              :team-id="Number(teamId)"
+              :game-date="gameData.game_date"
+              :competition-id="gameData.competition_id ?? null"
+            />
+          </v-card-text>
+        </v-card>
+      </v-window-item>
     </v-window>
 
     <v-snackbar v-model="snackbar" :color="snackbarColor" :timeout="3000">
@@ -159,6 +173,7 @@ import type { Team } from '@/types/team'
 import TeamMemberSelect from '@/components/shared/TeamMemberSelect.vue'
 import TeamSelect from '@/components/shared/TeamSelect.vue'
 import PitcherAppearanceTab from '@/components/pitcher/PitcherAppearanceTab.vue'
+import PitcherStatusTab from '@/components/pitcher/PitcherStatusTab.vue'
 
 const { t } = useI18n()
 const route = useRoute()

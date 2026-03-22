@@ -213,7 +213,11 @@
                 </v-btn>
               </template>
               <template #item.player_name="{ item }">
-                <PlayerNameLink :player-id="item.player_id" :player-name="item.player_name" />
+                <PlayerNameLink
+                  :player-id="item.player_id"
+                  :player-name="item.player_name"
+                  :cost-type="item.selected_cost_type"
+                />
                 <v-icon v-if="isKeyPlayer(item)" color="deep-purple" size="small" class="ml-1"
                   >mdi-star</v-icon
                 >
@@ -353,7 +357,11 @@
                 </v-btn>
               </template>
               <template #item.player_name="{ item }">
-                <PlayerNameLink :player-id="item.player_id" :player-name="item.player_name" />
+                <PlayerNameLink
+                  :player-id="item.player_id"
+                  :player-name="item.player_name"
+                  :cost-type="item.selected_cost_type"
+                />
               </template>
               <template #item.player_types="{ item }">
                 <v-chip

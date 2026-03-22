@@ -194,7 +194,11 @@
               :disable-sort="false"
             >
               <template #item.name="{ item }">
-                <PlayerNameLink :player-id="item.id" :player-name="item.name" />
+                <PlayerNameLink
+                  :player-id="item.id"
+                  :player-name="item.name"
+                  :cost-type="item.selected_cost_type"
+                />
               </template>
               <template #item.display_name="{ item }">
                 <v-text-field

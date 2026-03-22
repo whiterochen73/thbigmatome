@@ -77,6 +77,14 @@
               density="compact"
               data-testid="first-squad-table"
             >
+              <template v-slot:[`item.player_name`]="{ item }">
+                <PlayerNameLink
+                  :player-id="item.player_id"
+                  :player-name="item.player_name"
+                  :cost-type="item.selected_cost_type"
+                  :show-both="item.selected_cost_type === 'two_way_cost'"
+                />
+              </template>
               <template v-slot:[`item.contract_type`]="{ item }">
                 {{ item.is_reliever ? '中継ぎ' : '先発' }}
               </template>
@@ -113,6 +121,14 @@
               density="compact"
               data-testid="second-squad-table"
             >
+              <template v-slot:[`item.player_name`]="{ item }">
+                <PlayerNameLink
+                  :player-id="item.player_id"
+                  :player-name="item.player_name"
+                  :cost-type="item.selected_cost_type"
+                  :show-both="item.selected_cost_type === 'two_way_cost'"
+                />
+              </template>
               <template v-slot:[`item.contract_type`]="{ item }">
                 {{ item.is_reliever ? '中継ぎ' : '先発' }}
               </template>
@@ -181,13 +197,16 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import axios from 'axios'
+import PlayerNameLink from '@/components/shared/PlayerNameLink.vue'
 
 interface RosterPlayer {
   player_card_id: number
+  player_id: number
   player_name: string
   squad: 'first_squad' | 'second_squad'
   is_reliever: boolean
   cost: number
+  selected_cost_type?: string
 }
 
 interface CostCheckResult {

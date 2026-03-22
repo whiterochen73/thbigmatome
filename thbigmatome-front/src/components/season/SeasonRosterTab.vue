@@ -203,6 +203,7 @@
                           <PlayerNameLink
                             :player-id="item.player_id"
                             :player-name="item.player_name"
+                            :cost-type="item.selected_cost_type"
                           />
                           <v-icon v-if="isKeyPlayer(item)" color="deep-purple" size="x-small"
                             >mdi-star</v-icon
@@ -451,6 +452,7 @@
                         <PlayerNameLink
                           :player-id="item.player_id"
                           :player-name="item.player_name"
+                          :cost-type="item.selected_cost_type"
                         />
                         <v-chip
                           v-if="item.is_outside_world"

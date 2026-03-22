@@ -43,15 +43,19 @@
         <!-- メイン行 -->
         <v-row density="compact" align="center">
           <!-- 番手ラベル + ドラッグハンドル -->
-          <v-col cols="auto" class="d-flex align-center">
+          <v-col cols="auto" class="d-flex align-center" style="min-width: 80px">
             <v-icon
               v-if="idx > 0"
               size="small"
               color="grey-lighten-1"
-              style="cursor: grab; margin-right: 2px"
+              style="cursor: grab; margin-right: 2px; flex-shrink: 0"
             >
               mdi-drag-vertical
             </v-icon>
+            <span
+              v-else
+              style="width: 20px; margin-right: 2px; display: inline-block; flex-shrink: 0"
+            />
             <span
               class="text-caption font-weight-bold"
               :class="idx === 0 ? 'text-blue-darken-2' : 'text-medium-emphasis'"
@@ -152,6 +156,16 @@
             />
           </v-col>
 
+          <!-- 0アウト降板 -->
+          <v-col cols="auto">
+            <v-checkbox
+              v-model="row.no_out_exit"
+              label="0アウト降板"
+              density="compact"
+              hide-details
+            />
+          </v-col>
+
           <!-- 責任投手チップ（W/L/S/H/—） -->
           <v-col cols="12" sm="3">
             <div class="d-flex align-center gap-1 flex-wrap">
@@ -173,16 +187,6 @@
 
         <!-- サブ情報行 -->
         <v-row density="compact" align="center" class="mt-1">
-          <!-- アウト無し降板 -->
-          <v-col cols="auto">
-            <v-checkbox
-              v-model="row.no_out_exit"
-              label="アウト無し降板"
-              density="compact"
-              hide-details
-            />
-          </v-col>
-
           <!-- オープナー本人チェック（1番手のopener選択時のみ） -->
           <v-col v-if="idx === 0 && row.role === 'opener'" cols="auto">
             <v-checkbox

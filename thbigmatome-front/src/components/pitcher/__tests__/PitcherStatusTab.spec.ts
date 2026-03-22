@@ -65,7 +65,7 @@ const mountComponent = (props = {}) =>
   mount(PitcherStatusTab, {
     props: {
       teamId: 1,
-      gameDate: '2026-03-22',
+      scheduleDate: '2026-03-22',
       competitionId: null,
       ...props,
     },

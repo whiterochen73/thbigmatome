@@ -131,6 +131,8 @@ RSpec.describe "Api::V1::PitcherGameStatesController", type: :request do
       let(:pitcher_first) { create(:player, :pitcher) }
       let!(:pitcher_first_card) { create(:player_card, player: pitcher_first, card_set: card_set, card_type: "pitcher") }
       let!(:tm_first) { create(:team_membership, :first_squad, team: team, player: pitcher_first) }
+      # season_rostersベース判定のため、target_date以前に1軍登録されていることが必要
+      let!(:season_roster_first) { create(:season_roster, team_membership: tm_first, squad: "first", registered_on: "2026-01-01") }
 
       def get_fatigue_summary(date:)
         get "/api/v1/teams/#{team.id}/pitcher_game_states/fatigue_summary",

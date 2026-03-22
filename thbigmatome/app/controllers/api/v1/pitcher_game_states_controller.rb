@@ -60,15 +60,23 @@ module Api
       def fatigue_summary
         target_date = params[:date]&.to_date || Date.today
 
-        pitcher_memberships = @team.team_memberships
+        # season_rostersベースでtarget_date時点の1軍メンバーを取得（現在のsquadではなく登録履歴で判定）
+        all_pitcher_memberships = @team.team_memberships
           .joins(player: :player_cards)
-          .where(squad: "first")
           .where(player_cards: { card_type: "pitcher" })
-          .select("team_memberships.player_id, players.name AS player_name")
+          .includes(:player)
           .distinct
 
+        pitcher_memberships = all_pitcher_memberships.select do |tm|
+          latest_roster = tm.season_rosters
+                            .where("registered_on <= ?", target_date)
+                            .order(registered_on: :desc, created_at: :desc)
+                            .first
+          latest_roster && latest_roster.squad == "first"
+        end
+
         pitcher_ids = pitcher_memberships.map(&:player_id)
-        name_map = pitcher_memberships.each_with_object({}) { |tm, h| h[tm.player_id] = tm.player_name }
+        name_map = pitcher_memberships.each_with_object({}) { |tm, h| h[tm.player_id] = tm.player.name }
 
         injured_ids = build_injured_set(pitcher_ids, target_date)
 
@@ -191,7 +199,7 @@ module Api
       def compute_cumulative_innings(pitcher_id, target_date)
         appearances = PitcherGameState
           .where(pitcher_id: pitcher_id, team_id: @team.id, role: %w[reliever opener])
-          .where("schedule_date <= ?", target_date.to_s)
+          .where("schedule_date < ?", target_date.to_s)
           .order(schedule_date: :asc)
 
         cumulative = 0

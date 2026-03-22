@@ -3,6 +3,7 @@ class Api::V1::PlayerCardsController < Api::V1::BaseController
     player_cards = PlayerCard.includes({ player: :cost_players }, :card_set, :player_card_defenses, :card_image_attachment, :card_image_blob).order(:id)
     player_cards = player_cards.where(card_set_id: params[:card_set_id]) if params[:card_set_id].present?
     player_cards = player_cards.where(card_type: params[:card_type]) if params[:card_type].present?
+    player_cards = player_cards.where(player_id: params[:player_id]) if params[:player_id].present?
     if params[:name].present?
       player_cards = player_cards.joins(:player).where("players.name ILIKE ?", "%#{params[:name]}%")
     end

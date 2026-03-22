@@ -73,6 +73,19 @@ RSpec.describe "Api::V1::PlayerCards", type: :request do
       expect(json["player_cards"].first["card_type"]).to eq("pitcher")
     end
 
+    it "filters by player_id" do
+      player_a = create(:player)
+      player_b = create(:player)
+      create(:player_card, player: player_a)
+      create(:player_card, player: player_b)
+
+      get "/api/v1/player_cards", params: { player_id: player_a.id }
+
+      json = response.parsed_body
+      expect(json["meta"]["total"]).to eq(1)
+      expect(json["player_cards"].first["player_name"]).to eq(player_a.name)
+    end
+
     it "filters by player name (case insensitive partial match)" do
       player_a = create(:player, name: "博麗霊夢")
       player_b = create(:player, name: "霧雨魔理沙")

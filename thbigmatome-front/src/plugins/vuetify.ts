@@ -93,10 +93,13 @@ export default createVuetify({
     VSelect: { density: 'compact', variant: 'outlined' },
     // 追加: ダイアログ統一
     VDialog: { scrollable: true },
+    // 追加: アラート統一
+    VAlert: { density: 'compact' },
     // 追加: チップ統一
     VChip: { size: 'small', variant: 'tonal' },
     // 追加: リスト統一
     VList: { density: 'compact' },
+    VListItem: { density: 'compact' },
     // 追加: ツールチップ統一
     VTooltip: { location: 'bottom' },
     // 追加: スナックバー統一

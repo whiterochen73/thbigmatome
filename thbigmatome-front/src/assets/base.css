@@ -63,6 +63,19 @@
   padding-top: 0;
 }
 
+/* Vuetify 4 スペーシング修正 - V3相当の表示に戻す */
+/* v-alert-title: V4では1.5remに増加（V3は約1rem）→ コンパクトに戻す */
+.v-alert-title {
+  font-size: 1rem;
+  line-height: 1.5;
+}
+
+/* v-card-title: V4では1.375remに増加（V3は1.25rem）→ V3相当に戻す */
+.v-card-title {
+  font-size: 1.25rem;
+  line-height: 1.4;
+}
+
 body {
   min-height: 100vh;
   transition:

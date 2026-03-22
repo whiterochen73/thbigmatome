@@ -58,17 +58,17 @@
               <v-img
                 v-if="card.image_url"
                 :src="card.image_url"
-                width="150"
-                height="210"
+                width="108"
+                height="150"
                 cover
-                class="rounded"
-                :style="{ cursor: 'pointer' }"
+                class="rounded card-img-clickable"
                 @click="imageDialog = true"
               ></v-img>
               <div v-else class="card-img-placeholder">
                 <v-icon size="36" color="#9a8060">mdi-card-account-details</v-icon>
                 <span>カード画像</span>
               </div>
+              <div v-if="card.image_url" class="card-img-hint">🔍 クリックで拡大</div>
             </div>
 
             <!-- 基本情報グリッド -->
@@ -1106,12 +1106,32 @@ function extractErrorMessage(error: unknown): string {
 
 .card-img-wrap {
   flex-shrink: 0;
-  width: 150px;
+  width: 108px;
+}
+
+.card-img-clickable {
+  border: 1px solid #b0a090;
+  cursor: pointer;
+  transition:
+    box-shadow 0.15s ease,
+    transform 0.15s ease;
+}
+
+.card-img-clickable:hover {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+  transform: scale(1.02);
+}
+
+.card-img-hint {
+  text-align: center;
+  font-size: 0.68em;
+  color: #9a8060;
+  margin-top: 3px;
 }
 
 .card-img-placeholder {
-  width: 150px;
-  height: 210px;
+  width: 108px;
+  height: 150px;
   background: linear-gradient(160deg, #e8e0d4 0%, #d0c0a8 100%);
   border: 2px solid var(--usuiro);
   border-radius: 4px;

@@ -16,17 +16,32 @@
         v-for="(row, idx) in pitcherRows"
         :key="idx"
         class="pitcher-row pa-2 mb-1 rounded"
-        :class="{ 'bg-grey-lighten-4': idx % 2 === 0 }"
+        :class="idx === 0 ? 'bg-blue-lighten-5' : 'bg-grey-lighten-4'"
+        style="position: relative"
       >
+        <!-- 削除ボタン（右上固定） -->
+        <v-btn
+          v-if="idx > 0"
+          icon
+          size="x-small"
+          variant="text"
+          color="error"
+          style="position: absolute; top: 4px; right: 4px; z-index: 1"
+          @click="removeRow(idx)"
+        >
+          <v-icon>mdi-close</v-icon>
+        </v-btn>
+
         <!-- メイン行 -->
         <v-row density="compact" align="center">
           <!-- 番手ラベル -->
           <v-col cols="auto">
             <span
-              class="text-caption font-weight-bold text-medium-emphasis"
+              class="text-caption font-weight-bold"
+              :class="idx === 0 ? 'text-blue-darken-2' : 'text-medium-emphasis'"
               style="min-width: 42px; display: inline-block"
             >
-              {{ idx + 1 }}番手
+              {{ idx === 0 ? '先発' : `${idx + 1}番手` }}
             </span>
           </v-col>
 
@@ -137,20 +152,6 @@
                 {{ opt.label }}
               </v-chip>
             </div>
-          </v-col>
-
-          <!-- 削除ボタン -->
-          <v-col cols="auto">
-            <v-btn
-              v-if="idx > 0"
-              icon
-              size="x-small"
-              variant="text"
-              color="error"
-              @click="removeRow(idx)"
-            >
-              <v-icon>mdi-close</v-icon>
-            </v-btn>
           </v-col>
         </v-row>
 

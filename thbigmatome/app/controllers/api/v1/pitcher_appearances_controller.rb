@@ -11,7 +11,7 @@ class Api::V1::PitcherAppearancesController < Api::V1::BaseController
 
     appearances = PitcherGameState
       .where(team_id: team_id, schedule_date: schedule_date)
-      .order(:id)
+      .order(:appearance_order)
 
     render json: appearances.map { |a|
       {
@@ -30,7 +30,8 @@ class Api::V1::PitcherAppearancesController < Api::V1::BaseController
         schedule_date: a.schedule_date,
         team_id: a.team_id,
         game_id: a.game_id,
-        competition_id: a.competition_id
+        competition_id: a.competition_id,
+        appearance_order: a.appearance_order
       }
     }
   end
@@ -51,7 +52,13 @@ class Api::V1::PitcherAppearancesController < Api::V1::BaseController
     pitchers_count = appearances_list.count { |a| a[:pitcher_id].present? }
 
     ActiveRecord::Base.transaction do
-      appearances_list.each do |ap|
+      # リクエストに含まれない既存レコードを削除（UIで行を消した投手のDBレコードを掃除）
+      submitted_pitcher_ids = appearances_list.map { |a| a[:pitcher_id] }.compact
+      PitcherGameState.where(game_id: game.id, team_id: team_id)
+                      .where.not(pitcher_id: submitted_pitcher_ids)
+                      .destroy_all
+
+      appearances_list.each_with_index do |ap, idx|
         next if ap[:pitcher_id].blank?
 
         hash = bulk_appearance_params(ap).to_h.symbolize_keys
@@ -59,6 +66,7 @@ class Api::V1::PitcherAppearancesController < Api::V1::BaseController
         hash[:team_id] = team_id
         hash[:schedule_date] = bulk[:schedule_date]
         hash[:competition_id] ||= game.competition_id
+        hash[:appearance_order] = idx
 
         if hash[:result_category].blank?
           hash[:result_category] = PitcherGameState.calculate_result_category(
@@ -287,7 +295,8 @@ class Api::V1::PitcherAppearancesController < Api::V1::BaseController
       :is_opener,
       :consecutive_short_rest_count,
       :pre_injury_days_excluded,
-      :cumulative_innings
+      :cumulative_innings,
+      :appearance_order
     )
   end
 

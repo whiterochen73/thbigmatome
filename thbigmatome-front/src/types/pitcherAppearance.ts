@@ -12,6 +12,7 @@ export interface PitcherAppearanceInput {
   is_opener: boolean
   consecutive_short_rest_count: number
   pre_injury_days_excluded: number
+  appearance_order: number
 }
 
 export interface PitcherAppearanceRecord extends PitcherAppearanceInput {
@@ -23,6 +24,7 @@ export interface PitcherAppearanceRecord extends PitcherAppearanceInput {
   result_category: ResultCategory
   injury_check: 'safe' | 'injured' | null
   is_opener: boolean
+  appearance_order: number
 }
 
 export interface PitcherAppearanceResponse {

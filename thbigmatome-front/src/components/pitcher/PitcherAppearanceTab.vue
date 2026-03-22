@@ -16,8 +16,16 @@
         v-for="(row, idx) in pitcherRows"
         :key="idx"
         class="pitcher-row pa-2 mb-1 rounded"
-        :class="idx === 0 ? 'bg-blue-lighten-5' : 'bg-grey-lighten-4'"
+        :class="[
+          idx === 0 ? 'bg-blue-lighten-5' : 'bg-grey-lighten-4',
+          dragSrcIdx === idx ? 'opacity-50' : '',
+        ]"
         style="position: relative"
+        :draggable="idx > 0"
+        @dragstart="idx > 0 && onDragStart(idx, $event)"
+        @dragover="onDragOver(idx, $event)"
+        @drop="onDrop(idx, $event)"
+        @dragend="onDragEnd"
       >
         <!-- 削除ボタン（右上固定） -->
         <v-btn
@@ -34,8 +42,16 @@
 
         <!-- メイン行 -->
         <v-row density="compact" align="center">
-          <!-- 番手ラベル -->
-          <v-col cols="auto">
+          <!-- 番手ラベル + ドラッグハンドル -->
+          <v-col cols="auto" class="d-flex align-center">
+            <v-icon
+              v-if="idx > 0"
+              size="small"
+              color="grey-lighten-1"
+              style="cursor: grab; margin-right: 2px"
+            >
+              mdi-drag-vertical
+            </v-icon>
             <span
               class="text-caption font-weight-bold"
               :class="idx === 0 ? 'text-blue-darken-2' : 'text-medium-emphasis'"
@@ -340,6 +356,7 @@ const savedMessage = ref('')
 const pitcherRows = ref<PitcherRow[]>([createEmptyRow('starter')])
 const fatigueSummary = ref<FatigueSummaryRow[]>([])
 const loadingFatigue = ref(false)
+const dragSrcIdx = ref<number | null>(null)
 
 // ─────────────────────────────────────────
 // Computed
@@ -399,6 +416,7 @@ function createEmptyRow(role: PitcherRole): PitcherRow {
     no_out_exit: false,
     consecutive_short_rest_count: 0,
     pre_injury_days_excluded: 0,
+    appearance_order: 0,
     innings_int: null,
     innings_frac: '',
   }
@@ -417,6 +435,36 @@ function addRow() {
 
 function removeRow(idx: number) {
   pitcherRows.value.splice(idx, 1)
+}
+
+// ドラッグ&ドロップ（リリーフのみ、先発=idx0は固定）
+function onDragStart(idx: number, event: DragEvent) {
+  dragSrcIdx.value = idx
+  if (event.dataTransfer) {
+    event.dataTransfer.effectAllowed = 'move'
+  }
+}
+
+function onDragOver(idx: number, event: DragEvent) {
+  if (idx === 0) return // 先発行へのドロップ禁止
+  event.preventDefault()
+  if (event.dataTransfer) {
+    event.dataTransfer.dropEffect = 'move'
+  }
+}
+
+function onDrop(targetIdx: number, event: DragEvent) {
+  event.preventDefault()
+  const srcIdx = dragSrcIdx.value
+  if (srcIdx === null || srcIdx === targetIdx || targetIdx === 0) return
+  const rows = pitcherRows.value
+  const moved = rows.splice(srcIdx, 1)[0]
+  rows.splice(targetIdx, 0, moved)
+  dragSrcIdx.value = null
+}
+
+function onDragEnd() {
+  dragSrcIdx.value = null
 }
 
 function getPitcherPreGameInfo(pitcherId: number | null): string {
@@ -644,6 +692,7 @@ async function fetchPitchersAndStates() {
           no_out_exit: false,
           consecutive_short_rest_count: app.consecutive_short_rest_count ?? 0,
           pre_injury_days_excluded: app.pre_injury_days_excluded ?? 0,
+          appearance_order: idx,
           innings_int,
           innings_frac,
         }
@@ -678,7 +727,7 @@ async function saveAll() {
 
   const appearances = pitcherRows.value
     .filter((row) => !!row.pitcher_id)
-    .map((row) => ({
+    .map((row, idx) => ({
       pitcher_id: row.pitcher_id,
       role: row.role,
       innings_pitched: computeIPFromRow(row),
@@ -688,6 +737,7 @@ async function saveAll() {
       is_opener: row.is_opener,
       consecutive_short_rest_count: row.consecutive_short_rest_count,
       pre_injury_days_excluded: row.pre_injury_days_excluded,
+      appearance_order: idx,
     }))
 
   const payload = {

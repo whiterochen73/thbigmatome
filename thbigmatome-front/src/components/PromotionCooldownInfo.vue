@@ -17,9 +17,9 @@
           </div>
         </template>
         <div v-if="cooldownPlayers.length > 0">
-          <p v-for="player in cooldownPlayers" :key="player.team_membership_id" class="mb-0">
+          <div v-for="player in cooldownPlayers" :key="player.team_membership_id" class="ma-0">
             {{ getCooldownDisplayText(player) }}
-          </p>
+          </div>
         </div>
         <div v-else>
           {{ t('activeRoster.noCooldownInfo') }}

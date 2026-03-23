@@ -347,6 +347,44 @@ describe('TeamMembers.vue', () => {
     expect(wrapper.text()).toContain('コスト')
   })
 
+  it('teamIdなし（チーム未選択）の場合にガイドメッセージが表示される', async () => {
+    setupDefaultMocks()
+    const router = createTestRouter()
+    router.push('/menu') // teamIdなしのルート
+    await router.isReady()
+
+    const wrapper = mount(TeamMembers, {
+      global: {
+        plugins: [vuetify, i18n, router],
+        stubs: { TeamNavigation: TeamNavigationStub },
+      },
+    })
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('チームが選択されていません')
+    expect(vi.mocked(axios.get)).not.toHaveBeenCalledWith(expect.stringContaining('/team_players'))
+  })
+
+  it('teamId propを渡すとAPI呼び出しにそのIDが使われる', async () => {
+    setupDefaultMocks()
+    const router = createTestRouter()
+    router.push('/menu') // teamIdなしのルート
+    await router.isReady()
+
+    mount(TeamMembers, {
+      props: { teamId: 42 },
+      global: {
+        plugins: [vuetify, i18n, router],
+        stubs: { TeamNavigation: TeamNavigationStub },
+      },
+    })
+    await flushPromises()
+
+    expect(vi.mocked(axios.get)).toHaveBeenCalledWith(
+      expect.stringContaining('/teams/42/team_players'),
+    )
+  })
+
   it('保存ボタンが存在する', async () => {
     const wrapper = await mountTeamMembers()
 

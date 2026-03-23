@@ -363,7 +363,7 @@
       <!-- タブ4: チーム編成 -->
       <v-tabs-window-item value="members">
         <div class="mt-2">
-          <TeamMembers />
+          <TeamMembers :team-id="teamId" />
         </div>
       </v-tabs-window-item>
 

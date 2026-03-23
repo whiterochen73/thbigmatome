@@ -50,146 +50,159 @@
       </ul>
     </v-alert>
 
-    <v-card>
-      <v-tabs v-model="activeTab" color="primary">
-        <v-tab value="first_squad">1軍</v-tab>
-        <v-tab value="second_squad">2軍</v-tab>
-      </v-tabs>
+    <v-tabs v-model="mainTab" color="primary" class="mb-2">
+      <v-tab value="roster">ロスター</v-tab>
+      <v-tab value="history">昇降格履歴</v-tab>
+    </v-tabs>
 
-      <v-card-text>
-        <v-tabs-window v-model="activeTab">
-          <!-- 1軍タブ -->
-          <v-tabs-window-item value="first_squad">
-            <div class="d-flex justify-end mb-2">
-              <v-btn
-                color="primary"
-                variant="tonal"
-                prepend-icon="mdi-account-plus"
-                @click="openAddDialog('first_squad')"
-              >
-                選手追加
-              </v-btn>
-            </div>
-            <v-data-table
-              :headers="rosterHeaders"
-              :items="firstSquadPlayers"
-              :loading="loading"
-              density="compact"
-              data-testid="first-squad-table"
-            >
-              <template v-slot:[`item.player_name`]="{ item }">
-                <PlayerNameLink
-                  :player-id="item.player_id"
-                  :player-name="item.player_name"
-                  :cost-type="item.selected_cost_type"
-                  :show-both="item.selected_cost_type === 'two_way_cost'"
-                />
-              </template>
-              <template v-slot:[`item.contract_type`]="{ item }">
-                {{ item.is_reliever ? '中継ぎ' : '先発' }}
-              </template>
-              <template v-slot:[`item.actions`]="{ item }">
-                <v-btn
-                  size="small"
-                  variant="outlined"
-                  color="error"
-                  @click="removePlayer(item.player_card_id)"
-                  data-testid="remove-btn"
+    <v-tabs-window v-model="mainTab">
+      <v-tabs-window-item value="roster">
+        <v-card>
+          <v-tabs v-model="activeTab" color="primary">
+            <v-tab value="first_squad">1軍</v-tab>
+            <v-tab value="second_squad">2軍</v-tab>
+          </v-tabs>
+
+          <v-card-text>
+            <v-tabs-window v-model="activeTab">
+              <!-- 1軍タブ -->
+              <v-tabs-window-item value="first_squad">
+                <div class="d-flex justify-end mb-2">
+                  <v-btn
+                    color="primary"
+                    variant="tonal"
+                    prepend-icon="mdi-account-plus"
+                    @click="openAddDialog('first_squad')"
+                  >
+                    選手追加
+                  </v-btn>
+                </div>
+                <v-data-table
+                  :headers="rosterHeaders"
+                  :items="firstSquadPlayers"
+                  :loading="loading"
+                  density="compact"
+                  data-testid="first-squad-table"
                 >
-                  除外
-                </v-btn>
-              </template>
-            </v-data-table>
-          </v-tabs-window-item>
+                  <template v-slot:[`item.player_name`]="{ item }">
+                    <PlayerNameLink
+                      :player-id="item.player_id"
+                      :player-name="item.player_name"
+                      :cost-type="item.selected_cost_type"
+                      :show-both="item.selected_cost_type === 'two_way_cost'"
+                    />
+                  </template>
+                  <template v-slot:[`item.contract_type`]="{ item }">
+                    {{ item.is_reliever ? '中継ぎ' : '先発' }}
+                  </template>
+                  <template v-slot:[`item.actions`]="{ item }">
+                    <v-btn
+                      size="small"
+                      variant="outlined"
+                      color="error"
+                      @click="removePlayer(item.player_card_id)"
+                      data-testid="remove-btn"
+                    >
+                      除外
+                    </v-btn>
+                  </template>
+                </v-data-table>
+              </v-tabs-window-item>
 
-          <!-- 2軍タブ -->
-          <v-tabs-window-item value="second_squad">
-            <div class="d-flex justify-end mb-2">
-              <v-btn
-                color="primary"
-                variant="tonal"
-                prepend-icon="mdi-account-plus"
-                @click="openAddDialog('second_squad')"
-              >
-                選手追加
-              </v-btn>
-            </div>
-            <v-data-table
-              :headers="rosterHeaders"
-              :items="secondSquadPlayers"
-              :loading="loading"
-              density="compact"
-              data-testid="second-squad-table"
-            >
-              <template v-slot:[`item.player_name`]="{ item }">
-                <PlayerNameLink
-                  :player-id="item.player_id"
-                  :player-name="item.player_name"
-                  :cost-type="item.selected_cost_type"
-                  :show-both="item.selected_cost_type === 'two_way_cost'"
-                />
-              </template>
-              <template v-slot:[`item.contract_type`]="{ item }">
-                {{ item.is_reliever ? '中継ぎ' : '先発' }}
-              </template>
-              <template v-slot:[`item.actions`]="{ item }">
-                <v-btn
-                  size="small"
-                  variant="outlined"
-                  color="error"
-                  @click="removePlayer(item.player_card_id)"
-                  data-testid="remove-btn"
+              <!-- 2軍タブ -->
+              <v-tabs-window-item value="second_squad">
+                <div class="d-flex justify-end mb-2">
+                  <v-btn
+                    color="primary"
+                    variant="tonal"
+                    prepend-icon="mdi-account-plus"
+                    @click="openAddDialog('second_squad')"
+                  >
+                    選手追加
+                  </v-btn>
+                </div>
+                <v-data-table
+                  :headers="rosterHeaders"
+                  :items="secondSquadPlayers"
+                  :loading="loading"
+                  density="compact"
+                  data-testid="second-squad-table"
                 >
-                  除外
-                </v-btn>
-              </template>
-            </v-data-table>
-          </v-tabs-window-item>
-        </v-tabs-window>
-      </v-card-text>
-    </v-card>
+                  <template v-slot:[`item.player_name`]="{ item }">
+                    <PlayerNameLink
+                      :player-id="item.player_id"
+                      :player-name="item.player_name"
+                      :cost-type="item.selected_cost_type"
+                      :show-both="item.selected_cost_type === 'two_way_cost'"
+                    />
+                  </template>
+                  <template v-slot:[`item.contract_type`]="{ item }">
+                    {{ item.is_reliever ? '中継ぎ' : '先発' }}
+                  </template>
+                  <template v-slot:[`item.actions`]="{ item }">
+                    <v-btn
+                      size="small"
+                      variant="outlined"
+                      color="error"
+                      @click="removePlayer(item.player_card_id)"
+                      data-testid="remove-btn"
+                    >
+                      除外
+                    </v-btn>
+                  </template>
+                </v-data-table>
+              </v-tabs-window-item>
+            </v-tabs-window>
+          </v-card-text>
+        </v-card>
 
-    <!-- 選手追加ダイアログ -->
-    <v-dialog v-model="addDialog" max-width="640px" persistent>
-      <v-card>
-        <v-card-title
-          >選手追加（{{ addTargetSquad === 'first_squad' ? '1軍' : '2軍' }}）</v-card-title
-        >
-        <v-card-text>
-          <v-text-field
-            v-model="searchQuery"
-            label="選手名検索"
-            density="compact"
-            prepend-inner-icon="mdi-magnify"
-            class="mb-3"
-            @input="searchPlayers"
-          />
-          <v-data-table
-            :headers="searchHeaders"
-            :items="searchResults"
-            :loading="searching"
-            density="compact"
-            select-strategy="single"
-          >
-            <template v-slot:[`item.select`]="{ item }">
-              <v-btn
-                size="small"
-                color="primary"
-                variant="tonal"
-                @click="addPlayer(item.id)"
-                :loading="adding"
+        <!-- 選手追加ダイアログ -->
+        <v-dialog v-model="addDialog" max-width="640px" persistent>
+          <v-card>
+            <v-card-title
+              >選手追加（{{ addTargetSquad === 'first_squad' ? '1軍' : '2軍' }}）</v-card-title
+            >
+            <v-card-text>
+              <v-text-field
+                v-model="searchQuery"
+                label="選手名検索"
+                density="compact"
+                prepend-inner-icon="mdi-magnify"
+                class="mb-3"
+                @input="searchPlayers"
+              />
+              <v-data-table
+                :headers="searchHeaders"
+                :items="searchResults"
+                :loading="searching"
+                density="compact"
+                select-strategy="single"
               >
-                追加
-              </v-btn>
-            </template>
-          </v-data-table>
-        </v-card-text>
-        <v-card-actions>
-          <v-spacer />
-          <v-btn variant="text" @click="addDialog = false">閉じる</v-btn>
-        </v-card-actions>
-      </v-card>
-    </v-dialog>
+                <template v-slot:[`item.select`]="{ item }">
+                  <v-btn
+                    size="small"
+                    color="primary"
+                    variant="tonal"
+                    @click="addPlayer(item.id)"
+                    :loading="adding"
+                  >
+                    追加
+                  </v-btn>
+                </template>
+              </v-data-table>
+            </v-card-text>
+            <v-card-actions>
+              <v-spacer />
+              <v-btn variant="text" @click="addDialog = false">閉じる</v-btn>
+            </v-card-actions>
+          </v-card>
+        </v-dialog>
+      </v-tabs-window-item>
+
+      <v-tabs-window-item value="history">
+        <PromotionHistoryTab :team-id="Number(teamId)" :season-id="seasonId" class="mt-2" />
+      </v-tabs-window-item>
+    </v-tabs-window>
   </v-container>
 </template>
 
@@ -198,6 +211,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import axios from 'axios'
 import PlayerNameLink from '@/components/shared/PlayerNameLink.vue'
+import PromotionHistoryTab from '@/components/season/PromotionHistoryTab.vue'
 
 interface RosterPlayer {
   player_card_id: number
@@ -240,7 +254,9 @@ const firstSquadPlayers = ref<RosterPlayer[]>([])
 const secondSquadPlayers = ref<RosterPlayer[]>([])
 const costCheck = ref<CostCheckResult | null>(null)
 const loading = ref(false)
+const mainTab = ref<'roster' | 'history'>('roster')
 const activeTab = ref<'first_squad' | 'second_squad'>('first_squad')
+const seasonId = ref<number | null>(null)
 
 const addDialog = ref(false)
 const addTargetSquad = ref<'first_squad' | 'second_squad'>('first_squad')
@@ -263,8 +279,19 @@ const searchHeaders = [
   { title: '', key: 'select', sortable: false, width: '80px' },
 ]
 
+async function fetchSeasonId() {
+  try {
+    const res = await axios.get<{ season_id?: number }>(`/teams/${teamId.value}/roster`)
+    if (res.data.season_id) {
+      seasonId.value = res.data.season_id
+    }
+  } catch {
+    // season_id not available; PromotionHistoryTab handles null gracefully
+  }
+}
+
 onMounted(async () => {
-  await Promise.all([fetchCompetitionName(), fetchRoster(), fetchCostCheck()])
+  await Promise.all([fetchCompetitionName(), fetchRoster(), fetchCostCheck(), fetchSeasonId()])
 })
 
 async function fetchCompetitionName() {

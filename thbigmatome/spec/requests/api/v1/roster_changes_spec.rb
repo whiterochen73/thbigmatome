@@ -20,9 +20,16 @@ RSpec.describe "Api::V1::RosterChanges", type: :request do
     before { team.update!(user: user) }
 
     context "パラメータ不足" do
-      it "sinceがない場合は422を返す" do
+      it "sinceがない場合はシーズン全履歴を返す" do
+        player = create(:player, name: "テスト", number: "99")
+        tm = create(:team_membership, team: team, player: player, squad: "first")
+        create(:season_roster, team_membership: tm, season: season, squad: "first",
+               registered_on: Date.new(2025, 3, 1))
+
         get roster_changes_url, params: { season_id: season.id }
-        expect(response).to have_http_status(:unprocessable_entity)
+        expect(response).to have_http_status(:ok)
+        json = response.parsed_body
+        expect(json["changes"].length).to eq(1)
       end
 
       it "season_idがない場合は422を返す" do

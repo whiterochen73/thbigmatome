@@ -7,11 +7,11 @@ module Api
       before_action :authorize_team_access!
 
       def index
-        since_date = params[:since]
+        since_date = params[:since].presence || "1900-01-01"
         season_id  = params[:season_id]
 
-        if since_date.blank? || season_id.blank?
-          return render json: { error: "since and season_id are required" }, status: :unprocessable_entity
+        if season_id.blank?
+          return render json: { error: "season_id is required" }, status: :unprocessable_entity
         end
 
         result = RosterChangeService.new(@team, season_id, since_date).call

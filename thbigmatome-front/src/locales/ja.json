@@ -213,6 +213,20 @@
       "injury": "負傷離脱",
       "suspension": "出場停止",
       "reconditioning": "再調整"
+    },
+    "tabs": {
+      "roster": "ロスター",
+      "history": "昇降格履歴"
+    }
+  },
+  "promotionHistory": {
+    "noHistory": "昇降格の履歴はありません。",
+    "promote": "昇格",
+    "demote": "降格",
+    "headers": {
+      "date": "日付",
+      "player": "選手名",
+      "type": "種別"
     }
   },
   "gameResult": {

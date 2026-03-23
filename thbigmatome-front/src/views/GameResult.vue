@@ -54,7 +54,7 @@
             {{ t('gameResult.basicInfo') }}
           </v-card-title>
           <v-card-text class="pt-4">
-            <v-row dense>
+            <v-row density="compact">
               <v-col cols="12" sm="6" md="4">
                 <TeamMemberSelect
                   v-model="gameData.announced_starter_id"
@@ -103,7 +103,7 @@
             {{ t('gameResult.gameInfo') }}
           </v-card-title>
           <v-card-text class="pt-4">
-            <v-row dense>
+            <v-row density="compact">
               <v-col cols="6" sm="4" md="3">
                 <v-text-field
                   v-model.number="gameData.score"

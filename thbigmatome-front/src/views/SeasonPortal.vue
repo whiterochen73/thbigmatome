@@ -87,6 +87,10 @@
         <v-icon start>mdi-chart-bar</v-icon>
         {{ t('seasonPortal.tabs.stats') }}
       </v-tab>
+      <v-tab value="promotion_history">
+        <v-icon start>mdi-swap-vertical</v-icon>
+        {{ t('seasonPortal.tabs.promotionHistory') }}
+      </v-tab>
     </v-tabs>
 
     <v-tabs-window v-if="!loading && season" v-model="activeTab">
@@ -425,6 +429,13 @@
           </v-tabs-window>
         </div>
       </v-tabs-window-item>
+
+      <!-- タブ7: 昇降格履歴 -->
+      <v-tabs-window-item value="promotion_history">
+        <div class="mt-2">
+          <PromotionHistoryTab :team-id="teamId" :season-id="season?.id ?? null" />
+        </div>
+      </v-tabs-window-item>
     </v-tabs-window>
   </v-container>
 
@@ -544,6 +555,7 @@ import type { ScheduleList } from '@/types/scheduleList'
 import type { Team } from '@/types/team'
 import SeasonRosterTab from '@/components/season/SeasonRosterTab.vue'
 import SeasonAbsenceTab from '@/components/season/SeasonAbsenceTab.vue'
+import PromotionHistoryTab from '@/components/season/PromotionHistoryTab.vue'
 import TeamMembers from '@/views/TeamMembers.vue'
 import LineupTemplateEditor from '@/components/squad/LineupTemplateEditor.vue'
 import SquadTextGenerator from '@/components/squad/SquadTextGenerator.vue'

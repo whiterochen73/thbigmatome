@@ -44,6 +44,9 @@ vi.mock('@/components/squad/LineupTemplateEditor.vue', () => ({
 vi.mock('@/components/squad/SquadTextGenerator.vue', () => ({
   default: { name: 'SquadTextGenerator', template: '<div />' },
 }))
+vi.mock('@/components/season/PromotionHistoryTab.vue', () => ({
+  default: { name: 'PromotionHistoryTab', template: '<div />' },
+}))
 
 const vuetify = createVuetify({ components, directives })
 
@@ -63,6 +66,7 @@ const i18n = createI18n({
           members: 'メンバー',
           lineup: 'オーダー',
           stats: '成績',
+          promotionHistory: '昇降格履歴',
         },
         initForm: {
           title: 'シーズン開始',

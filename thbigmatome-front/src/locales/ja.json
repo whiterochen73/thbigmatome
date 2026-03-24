@@ -49,6 +49,13 @@
     "absenceInfo": "離脱者情報",
     "noAbsenceInfo": "離脱者情報はありません。",
     "noSeasonData": "シーズンデータが見つかりません",
+    "initForm": {
+      "title": "シーズン開始",
+      "seasonNameLabel": "シーズン名",
+      "selectScheduleLabel": "日程表を選択",
+      "startButton": "シーズン開始",
+      "noSchedules": "日程表が登録されていません。先に日程表を作成してください。"
+    },
     "announcedStarterPrefix": "先発",
     "viewLabel": "表示",
     "viewAll": "全日程",

@@ -21,11 +21,46 @@
     <!-- ローディング中 -->
     <v-skeleton-loader v-if="loading" type="card" class="mt-2" />
 
-    <EmptyState
-      v-if="!loading && !season"
-      icon="mdi-calendar-blank-outline"
-      :message="t('seasonPortal.noSeasonData')"
-    />
+    <!-- シーズン未作成: インライン初期化フォーム -->
+    <v-card v-if="!loading && !season" variant="outlined" class="mt-4 mx-auto" max-width="480">
+      <v-card-title class="text-h6 pa-4">
+        <v-icon start>mdi-calendar-plus</v-icon>
+        {{ t('seasonPortal.initForm.title') }}
+      </v-card-title>
+      <v-card-text>
+        <template v-if="schedules.length === 0">
+          <v-alert type="info" variant="tonal">
+            {{ t('seasonPortal.initForm.noSchedules') }}
+          </v-alert>
+        </template>
+        <template v-else>
+          <v-select
+            v-model="selectedScheduleId"
+            :items="schedules"
+            item-title="name"
+            item-value="id"
+            :label="t('seasonPortal.initForm.selectScheduleLabel')"
+            class="mb-2"
+          />
+          <v-text-field
+            v-model="newSeasonName"
+            :label="t('seasonPortal.initForm.seasonNameLabel')"
+          />
+        </template>
+      </v-card-text>
+      <v-card-actions v-if="schedules.length > 0">
+        <v-spacer />
+        <v-btn
+          color="primary"
+          variant="flat"
+          :disabled="!selectedScheduleId || !newSeasonName || creating"
+          :loading="creating"
+          @click="createSeason"
+        >
+          {{ t('seasonPortal.initForm.startButton') }}
+        </v-btn>
+      </v-card-actions>
+    </v-card>
 
     <v-tabs v-if="!loading && season" v-model="activeTab" color="primary" class="mt-2">
       <v-tab value="calendar">
@@ -505,10 +540,10 @@ import axios from 'axios'
 import { useI18n } from 'vue-i18n'
 import type { SeasonDetail } from '@/types/seasonDetail'
 import type { SeasonSchedule } from '@/types/seasonSchedule'
+import type { ScheduleList } from '@/types/scheduleList'
 import type { Team } from '@/types/team'
 import SeasonRosterTab from '@/components/season/SeasonRosterTab.vue'
 import SeasonAbsenceTab from '@/components/season/SeasonAbsenceTab.vue'
-import EmptyState from '@/components/EmptyState.vue'
 import TeamMembers from '@/views/TeamMembers.vue'
 import LineupTemplateEditor from '@/components/squad/LineupTemplateEditor.vue'
 import SquadTextGenerator from '@/components/squad/SquadTextGenerator.vue'
@@ -523,6 +558,12 @@ const teamSelectionStore = useTeamSelectionStore()
 const loading = ref(true)
 const season = ref<SeasonDetail | null>(null)
 const currentDate = ref(new Date())
+
+// シーズン初期化フォーム
+const schedules = ref<ScheduleList[]>([])
+const newSeasonName = ref('')
+const selectedScheduleId = ref<number | null>(null)
+const creating = ref(false)
 
 const teamId = props.teamId ?? parseInt(<string>route.params.teamId, 10)
 
@@ -588,6 +629,32 @@ const fetchSeason = async () => {
     console.error('Failed to fetch season data:', error)
   } finally {
     loading.value = false
+  }
+}
+
+const fetchSchedules = async () => {
+  try {
+    const response = await axios.get<ScheduleList[]>('/schedules')
+    schedules.value = response.data
+  } catch (error) {
+    console.error('Failed to fetch schedules:', error)
+  }
+}
+
+const createSeason = async () => {
+  if (!selectedScheduleId.value || !newSeasonName.value) return
+  creating.value = true
+  try {
+    await axios.post('/seasons', {
+      team_id: teamId,
+      schedule_id: selectedScheduleId.value,
+      name: newSeasonName.value,
+    })
+    await fetchSeason()
+  } catch (error) {
+    console.error('Failed to create season:', error)
+  } finally {
+    creating.value = false
   }
 }
 
@@ -849,7 +916,7 @@ const formatDetailDate = (date: Date) => {
 }
 
 onMounted(async () => {
-  await fetchSeason()
+  await Promise.all([fetchSeason(), fetchSchedules()])
   try {
     const response = await axios.get<Team>(`/teams/${teamId}`)
     teamSelectionStore.selectTeam(teamId, response.data.name)

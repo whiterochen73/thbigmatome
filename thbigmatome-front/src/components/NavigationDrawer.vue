@@ -127,12 +127,14 @@ const showTeamMenu = computed(() => {
 })
 
 const gameMenuItems = [
-  { title: 'ログ取り込み', icon: 'mdi-file-import', value: 'gameImport', to: '/games/import' },
-  { title: 'レビュー', icon: 'mdi-clipboard-check', value: 'gameRecords', to: '/game-records' },
-  { title: '試合一覧', icon: 'mdi-scoreboard', value: 'games', to: '/games' },
+  { title: 'ログ取り込み (β)', icon: 'mdi-file-import', value: 'gameImport', to: '/games/import' },
+  // { title: 'レビュー', icon: 'mdi-clipboard-check', value: 'gameRecords', to: '/game-records' }, // リリース非表示
+  // { title: '試合一覧', icon: 'mdi-scoreboard', value: 'games', to: '/games' }, // リリース非表示
 ]
 
-const teamMenuItems = [{ title: '成績', icon: 'mdi-chart-bar', value: 'stats', to: '/stats' }]
+const teamMenuItems = [
+  // { title: '成績', icon: 'mdi-chart-bar', value: 'stats', to: '/stats' }, // リリース非表示
+]
 
 const playerMenuItems = [
   {

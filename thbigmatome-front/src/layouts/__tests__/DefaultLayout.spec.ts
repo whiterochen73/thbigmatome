@@ -258,8 +258,9 @@ describe('DefaultLayout.vue', () => {
 
       expect(wrapper.text()).toContain('ホーム')
       expect(wrapper.text()).toContain('試合ログ')
-      expect(wrapper.text()).toContain('試合一覧')
-      expect(wrapper.text()).toContain('成績')
+      // リリース向けUI整理: 試合一覧・成績は非表示
+      expect(wrapper.text()).not.toContain('試合一覧')
+      expect(wrapper.text()).not.toContain('成績')
     })
 
     it('does not display commissioner menu for regular users', async () => {

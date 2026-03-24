@@ -157,7 +157,7 @@ describe('HomePortalView', () => {
     expect(mockAxios.get).not.toHaveBeenCalled()
   })
 
-  it('コミッショナー時: 自チーム/全チーム管理/ダッシュボードの3タブが表示されること', async () => {
+  it('コミッショナー時: CommissionerDashboardが直接表示されること（タブ非表示）', async () => {
     mockIsCommissioner.value = true
     const pinia = createPinia()
     setActivePinia(pinia)
@@ -168,12 +168,13 @@ describe('HomePortalView', () => {
     const wrapper = mount(HomePortalView, { global: { plugins: [vuetify, router, pinia] } })
     await flushPromises()
 
-    expect(wrapper.text()).toContain('自チーム')
-    expect(wrapper.text()).toContain('全チーム管理')
-    expect(wrapper.text()).toContain('ダッシュボード')
+    // リリース向けUI整理: タブは非表示、ダッシュボードを直接表示
+    expect(wrapper.find('.commissioner-dashboard-stub').exists()).toBe(true)
+    expect(wrapper.text()).not.toContain('自チーム')
+    expect(wrapper.text()).not.toContain('全チーム管理')
   })
 
-  it('非コミッショナーにはコミッショナー用タブが表示されないこと', async () => {
+  it('非コミッショナーにはCommissionerDashboardが表示されないこと', async () => {
     mockIsCommissioner.value = false
     const pinia = createPinia()
     setActivePinia(pinia)
@@ -184,8 +185,6 @@ describe('HomePortalView', () => {
     const wrapper = mount(HomePortalView, { global: { plugins: [vuetify, router, pinia] } })
     await flushPromises()
 
-    expect(wrapper.text()).not.toContain('自チーム')
-    expect(wrapper.text()).not.toContain('全チーム管理')
-    expect(wrapper.text()).not.toContain('ダッシュボード')
+    expect(wrapper.find('.commissioner-dashboard-stub').exists()).toBe(false)
   })
 })

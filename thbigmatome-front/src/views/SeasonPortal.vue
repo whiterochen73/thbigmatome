@@ -83,14 +83,18 @@
         <v-icon start>mdi-account-off</v-icon>
         {{ t('seasonPortal.tabs.absences') }}
       </v-tab>
+      <!-- リリース非表示: オーダータブ
       <v-tab value="lineup">
         <v-icon start>mdi-format-list-numbered</v-icon>
         {{ t('seasonPortal.tabs.lineup') }}
       </v-tab>
+      -->
+      <!-- リリース非表示: 成績タブ
       <v-tab value="stats">
         <v-icon start>mdi-chart-bar</v-icon>
         {{ t('seasonPortal.tabs.stats') }}
       </v-tab>
+      -->
     </v-tabs>
 
     <v-tabs-window v-if="!loading && season" v-model="activeTab">
@@ -413,7 +417,7 @@
         </div>
       </v-tabs-window-item>
 
-      <!-- タブ6: オーダー -->
+      <!-- リリース非表示: オーダータブ（タブ6）
       <v-tabs-window-item value="lineup">
         <div class="mt-2">
           <v-tabs v-model="lineupSubTab" color="primary" density="compact" class="mb-2">
@@ -436,6 +440,7 @@
           </v-tabs-window>
         </div>
       </v-tabs-window-item>
+      -->
     </v-tabs-window>
   </v-container>
 
@@ -557,8 +562,9 @@ import SeasonRosterTab from '@/components/season/SeasonRosterTab.vue'
 import SeasonAbsenceTab from '@/components/season/SeasonAbsenceTab.vue'
 import PromotionHistoryTab from '@/components/season/PromotionHistoryTab.vue'
 import TeamMembers from '@/views/TeamMembers.vue'
-import LineupTemplateEditor from '@/components/squad/LineupTemplateEditor.vue'
-import SquadTextGenerator from '@/components/squad/SquadTextGenerator.vue'
+// リリース非表示: オーダータブ用コンポーネント（ポストリリースで復活予定）
+// import LineupTemplateEditor from '@/components/squad/LineupTemplateEditor.vue'
+// import SquadTextGenerator from '@/components/squad/SquadTextGenerator.vue'
 import { useTeamSelectionStore } from '@/stores/teamSelection'
 
 const props = defineProps<{ teamId?: number }>()
@@ -582,8 +588,8 @@ const teamId = props.teamId ?? parseInt(<string>route.params.teamId, 10)
 // タブ状態をURLクエリパラメータで管理
 const activeTab = ref((route.query.tab as string) || 'calendar')
 
-// オーダータブのサブタブ
-const lineupSubTab = ref('template')
+// オーダータブのサブタブ（リリース非表示中）
+// const lineupSubTab = ref('template')
 
 watch(activeTab, (newTab) => {
   if (newTab === 'stats') {

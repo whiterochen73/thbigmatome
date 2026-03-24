@@ -10,16 +10,19 @@
 
     <!-- コミッショナー: タブUI -->
     <template v-else-if="isCommissioner">
+      <!-- リリース向けUI整理: 自チーム・全チーム管理タブは非表示、ダッシュボードのみ表示 -->
+      <!--
       <v-tabs v-model="activeTab" color="primary" class="mb-4">
         <v-tab value="myTeams">自チーム</v-tab>
         <v-tab value="allTeams">全チーム管理</v-tab>
         <v-tab value="dashboard">ダッシュボード</v-tab>
       </v-tabs>
+      -->
 
-      <v-window v-model="activeTab">
-        <!-- 自チームタブ -->
+      <!-- <v-window v-model="activeTab"> -->
+      <!-- 自チームタブ -->
+      <!--
         <v-window-item value="myTeams">
-          <!-- チーム0件 -->
           <v-empty-state
             v-if="myTeams.length === 0"
             icon="mdi-account-group-outline"
@@ -27,15 +30,11 @@
             text="チーム未割り当て。コミッショナーにお問い合わせください。"
             class="mt-8"
           />
-
-          <!-- チーム1件: 即SeasonPortal表示 -->
           <SeasonPortal
             v-else-if="myTeams.length === 1"
             :key="myTeams[0].id"
             :team-id="myTeams[0].id"
           />
-
-          <!-- チーム2件以上: タブ切り替え -->
           <template v-else>
             <v-tabs v-model="selectedTeamId" color="primary" class="mb-2">
               <v-tab v-for="team in myTeams" :key="team.id" :value="team.id">
@@ -45,8 +44,10 @@
             <SeasonPortal :key="selectedTeamId" :team-id="selectedTeamId" />
           </template>
         </v-window-item>
+        -->
 
-        <!-- 全チーム管理タブ -->
+      <!-- 全チーム管理タブ -->
+      <!--
         <v-window-item value="allTeams">
           <v-select
             v-model="selectedAllTeamId"
@@ -62,12 +63,11 @@
             :team-id="selectedAllTeamId"
           />
         </v-window-item>
+        -->
 
-        <!-- ダッシュボードタブ -->
-        <v-window-item value="dashboard">
-          <CommissionerDashboard />
-        </v-window-item>
-      </v-window>
+      <!-- ダッシュボード -->
+      <CommissionerDashboard />
+      <!-- </v-window> -->
     </template>
 
     <!-- 非コミッショナー: 既存表示 -->
@@ -102,7 +102,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, onMounted, watch } from 'vue'
 import { useTeamSelectionStore } from '@/stores/teamSelection'
 import { useAuth } from '@/composables/useAuth'
 import { type Team } from '@/types/team'
@@ -117,9 +117,10 @@ const myTeams = ref<Team[]>([])
 const loading = ref(false)
 const selectedTeamId = ref<number>(0)
 
-const allTeams = computed(() => teamSelectionStore.allTeams)
-const activeTab = ref('myTeams')
-const selectedAllTeamId = ref<number | null>(null)
+// リリース非表示: タブ関連変数（ポストリリースで復活予定）
+// const allTeams = computed(() => teamSelectionStore.allTeams)
+// const activeTab = ref('myTeams')
+// const selectedAllTeamId = ref<number | null>(null)
 
 onMounted(() => {
   myTeams.value = teamSelectionStore.myTeams as Team[]
@@ -128,10 +129,10 @@ onMounted(() => {
     const found = myTeams.value.find((t) => t.id === storedId)
     selectedTeamId.value = found ? found.id : myTeams.value[0].id
   }
-  // コミッショナーかつチーム未所持の場合、初期タブを全チーム管理に
-  if (isCommissioner.value && myTeams.value.length === 0) {
-    activeTab.value = 'allTeams'
-  }
+  // コミッショナーかつチーム未所持の場合、初期タブを全チーム管理に（リリース非表示中は不要）
+  // if (isCommissioner.value && myTeams.value.length === 0) {
+  //   activeTab.value = 'allTeams'
+  // }
 })
 
 watch(selectedTeamId, (id) => {

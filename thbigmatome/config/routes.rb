@@ -74,7 +74,7 @@ Rails.application.routes.draw do
       end
 
       # シーズンマスタ
-      resources :seasons, only: [ :create ]
+      resources :seasons, only: [ :create, :destroy ]
       resources :player_absences, only: [ :index, :create, :update, :destroy ]
 
       # 日程表マスタ

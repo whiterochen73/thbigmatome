@@ -67,17 +67,21 @@
         <v-icon start>mdi-calendar</v-icon>
         {{ t('seasonPortal.tabs.calendar') }}
       </v-tab>
+      <v-tab value="members">
+        <v-icon start>mdi-account-cog</v-icon>
+        {{ t('seasonPortal.tabs.members') }}
+      </v-tab>
       <v-tab value="roster">
         <v-icon start>mdi-account-group</v-icon>
         {{ t('seasonPortal.tabs.roster') }}
       </v-tab>
+      <v-tab value="promotion_history">
+        <v-icon start>mdi-swap-vertical</v-icon>
+        {{ t('seasonPortal.tabs.promotionHistory') }}
+      </v-tab>
       <v-tab value="absences">
         <v-icon start>mdi-account-off</v-icon>
         {{ t('seasonPortal.tabs.absences') }}
-      </v-tab>
-      <v-tab value="members">
-        <v-icon start>mdi-account-cog</v-icon>
-        {{ t('seasonPortal.tabs.members') }}
       </v-tab>
       <v-tab value="lineup">
         <v-icon start>mdi-format-list-numbered</v-icon>
@@ -86,10 +90,6 @@
       <v-tab value="stats">
         <v-icon start>mdi-chart-bar</v-icon>
         {{ t('seasonPortal.tabs.stats') }}
-      </v-tab>
-      <v-tab value="promotion_history">
-        <v-icon start>mdi-swap-vertical</v-icon>
-        {{ t('seasonPortal.tabs.promotionHistory') }}
       </v-tab>
     </v-tabs>
 
@@ -385,28 +385,35 @@
         </v-row>
       </v-tabs-window-item>
 
-      <!-- タブ2: ロスター -->
-      <v-tabs-window-item value="roster">
-        <div class="mt-2">
-          <SeasonRosterTab :team-id="teamId" />
-        </div>
-      </v-tabs-window-item>
-
-      <!-- タブ3: 離脱者 -->
-      <v-tabs-window-item value="absences">
-        <div class="mt-2">
-          <SeasonAbsenceTab :team-id="teamId" />
-        </div>
-      </v-tabs-window-item>
-
-      <!-- タブ4: チーム編成 -->
+      <!-- タブ2: チーム編成 -->
       <v-tabs-window-item value="members">
         <div class="mt-2">
           <TeamMembers :team-id="teamId" />
         </div>
       </v-tabs-window-item>
 
-      <!-- タブ5: オーダー -->
+      <!-- タブ3: ロスター -->
+      <v-tabs-window-item value="roster">
+        <div class="mt-2">
+          <SeasonRosterTab :team-id="teamId" />
+        </div>
+      </v-tabs-window-item>
+
+      <!-- タブ4: 昇降格履歴 -->
+      <v-tabs-window-item value="promotion_history">
+        <div class="mt-2">
+          <PromotionHistoryTab :team-id="teamId" :season-id="season?.id ?? null" />
+        </div>
+      </v-tabs-window-item>
+
+      <!-- タブ5: 離脱者 -->
+      <v-tabs-window-item value="absences">
+        <div class="mt-2">
+          <SeasonAbsenceTab :team-id="teamId" />
+        </div>
+      </v-tabs-window-item>
+
+      <!-- タブ6: オーダー -->
       <v-tabs-window-item value="lineup">
         <div class="mt-2">
           <v-tabs v-model="lineupSubTab" color="primary" density="compact" class="mb-2">
@@ -427,13 +434,6 @@
               <SquadTextGenerator :team-id="teamId" />
             </v-tabs-window-item>
           </v-tabs-window>
-        </div>
-      </v-tabs-window-item>
-
-      <!-- タブ7: 昇降格履歴 -->
-      <v-tabs-window-item value="promotion_history">
-        <div class="mt-2">
-          <PromotionHistoryTab :team-id="teamId" :season-id="season?.id ?? null" />
         </div>
       </v-tabs-window-item>
     </v-tabs-window>

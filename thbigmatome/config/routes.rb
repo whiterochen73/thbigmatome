@@ -128,6 +128,8 @@ Rails.application.routes.draw do
         get "dashboard/absences", to: "dashboard#absences"
         get "dashboard/costs", to: "dashboard#costs"
         get "dashboard/cooldowns", to: "dashboard#cooldowns"
+        get "dashboard/roster_status", to: "dashboard#roster_status", defaults: { format: :json }
+        get "dashboard/roster_status.csv", to: "dashboard#roster_status", defaults: { format: :csv }
       end
 
       # ユーザー管理（commissioner専用）

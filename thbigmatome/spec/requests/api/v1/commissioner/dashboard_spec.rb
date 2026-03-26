@@ -229,4 +229,148 @@ RSpec.describe "Api::V1::Commissioner::Dashboard", type: :request do
       end
     end
   end
+
+  describe "GET /api/v1/commissioner/dashboard/roster_status" do
+    context "コミッショナーユーザーの場合" do
+      before { login_as(commissioner_user) }
+
+      it "200を返す" do
+        get "/api/v1/commissioner/dashboard/roster_status"
+        expect(response).to have_http_status(:ok)
+      end
+
+      it "全チームのroster_statusサマリーを返す" do
+        cost = create(:cost, end_date: nil)
+        team = create(:team, is_active: true, team_type: :normal)
+        season = create(:season, team: team, current_date: Date.current)
+        player = create(:player, series: "touhou")
+        create(:cost_player, cost: cost, player: player, normal_cost: 12)
+        create(:team_membership, team: team, player: player, squad: "first", selected_cost_type: "normal_cost")
+
+        get "/api/v1/commissioner/dashboard/roster_status"
+        json = JSON.parse(response.body)
+        expect(json).to be_an(Array)
+
+        record = json.find { |r| r["team_id"] == team.id }
+        expect(record).not_to be_nil
+        expect(record["team_name"]).to eq(team.name)
+        expect(record["team_type"]).to eq("normal")
+        expect(record["game_date"]).to eq(Date.current.to_s)
+        expect(record["first_count"]).to eq(1)
+        expect(record["second_count"]).to eq(0)
+        expect(record["first_cost"]).to eq(12)
+        expect(record["outside_world_count"]).to eq(0)
+        expect(record["outside_world_limit"]).to eq(4)
+        expect(record["warnings"]).to eq([])
+      end
+
+      it "inactive チームは含まない" do
+        team = create(:team, is_active: false)
+        create(:season, team: team, current_date: Date.current)
+
+        get "/api/v1/commissioner/dashboard/roster_status"
+        json = JSON.parse(response.body)
+        record = json.find { |r| r["team_id"] == team.id }
+        expect(record).to be_nil
+      end
+
+      it "外の世界枠選手を正しくカウントする" do
+        team = create(:team, is_active: true, team_type: :normal)
+        create(:season, team: team, current_date: Date.current)
+        native_player = create(:player, series: "touhou")
+        outside_player = create(:player, series: "hachinai")
+        create(:team_membership, team: team, player: native_player, squad: "first", selected_cost_type: "normal_cost")
+        create(:team_membership, team: team, player: outside_player, squad: "first", selected_cost_type: "normal_cost")
+
+        get "/api/v1/commissioner/dashboard/roster_status"
+        json = JSON.parse(response.body)
+        record = json.find { |r| r["team_id"] == team.id }
+        expect(record["outside_world_count"]).to eq(1)
+      end
+
+      it "team_idパラメータで特定チームのみ返す" do
+        team1 = create(:team, is_active: true, name: "チームA")
+        team2 = create(:team, is_active: true, name: "チームB")
+        create(:season, team: team1, current_date: Date.current)
+        create(:season, team: team2, current_date: Date.current)
+
+        get "/api/v1/commissioner/dashboard/roster_status", params: { team_id: team1.id }
+        json = JSON.parse(response.body)
+        expect(json.size).to eq(1)
+        expect(json.first["team_id"]).to eq(team1.id)
+      end
+    end
+
+    context "一般ユーザーの場合" do
+      before { login_as(player_user) }
+
+      it "403を返す" do
+        get "/api/v1/commissioner/dashboard/roster_status"
+        expect(response).to have_http_status(:forbidden)
+      end
+    end
+
+    context "未認証の場合" do
+      it "401を返す" do
+        get "/api/v1/commissioner/dashboard/roster_status"
+        expect(response).to have_http_status(:unauthorized)
+      end
+    end
+  end
+
+  describe "GET /api/v1/commissioner/dashboard/roster_status.csv" do
+    context "コミッショナーユーザーの場合" do
+      before { login_as(commissioner_user) }
+
+      it "200を返しCSVを返す" do
+        get "/api/v1/commissioner/dashboard/roster_status.csv"
+        expect(response).to have_http_status(:ok)
+        expect(response.content_type).to include("text/csv")
+      end
+
+      it "CSVにゲーム内日付カラムが含まれる" do
+        team = create(:team, is_active: true, team_type: :normal)
+        season = create(:season, team: team, current_date: Date.current)
+        player = create(:player, series: "touhou")
+        create(:team_membership, team: team, player: player, squad: "first", selected_cost_type: "normal_cost")
+
+        get "/api/v1/commissioner/dashboard/roster_status.csv"
+        csv = CSV.parse(response.body.delete("\uFEFF"), headers: true)
+        expect(csv.headers).to include("ゲーム内日付")
+        row = csv.find { |r| r["チーム名"] == team.name }
+        expect(row).not_to be_nil
+        expect(row["ゲーム内日付"]).to eq(Date.current.to_s)
+      end
+
+      it "team_idパラメータで特定チームのCSVを返す" do
+        team1 = create(:team, is_active: true, name: "チームA")
+        team2 = create(:team, is_active: true, name: "チームB")
+        create(:season, team: team1, current_date: Date.current)
+        create(:season, team: team2, current_date: Date.current)
+        player = create(:player, series: "touhou")
+        create(:team_membership, team: team1, player: player, squad: "first", selected_cost_type: "normal_cost")
+
+        get "/api/v1/commissioner/dashboard/roster_status.csv", params: { team_id: team1.id }
+        csv = CSV.parse(response.body.delete("\uFEFF"), headers: true)
+        team_names = csv.map { |r| r["チーム名"] }.uniq
+        expect(team_names).to contain_exactly("チームA")
+      end
+    end
+
+    context "一般ユーザーの場合" do
+      before { login_as(player_user) }
+
+      it "403を返す" do
+        get "/api/v1/commissioner/dashboard/roster_status.csv"
+        expect(response).to have_http_status(:forbidden)
+      end
+    end
+
+    context "未認証の場合" do
+      it "401を返す" do
+        get "/api/v1/commissioner/dashboard/roster_status.csv"
+        expect(response).to have_http_status(:unauthorized)
+      end
+    end
+  end
 end

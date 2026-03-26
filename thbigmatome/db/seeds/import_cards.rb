@@ -29,6 +29,15 @@ card_set_defs = {
   "tamayomi2"   => { name: "球詠2",      year: 2026, set_type: "tamayomi2" }
 }.freeze
 
+# card_source → players.series の対応（外の世界枠判定に使用）
+# PM2026はオリジナル選手枠（東方/ハチナイ/球詠の「外の世界」枠 = series:original）
+CARD_SOURCE_SERIES = {
+  "2025THBIG"   => "touhou",
+  "hachinai6.1" => "hachinai",
+  "tamayomi2"   => "tamayomi",
+  "PM2026"      => "original"
+}.freeze
+
 player_card_map = {}
 skipped_traits  = []
 
@@ -61,6 +70,10 @@ CSV.foreach("#{data_dir}/player_cards.csv", headers: true) do |row|
   normalized_name = player_name.gsub(/[\s\u3000]+/, '')
   player = Player.find_by("REPLACE(REPLACE(name, ' ', ''), '　', '') = ?", normalized_name) ||
            Player.create!(name: player_name, number: row["number"].presence || "?")
+
+  # seriesが未設定の場合のみcard_sourceから補完（既存値を上書きしない）
+  derived_series = CARD_SOURCE_SERIES[card_source]
+  player.update_column(:series, derived_series) if player.series.nil? && derived_series.present?
 
   card_type = if row["card_type"].present?
                 row["card_type"]

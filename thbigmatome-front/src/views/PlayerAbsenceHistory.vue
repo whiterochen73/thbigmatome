@@ -15,6 +15,9 @@
     <v-card variant="outlined" class="mt-2">
       <v-card-text>
         <v-data-table :headers="headers" :items="playerAbsences" item-key="id" class="elevation-1">
+          <template v-slot:item.player_name="{ item }">
+            <PlayerNameLink :player-id="item.player_id" :player-name="item.player_name" />
+          </template>
           <template v-slot:item.start_date="{ item }">
             {{
               new Date(item.start_date).toLocaleDateString('ja-JP', {
@@ -57,6 +60,7 @@ import type { SeasonDetail } from '@/types/seasonDetail'
 import type { PlayerAbsence } from '@/types/playerAbsence'
 import PlayerAbsenceFormDialog from '@/components/PlayerAbsenceFormDialog.vue'
 import TeamNavigation from '@/components/TeamNavigation.vue'
+import PlayerNameLink from '@/components/shared/PlayerNameLink.vue'
 
 const { t } = useI18n()
 const route = useRoute()

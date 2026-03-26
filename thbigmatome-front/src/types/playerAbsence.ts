@@ -11,4 +11,5 @@ export interface PlayerAbsence {
   created_at: string
   updated_at: string
   player_name: string
+  player_id: number
 }

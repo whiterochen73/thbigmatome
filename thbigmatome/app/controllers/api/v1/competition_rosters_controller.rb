@@ -90,6 +90,7 @@ module Api
         pc = roster.player_card
         {
           player_card_id: pc.id,
+          player_id: pc.player_id,
           player_name: pc.player.short_name,
           squad: roster.squad,
           is_reliever: pc.is_relief_only,

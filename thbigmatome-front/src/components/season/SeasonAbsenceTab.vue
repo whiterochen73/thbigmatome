@@ -23,6 +23,9 @@
           items-per-page="-1"
           :row-props="getRowProps"
         >
+          <template v-slot:item.player_name="{ item }">
+            <PlayerNameLink :player-id="item.player_id" :player-name="item.player_name" />
+          </template>
           <template v-slot:item.start_date="{ item }">
             {{ formatDate(item.start_date) }}
           </template>
@@ -78,6 +81,9 @@
             hide-default-footer
             items-per-page="-1"
           >
+            <template v-slot:item.player_name="{ item }">
+              <PlayerNameLink :player-id="item.player_id" :player-name="item.player_name" />
+            </template>
             <template v-slot:item.start_date="{ item }">
               {{ formatDate(item.start_date) }}
             </template>
@@ -119,6 +125,7 @@ import { useI18n } from 'vue-i18n'
 import type { SeasonDetail } from '@/types/seasonDetail'
 import type { PlayerAbsence } from '@/types/playerAbsence'
 import PlayerAbsenceFormDialog from '@/components/PlayerAbsenceFormDialog.vue'
+import PlayerNameLink from '@/components/shared/PlayerNameLink.vue'
 
 const props = defineProps<{
   teamId: number

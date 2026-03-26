@@ -5,6 +5,7 @@
     <v-tab value="absences">離脱者一覧</v-tab>
     <v-tab value="costs">コスト状況</v-tab>
     <v-tab value="cooldowns">クールダウン</v-tab>
+    <v-tab value="rosterStatus">1軍登録状況</v-tab>
   </v-tabs>
 
   <v-window v-model="activeTab">
@@ -248,6 +249,11 @@
         </v-col>
       </v-row>
     </v-window-item>
+
+    <!-- 1軍登録状況タブ -->
+    <v-window-item value="rosterStatus">
+      <RosterStatusTab />
+    </v-window-item>
   </v-window>
 
   <TeamDialog v-model:isVisible="dialogVisible" :team="editingTeam" @save="fetchTeams" />
@@ -263,6 +269,7 @@ import FilterBar from '@/components/shared/FilterBar.vue'
 import StatusChip from '@/components/shared/StatusChip.vue'
 import TeamDialog from '@/components/TeamDialog.vue'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
+import RosterStatusTab from '@/components/commissioner/RosterStatusTab.vue'
 import { useSnackbar } from '@/composables/useSnackbar'
 import { useTeamSelectionStore } from '@/stores/teamSelection'
 import { type Team } from '@/types/team'

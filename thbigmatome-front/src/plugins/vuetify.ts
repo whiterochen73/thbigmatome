@@ -3,6 +3,7 @@ import { createVuetify } from 'vuetify'
 import * as components from 'vuetify/components'
 import * as directives from 'vuetify/directives'
 import { aliases, mdi } from 'vuetify/iconsets/mdi'
+import { ja, en } from 'vuetify/locale'
 import 'vuetify/styles'
 import '@mdi/font/css/materialdesignicons.css'
 
@@ -19,6 +20,7 @@ export default createVuetify({
   locale: {
     locale: 'ja',
     fallback: 'en',
+    messages: { ja, en },
   },
   theme: {
     defaultTheme: 'light',

@@ -28,7 +28,7 @@
             hide-details
             clearable
             variant="outlined"
-            style="max-width: 170px"
+            style="min-width: 160px; max-width: 220px"
           />
           <v-btn-toggle
             v-model="filterCardType"

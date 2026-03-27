@@ -208,6 +208,17 @@
               :loading="costsLoading"
               density="compact"
             >
+              <template v-slot:item.team_type="{ item }">
+                <v-chip
+                  v-if="item.team_type === 'hachinai'"
+                  size="small"
+                  color="purple"
+                  variant="tonal"
+                >
+                  ハチナイ
+                </v-chip>
+                <span v-else class="text-caption text-medium-emphasis">通常</span>
+              </template>
               <template v-slot:item.total_cost="{ item }">
                 <div class="d-flex align-center gap-2 flex-nowrap">
                   <span style="white-space: nowrap"

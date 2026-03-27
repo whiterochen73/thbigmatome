@@ -1,6 +1,10 @@
 <template>
   <v-container>
-    <PageHeader title="ユーザー管理" />
+    <PageHeader title="ユーザー管理">
+      <template #actions>
+        <v-btn color="accent" variant="flat" @click="openCreateDialog">新規ユーザー作成</v-btn>
+      </template>
+    </PageHeader>
 
     <FilterBar>
       <template #search>
@@ -19,9 +23,6 @@
     <v-row>
       <v-col cols="12">
         <DataCard title="ユーザー一覧">
-          <template #title-actions>
-            <v-btn color="accent" variant="flat" @click="openCreateDialog">新規ユーザー作成</v-btn>
-          </template>
           <v-alert
             v-if="errorMessage"
             type="error"

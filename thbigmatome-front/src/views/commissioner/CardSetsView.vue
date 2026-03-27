@@ -1,10 +1,6 @@
 <template>
   <v-container>
-    <v-row>
-      <v-col cols="12">
-        <h1 class="text-h4">カードセット管理</h1>
-      </v-col>
-    </v-row>
+    <PageHeader title="カードセット管理" />
 
     <v-row>
       <v-col cols="12">
@@ -63,6 +59,7 @@
 import { ref, onMounted } from 'vue'
 import axios from 'axios'
 import { useSnackbar } from '@/composables/useSnackbar'
+import PageHeader from '@/components/shared/PageHeader.vue'
 
 interface CardSet {
   id: number

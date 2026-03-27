@@ -60,7 +60,7 @@
             <v-textarea
               v-model="logText"
               label="IRCログ"
-              placeholder="IRCログをここに貼り付け..."
+              placeholder="試合開始から終了までのIRCログを貼り付けてください（プレゲーム情報〜試合終了まで）"
               :rows="15"
               variant="outlined"
             ></v-textarea>

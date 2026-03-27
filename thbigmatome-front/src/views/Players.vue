@@ -100,10 +100,9 @@ const seriesLabelMap: Record<string, string> = {
 
 const headers = computed(() => [
   { title: t('playerList.headers.number'), key: 'number', width: '10%' },
-  { title: t('playerList.headers.name'), key: 'name', width: '28%' },
-  { title: t('playerList.headers.short_name'), key: 'short_name', width: '20%' },
-  { title: '所属作品', key: 'series', sortable: false, width: '15%' },
-  { title: 'カード数', key: 'card_count', sortable: false, width: '12%' },
+  { title: t('playerList.headers.name'), key: 'name', width: '40%' },
+  { title: '所属作品', key: 'series', sortable: false, width: '20%' },
+  { title: 'カード数', key: 'card_count', sortable: false, width: '15%' },
   { title: t('playerList.headers.actions'), key: 'actions', sortable: false, width: '15%' },
 ])
 

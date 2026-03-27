@@ -41,9 +41,9 @@
           </template>
           <template #[`item.first_cost`]="{ item }">
             <div class="d-flex align-center gap-2">
-              <span>{{ item.first_cost }} / {{ item.first_cost_limit }}</span>
+              <span>{{ item.first_cost }} / {{ item.first_cost_limit ?? '-' }}</span>
               <StatusChip
-                v-if="item.first_cost > item.first_cost_limit"
+                v-if="item.first_cost_limit !== null && item.first_cost > item.first_cost_limit"
                 status="error"
                 label="超過"
               />
@@ -153,7 +153,7 @@ interface RosterStatusRecord {
   first_count: number
   second_count: number
   first_cost: number
-  first_cost_limit: number
+  first_cost_limit: number | null
   outside_world_count: number
   outside_world_limit: number
   warnings: string[]

@@ -209,8 +209,10 @@
               density="compact"
             >
               <template v-slot:item.total_cost="{ item }">
-                <div class="d-flex align-center gap-2">
-                  <span>{{ item.total_cost }} / {{ item.total_cost_limit }}</span>
+                <div class="d-flex align-center gap-2 flex-nowrap">
+                  <span style="white-space: nowrap"
+                    >{{ item.total_cost }} / {{ item.total_cost_limit }}</span
+                  >
                   <v-progress-linear
                     :model-value="item.cost_usage_ratio * 100"
                     :color="getCostColor(item.cost_usage_ratio)"
@@ -227,13 +229,11 @@
                 </div>
               </template>
               <template v-slot:item.first_squad_cost="{ item }">
-                <div class="d-flex align-center gap-2">
-                  <span v-if="item.first_squad_cost_limit !== null">
+                <div class="d-flex align-center gap-2 flex-nowrap">
+                  <span v-if="item.first_squad_cost_limit !== null" style="white-space: nowrap">
                     {{ item.first_squad_cost }} / {{ item.first_squad_cost_limit }}
                   </span>
-                  <span v-else class="text-caption text-medium-emphasis">
-                    {{ item.first_squad_cost }} / —
-                  </span>
+                  <span v-else style="white-space: nowrap"> {{ item.first_squad_cost }} / — </span>
                   <v-progress-linear
                     v-if="item.first_squad_cost_limit"
                     :model-value="(item.first_squad_cost / item.first_squad_cost_limit) * 100"

@@ -125,7 +125,7 @@
                 <v-icon v-bind="props" size="x-small" color="grey">mdi-help-circle-outline</v-icon>
               </template>
               <span
-                >外の世界枠：東方以外（ハチナイ・球詠・オリジナル等）の選手枠。1軍に登録できる人数に上限があります。</span
+                >外の世界枠：チーム種別によって異なります。通常チームは東方以外（ハチナイ・球詠・オリジナル等）、ハチナイチームは東方・オリジナルの選手が外枠になります。1軍に最大4人まで登録できます。</span
               >
             </v-tooltip>
           </span>

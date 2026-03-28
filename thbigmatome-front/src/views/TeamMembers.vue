@@ -74,6 +74,23 @@
                   </v-list-item>
                 </template>
               </v-autocomplete>
+              <!-- カードバージョン選択（複数バージョンがある場合のみ表示） -->
+              <div v-if="cardSetOptions.length > 1" class="mt-1">
+                <v-radio-group
+                  v-model="selectedCardSetId"
+                  inline
+                  density="compact"
+                  hide-details
+                  class="mt-0"
+                >
+                  <v-radio
+                    v-for="opt in cardSetOptions"
+                    :key="opt.card_set_id"
+                    :value="opt.card_set_id"
+                    :label="opt.card_set_name"
+                  />
+                </v-radio-group>
+              </div>
             </v-col>
             <v-col cols="12" md="3">
               <v-btn
@@ -338,41 +355,6 @@
           }}</v-btn>
         </v-col>
       </v-row>
-
-      <!-- カードバージョン選択ダイアログ -->
-      <v-dialog v-model="cardSelectionDialog" max-width="480px" persistent>
-        <v-card>
-          <v-card-title>カードバージョン選択</v-card-title>
-          <v-card-text>
-            <p class="text-body-2 mb-3">
-              {{
-                selectedPlayer?.name
-              }}
-              には複数のカードバージョンがあります。使用するバージョンを選択してください。
-            </p>
-            <v-radio-group v-model="selectedPlayerCardId">
-              <v-radio
-                v-for="card in availablePlayerCards"
-                :key="card.id"
-                :value="card.id"
-                :label="`${card.card_set_name}（${card.card_type}）`"
-              />
-            </v-radio-group>
-          </v-card-text>
-          <v-card-actions>
-            <v-spacer />
-            <v-btn variant="text" @click="cardSelectionDialog = false">キャンセル</v-btn>
-            <v-btn
-              color="primary"
-              variant="tonal"
-              :disabled="!selectedPlayerCardId"
-              @click="doAddPlayer"
-            >
-              追加
-            </v-btn>
-          </v-card-actions>
-        </v-card>
-      </v-dialog>
     </template>
   </v-container>
 </template>
@@ -404,6 +386,14 @@ interface PlayerCardInfo {
   card_set_id: number
 }
 
+interface CardSetOption {
+  card_set_id: number
+  card_set_name: string
+  pitcher_card_id: number | null
+  batter_card_id: number | null
+  any_card_id: number
+}
+
 interface TeamPlayer extends Player {
   selected_cost_type: CostType
   current_cost: number
@@ -432,10 +422,39 @@ const selectedCost = ref<CostList | null>(null)
 const selectedCostListId = computed(() => (selectedCost.value ? selectedCost.value.id : null))
 const selectedPlayer = ref<Player | null>(null)
 const playerTypes = ref<PlayerType[]>([])
-const cardSelectionDialog = ref(false)
 const availablePlayerCards = ref<PlayerCardInfo[]>([])
-const selectedPlayerCardId = ref<number | null>(null)
+const selectedCardSetId = ref<number | null>(null)
 const fetchingCards = ref(false)
+
+const cardSetOptions = computed<CardSetOption[]>(() => {
+  const map = new Map<number, CardSetOption>()
+  for (const card of availablePlayerCards.value) {
+    const existing = map.get(card.card_set_id)
+    if (existing) {
+      if (card.card_type === 'pitcher') existing.pitcher_card_id = card.id
+      else existing.batter_card_id = card.id
+    } else {
+      map.set(card.card_set_id, {
+        card_set_id: card.card_set_id,
+        card_set_name: card.card_set_name,
+        pitcher_card_id: card.card_type === 'pitcher' ? card.id : null,
+        batter_card_id: card.card_type === 'batter' ? card.id : null,
+        any_card_id: card.id,
+      })
+    }
+  }
+  return Array.from(map.values())
+})
+
+const resolveCardIdFromCardSet = (
+  option: CardSetOption,
+  position: string | null | undefined,
+): number => {
+  if (position === 'pitcher') {
+    return option.pitcher_card_id ?? option.batter_card_id ?? option.any_card_id
+  }
+  return option.batter_card_id ?? option.pitcher_card_id ?? option.any_card_id
+}
 
 const teamId = computed(() => props.teamId ?? Number(route.params.teamId))
 const isTeamIdValid = computed(() => Number.isFinite(teamId.value) && teamId.value > 0)
@@ -723,14 +742,15 @@ async function fetchPlayerCards(playerId: number): Promise<PlayerCardInfo[]> {
 }
 
 watch(selectedPlayer, async (newPlayer) => {
-  selectedPlayerCardId.value = null
+  selectedCardSetId.value = null
   availablePlayerCards.value = []
   if (!newPlayer) return
   fetchingCards.value = true
   try {
     availablePlayerCards.value = await fetchPlayerCards(newPlayer.id)
-    if (availablePlayerCards.value.length === 1) {
-      selectedPlayerCardId.value = availablePlayerCards.value[0].id
+    if (cardSetOptions.value.length > 0) {
+      const normalOption = cardSetOptions.value.find((opt) => opt.card_set_name.includes('通常'))
+      selectedCardSetId.value = normalOption?.card_set_id ?? cardSetOptions.value[0].card_set_id
     }
   } finally {
     fetchingCards.value = false
@@ -742,12 +762,6 @@ const addPlayer = () => {
 
   if (teamPlayers.value.some((p) => p.id === selectedPlayer.value!.id)) {
     showSnackbar(t('teamMembers.notifications.playerAlreadyAdded'), 'warning')
-    return
-  }
-
-  // 複数カードがあり未選択の場合はダイアログで選択させる
-  if (availablePlayerCards.value.length > 1 && !selectedPlayerCardId.value) {
-    cardSelectionDialog.value = true
     return
   }
 
@@ -774,6 +788,23 @@ const doAddPlayer = () => {
     }
   }
 
+  // カードIDの解決: selectedCardSetId + player.position から適切なcard_idを決定
+  let resolvedCardId: number | null = null
+  let resolvedCardInfo: PlayerCardInfo | null = null
+
+  if (selectedCardSetId.value !== null) {
+    const selectedOption = cardSetOptions.value.find(
+      (opt) => opt.card_set_id === selectedCardSetId.value,
+    )
+    if (selectedOption) {
+      resolvedCardId = resolveCardIdFromCardSet(selectedOption, selectedPlayer.value.position)
+      resolvedCardInfo = availablePlayerCards.value.find((c) => c.id === resolvedCardId) ?? null
+    }
+  } else if (availablePlayerCards.value.length === 1) {
+    resolvedCardId = availablePlayerCards.value[0].id
+    resolvedCardInfo = availablePlayerCards.value[0]
+  }
+
   const newPlayer: TeamPlayer = {
     ...selectedPlayer.value,
     selected_cost_type: initialCostType,
@@ -781,16 +812,14 @@ const doAddPlayer = () => {
     excluded_from_team_total: false,
     display_name: null,
     player_type_ids: [],
-    player_card_id: selectedPlayerCardId.value ?? null,
-    player_card_info:
-      availablePlayerCards.value.find((c) => c.id === selectedPlayerCardId.value) ?? null,
+    player_card_id: resolvedCardId,
+    player_card_info: resolvedCardInfo,
   }
 
   teamPlayers.value.push(newPlayer)
   selectedPlayer.value = null
-  selectedPlayerCardId.value = null
+  selectedCardSetId.value = null
   availablePlayerCards.value = []
-  cardSelectionDialog.value = false
 
   // Check limits and show warnings
   if (includedTeamPlayers.value.length > MAX_PLAYERS) {

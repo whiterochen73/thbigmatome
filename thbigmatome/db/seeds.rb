@@ -316,13 +316,10 @@ puts 'Seeding Schedule Details...'
 end
 
 # =============================================================================
-# cmd_325: commissionerユーザー (mori) のパスワード設定
-# seeds.rbでパスワードが設定されておらず401になっていたため修正
+# 本番用コミッショナーユーザー (mori, sian, tomoya, ni_lan_cui)
+# パスワードは環境変数 INITIAL_PASSWORD で指定する（ハードコード禁止）
 # =============================================================================
-puts 'Seeding commissioner user: mori...'
-commissioner = User.find_or_initialize_by(name: 'mori')
-commissioner.update!(role: :commissioner, display_name: 'mori', password: 'password123')
-puts '  commissioner mori seeded.'
+load Rails.root.join('db/seeds/production_users.rb')
 
 puts 'Seeding Competition: 幻想郷ペナントレースR...'
 competition = Competition.find_or_initialize_by(name: '幻想郷ペナントレースR', year: 2026)

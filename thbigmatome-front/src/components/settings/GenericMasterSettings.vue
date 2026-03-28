@@ -48,8 +48,10 @@
 
             <!-- eslint-disable-next-line vue/valid-v-slot -->
             <template v-if="!readonly" v-slot:item.actions="{ item }">
-              <v-icon size="small" class="me-2" @click="openEditDialog(item)">mdi-pencil</v-icon>
-              <v-icon size="small" @click="confirmDelete(item)">mdi-delete</v-icon>
+              <v-icon size="small" class="me-2" @click="openEditDialog(item as T)"
+                >mdi-pencil</v-icon
+              >
+              <v-icon size="small" @click="confirmDelete(item as T)">mdi-delete</v-icon>
             </template>
           </v-data-table>
         </v-expansion-panel-text>

@@ -308,7 +308,7 @@ import type {
 const props = defineProps<{
   teamId: number
   gameDate: string
-  gameResult: 'win' | 'lose' | 'draw'
+  gameResult: 'win' | 'lose' | 'draw' | 'no_game'
   scheduleId: number
   announcedStarterId?: number | null
   competitionId?: number | null

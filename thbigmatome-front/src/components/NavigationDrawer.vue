@@ -132,7 +132,7 @@ const gameMenuItems = [
   // { title: '試合一覧', icon: 'mdi-scoreboard', value: 'games', to: '/games' }, // リリース非表示
 ]
 
-const teamMenuItems = [
+const teamMenuItems: { title: string; icon: string; value: string; to: string }[] = [
   // { title: '成績', icon: 'mdi-chart-bar', value: 'stats', to: '/stats' }, // リリース非表示
 ]
 

@@ -123,7 +123,7 @@ const selectedTeamId = ref<number>(0)
 // const selectedAllTeamId = ref<number | null>(null)
 
 onMounted(() => {
-  myTeams.value = teamSelectionStore.myTeams as Team[]
+  myTeams.value = teamSelectionStore.myTeams as unknown as Team[]
   if (myTeams.value.length > 0) {
     const storedId = teamSelectionStore.selectedTeamId
     const found = myTeams.value.find((t) => t.id === storedId)

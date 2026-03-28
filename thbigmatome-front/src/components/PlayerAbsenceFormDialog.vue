@@ -15,7 +15,7 @@
                   v-model="newAbsence.team_membership_id"
                   :team-id="props.teamId"
                   :label="t('playerAbsenceDialog.form.playerName')"
-                  :rules="[(v) => !!v || t('playerAbsenceDialog.form.selectPlayerName')]"
+                  :rules="[(v: unknown) => !!v || t('playerAbsenceDialog.form.selectPlayerName')]"
                   required
                 ></TeamMemberSelect>
               </v-col>
@@ -111,6 +111,7 @@ const form = ref<HTMLFormElement | null>(null)
 const newAbsence = ref<PlayerAbsence>({
   id: 0,
   team_membership_id: 0,
+  player_id: 0,
   season_id: props.seasonId,
   absence_type: 'injury',
   reason: '',
@@ -169,7 +170,8 @@ watch(
         // Creating new absence
         newAbsence.value = {
           id: 0,
-          team_membership_id: null,
+          team_membership_id: 0,
+          player_id: 0,
           season_id: props.seasonId,
           absence_type: 'injury',
           reason: '',

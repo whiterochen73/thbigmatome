@@ -257,7 +257,7 @@ const progressPercent = computed(() => {
 
 onMounted(async () => {
   // teamsLoadedはuseAuth(login/checkAuth)で保証済み
-  myTeams.value = teamSelectionStore.myTeams as MyTeam[]
+  myTeams.value = teamSelectionStore.myTeams as unknown as MyTeam[]
   if (myTeams.value.length > 0) {
     fetchCompetitions()
   }

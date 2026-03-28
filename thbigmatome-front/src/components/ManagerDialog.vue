@@ -78,7 +78,14 @@ const emit = defineEmits(['save'])
 const isOpen = defineModel<boolean>({ default: false })
 
 // 編集中のManagerデータ
-const defaultManager: Manager = { id: 0, name: '', short_name: '', irc_name: '', user_id: null } // 新規作成時の初期値
+const defaultManager: Manager = {
+  id: 0,
+  name: '',
+  short_name: '',
+  irc_name: '',
+  user_id: null,
+  role: 'director',
+} // 新規作成時の初期値
 const editedManager = ref<Manager>({ ...defaultManager })
 
 // 新規作成かどうかの判定

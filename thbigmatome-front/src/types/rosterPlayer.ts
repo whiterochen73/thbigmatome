@@ -13,7 +13,12 @@ export interface RosterPlayer {
   player_name: string
   squad: 'first' | 'second'
   cost: number
-  selected_cost_type: string
+  selected_cost_type:
+    | 'normal_cost'
+    | 'pitcher_only_cost'
+    | 'fielder_only_cost'
+    | 'relief_only_cost'
+    | 'two_way_cost'
   handedness: string | null
   position: string | null
   player_types: string[]

@@ -12,7 +12,11 @@
               <span class="text-caption">全体コスト</span>
               <span
                 class="ml-1 font-weight-bold"
-                :class="costCheck?.current_total_cost > costCheck?.total_limit ? 'text-error' : ''"
+                :class="
+                  (costCheck?.current_total_cost ?? 0) > (costCheck?.total_limit ?? 0)
+                    ? 'text-error'
+                    : ''
+                "
               >
                 {{ costCheck?.current_total_cost ?? '-' }} / {{ costCheck?.total_limit ?? 200 }}
               </span>
@@ -23,7 +27,9 @@
               <span
                 class="ml-1 font-weight-bold"
                 :class="
-                  costCheck?.first_squad_cost > costCheck?.first_squad_limit ? 'text-error' : ''
+                  (costCheck?.first_squad_cost ?? 0) > (costCheck?.first_squad_limit ?? 0)
+                    ? 'text-error'
+                    : ''
                 "
               >
                 {{ costCheck?.first_squad_cost ?? '-' }} /
@@ -220,7 +226,12 @@ interface RosterPlayer {
   squad: 'first_squad' | 'second_squad'
   is_reliever: boolean
   cost: number
-  selected_cost_type?: string
+  selected_cost_type?:
+    | 'normal_cost'
+    | 'pitcher_only_cost'
+    | 'fielder_only_cost'
+    | 'relief_only_cost'
+    | 'two_way_cost'
 }
 
 interface CostCheckResult {

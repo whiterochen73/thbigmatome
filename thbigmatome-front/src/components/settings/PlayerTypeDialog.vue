@@ -64,7 +64,7 @@ const isOpen = defineModel<boolean>({ default: false })
 const { t } = useI18n()
 const { showSnackbar } = useSnackbar()
 
-const defaultItem: PlayerTypePayload = { name: '', description: null }
+const defaultItem: PlayerTypePayload = { name: '', description: null, category: null }
 const editableItem = ref<PlayerTypePayload>({ ...defaultItem })
 
 watch(

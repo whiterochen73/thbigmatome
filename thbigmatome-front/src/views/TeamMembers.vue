@@ -220,9 +220,7 @@
                           >mdi-help-circle-outline</v-icon
                         >
                       </template>
-                      <span
-                        >この選手をチームの合計コスト計算から除外します。外の世界枠選手のコスト管理等に使用できます。</span
-                      >
+                      <span>除外特例を受けた選手をチームの合計コスト計算から除外します。</span>
                     </v-tooltip>
                   </div>
                 </template>
@@ -359,6 +357,7 @@ interface TeamPlayer extends Player {
   current_cost: number
   excluded_from_team_total: boolean
   display_name?: string | null
+  player_type_ids: number[]
 }
 
 interface TeamPlayersSaveResponse {
@@ -526,7 +525,7 @@ const positionCounts = computed(() => {
     outfielder: 0,
   }
   for (const player of teamPlayers.value) {
-    if (player.position in counts) {
+    if (player.position && player.position in counts) {
       counts[player.position]++
     }
   }
@@ -682,6 +681,7 @@ const addPlayer = () => {
     current_cost: initialCost,
     excluded_from_team_total: false,
     display_name: null,
+    player_type_ids: [],
   }
 
   teamPlayers.value.push(newPlayer)

@@ -336,75 +336,15 @@ CompetitionEntry.find_or_create_by!(competition: competition, team: team)
 puts '  CompetitionEntry seeded.'
 
 # =============================================================================
-# cmd_310: Lペナ 全チーム+監督シードデータ
+# 全チーム（34チーム）・ユーザー（30名）・Manager/TeamManager
+# 詳細は各 seeds/ ファイルを参照
 # =============================================================================
-puts 'Seeding Lペナ managers and teams (cmd_310)...'
 
-# 監督ユーザー作成（playerロール、moriはcommissionerのまま除外）
-lpena_manager_names = %w[
-  紫安 こりゆの 智夜 藍翠 badferd
-  植田 Marshal MiyaK けいようし Trippy
-  cyan かじわら ゆだ マゼラン Aal
-  れもん pontiti ふぁん takky werg
-]
-lpena_manager_names.each do |manager_name|
-  user = User.find_or_initialize_by(name: manager_name)
-  user.update!(role: :player, display_name: manager_name, password: 'password123')
-end
-puts "  #{lpena_manager_names.size} managers seeded."
+# チーム・CompetitionEntry（34チーム完全版）
+load Rails.root.join('db/seeds/production_teams.rb')
 
-# チームデータ（若尊バレーナは既存seedで処理済み → 除外）
-lpena_teams_data = [
-  # アクティブチーム (is_active: true)
-  { name: 'ZERO～輝く夜に',           short_name: 'ZEROライツ',     is_active: true,  manager: '紫安' },
-  { name: '足立ストレイドッグス',       short_name: '足立ドッグス',   is_active: true,  manager: 'こりゆの' },
-  { name: '小倉ダークペガサス',         short_name: '小倉ペガサス',   is_active: true,  manager: '智夜' },
-  { name: '姫路グランフェスタシクサーズ', short_name: '姫路シクサーズ', is_active: true,  manager: '藍翠' },
-  { name: '川崎ダイス',               short_name: '川崎ダイス',     is_active: true,  manager: 'badferd' },
-  { name: '森ノ宮スイートネイルズ',     short_name: '森ノ宮ネイルズ', is_active: true,  manager: '植田' },
-  { name: '厚木パフォーマーズ',         short_name: '厚木パフォーマーズ', is_active: true, manager: 'Marshal' },
-  { name: 'MiyaKコブラズ',            short_name: 'MiyaKコブラズ',  is_active: true,  manager: 'MiyaK' },
-  { name: '飯能レポランタ',             short_name: '飯能レポランタ', is_active: true,  manager: 'けいようし' },
-  { name: '水元アルシオネ',             short_name: '水元アルシオネ', is_active: true,  manager: 'Trippy' },
-  { name: '永山アストライア',           short_name: '永山アストライア', is_active: true, manager: 'cyan' },
-  { name: '下灘ムーンライツ',           short_name: '下灘ムーンライツ', is_active: true, manager: 'かじわら' },
-  { name: 'PADAK',                   short_name: 'PADAK',          is_active: true,  manager: 'ゆだ' },
-  { name: '前橋ファランクス',           short_name: '前橋ファランクス', is_active: true, manager: 'マゼラン' },
-  { name: '墨染アルヘナ',              short_name: '墨染アルヘナ',   is_active: true,  manager: 'Aal' },
-  { name: '星港ロアーズ',              short_name: '星港ロアーズ',   is_active: true,  manager: 'れもん' },
-  { name: '大勝ビクトリーズ',           short_name: '大勝ビクトリーズ', is_active: true, manager: 'pontiti' },
-  { name: '幻奏ファントムスター',        short_name: '幻奏ファントム',  is_active: true,  manager: 'ふぁん' },
-  { name: '下館トリトニス',             short_name: '下館トリトニス', is_active: true,  manager: 'takky' },
-  # セカンダリーチーム (is_active: true)
-  { name: '東京渋谷ファンタジー',        short_name: '渋谷ファンタジー', is_active: true, manager: '紫安' },
-  { name: '全越谷',                   short_name: '全越谷',          is_active: true,  manager: 'けいようし' },
-  { name: '亀有アイアンカップス',        short_name: '亀有カップス',   is_active: true,  manager: 'Trippy' },
-  # 休止中チーム (is_active: false、CompetitionEntry不要)
-  { name: '時安スプリングス',           short_name: '時安スプリングス', is_active: false, manager: 'werg' },
-  { name: '粟生ダウンヒルズ',           short_name: '粟生ダウンヒルズ', is_active: false, manager: nil }
-]
-
-lpena_teams_data.each do |data|
-  user_id = data[:manager] ? User.find_by(name: data[:manager])&.id : nil
-  team = Team.find_or_initialize_by(name: data[:name])
-  team.update!(short_name: data[:short_name], is_active: data[:is_active], user_id: user_id)
-end
-puts "  #{lpena_teams_data.size} teams seeded."
-
-# Lペナ CompetitionEntries（アクティブ+セカンダリーのみ、若尊バレーナを含む）
-lpena_competition = Competition.find_or_initialize_by(name: '幻想郷ペナントレースR', year: 2026)
-lpena_competition.update!(competition_type: 'league_pennant')
-
-active_team_names = lpena_teams_data.select { |d| d[:is_active] }.map { |d| d[:name] }
-active_team_names << '若尊バレーナ'  # 既存seedで作成済み
-
-active_team_names.each do |team_name|
-  team = Team.find_by(name: team_name)
-  next unless team
-  CompetitionEntry.find_or_create_by!(competition: lpena_competition, team: team)
-end
-puts "  #{active_team_names.size} competition entries seeded."
-puts 'Lペナ teams and managers seeded.'
+# Manager 31レコード + TeamManager 34件
+load Rails.root.join('db/seeds/production_managers.rb')
 
 # 特徴・条件マスタシードデータ
 load Rails.root.join('db/seeds/master_traits.rb')

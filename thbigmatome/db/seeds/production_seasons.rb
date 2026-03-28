@@ -1,9 +1,9 @@
 # db/seeds/production_seasons.rb
 # 全チームのシーズン「箱」初期化
-# team_memberships・season_rostersは空のまま（各チームオーナーが選手登録を行う）
+# team_memberships・season_rostersは空のまま（コミッショナーが選手登録を行う）
 
 season_start_date = "2016-03-25"
-season_name = "シーズン1"
+season_name = "現行シーズン"
 
 puts "Seeding Seasons (initial boxes for all teams)..."
 

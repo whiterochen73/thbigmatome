@@ -12,9 +12,9 @@ player_password = ENV.fetch("INITIAL_PASSWORD", "password123")
 # ── コミッショナー 4名 ─────────────────────────────────────────
 commissioner_users = [
   { name: "mori",       display_name: "mori" },
-  { name: "sian",       display_name: "sian" },
-  { name: "tomoya",     display_name: "tomoya" },
-  { name: "ni_lan_cui", display_name: "ni_lan_cui" }
+  { name: "sian",       display_name: "紫安" },
+  { name: "tomoya",     display_name: "智夜" },
+  { name: "ni_lan_cui", display_name: "藍翠" }
 ]
 
 puts "Seeding commissioner users..."

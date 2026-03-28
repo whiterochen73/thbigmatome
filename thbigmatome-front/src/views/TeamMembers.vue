@@ -114,9 +114,23 @@
               <!-- コスト全体ゲージ -->
               <div class="mb-3">
                 <div class="d-flex justify-space-between align-center mb-1">
-                  <span class="text-body-2 font-weight-medium">{{
-                    t('teamMembers.totalCostLabel')
-                  }}</span>
+                  <div class="d-flex align-center ga-1">
+                    <span class="text-body-2 font-weight-medium">{{
+                      t('teamMembers.totalCostLabel')
+                    }}</span>
+                    <v-tooltip location="top" max-width="280">
+                      <template #activator="{ props }">
+                        <v-icon v-bind="props" size="x-small" color="grey"
+                          >mdi-help-circle-outline</v-icon
+                        >
+                      </template>
+                      <span
+                        >チーム全体のコスト上限は{{
+                          TEAM_TOTAL_MAX_COST
+                        }}です。コスト除外にチェックした選手（外の世界枠）は合計に含まれません。</span
+                      >
+                    </v-tooltip>
+                  </div>
                   <span
                     class="text-body-2 font-weight-bold"
                     :class="
@@ -197,6 +211,34 @@
                 items-per-page="-1"
                 :disable-sort="false"
               >
+                <template #header.excluded_from_team_total>
+                  <div class="d-flex align-center ga-1">
+                    <span>{{ t('teamMembers.headers.costExcluded') }}</span>
+                    <v-tooltip location="top" max-width="240">
+                      <template #activator="{ props }">
+                        <v-icon v-bind="props" size="x-small" color="grey"
+                          >mdi-help-circle-outline</v-icon
+                        >
+                      </template>
+                      <span
+                        >外の世界枠選手（東方以外のキャラ）はチームコスト計算から除外できます。チェックを入れると合計コストに算入されません。</span
+                      >
+                    </v-tooltip>
+                  </div>
+                </template>
+
+                <template #no-data>
+                  <div class="d-flex flex-column align-center py-6">
+                    <v-icon size="36" class="mb-2 text-medium-emphasis"
+                      >mdi-account-plus-outline</v-icon
+                    >
+                    <p class="text-medium-emphasis mb-1">選手が登録されていません</p>
+                    <p class="text-caption text-disabled">
+                      上の選手選択フォームから選手を検索して追加してください
+                    </p>
+                  </div>
+                </template>
+
                 <template #item.name="{ item }">
                   <PlayerNameLink
                     :player-id="item.id"
@@ -261,12 +303,17 @@
                   />
                 </template>
                 <template #item.actions="{ item }">
-                  <v-btn
-                    icon="mdi-delete"
-                    size="small"
-                    variant="text"
-                    @click="removePlayer(item)"
-                  />
+                  <v-tooltip text="チームから除外" location="top">
+                    <template #activator="{ props }">
+                      <v-btn
+                        v-bind="props"
+                        icon="mdi-delete"
+                        size="small"
+                        variant="text"
+                        @click="removePlayer(item)"
+                      />
+                    </template>
+                  </v-tooltip>
                 </template>
               </v-data-table>
             </v-card-text>

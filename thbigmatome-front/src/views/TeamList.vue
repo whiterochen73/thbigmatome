@@ -65,6 +65,19 @@
             </template>
           </v-tooltip>
         </template>
+
+        <template #no-data>
+          <div class="d-flex flex-column align-center py-8">
+            <v-icon size="48" class="mb-2 text-medium-emphasis">mdi-account-group-outline</v-icon>
+            <p class="text-medium-emphasis mb-1">チームが登録されていません</p>
+            <p class="text-caption text-disabled mb-4">
+              「チーム追加」からチームを作成し、メンバーを登録してシーズンを開始できます
+            </p>
+            <v-btn color="accent" variant="flat" prepend-icon="mdi-plus" @click="openDialog()">
+              {{ t('teamList.addTeam') }}
+            </v-btn>
+          </div>
+        </template>
       </v-data-table>
     </DataCard>
 

@@ -44,26 +44,44 @@
                 {{ item.director?.name || '-' }}
               </template>
               <template #[`item.actions`]="{ item }">
-                <v-icon
-                  size="small"
-                  class="mr-2"
-                  @click="navigateToSeason(item)"
-                  title="シーズンポータル"
-                >
-                  mdi-calendar-star
-                </v-icon>
-                <v-icon
-                  size="small"
-                  class="mr-2"
-                  @click="navigateToMembers(item.id)"
-                  title="メンバー編集"
-                >
-                  mdi-account-group
-                </v-icon>
-                <v-icon size="small" class="mr-2" @click="openTeamDialog(item)" title="チーム編集">
-                  mdi-pencil
-                </v-icon>
-                <v-icon size="small" @click="deleteTeam(item.id)" title="削除"> mdi-delete </v-icon>
+                <v-tooltip text="シーズンポータル" location="top">
+                  <template #activator="{ props }">
+                    <v-icon
+                      v-bind="props"
+                      size="small"
+                      class="mr-2"
+                      @click="navigateToSeason(item)"
+                    >
+                      mdi-calendar-star
+                    </v-icon>
+                  </template>
+                </v-tooltip>
+                <v-tooltip text="メンバー編集" location="top">
+                  <template #activator="{ props }">
+                    <v-icon
+                      v-bind="props"
+                      size="small"
+                      class="mr-2"
+                      @click="navigateToMembers(item.id)"
+                    >
+                      mdi-account-group
+                    </v-icon>
+                  </template>
+                </v-tooltip>
+                <v-tooltip text="チーム編集" location="top">
+                  <template #activator="{ props }">
+                    <v-icon v-bind="props" size="small" class="mr-2" @click="openTeamDialog(item)">
+                      mdi-pencil
+                    </v-icon>
+                  </template>
+                </v-tooltip>
+                <v-tooltip text="削除" location="top">
+                  <template #activator="{ props }">
+                    <v-icon v-bind="props" size="small" @click="deleteTeam(item.id)"
+                      >mdi-delete</v-icon
+                    >
+                  </template>
+                </v-tooltip>
               </template>
             </v-data-table>
           </DataCard>

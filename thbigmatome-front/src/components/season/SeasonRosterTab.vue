@@ -110,7 +110,7 @@
               {{ firstSquadTotalCost }} / {{ firstSquadCostLimit ?? '-' }}
             </span>
           </span>
-          <span class="text-caption text-medium-emphasis">
+          <span class="text-caption text-medium-emphasis d-flex align-center ga-1">
             {{ firstSquadPlayers.length }}/{{ MAX_FIRST_SQUAD_PLAYERS }}人 &nbsp;
             <span :class="{ 'text-error': outsideWorldFirstSquadCount > OUTSIDE_WORLD_LIMIT }">
               {{
@@ -120,6 +120,14 @@
                 })
               }}
             </span>
+            <v-tooltip location="top" max-width="260">
+              <template #activator="{ props }">
+                <v-icon v-bind="props" size="x-small" color="grey">mdi-help-circle-outline</v-icon>
+              </template>
+              <span
+                >外の世界枠：東方以外（ハチナイ・球詠・オリジナル等）の選手枠。1軍に登録できる人数に上限があります。</span
+              >
+            </v-tooltip>
           </span>
         </div>
         <v-progress-linear
@@ -337,6 +345,11 @@
                     </td>
                   </tr>
                 </template>
+                <tr v-if="firstSquadPlayers.length === 0">
+                  <td colspan="7" class="text-center py-4 text-caption text-medium-emphasis">
+                    1軍選手が登録されていません。2軍の選手を昇格させてください。
+                  </td>
+                </tr>
               </tbody>
             </v-table>
           </v-card-text>
@@ -504,6 +517,11 @@
                     >
                       {{ absenceStatusLabel(item) }}
                     </v-chip>
+                  </td>
+                </tr>
+                <tr v-if="secondSquadPlayers.length === 0">
+                  <td colspan="7" class="text-center py-4 text-caption text-medium-emphasis">
+                    2軍選手が登録されていません。チームメンバー登録でチームに選手を追加してください。
                   </td>
                 </tr>
               </tbody>

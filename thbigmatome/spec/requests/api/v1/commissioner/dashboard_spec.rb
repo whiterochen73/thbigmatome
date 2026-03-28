@@ -355,6 +355,19 @@ RSpec.describe "Api::V1::Commissioner::Dashboard", type: :request do
         team_names = csv.map { |r| r["チーム名"] }.uniq
         expect(team_names).to contain_exactly("チームA")
       end
+
+      it "short_nameがnilの選手はnameにフォールバックしてCSVに出力する" do
+        team = create(:team, is_active: true, team_type: :normal)
+        create(:season, team: team, current_date: Date.current)
+        player = create(:player, series: "touhou", short_name: nil)
+        create(:team_membership, team: team, player: player, squad: "first", selected_cost_type: "normal_cost")
+
+        get "/api/v1/commissioner/dashboard/roster_status.csv"
+        csv = CSV.parse(response.body.delete("\uFEFF"), headers: true)
+        row = csv.find { |r| r["チーム名"] == team.name }
+        expect(row).not_to be_nil
+        expect(row["選手名"]).to eq(player.name)
+      end
     end
 
     context "一般ユーザーの場合" do

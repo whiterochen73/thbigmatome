@@ -243,7 +243,7 @@ class Api::V1::Commissioner::DashboardController < Api::V1::Commissioner::BaseCo
             translate_team_type(team.team_type),
             game_date,
             player.number,
-            player.short_name,
+            player.short_name.presence || player.name,
             translate_squad(tm.squad),
             translate_position(position),
             card&.handedness,

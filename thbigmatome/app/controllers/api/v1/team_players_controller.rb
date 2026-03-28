@@ -28,7 +28,8 @@ class Api::V1::TeamPlayersController < Api::V1::BaseController
         membership.update!(
           selected_cost_type: p[:selected_cost_type],
           excluded_from_team_total: p[:excluded_from_team_total] || false,
-          display_name: p[:display_name].presence
+          display_name: p[:display_name].presence,
+          player_card_id: p[:player_card_id].presence
         )
       end
 

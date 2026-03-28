@@ -71,6 +71,69 @@ RSpec.describe "Api::V1::SeasonsController", type: :request do
     end
   end
 
+  describe "PATCH /api/v1/seasons/:id" do
+    let(:team) { create(:team) }
+    let(:season) { create(:season, team: team) }
+    let(:player) { create(:player) }
+    let(:team_membership) { create(:team_membership, team: team, player: player) }
+
+    context "as commissioner" do
+      include_context "authenticated commissioner"
+
+      it "updates key_player_id and returns 200" do
+        patch "/api/v1/seasons/#{season.id}", params: {
+          season: { key_player_id: team_membership.id }
+        }, as: :json
+
+        expect(response).to have_http_status(:ok)
+        json = response.parsed_body
+        expect(json["season"]["key_player_id"]).to eq(team_membership.id)
+        expect(json["key_player_name"]).to eq(player.name)
+      end
+
+      it "clears key_player_id when set to nil" do
+        season.update!(key_player_id: team_membership.id)
+
+        patch "/api/v1/seasons/#{season.id}", params: {
+          season: { key_player_id: nil }
+        }, as: :json
+
+        expect(response).to have_http_status(:ok)
+        expect(season.reload.key_player_id).to be_nil
+      end
+
+      it "returns 404 for non-existent season" do
+        patch "/api/v1/seasons/99999", params: {
+          season: { key_player_id: nil }
+        }, as: :json
+
+        expect(response).to have_http_status(:not_found)
+      end
+    end
+
+    context "as non-commissioner" do
+      include_context "authenticated user"
+
+      it "returns 403" do
+        patch "/api/v1/seasons/#{season.id}", params: {
+          season: { key_player_id: nil }
+        }, as: :json
+
+        expect(response).to have_http_status(:forbidden)
+      end
+    end
+
+    context "as unauthenticated user" do
+      it "returns 401" do
+        patch "/api/v1/seasons/#{season.id}", params: {
+          season: { key_player_id: nil }
+        }, as: :json
+
+        expect(response).to have_http_status(:unauthorized)
+      end
+    end
+  end
+
   describe "DELETE /api/v1/seasons/:id" do
     let(:team) { create(:team) }
     let(:season) { create(:season, team: team) }

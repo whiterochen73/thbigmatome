@@ -83,6 +83,12 @@
       "lose": "負け",
       "draw": "引分"
     },
+    "keyPlayer": {
+      "label": "特例選手",
+      "placeholder": "未設定",
+      "notSet": "未設定",
+      "save": "保存"
+    },
     "tabs": {
       "calendar": "カレンダー",
       "roster": "ロスター",

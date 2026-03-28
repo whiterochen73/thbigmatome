@@ -100,6 +100,42 @@
     <v-tabs-window v-if="!loading && season" v-model="activeTab">
       <!-- タブ1: カレンダー -->
       <v-tabs-window-item value="calendar">
+        <!-- 特例選手選択カード -->
+        <v-card variant="outlined" class="mt-2 pa-3">
+          <div class="d-flex align-center flex-wrap" style="gap: 12px">
+            <span class="text-body-2 font-weight-bold">{{
+              t('seasonPortal.keyPlayer.label')
+            }}</span>
+            <template v-if="isCommissioner">
+              <v-select
+                v-model="selectedKeyPlayerId"
+                :items="keyPlayerOptions"
+                item-title="name"
+                item-value="id"
+                :placeholder="t('seasonPortal.keyPlayer.placeholder')"
+                density="compact"
+                hide-details
+                clearable
+                style="max-width: 280px"
+              />
+              <v-btn
+                color="primary"
+                variant="flat"
+                size="small"
+                :loading="keyPlayerSaving"
+                :disabled="keyPlayerSaving"
+                @click="saveKeyPlayer"
+              >
+                {{ t('seasonPortal.keyPlayer.save') }}
+              </v-btn>
+            </template>
+            <template v-else>
+              <span class="text-body-2">{{
+                season.key_player_name ?? t('seasonPortal.keyPlayer.notSet')
+              }}</span>
+            </template>
+          </div>
+        </v-card>
         <v-row class="mt-2">
           <v-col>
             <v-card variant="outlined" class="pa-4">
@@ -566,6 +602,7 @@ import TeamMembers from '@/views/TeamMembers.vue'
 // import LineupTemplateEditor from '@/components/squad/LineupTemplateEditor.vue'
 // import SquadTextGenerator from '@/components/squad/SquadTextGenerator.vue'
 import { useTeamSelectionStore } from '@/stores/teamSelection'
+import { useAuth } from '@/composables/useAuth'
 
 const props = defineProps<{ teamId?: number }>()
 
@@ -573,6 +610,7 @@ const { t } = useI18n()
 const route = useRoute()
 const router = useRouter()
 const teamSelectionStore = useTeamSelectionStore()
+const { isCommissioner } = useAuth()
 const loading = ref(true)
 const season = ref<SeasonDetail | null>(null)
 const currentDate = ref(new Date())
@@ -582,6 +620,12 @@ const schedules = ref<ScheduleList[]>([])
 const newSeasonName = ref('')
 const selectedScheduleId = ref<number | null>(null)
 const creating = ref(false)
+
+// 特例選手
+type KeyPlayerOption = { id: number; name: string }
+const keyPlayerOptions = ref<KeyPlayerOption[]>([])
+const selectedKeyPlayerId = ref<number | null>(null)
+const keyPlayerSaving = ref(false)
 
 const teamId = props.teamId ?? parseInt(<string>route.params.teamId, 10)
 
@@ -656,6 +700,32 @@ const fetchSchedules = async () => {
     schedules.value = response.data
   } catch (error) {
     console.error('Failed to fetch schedules:', error)
+  }
+}
+
+const fetchKeyPlayerOptions = async () => {
+  try {
+    const response = await axios.get<KeyPlayerOption[]>(`/teams/${teamId}/team_memberships`)
+    keyPlayerOptions.value = response.data
+  } catch (error) {
+    console.error('Failed to fetch team memberships:', error)
+  }
+}
+
+const saveKeyPlayer = async () => {
+  if (!season.value) return
+  keyPlayerSaving.value = true
+  try {
+    await axios.patch(`/seasons/${season.value.id}`, {
+      season: { key_player_id: selectedKeyPlayerId.value },
+    })
+    season.value.key_player_id = selectedKeyPlayerId.value
+    const found = keyPlayerOptions.value.find((m) => m.id === selectedKeyPlayerId.value)
+    season.value.key_player_name = found?.name ?? null
+  } catch (error) {
+    console.error('Failed to save key player:', error)
+  } finally {
+    keyPlayerSaving.value = false
   }
 }
 
@@ -935,6 +1005,12 @@ const formatDetailDate = (date: Date) => {
 
 onMounted(async () => {
   await Promise.all([fetchSeason(), fetchSchedules()])
+  if (season.value) {
+    selectedKeyPlayerId.value = season.value.key_player_id
+  }
+  if (isCommissioner.value) {
+    await fetchKeyPlayerOptions()
+  }
   try {
     const response = await axios.get<Team>(`/teams/${teamId}`)
     teamSelectionStore.selectTeam(teamId, response.data.name)

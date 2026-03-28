@@ -169,4 +169,42 @@ RSpec.describe "Api::V1::TeamPlayers", type: :request do
       expect(response).to have_http_status(:unauthorized)
     end
   end
+
+  # ============================================================
+  # POST /api/v1/teams/:team_id/team_players - player_card_id
+  # ============================================================
+
+  describe "POST /api/v1/teams/:team_id/team_players with player_card_id" do
+    include_context "authenticated user"
+    before { team.update!(user: user) }
+
+    let(:player) { create(:player) }
+    let(:card_set) { create(:card_set) }
+    let(:player_card) { create(:player_card, player: player, card_set: card_set) }
+
+    before { create(:cost_player, cost: cost, player: player, normal_cost: 5) }
+
+    it "saves player_card_id when provided" do
+      post_team_players(team.id, players: [
+        {
+          player_id: player.id,
+          selected_cost_type: "normal_cost",
+          excluded_from_team_total: false,
+          player_card_id: player_card.id
+        }
+      ])
+
+      expect(response).to have_http_status(:ok)
+      membership = team.team_memberships.find_by(player_id: player.id)
+      expect(membership.player_card_id).to eq(player_card.id)
+    end
+
+    it "saves nil player_card_id when not provided" do
+      post_team_players(team.id, players: [ player_param(player) ])
+
+      expect(response).to have_http_status(:ok)
+      membership = team.team_memberships.find_by(player_id: player.id)
+      expect(membership.player_card_id).to be_nil
+    end
+  end
 end

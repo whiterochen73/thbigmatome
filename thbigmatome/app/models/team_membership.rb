@@ -1,6 +1,7 @@
 class TeamMembership < ApplicationRecord
   belongs_to :team
   belongs_to :player
+  belongs_to :player_card, optional: true
   has_many :season_rosters
   has_many :player_absences, dependent: :restrict_with_error
 

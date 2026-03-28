@@ -4,7 +4,7 @@ module Api
       include TeamAccessible
 
       before_action :authorize_team_access!, only: [ :create ]
-      before_action :authorize_commissioner!, only: [ :destroy ]
+      before_action :authorize_commissioner!, only: [ :destroy, :update ]
 
       def create
         ActiveRecord::Base.transaction do
@@ -35,12 +35,28 @@ module Api
         render json: { error: e.message }, status: :unprocessable_content
       end
 
+      def update
+        season = Season.find(params[:id])
+        season.update!(season_params)
+        render json: { season: season, key_player_name: season.key_player&.player&.name }, status: :ok
+      rescue ActiveRecord::RecordNotFound => e
+        render json: { error: e.message }, status: :not_found
+      rescue ActiveRecord::RecordInvalid => e
+        render json: { error: e.message }, status: :unprocessable_content
+      end
+
       def destroy
         season = Season.find(params[:id])
         season.destroy!
         head :no_content
       rescue ActiveRecord::RecordNotFound => e
         render json: { error: e.message }, status: :not_found
+      end
+
+      private
+
+      def season_params
+        params.require(:season).permit(:key_player_id)
       end
     end
   end

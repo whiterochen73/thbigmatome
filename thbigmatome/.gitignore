@@ -45,6 +45,7 @@
 # Store configuration in the environment.
 .env*
 !.env.example
+!.env.production.example
 
 # Ignore editor-specific files.
 /.vscode/

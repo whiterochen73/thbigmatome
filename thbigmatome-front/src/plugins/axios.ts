@@ -3,7 +3,7 @@ import axios, { AxiosError, type AxiosResponse } from 'axios'
 import router from '@/router'
 import { useSnackbar } from '@/composables/useSnackbar'
 
-axios.defaults.baseURL = 'http://localhost:3000/api/v1'
+axios.defaults.baseURL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api/v1'
 axios.defaults.withCredentials = true
 
 // レスポンスインターセプター

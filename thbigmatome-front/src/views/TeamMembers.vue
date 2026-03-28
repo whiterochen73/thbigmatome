@@ -81,6 +81,7 @@
                 variant="outlined"
                 @click="addPlayer"
                 :disabled="!selectedPlayer || !selectedCostListId"
+                :loading="fetchingCards"
               >
                 {{ t('teamMembers.addPlayer') }}
               </v-btn>
@@ -280,6 +281,15 @@
                       : '—'
                   }}
                 </template>
+                <template #item.player_card_info="{ item }">
+                  <div v-if="item.player_card_info" class="d-flex align-center ga-1">
+                    <span class="text-caption">{{ item.player_card_info.card_set_name }}</span>
+                    <v-chip size="x-small" variant="tonal" color="secondary">
+                      {{ item.player_card_info.card_type }}
+                    </v-chip>
+                  </div>
+                  <span v-else class="text-caption text-disabled">—</span>
+                </template>
                 <template #item.cost="{ item }">
                   <div class="d-flex align-center">
                     <v-select
@@ -328,6 +338,41 @@
           }}</v-btn>
         </v-col>
       </v-row>
+
+      <!-- カードバージョン選択ダイアログ -->
+      <v-dialog v-model="cardSelectionDialog" max-width="480px" persistent>
+        <v-card>
+          <v-card-title>カードバージョン選択</v-card-title>
+          <v-card-text>
+            <p class="text-body-2 mb-3">
+              {{
+                selectedPlayer?.name
+              }}
+              には複数のカードバージョンがあります。使用するバージョンを選択してください。
+            </p>
+            <v-radio-group v-model="selectedPlayerCardId">
+              <v-radio
+                v-for="card in availablePlayerCards"
+                :key="card.id"
+                :value="card.id"
+                :label="`${card.card_set_name}（${card.card_type}）`"
+              />
+            </v-radio-group>
+          </v-card-text>
+          <v-card-actions>
+            <v-spacer />
+            <v-btn variant="text" @click="cardSelectionDialog = false">キャンセル</v-btn>
+            <v-btn
+              color="primary"
+              variant="tonal"
+              :disabled="!selectedPlayerCardId"
+              @click="doAddPlayer"
+            >
+              追加
+            </v-btn>
+          </v-card-actions>
+        </v-card>
+      </v-dialog>
     </template>
   </v-container>
 </template>
@@ -352,12 +397,21 @@ type CostType =
   | 'fielder_only_cost'
   | 'two_way_cost'
 
+interface PlayerCardInfo {
+  id: number
+  card_type: string
+  card_set_name: string
+  card_set_id: number
+}
+
 interface TeamPlayer extends Player {
   selected_cost_type: CostType
   current_cost: number
   excluded_from_team_total: boolean
   display_name?: string | null
   player_type_ids: number[]
+  player_card_id?: number | null
+  player_card_info?: PlayerCardInfo | null
 }
 
 interface TeamPlayersSaveResponse {
@@ -378,6 +432,10 @@ const selectedCost = ref<CostList | null>(null)
 const selectedCostListId = computed(() => (selectedCost.value ? selectedCost.value.id : null))
 const selectedPlayer = ref<Player | null>(null)
 const playerTypes = ref<PlayerType[]>([])
+const cardSelectionDialog = ref(false)
+const availablePlayerCards = ref<PlayerCardInfo[]>([])
+const selectedPlayerCardId = ref<number | null>(null)
+const fetchingCards = ref(false)
 
 const teamId = computed(() => props.teamId ?? Number(route.params.teamId))
 const isTeamIdValid = computed(() => Number.isFinite(teamId.value) && teamId.value > 0)
@@ -394,6 +452,7 @@ const headers = computed(() => [
   { title: t('teamMembers.headers.position'), key: 'position' },
   { title: t('teamMembers.headers.throws'), key: 'throws' },
   { title: t('teamMembers.headers.bats'), key: 'bats' },
+  { title: 'カードver.', key: 'player_card_info', sortable: false },
   { title: t('teamMembers.headers.cost'), value: 'cost' },
   {
     title: t('teamMembers.headers.costExcluded'),
@@ -591,6 +650,8 @@ const fetchTeamPlayers = async () => {
         selected_cost_type: initialSelectedCostType,
         current_cost: costValue,
         excluded_from_team_total: player.excluded_from_team_total ?? false,
+        player_card_id: player.player_card_id ?? null,
+        player_card_info: player.player_card_info ?? null,
       }
     })
   } catch (error) {
@@ -650,6 +711,32 @@ const updatePlayerCost = (player: TeamPlayer) => {
   player.current_cost = costValue
 }
 
+async function fetchPlayerCards(playerId: number): Promise<PlayerCardInfo[]> {
+  try {
+    const res = await axios.get<{ player_cards: PlayerCardInfo[] }>('/player_cards', {
+      params: { player_id: playerId, per_page: 100 },
+    })
+    return res.data.player_cards
+  } catch {
+    return []
+  }
+}
+
+watch(selectedPlayer, async (newPlayer) => {
+  selectedPlayerCardId.value = null
+  availablePlayerCards.value = []
+  if (!newPlayer) return
+  fetchingCards.value = true
+  try {
+    availablePlayerCards.value = await fetchPlayerCards(newPlayer.id)
+    if (availablePlayerCards.value.length === 1) {
+      selectedPlayerCardId.value = availablePlayerCards.value[0].id
+    }
+  } finally {
+    fetchingCards.value = false
+  }
+})
+
 const addPlayer = () => {
   if (!selectedPlayer.value) return
 
@@ -657,6 +744,18 @@ const addPlayer = () => {
     showSnackbar(t('teamMembers.notifications.playerAlreadyAdded'), 'warning')
     return
   }
+
+  // 複数カードがあり未選択の場合はダイアログで選択させる
+  if (availablePlayerCards.value.length > 1 && !selectedPlayerCardId.value) {
+    cardSelectionDialog.value = true
+    return
+  }
+
+  doAddPlayer()
+}
+
+const doAddPlayer = () => {
+  if (!selectedPlayer.value) return
 
   const costPlayerForSelectedList = selectedPlayer.value.cost_players.find(
     (cp) => cp.cost_id === selectedCostListId.value,
@@ -682,10 +781,16 @@ const addPlayer = () => {
     excluded_from_team_total: false,
     display_name: null,
     player_type_ids: [],
+    player_card_id: selectedPlayerCardId.value ?? null,
+    player_card_info:
+      availablePlayerCards.value.find((c) => c.id === selectedPlayerCardId.value) ?? null,
   }
 
   teamPlayers.value.push(newPlayer)
   selectedPlayer.value = null
+  selectedPlayerCardId.value = null
+  availablePlayerCards.value = []
+  cardSelectionDialog.value = false
 
   // Check limits and show warnings
   if (includedTeamPlayers.value.length > MAX_PLAYERS) {
@@ -720,6 +825,7 @@ const saveTeamMembers = async () => {
         selected_cost_type: p.selected_cost_type,
         excluded_from_team_total: p.excluded_from_team_total,
         display_name: p.display_name || null,
+        player_card_id: p.player_card_id ?? null,
       })),
     }
     const response = await axios.post<TeamPlayersSaveResponse>(

@@ -5,8 +5,8 @@
 **構成サマリ:**
 - OS: Ubuntu 24.04 LTS
 - 技術スタック: Docker Compose（db/rails/frontend/parser）
-- 外部公開: ポート 80（HTTP）、Nginx 経由
-- SSL: v0.1.0 では非対応（IP直アクセス）
+- 外部公開: ポート 80（HTTPSリダイレクト）、443（HTTPS）、Nginx 経由
+- SSL: Let's Encrypt + certbot（ドメイン: dugout.thbig.fun）
 
 ---
 
@@ -14,10 +14,11 @@
 
 1. [VPS 初期設定](#1-vps-初期設定)
 2. [Docker インストール](#2-docker-インストール)
-3. [アプリデプロイ](#3-アプリデプロイ)
-4. [運用設定](#4-運用設定)
-5. [動作確認](#5-動作確認)
-6. [トラブルシューティング](#6-トラブルシューティング)
+3. [SSL 証明書取得（Let's Encrypt）](#3-ssl-証明書取得lets-encrypt)
+4. [アプリデプロイ](#4-アプリデプロイ)
+5. [運用設定](#5-運用設定)
+6. [動作確認](#6-動作確認)
+7. [トラブルシューティング](#7-トラブルシューティング)
 
 ---
 
@@ -66,14 +67,9 @@ sudo systemctl reload ssh
 ```bash
 sudo ufw allow OpenSSH
 sudo ufw allow 80/tcp
+sudo ufw allow 443/tcp
 sudo ufw enable
 sudo ufw status
-```
-
-必要に応じて HTTPS（443）も開放しておきます（SSL 導入時に使用）。
-
-```bash
-sudo ufw allow 443/tcp
 ```
 
 内部ポート（3000, 5000, 5432 等）は公開しません。
@@ -138,17 +134,62 @@ docker compose version
 
 ---
 
-## 3. アプリデプロイ
+## 3. SSL 証明書取得（Let's Encrypt）
 
-### 3-1. リポジトリのクローン
+### 3-1. certbot インストール
+
+```bash
+sudo apt-get update
+sudo apt-get install -y certbot
+```
+
+### 3-2. 証明書の初回取得
+
+Docker 起動前に certbot standalone モードで証明書を取得します。
+（nginx コンテナが起動していない状態で実行すること）
+
+```bash
+sudo certbot certonly --standalone -d dugout.thbig.fun \
+  --agree-tos --non-interactive --email your-email@example.com
+```
+
+成功すると以下のパスに証明書が生成されます:
+- `/etc/letsencrypt/live/dugout.thbig.fun/fullchain.pem`
+- `/etc/letsencrypt/live/dugout.thbig.fun/privkey.pem`
+
+### 3-3. 証明書の自動更新設定
+
+certbot の自動更新を cron に登録します。更新時は nginx コンテナを一時停止します。
+
+```bash
+crontab -e
+```
+
+以下を追加します:
+
+```cron
+# 毎日 3:00 に SSL 証明書の更新を確認（有効期限30日以内の場合のみ更新）
+0 3 * * * certbot renew --pre-hook "cd /home/deploy/projects && docker compose -f docker-compose.prod.yml --env-file .env.production stop frontend" --post-hook "cd /home/deploy/projects && docker compose -f docker-compose.prod.yml --env-file .env.production start frontend" >> /var/log/certbot-renew.log 2>&1
+```
+
+手動で更新テストを行う場合:
+
+```bash
+sudo certbot renew --dry-run
+```
+
+---
+
+## 4. アプリデプロイ
+
+### 4-1. リポジトリのクローン
 
 ```bash
 cd ~
-git clone https://github.com/whiterochen73/multi-agent-shogun-production.git
-# ※ thbigmatome・thbigmatome-front は実際のリポジトリ URL に読み替えること
-git clone <thbigmatome リポジトリ URL> ~/projects/thbigmatome
-git clone <thbigmatome-front リポジトリ URL> ~/projects/thbigmatome-front
-git clone <thbig-irc-parser リポジトリ URL> ~/projects/thbig-irc-parser
+mkdir -p projects && cd projects
+git clone https://github.com/whiterochen73/thbigmatome.git
+git clone https://github.com/whiterochen73/thbigmatome-front.git
+git clone https://github.com/whiterochen73/thbig-irc-parser.git
 ```
 
 あるいは既存のプロジェクトディレクトリ構成に合わせて:
@@ -161,7 +202,7 @@ git clone <thbig-irc-parser リポジトリ URL> ~/projects/thbig-irc-parser
 └── docker-compose.prod.yml   ← リポジトリルートに含まれる
 ```
 
-### 3-2. 環境変数ファイルの作成
+### 4-2. 環境変数ファイルの作成
 
 ```bash
 cp ~/projects/thbigmatome/.env.production.example ~/projects/.env.production
@@ -178,13 +219,13 @@ nano ~/projects/.env.production
 | `DB_PASSWORD` | 推測困難なランダム文字列（例: `openssl rand -hex 32` で生成） |
 | `RAILS_MASTER_KEY` | `~/projects/thbigmatome/config/master.key` の内容 |
 | `INITIAL_PASSWORD` | 初回ログインパスワード（任意） |
-| `APP_HOST` | VPS の IP アドレス |
-| `CORS_ALLOWED_ORIGIN` | `http://<VPS_IP>` |
-| `VITE_API_BASE_URL` | `http://<VPS_IP>/api/v1` |
+| `APP_HOST` | `dugout.thbig.fun` |
+| `CORS_ALLOWED_ORIGIN` | `https://dugout.thbig.fun` |
+| `VITE_API_BASE_URL` | `https://dugout.thbig.fun/api/v1` |
 
 **注意**: `.env.production` は git にコミットしないこと。
 
-### 3-3. Rails credentials の確認
+### 4-3. Rails credentials の確認
 
 `config/master.key` が存在し、`config/credentials.yml.enc` と対応していることを確認します。
 
@@ -193,7 +234,7 @@ cd ~/projects/thbigmatome
 cat config/master.key  # 内容を .env.production の RAILS_MASTER_KEY に設定済みか確認
 ```
 
-### 3-4. コンテナビルド・起動
+### 4-4. コンテナビルド・起動
 
 ```bash
 cd ~/projects
@@ -201,7 +242,7 @@ docker compose -f docker-compose.prod.yml --env-file .env.production build
 docker compose -f docker-compose.prod.yml --env-file .env.production up -d
 ```
 
-### 3-5. DB 作成・マイグレーション・seed
+### 4-5. DB 作成・マイグレーション・seed
 
 `docker-entrypoint` に `rails db:migrate` が含まれているため、初回起動時に自動実行されます。
 
@@ -224,9 +265,9 @@ docker compose -f docker-compose.prod.yml --env-file .env.production \
 
 ---
 
-## 4. 運用設定
+## 5. 運用設定
 
-### 4-1. Docker の自動起動
+### 5-1. Docker の自動起動
 
 Docker サービス自体の自動起動を確認します。
 
@@ -237,7 +278,7 @@ sudo systemctl status docker
 
 `docker-compose.prod.yml` の各サービスに `restart: unless-stopped` が設定されているため、Docker が起動すればコンテナも自動的に再起動します。
 
-### 4-2. 定期再起動（OOM 対策）
+### 5-2. 定期再起動（OOM 対策）
 
 Rails(Puma) のメモリリーク対策として、週1回の定期再起動を設定します。
 
@@ -252,7 +293,7 @@ crontab -e
 0 4 * * 0 cd /home/deploy/projects && docker compose -f docker-compose.prod.yml --env-file .env.production restart rails >> /var/log/rails-restart.log 2>&1
 ```
 
-### 4-3. ログ管理
+### 5-3. ログ管理
 
 Docker のログローテーション設定を追加します。
 
@@ -281,9 +322,9 @@ docker compose -f docker-compose.prod.yml --env-file .env.production logs -f
 
 ---
 
-## 5. 動作確認
+## 6. 動作確認
 
-### 5-1. コンテナ状態確認
+### 6-1. コンテナ状態確認
 
 ```bash
 docker compose -f docker-compose.prod.yml --env-file .env.production ps
@@ -291,20 +332,20 @@ docker compose -f docker-compose.prod.yml --env-file .env.production ps
 
 全コンテナが `Up` 状態であることを確認します。
 
-### 5-2. ヘルスチェック
+### 6-2. ヘルスチェック
 
 ```bash
 curl http://localhost/up
 # => 200 OK が返れば Rails は正常起動
 ```
 
-### 5-3. ブラウザ確認
+### 6-3. ブラウザ確認
 
-ブラウザで `http://<VPS_IP>` にアクセスし、ログイン画面が表示されることを確認します。
+ブラウザで `https://dugout.thbig.fun` にアクセスし、ログイン画面が表示されることを確認します。
 
 `.env.production` の `INITIAL_PASSWORD` で設定した初期パスワードでログインできることを確認します。
 
-### 5-4. カード画像確認
+### 6-4. カード画像確認
 
 画像が表示されない場合は ActiveStorage の状態を確認します。
 
@@ -317,7 +358,7 @@ docker compose -f docker-compose.prod.yml --env-file .env.production \
 
 ---
 
-## 6. トラブルシューティング
+## 7. トラブルシューティング
 
 ### Rails が起動しない
 
@@ -344,7 +385,7 @@ docker stats
 docker compose -f docker-compose.prod.yml --env-file .env.production restart rails
 ```
 
-2GB プランでは定期再起動の設定（4-2 参照）を必ず行うこと。
+2GB プランでは定期再起動の設定（5-2 参照）を必ず行うこと。
 
 ---
 
@@ -352,7 +393,6 @@ docker compose -f docker-compose.prod.yml --env-file .env.production restart rai
 
 | 項目 | 優先度 | 説明 |
 |------|--------|------|
-| SSL/HTTPS 対応 | 中 | ドメイン取得後に Let's Encrypt + certbot で対応 |
 | ドメイン設定 | 低 | `config.hosts` の有効化（production.rb の TODO コメント参照） |
 | バックアップ | 中 | PostgreSQL の定期 `pg_dump` + 外部ストレージ保存 |
 | カード画像 S3 移行 | 低 | ActiveStorage を S3 に移行してディスク依存を排除 |

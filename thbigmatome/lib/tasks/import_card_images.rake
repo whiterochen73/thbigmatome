@@ -4,7 +4,7 @@ namespace :import do
   desc "Attach trimmed card images to PlayerCard via Active Storage (idempotent)"
   task card_images: :environment do
     base_dir   = ENV.fetch("CARD_IMAGE_DIR",
-                           "/mnt/c/tools/multi-agent-shogun/context/thbig-irc-cards/split")
+                           "/mnt/c/tools/multi-agent-shogun/projects/thbig/context/thbig-irc-cards/split/")
     csv_path   = ENV.fetch("CARD_CSV_PATH",
                            "/home/morinaga/projects/thbig-irc-parser/data/import/player_cards.csv")
     cards_per_page = 9

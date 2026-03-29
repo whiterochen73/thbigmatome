@@ -31,6 +31,7 @@ class PlayerCardSerializer < ActiveModel::Serializer
 
   attribute :image_url do
     next nil unless object.card_image.attached?
-    Rails.application.routes.url_helpers.rails_blob_url(object.card_image, host: "localhost:3000")
+    host = ENV.fetch("APP_HOST", "localhost:3000")
+    Rails.application.routes.url_helpers.rails_blob_url(object.card_image, host: host)
   end
 end

@@ -32,6 +32,8 @@ class PlayerCardSerializer < ActiveModel::Serializer
   attribute :image_url do
     next nil unless object.card_image.attached?
     host = ENV.fetch("APP_HOST", "localhost:3000")
-    Rails.application.routes.url_helpers.rails_blob_url(object.card_image, host: host)
+    Rails.application.routes.url_helpers.rails_blob_url(
+      object.card_image, host: host, protocol: Rails.env.production? ? "https" : "http"
+    )
   end
 end

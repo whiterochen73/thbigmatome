@@ -60,6 +60,12 @@ Rails.application.configure do
   # TODO(P対応後): サーバー契約・ドメイン確定後に本番ドメインを設定すること。
   config.action_mailer.default_url_options = { host: ENV.fetch("APP_HOST", "example.com") }
 
+  # ActiveStorage URL生成用: HTTPSプロトコルを明示（カード画像等のURL）
+  config.action_controller.default_url_options = {
+    host: ENV.fetch("APP_HOST", "example.com"),
+    protocol: "https"
+  }
+
   # Specify outgoing SMTP server. Remember to add smtp/* credentials via rails credentials:edit.
   # config.action_mailer.smtp_settings = {
   #   user_name: Rails.application.credentials.dig(:smtp, :user_name),

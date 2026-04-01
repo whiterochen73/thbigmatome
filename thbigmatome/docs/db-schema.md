@@ -5,6 +5,7 @@
 ## 参照ソースファイル
 
 - `db/schema.rb` (schema version: 2026_03_09_142556)
+- `config/game_rules.yaml` — ゲームルール正本（DB制約とビジネスルールの照合に使用）
 
 ---
 

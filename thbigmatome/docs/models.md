@@ -6,6 +6,7 @@
 
 - `app/models/*.rb`
 - `app/models/concerns/baseball_card_validations.rb`
+- `config/game_rules.yaml` — ゲームルール正本（ビジネスルールの値・制約はこのファイルが Single Source of Truth）
 
 ---
 
@@ -205,6 +206,8 @@ class Competition < ApplicationRecord
 
 ### CompetitionEntry
 
+> **ルール正本**: `config/game_rules.yaml#competition` — 大会制約
+
 ```ruby
 class CompetitionEntry < ApplicationRecord
 ```
@@ -217,7 +220,7 @@ class CompetitionEntry < ApplicationRecord
 - `has_many :player_cards, through: :competition_rosters`
 
 **バリデーション**:
-- `competition_id`: uniqueness(scope: team_id)
+- `competition_id`: uniqueness(scope: team_id) — game_rules.yaml#competition.no_duplicate_entry
 
 ---
 
@@ -235,7 +238,7 @@ class CompetitionRoster < ApplicationRecord
 - `squad`: `{ first_squad: 0, second_squad: 1 }`
 
 **バリデーション**:
-- `competition_entry_id`: uniqueness(scope: player_card_id)
+- `competition_entry_id`: uniqueness(scope: player_card_id) — game_rules.yaml#competition.no_duplicate_roster
 - `squad`: presence
 
 ---
@@ -704,11 +707,13 @@ class ScheduleDetail < ApplicationRecord
 
 ### Season
 
+> **ルール正本**: `config/game_rules.yaml#season` — シーズン制約
+
 ```ruby
 class Season < ApplicationRecord
 ```
 
-1チーム1シーズン。
+1チーム1シーズン（game_rules.yaml#season.one_team_one_season）。
 
 **関連**:
 - `belongs_to :team`
@@ -794,11 +799,13 @@ class Stadium < ApplicationRecord
 
 ### Team
 
+> **ルール正本**: `config/game_rules.yaml#team_composition` — コスト上限・外の世界枠・ロスター制限等
+
 ```ruby
 class Team < ApplicationRecord
   COST_LIMIT_CONFIG = YAML.load_file(Rails.root.join("config", "cost_limits.yml")).freeze
-  TEAM_TOTAL_MAX_COST = COST_LIMIT_CONFIG["team_total_max_cost"]
-  OUTSIDE_WORLD_LIMIT = 4
+  TEAM_TOTAL_MAX_COST = COST_LIMIT_CONFIG["team_total_max_cost"]  # → game_rules.yaml#team_composition.team_total_max_cost: 200
+  OUTSIDE_WORLD_LIMIT = 4  # → game_rules.yaml#team_composition.outside_world_max: 4
 ```
 
 **関連**:
@@ -839,6 +846,8 @@ class Team < ApplicationRecord
 
 ### TeamManager
 
+> **ルール正本**: `config/game_rules.yaml#manager` — 監督制約
+
 ```ruby
 class TeamManager < ApplicationRecord
 ```
@@ -852,7 +861,7 @@ class TeamManager < ApplicationRecord
 
 **バリデーション**:
 - `role`: presence
-- `team_id`: uniqueness(scope: role, if: director?) — 監督は1チーム1人
+- `team_id`: uniqueness(scope: role, if: director?) — 監督は1チーム1人（game_rules.yaml#manager.one_director_per_team）
 - カスタムvalidate: `manager_cannot_be_assigned_to_multiple_teams_in_same_league` — リーグ系テーブル廃止により無効化（cmd_511 Phase 3）
 
 ---

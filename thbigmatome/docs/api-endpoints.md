@@ -5,6 +5,7 @@
 ## 参照ソースファイル
 
 - `config/routes.rb`
+- `config/game_rules.yaml` — ゲームルール正本（バリデーション値の照合に使用）
 - `app/controllers/api/v1/base_controller.rb`
 - `app/controllers/api/v1/auth_controller.rb`
 - `app/controllers/api/v1/teams_controller.rb`
@@ -214,7 +215,7 @@
 - **Body Params**:
   - `roster_updates`: `[{ team_membership_id: int, squad: "first"|"second" }]`
   - `target_date`: date string
-- **バリデーション**: 1軍人数上限(29)、最小人数、コスト上限、クールダウン(10日)、再調整中選手の昇格禁止
+- **バリデーション**: 1軍人数上限(29)、最小人数（game_rules.yaml#team_composition.first_squad_minimum_players）、コスト上限（game_rules.yaml#team_composition.team_total_max_cost: 200）、クールダウン(10日: game_rules.yaml#season.cooldown_days)、再調整中選手の昇格禁止
 - **Response**: `{ message: "Roster updated successfully", warnings: [] }`
 
 ---

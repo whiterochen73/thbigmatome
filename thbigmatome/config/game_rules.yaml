@@ -1,0 +1,197 @@
+# THBIG Dugout ゲームルール正本
+#
+# このファイルがビジネスルールの唯一の正本（Single Source of Truth）。
+# Rails モデルバリデーション・仕様書・テストケースはこのファイルを参照すること。
+# 変更時は関連するモデル・仕様書・テストと照合を必須とする。
+#
+# 管理: AI整合性フレームワーク Phase 1 (cmd_849)
+# 作成日: 2026-04-01
+# 参照: context/dugout-integrity-audit.md, ai_integrity_framework.md §3.1
+
+version: "1.0"
+created_at: "2026-04-01"
+
+rules:
+  # ─────────────────────────────────────────────────────────────
+  # チーム構成ルール
+  # 参照コード: app/models/team.rb
+  # 参照仕様書: docs/04_team_management.md, docs/09_roster_management.md
+  # ─────────────────────────────────────────────────────────────
+  team_composition:
+    # チーム全体コスト上限（excluded_from_team_total=false の選手のみ対象）
+    # 参照: Team::TEAM_TOTAL_MAX_COST, config/cost_limits.yml
+    team_total_max_cost: 200
+
+    # 1軍登録人数コスト上限テーブル（人数に応じたスライド制）
+    # 参照: Team.first_squad_cost_limit_for_count, config/cost_limits.yml
+    first_squad_cost_tiers:
+      - min_players: 28
+        max_cost: 120
+      - min_players: 27
+        max_cost: 119
+      - min_players: 26
+        max_cost: 117
+      - min_players: 25
+        max_cost: 114
+
+    # 1軍登録最低人数（この人数未満では登録禁止）
+    # 参照: Team.first_squad_minimum_players, config/cost_limits.yml
+    first_squad_minimum_players: 25
+
+    # 外の世界枠上限（1軍）
+    # 参照: Team::OUTSIDE_WORLD_LIMIT, Team#validate_outside_world_limit
+    outside_world_max: 4
+
+    # 外の世界枠バランス（4名時は投手1名以上 AND 野手1名以上が必須）
+    # 参照: Team#validate_outside_world_balance
+    outside_world_balance:
+      trigger_count: 4
+      requirement: "投手1名以上 AND 野手1名以上"
+
+    # ロスター人数制限（NOTE: 現在未実装 - P1-2 として優先対応対象）
+    # 参照: context/dugout-integrity-audit.md §5 P1-2
+    roster_max: 30   # TODO: Team モデルに validate_roster_size を追加
+    roster_min: 9    # TODO: validate_roster_size に下限チェックを追加
+
+    # セカンドチーム制約
+    # 参照: TeamManager#director_team_limit
+    second_team:
+      max_teams_per_owner: 2
+      player_exclusivity: true  # 同一選手を両チームに入れることは禁止
+      # NOTE: player_not_in_director_sibling_team は on: :create のみ（P1-1: 要修正）
+      # TODO: on: [:create, :update] に変更が必要
+
+  # ─────────────────────────────────────────────────────────────
+  # チーム種別と「外の世界」分類
+  # 参照コード: app/models/team.rb - Team::NATIVE_SERIES
+  # ─────────────────────────────────────────────────────────────
+  team_types:
+    normal:
+      description: "通常チーム"
+      native_series:
+        - "touhou"
+      outside_series_condition: "series != touhou（touhou以外が外の世界枠）"
+
+    hachinai:
+      description: "ハチナイチーム（開始時に選択）"
+      native_series:
+        - "hachinai"
+        - "tamayomi"
+      outside_series_condition: "series == touhou（touhouが外の世界枠 = 反転）"
+
+    original:
+      description: "オリジナル選手（series=original）"
+      classification: "always_outside"
+      note: "normal/hachinai どちらのチームでも常に外の世界枠扱い"
+
+  # ─────────────────────────────────────────────────────────────
+  # 選手カードルール
+  # 参照コード: app/models/player_card.rb
+  # 参照仕様書: docs/05_player_card.md
+  # ─────────────────────────────────────────────────────────────
+  player_card:
+    card_types:
+      - "pitcher"
+      - "batter"
+
+    # 投手スタミナ（カード種別で範囲が異なる）
+    stamina:
+      starter:
+        min: 4
+        max: 9
+      relief:
+        min: 0
+        max: 3
+
+    # 選手能力値の範囲
+    speed:
+      min: 1
+      max: 5
+    bunt:
+      min: 1
+      max: 10
+    steal_start:
+      min: 1
+      max: 22
+    steal_end:
+      min: 1
+      max: 22
+    injury_rate:
+      min: 0
+      max: 7
+
+    # 一意性制約（同カードセット内で同選手の同種カードは1枚のみ）
+    uniqueness: "(card_set_id, player_id, card_type)"
+
+  # ─────────────────────────────────────────────────────────────
+  # シーズンルール
+  # 参照コード: app/models/season.rb
+  # 参照仕様書: docs/08_season_management.md
+  # ─────────────────────────────────────────────────────────────
+  season:
+    # 1チーム1シーズン（uniqueness制約）
+    one_team_one_season: true
+    # 参照: Season validates :team_id, uniqueness: true
+
+    # メンバー変更後クールダウン（日数）
+    # 参照: docs/09_roster_management.md
+    cooldown_days: 10
+
+  # ─────────────────────────────────────────────────────────────
+  # 大会ルール
+  # 参照コード: app/models/competition_entry.rb, competition_roster.rb
+  # 参照仕様書: docs/10_competition.md
+  # ─────────────────────────────────────────────────────────────
+  competition:
+    # 同一チームの重複エントリー禁止（uniqueness: scope competition_id, team_id）
+    no_duplicate_entry: true
+
+    # 同一大会ロスターへの重複選手カード禁止（uniqueness: scope competition_entry_id, player_card_id）
+    no_duplicate_roster: true
+
+  # ─────────────────────────────────────────────────────────────
+  # 監督・コーチルール
+  # 参照コード: app/models/team_manager.rb
+  # ─────────────────────────────────────────────────────────────
+  manager:
+    # 1チームの監督は1名のみ（uniqueness: scope role, if director）
+    one_director_per_team: true
+
+    # 監督は最大2チームを同時に管理可能
+    # 参照: TeamManager#director_team_limit
+    max_active_teams_per_director: 2
+
+  # ─────────────────────────────────────────────────────────────
+  # 整合性リスク（要対応）
+  # 参照: context/dugout-integrity-audit.md §5
+  # ─────────────────────────────────────────────────────────────
+  known_integrity_risks:
+    - id: "P1-1"
+      severity: critical
+      rule: "second_team.player_exclusivity"
+      description: "player_not_in_director_sibling_team が on: :create のみ。update時にバイパス可能"
+      recommended_fix: "on: [:create, :update] に変更"
+
+    - id: "P1-2"
+      severity: critical
+      rule: "team_composition.roster_max / roster_min"
+      description: "ロスター人数制限のバリデーションが存在しない"
+      recommended_fix: "Team モデルに validate_roster_size を追加"
+
+    - id: "P2-1"
+      severity: high
+      rule: "team_composition.team_total_max_cost"
+      description: "validate_team_total_cost は Team のバリデーション。TeamMembership追加時にTeam.valid?が自動発火しない可能性"
+      recommended_fix: "TeamMembership に before_save で親Team のコスト検証を呼ぶ"
+
+    - id: "P2-2"
+      severity: high
+      rule: "DB外部キー制約"
+      description: "teams.user_id に DB レベルの外部キー制約がない（孤立チームが発生しうる）"
+      recommended_fix: "migration で FK 制約を追加"
+
+    - id: "P2-3"
+      severity: high
+      rule: "season_rosters 重複"
+      description: "season_rosters に (season_id, team_membership_id) のユニーク制約なし"
+      recommended_fix: "migration でユニークインデックスを追加"

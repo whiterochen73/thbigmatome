@@ -1,6 +1,6 @@
 # API エンドポイント仕様
 
-最終更新日: 2026-03-21
+最終更新日: 2026-04-01
 
 ## 参照ソースファイル
 
@@ -243,7 +243,7 @@
 
 - **Controller**: `Api::V1::TeamPlayersController#create`
 - **Body Params**:
-  - `players`: `[{ player_id, selected_cost_type, excluded_from_team_total, display_name }]`
+  - `players`: `[{ player_id, selected_cost_type, excluded_from_team_total, display_name, player_card_id }]`
   - `cost_list_id`: integer (optional, チーム合計コスト検証用)
 - **挙動**: 既存メンバーシップをupsert、リストにないプレイヤーを削除
 - **Response**: `{ message: "Team members updated successfully" }`
@@ -638,9 +638,23 @@
 ### POST /api/v1/seasons
 
 - **Controller**: `Api::V1::SeasonsController#create`
+- **認可**: TeamAccessible（チームオーナーまたはCommissioner）
 - **Body Params**: `team_id` (integer), `schedule_id` (integer), `name` (string)
 - **挙動**: Season作成 + 指定Scheduleの全ScheduleDetailをSeasonScheduleとしてコピー
 - **Response**: `{ season: {...}, schedule_count: integer }` 201
+
+### PATCH /api/v1/seasons/:id
+
+- **Controller**: `Api::V1::SeasonsController#update`
+- **認可**: Commissioner ロール必須
+- **Body Params**: `season` → `{ key_player_id }` (TeamMembership ID — 特例選手指定)
+- **Response**: `{ season: {...}, key_player_name: string|null }` 200
+
+### DELETE /api/v1/seasons/:id
+
+- **Controller**: `Api::V1::SeasonsController#destroy`
+- **認可**: Commissioner ロール必須
+- **Response**: 204 No Content
 
 ---
 
@@ -649,7 +663,7 @@
 ### GET /api/v1/player_absences
 
 - **Controller**: `Api::V1::PlayerAbsencesController#index`
-- **Query Params**: `season_id` (integer, 必須)
+- **Query Params**: `season_id` (integer) または `team_id` (integer) — いずれか必須。team_id指定時はそのチームのシーズンの離脱者を返す
 - **Response**: `[...PlayerAbsenceSerializer]`
 
 ### POST /api/v1/player_absences
@@ -909,6 +923,12 @@
 
 ## 投手登板管理 (Pitcher Appearances)
 
+### GET /api/v1/pitcher_appearances
+
+- **Controller**: `Api::V1::PitcherAppearancesController#index`
+- **Query Params**: `team_id` (integer, 必須), `schedule_date` (date string, 必須)
+- **Response**: 指定チーム・日付の投手登板状態一覧（appearance_order順）。各エントリにid, pitcher_id, role, innings_pitched, earned_runs, decision, is_opener, consecutive_short_rest_count, pre_injury_days_excluded, result_category, injury_check等を含む
+
 ### POST /api/v1/pitcher_appearances
 
 - **Controller**: `Api::V1::PitcherAppearancesController#create`
@@ -967,3 +987,97 @@
 
 - **Controller**: `Api::V1::Commissioner::DashboardController#cooldowns`
 - **Response**: 全アクティブチームのクールダウン中選手一覧（選手名・解除日・残日数）
+
+### GET /api/v1/commissioner/dashboard/roster_status
+
+- **Controller**: `Api::V1::Commissioner::DashboardController#roster_status`
+- **Query Params**: `team_id` (integer, optional — 指定時は対象チームのみ), `format` ("csv" でCSVダウンロード)
+- **Response**: 全アクティブチームのロスター状況（コスト・1軍/2軍人数・外の世界枠・警告等）
+- **CSV**: `format=csv` 指定時はCSVファイルをダウンロード
+
+---
+
+## コミッショナー: 選手離脱管理 (Commissioner Player Absences)
+
+Commissioner ロール必須。チームメンバーシップに紐づく離脱レコードの CRUD。
+
+### GET /api/v1/commissioner/team_memberships/:team_membership_id/player_absences
+
+- **Controller**: `Api::V1::Commissioner::PlayerAbsencesController#index`
+- **Response**: 対象メンバーシップの離脱一覧
+
+### POST /api/v1/commissioner/team_memberships/:team_membership_id/player_absences
+
+- **Controller**: `Api::V1::Commissioner::PlayerAbsencesController#create`
+- **Body Params**: `player_absence` → `{ season_id, absence_type, start_date, duration, duration_unit }`
+- **Response**: 201 Created
+
+### GET /api/v1/commissioner/team_memberships/:team_membership_id/player_absences/:id
+
+- **Controller**: `Api::V1::Commissioner::PlayerAbsencesController#show`
+
+### PATCH /api/v1/commissioner/team_memberships/:team_membership_id/player_absences/:id
+
+- **Controller**: `Api::V1::Commissioner::PlayerAbsencesController#update`
+- **Body Params**: `player_absence` → `{ season_id, absence_type, start_date, duration, duration_unit }`
+
+### DELETE /api/v1/commissioner/team_memberships/:team_membership_id/player_absences/:id
+
+- **Controller**: `Api::V1::Commissioner::PlayerAbsencesController#destroy`
+- **Response**: 204 No Content
+
+---
+
+## コミッショナー: チーム監督・コーチ管理 (Commissioner Team Managers)
+
+Commissioner ロール必須。チームに紐づく監督・コーチの CRUD。
+
+### GET /api/v1/commissioner/teams/:team_id/team_managers
+
+- **Controller**: `Api::V1::Commissioner::TeamManagersController#index`
+- **Response**: 対象チームの監督・コーチ一覧
+
+### POST /api/v1/commissioner/teams/:team_id/team_managers
+
+- **Controller**: `Api::V1::Commissioner::TeamManagersController#create`
+- **Body Params**: `team_manager` → `{ manager_id, role }`
+- **Response**: 201 Created
+
+### GET /api/v1/commissioner/teams/:team_id/team_managers/:id
+
+- **Controller**: `Api::V1::Commissioner::TeamManagersController#show`
+
+### PATCH /api/v1/commissioner/teams/:team_id/team_managers/:id
+
+- **Controller**: `Api::V1::Commissioner::TeamManagersController#update`
+- **Body Params**: `team_manager` → `{ manager_id, role }`
+
+### DELETE /api/v1/commissioner/teams/:team_id/team_managers/:id
+
+- **Controller**: `Api::V1::Commissioner::TeamManagersController#destroy`
+- **Response**: 204 No Content
+
+---
+
+## コミッショナー: チームメンバーシップ管理 (Commissioner Team Memberships)
+
+Commissioner ロール必須。チームメンバーシップの参照・更新・削除（createはTeam Players経由）。
+
+### GET /api/v1/commissioner/teams/:team_id/team_memberships
+
+- **Controller**: `Api::V1::Commissioner::TeamMembershipsController#index`
+- **Response**: 対象チームのメンバーシップ一覧
+
+### GET /api/v1/commissioner/teams/:team_id/team_memberships/:id
+
+- **Controller**: `Api::V1::Commissioner::TeamMembershipsController#show`
+
+### PATCH /api/v1/commissioner/teams/:team_id/team_memberships/:id
+
+- **Controller**: `Api::V1::Commissioner::TeamMembershipsController#update`
+- **Body Params**: `team_membership` → `{ squad, selected_cost_type, display_name }`
+
+### DELETE /api/v1/commissioner/teams/:team_id/team_memberships/:id
+
+- **Controller**: `Api::V1::Commissioner::TeamMembershipsController#destroy`
+- **Response**: 204 No Content

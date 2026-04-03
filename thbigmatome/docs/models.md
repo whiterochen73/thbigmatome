@@ -1,11 +1,12 @@
 # モデル仕様書
 
-最終更新日: 2026-03-10
+最終更新日: 2026-04-01
 
 ## 参照ソースファイル
 
 - `app/models/*.rb`
 - `app/models/concerns/baseball_card_validations.rb`
+- `config/game_rules.yaml` — ゲームルール正本（ビジネスルールの値・制約はこのファイルが Single Source of Truth）
 
 ---
 
@@ -205,6 +206,8 @@ class Competition < ApplicationRecord
 
 ### CompetitionEntry
 
+> **ルール正本**: `config/game_rules.yaml#competition` — 大会制約
+
 ```ruby
 class CompetitionEntry < ApplicationRecord
 ```
@@ -217,7 +220,7 @@ class CompetitionEntry < ApplicationRecord
 - `has_many :player_cards, through: :competition_rosters`
 
 **バリデーション**:
-- `competition_id`: uniqueness(scope: team_id)
+- `competition_id`: uniqueness(scope: team_id) — game_rules.yaml#competition.no_duplicate_entry
 
 ---
 
@@ -235,7 +238,7 @@ class CompetitionRoster < ApplicationRecord
 - `squad`: `{ first_squad: 0, second_squad: 1 }`
 
 **バリデーション**:
-- `competition_entry_id`: uniqueness(scope: player_card_id)
+- `competition_entry_id`: uniqueness(scope: player_card_id) — game_rules.yaml#competition.no_duplicate_roster
 - `squad`: presence
 
 ---
@@ -285,7 +288,7 @@ class Game < ApplicationRecord
 ```
 
 **関連**:
-- `belongs_to :competition`
+- `belongs_to :competition, optional: true`
 - `belongs_to :home_team, class_name: "Team", inverse_of: :home_games`
 - `belongs_to :visitor_team, class_name: "Team", inverse_of: :visitor_games`
 - `belongs_to :stadium, optional: true`
@@ -467,7 +470,7 @@ class PitcherGameState < ApplicationRecord
 **関連**:
 - `belongs_to :game`
 - `belongs_to :pitcher, class_name: "Player"` (FK: pitcher_id)
-- `belongs_to :competition`
+- `belongs_to :competition, optional: true`
 - `belongs_to :team`
 
 **バリデーション**:
@@ -477,6 +480,12 @@ class PitcherGameState < ApplicationRecord
 - `injury_check`: inclusion in %w[safe injured], allow_nil
 - `earned_runs`: numericality >= 0
 - `decision`: inclusion in VALID_DECISIONS + [nil]
+- `is_opener`: inclusion in [true, false]
+- `consecutive_short_rest_count`: numericality >= 0
+- `pre_injury_days_excluded`: numericality >= 0
+
+**クラスメソッド**:
+- `PitcherGameState.calculate_result_category(role:, innings_pitched:, game_result:, pitchers_in_game:, fatigue_p: 0, decision: nil)` — result_category自動計算。先発で5イニング未満・後続あり・敗戦・L判定→"ko"、敗戦でイニング>疲労P+1→"long_loss"、試合なし→"no_game"、その他→"normal"
 
 ---
 
@@ -704,11 +713,13 @@ class ScheduleDetail < ApplicationRecord
 
 ### Season
 
+> **ルール正本**: `config/game_rules.yaml#season` — シーズン制約
+
 ```ruby
 class Season < ApplicationRecord
 ```
 
-1チーム1シーズン。
+1チーム1シーズン（game_rules.yaml#season.one_team_one_season）。
 
 **関連**:
 - `belongs_to :team`
@@ -718,7 +729,7 @@ class Season < ApplicationRecord
 
 **バリデーション**:
 - `name`: presence
-- `team_id`: uniqueness (シーズン重複防止)
+- `team_id`: uniqueness (message: :season_already_started)
 
 ---
 
@@ -794,11 +805,18 @@ class Stadium < ApplicationRecord
 
 ### Team
 
+> **ルール正本**: `config/game_rules.yaml#team_composition` — コスト上限・外の世界枠・ロスター制限等
+
 ```ruby
 class Team < ApplicationRecord
   COST_LIMIT_CONFIG = YAML.load_file(Rails.root.join("config", "cost_limits.yml")).freeze
-  TEAM_TOTAL_MAX_COST = COST_LIMIT_CONFIG["team_total_max_cost"]
-  OUTSIDE_WORLD_LIMIT = 4
+  TEAM_TOTAL_MAX_COST = COST_LIMIT_CONFIG["team_total_max_cost"]  # → game_rules.yaml#team_composition.team_total_max_cost: 200
+  OUTSIDE_WORLD_LIMIT = 4  # → game_rules.yaml#team_composition.outside_world_max: 4
+  VALID_TEAM_TYPES = %w[normal hachinai].freeze
+  NATIVE_SERIES = {
+    "normal"   => %w[touhou].freeze,
+    "hachinai" => %w[hachinai tamayomi].freeze
+  }.freeze
 ```
 
 **関連**:
@@ -808,28 +826,29 @@ class Team < ApplicationRecord
 - `has_many :players, through: :team_memberships`
 - `has_many :competition_entries, dependent: :destroy`
 - `has_many :competitions, through: :competition_entries`
-- `has_many :home_games, class_name: "Game", foreign_key: :home_team_id, inverse_of: :home_team`
-- `has_many :visitor_games, class_name: "Game", foreign_key: :visitor_team_id, inverse_of: :visitor_team`
+- `has_many :home_games, class_name: "Game", foreign_key: :home_team_id, dependent: :destroy, inverse_of: :home_team`
+- `has_many :visitor_games, class_name: "Game", foreign_key: :visitor_team_id, dependent: :destroy, inverse_of: :visitor_team`
 - `has_many :pitcher_game_states, dependent: :destroy`
 - `has_many :imported_stats, dependent: :destroy`
 - `has_many :lineup_templates, dependent: :destroy`
 - `has_one :squad_text_setting, dependent: :destroy`
 - `has_one :game_lineup, dependent: :destroy`
 - `has_many :team_managers, dependent: :destroy`
-- `has_one :director_team_manager, -> { where(role: :director) }, class_name: "TeamManager"`
+- `has_one :director_team_manager, -> { where(role: :director) }, class_name: "TeamManager", dependent: :destroy`
 - `has_one :director, through: :director_team_manager, source: :manager`
-- `has_many :coach_team_managers, -> { where(role: :coach) }, class_name: "TeamManager"`
+- `has_many :coach_team_managers, -> { where(role: :coach) }, class_name: "TeamManager", dependent: :destroy`
 - `has_many :coaches, through: :coach_team_managers, source: :manager`
 
 **バリデーション**:
 - `name`: presence
+- `team_type`: inclusion in VALID_TEAM_TYPES
 
 **インスタンスメソッド**:
 - `has_season` — season.present? を返す（TopMenu UI判定用）
 - `validate_team_total_cost(cost_list_id)` — チーム合計コスト上限チェック（TEAM_TOTAL_MAX_COST固定）
-- `validate_outside_world_limit` — 外の世界枠4人以内チェック（現在常に空を返すため実質通過）
-- `validate_outside_world_balance` — 投手/野手混在チェック（cmd_511 Phase 2b廃止により常にtrue）
-- `outside_world_first_squad_memberships` — 常に[] を返す（cmd_511 Phase 2b廃止）
+- `validate_outside_world_limit` — 外の世界枠4人以内チェック（NATIVE_SERIESでteam_typeに応じたネイティブ判定）
+- `validate_outside_world_balance` — 外の世界枠4人時の投手/野手混在チェック（player_cards.card_typeで判定）
+- `outside_world_first_squad_memberships` — 1軍の外の世界枠選手を返す（NATIVE_SERIES[team_type]以外がマッチ）
 
 **クラスメソッド**:
 - `Team.first_squad_cost_limit_for_count(count)` — 1軍人数に対応するコスト上限を返す
@@ -838,6 +857,8 @@ class Team < ApplicationRecord
 ---
 
 ### TeamManager
+
+> **ルール正本**: `config/game_rules.yaml#manager` — 監督制約
 
 ```ruby
 class TeamManager < ApplicationRecord
@@ -852,7 +873,7 @@ class TeamManager < ApplicationRecord
 
 **バリデーション**:
 - `role`: presence
-- `team_id`: uniqueness(scope: role, if: director?) — 監督は1チーム1人
+- `team_id`: uniqueness(scope: role, if: director?) — 監督は1チーム1人（game_rules.yaml#manager.one_director_per_team）
 - カスタムvalidate: `manager_cannot_be_assigned_to_multiple_teams_in_same_league` — リーグ系テーブル廃止により無効化（cmd_511 Phase 3）
 
 ---
@@ -861,11 +882,13 @@ class TeamManager < ApplicationRecord
 
 ```ruby
 class TeamMembership < ApplicationRecord
+  attr_accessor :skip_commissioner_validation
 ```
 
 **関連**:
 - `belongs_to :team`
 - `belongs_to :player`
+- `belongs_to :player_card, optional: true`
 - `has_many :season_rosters`
 - `has_many :player_absences, dependent: :restrict_with_error`
 
@@ -876,6 +899,7 @@ class TeamMembership < ApplicationRecord
 **バリデーション**:
 - `squad`: inclusion in %w[first second]
 - `selected_cost_type`: presence, inclusion in %w[normal_cost relief_only_cost pitcher_only_cost fielder_only_cost two_way_cost]
+- カスタムvalidate: `player_not_in_director_sibling_team` (on: :create, unless: skip_commissioner_validation) — 同一監督の兄弟チーム間で選手重複を禁止（game_rules.yaml#team_composition.second_team.player_exclusivity）
 
 ---
 

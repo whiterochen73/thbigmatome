@@ -19,6 +19,8 @@
 5. [運用設定](#5-運用設定)
 6. [動作確認](#6-動作確認)
 7. [トラブルシューティング](#7-トラブルシューティング)
+8. [カード画像のデプロイ](#8-カード画像のデプロイ)
+9. [カード画像準備（PDF再生成）](#9-カード画像準備pdf再生成)
 
 ---
 
@@ -355,7 +357,7 @@ docker compose -f docker-compose.prod.yml --env-file .env.production \
   exec rails bundle exec rails runner "puts ActiveStorage::Attachment.count"
 ```
 
-初回デプロイ時はカードデータのインポートが必要です（別途 `import_card_data` タスクを参照）。
+初回デプロイ時はカードデータのインポートが必要です（[セクション 8: カード画像のデプロイ](#8-カード画像のデプロイ) を参照）。
 
 ---
 
@@ -387,6 +389,165 @@ docker compose -f docker-compose.prod.yml --env-file .env.production restart rai
 ```
 
 2GB プランでは定期再起動の設定（5-2 参照）を必ず行うこと。
+
+---
+
+## 8. カード画像のデプロイ
+
+選手カード画像を本番環境にインポートする手順です。Active Storage でカード画像を PlayerCard に紐付けます。
+
+### 8-1. 対象カードセット
+
+| ディレクトリ名 | DB 上の CardSet 名 |
+|---------------|-------------------|
+| `2025THBIG` | 2025THBIG |
+| `hachinai6.1` | ハチナイ6.1 |
+| `PM2026` | PM2026 |
+| `tamayomi2` | 球詠2 |
+
+### 8-2. ローカル側準備
+
+元画像は以下のディレクトリに格納されています:
+
+```
+/mnt/c/tools/multi-agent-shogun/projects/thbig/context/thbig-irc-cards/split/
+├── 2025THBIG/trimmed/*.png
+├── hachinai6.1/trimmed/*.png
+├── PM2026/trimmed/*.png
+└── tamayomi2/trimmed/*.png
+```
+
+ファイル命名規則: `p{page}_c{col}.png`（例: `p1_c3.png` = 1ページ目の3番目のカード）
+
+開発環境用のコピーが `thbigmatome/tmp/card_images/` にも配置されています（432ファイル）。本番デプロイ時は上記の正本ディレクトリから転送してください。
+
+CSV マッピングファイル（カード番号と選手名の対応）:
+
+```
+/home/morinaga/projects/thbig-irc-parser/data/import/player_cards.csv
+```
+
+### 8-3. VPS への転送
+
+カード画像と CSV を VPS に転送します。
+
+```bash
+# 画像ディレクトリを VPS に転送
+scp -r /mnt/c/tools/multi-agent-shogun/projects/thbig/context/thbig-irc-cards/split/ \
+  deploy@<VPS_IP>:/home/deploy/card_images/
+
+# CSV ファイルを転送
+scp /home/morinaga/projects/thbig-irc-parser/data/import/player_cards.csv \
+  deploy@<VPS_IP>:/home/deploy/card_images/player_cards.csv
+```
+
+VPS 側の配置:
+
+```
+/home/deploy/card_images/
+├── player_cards.csv
+├── 2025THBIG/trimmed/*.png
+├── hachinai6.1/trimmed/*.png
+├── PM2026/trimmed/*.png
+└── tamayomi2/trimmed/*.png
+```
+
+### 8-4. インポート実行
+
+VPS 上で rake タスクを実行します。環境変数 `CARD_IMAGE_DIR` と `CARD_CSV_PATH` で画像とCSVの場所を指定します。
+
+```bash
+docker compose -f docker-compose.prod.yml --env-file .env.production \
+  exec -e CARD_IMAGE_DIR=/home/deploy/card_images \
+       -e CARD_CSV_PATH=/home/deploy/card_images/player_cards.csv \
+  rails bundle exec rake import:card_images
+```
+
+rake タスクはべき等（idempotent）です。既に画像が添付済みのカードはスキップされるため、再実行しても問題ありません。
+
+### 8-5. 確認方法
+
+インポート結果を確認します。
+
+```bash
+# Active Storage のアタッチメント数を確認
+docker compose -f docker-compose.prod.yml --env-file .env.production \
+  exec rails bundle exec rails runner \
+  "puts \"Total attachments: #{ActiveStorage::Attachment.count}\"; puts \"Cards with image: #{PlayerCard.joins(:card_image_attachment).count} / #{PlayerCard.count}\""
+```
+
+ブラウザで `https://dugout.thbig.fun` にアクセスし、選手カード一覧画面でカード画像が表示されることを確認します。
+
+画像が表示されない場合は `APP_HOST` 環境変数が正しく設定されているか確認してください（セクション 4-2 参照）。
+
+---
+
+## 9. カード画像準備（PDF再生成）
+
+新しいカードセットが追加された場合や、既存のカード画像を再生成する場合の手順です。PDF からカード画像を切り出し、トリミングします。
+
+### 9-1. 前提条件
+
+以下のツールがインストールされている必要があります:
+
+- `poppler-utils`（`pdftoppm` コマンド）
+- `python3`
+- `opencv-python-headless`（`trim_card_images.sh` が `~/.cardenv` に自動で venv を作成します）
+
+```bash
+# poppler-utils のインストール（Ubuntu/WSL）
+sudo apt-get install -y poppler-utils
+```
+
+### 9-2. 元 PDF の場所
+
+カードセットの PDF ファイルは以下に配置されています:
+
+```
+/mnt/c/Users/necro/Documents/to_team/player-cards/
+├── 2025THBIG.pdf
+├── hachinai6.1.pdf
+├── PM2026.pdf
+└── tamayomi2.pdf
+```
+
+### 9-3. 裁断ツール
+
+裁断スクリプトは `thbig-irc-parser` リポジトリに配置されています:
+
+| スクリプト | 機能 |
+|-----------|------|
+| `scripts/split_card_pdf.sh` | PDF を 1 ページあたり 9 枚に分割（pdftoppm + opencv で座標切り出し） |
+| `scripts/trim_card_images.sh` | 余白をトリミングして最終画像を生成 |
+
+### 9-4. 実行手順
+
+全 4 カードセットを一括処理する場合:
+
+```bash
+cd /mnt/c/tools/multi-agent-shogun/projects/thbig
+
+for set in 2025THBIG hachinai6.1 PM2026 tamayomi2; do
+  # PDF → 9分割
+  bash /home/morinaga/projects/thbig-irc-parser/scripts/split_card_pdf.sh \
+    "/mnt/c/Users/necro/Documents/to_team/player-cards/${set}.pdf" \
+    "context/thbig-irc-cards/split/${set}/"
+
+  # 余白トリミング
+  bash /home/morinaga/projects/thbig-irc-parser/scripts/trim_card_images.sh \
+    "context/thbig-irc-cards/split/${set}/"
+done
+```
+
+出力先:
+
+```
+context/thbig-irc-cards/split/{カードセット名}/trimmed/*.png
+```
+
+### 9-5. 再生成後の手順
+
+画像の再生成が完了したら、[セクション 8: カード画像のデプロイ](#8-カード画像のデプロイ) の手順に従って VPS へ転送・インポートを行います。
 
 ---
 

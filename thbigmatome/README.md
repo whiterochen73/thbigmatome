@@ -21,14 +21,19 @@
 
 | 項目 | バージョン / 技術 |
 |------|-----------------|
-| Ruby | 3.4.4 |
-| Rails | 8.1 (API mode) |
+| Ruby | 3.4.7 |
+| Rails | 8.1.3 (API mode) |
 | DB | PostgreSQL 16 |
 | Web server | Puma |
 | Job queue | Solid Queue |
 | Cache | Solid Cache |
 | Action Cable | Solid Cable |
-| Deploy | Kamal |
+| Deploy | Docker Compose (production) |
+| Node.js | 20.x |
+| Vue.js | 3.5 |
+| Vuetify | 4.0 |
+| Vite | 7.x |
+| TypeScript | 5.8 |
 
 ## 主な機能
 
@@ -62,7 +67,7 @@ docker compose up
 
 **前提条件**
 
-- Ruby 3.4.4 (`rbenv` 等で管理)
+- Ruby 3.4.7 (`rbenv` 等で管理)
 - PostgreSQL（ローカルまたはDockerで起動）
 - Bundler
 
@@ -86,12 +91,20 @@ bin/rails server
 
 ## テスト
 
+### バックエンド（RSpec）
+
 ```bash
-# RSpec（全テスト）
 bundle exec rspec
 
 # 特定ファイル
 bundle exec rspec spec/controllers/api/v1/teams_controller_spec.rb
+```
+
+### フロントエンド（Vitest）
+
+```bash
+cd ../thbigmatome-front
+yarn test
 ```
 
 ## API ドキュメント
@@ -102,14 +115,13 @@ bundle exec rspec spec/controllers/api/v1/teams_controller_spec.rb
 
 ## デプロイ
 
-Kamal を使用してデプロイします。
+Docker Compose を使用して本番環境にデプロイします。
 
 ```bash
-# 初回セットアップ
-bin/kamal setup
-
-# デプロイ
-bin/kamal deploy
+cd ~/projects
+docker compose -f docker-compose.prod.yml --env-file .env.production build
+docker compose -f docker-compose.prod.yml --env-file .env.production up -d
 ```
 
-設定ファイル: `config/deploy.yml`
+詳細は [`DEPLOY.md`](DEPLOY.md) を参照してください。
+VPS初期設定を含む完全な手順は [`docs/deploy-guide.md`](docs/deploy-guide.md) を参照。

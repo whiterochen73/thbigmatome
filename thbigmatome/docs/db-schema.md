@@ -1,10 +1,11 @@
 # DB スキーマ仕様書
 
-最終更新日: 2026-03-10
+最終更新日: 2026-04-01
 
 ## 参照ソースファイル
 
-- `db/schema.rb` (schema version: 2026_03_09_142556)
+- `db/schema.rb` (schema version: 2026_03_28_143743)
+- `config/game_rules.yaml` — ゲームルール正本（DB制約とビジネスルールの照合に使用）
 
 ---
 
@@ -531,7 +532,7 @@
 | id | bigint | NO | (auto) | 主キー |
 | game_id | bigint | NO | — | games FK |
 | pitcher_id | bigint | NO | — | players FK（投手） |
-| competition_id | bigint | NO | — | competitions FK |
+| competition_id | bigint | YES | — | competitions FK |
 | team_id | bigint | NO | — | teams FK |
 | role | string | NO | — | 役割 (starter/reliever/opener) |
 | innings_pitched | decimal(5,1) | YES | — | 投球回数 |
@@ -542,6 +543,10 @@
 | result_category | string | YES | — | 結果カテゴリ (normal/ko/no_game/long_loss) |
 | injury_check | string | YES | — | 怪我チェック結果 (safe/injured) |
 | schedule_date | string | YES | — | スケジュール日付文字列 |
+| appearance_order | integer | NO | 0 | 投手の登板順序（リリーフの順番管理） |
+| is_opener | boolean | NO | false | オープナー投手フラグ |
+| consecutive_short_rest_count | integer | NO | 0 | 連続短期登板回数（疲労管理） |
+| pre_injury_days_excluded | integer | NO | 0 | 怪我除外日数（リハビリ期間追跡） |
 | created_at | datetime | NO | — | 作成日時 |
 | updated_at | datetime | NO | — | 更新日時 |
 

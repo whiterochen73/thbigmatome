@@ -1,63 +1,72 @@
-# thbigmatome-front
+# THBIG Dugout — フロントエンド
 
-## 概要
-
-このプロジェクトは `thbigmatome` のフロントエンドアプリケーションです。
-Vue.jsとViteで構築されています。
+東方BIG野球のチーム・選手・試合を管理するファンタジー野球管理アプリ「THBIG Dugout」のフロントエンドです。
 
 ## 主な技術スタック
 
-- Vue 3
-- Vite
-- TypeScript
-- Vuetify
-- Pinia
-- Vue Router
+| 項目 | バージョン |
+|------|-----------|
+| Vue.js | 3.5 |
+| Vuetify | 4.0.3 |
+| Vite | 7.x |
+| TypeScript | 5.8 |
+| Vue Router | 5 |
+| Pinia | 3.x |
+| Vitest | 4.x |
+| Node.js | 20.x |
+
+## 主な機能
+
+- **チーム編成**: チームメンバー登録・選手カード選択・コスト管理
+- **試合記録**: 試合ログインポート・打席記録表示・投手登板記録入力
+- **日程管理**: シーズン日程・大会管理
+- **コミッショナー機能**: ユーザー管理・離脱状況確認・1軍登録状況CSV出力
+- **選手カード**: カード画像表示・PlayerNameLinkホバーポップアップ
 
 ## 開発環境のセットアップ
 
 ### 前提条件
 
-- Node.js (18.x or later)
-- npm, yarn, or pnpm
+- Node.js 20.x
+- npm（またはyarn / pnpm）
 
 ### 手順
 
-1.  **リポジトリをクローンします**
-    ```bash
-    git clone <repository_url>
-    cd thbigmatome-front
-    ```
+```bash
+cd thbigmatome-front
 
-2.  **環境変数を設定します**
-    `.env.example` をコピーして `.env.local` ファイルを作成し、バックエンドAPIのURLを設定します。
-    ```bash
-    cp .env.example .env.local
-    ```
-    必要に応じて `.env.local` の `VITE_API_BASE_URL` を編集してください。
+# 環境変数を設定
+cp .env.example .env.local
+# .env.local の VITE_API_BASE_URL を編集（デフォルト: http://localhost:3000/api/v1）
 
-    **注意:** `.env.local` ファイルは `.gitignore` に含まれており、リポジトリにはコミットされません。
+# 依存関係インストール
+npm install
 
-3.  **依存関係をインストールします**
-    ```bash
-    npm install
-    # or: yarn install
-    # or: pnpm install
-    ```
+# 開発サーバー起動（http://localhost:5173）
+npm run dev
+```
 
-4.  **開発サーバーを起動します**
-    ```bash
-    npm run dev
-    # or: yarn dev
-    # or: pnpm dev
-    ```
-    アプリケーションは `http://localhost:5173` (Viteのデフォルト) で利用可能になります。
+**注意:** `.env.local` は `.gitignore` 対象。リポジトリにコミットされません。
+
+## テスト
+
+```bash
+# ユニットテスト
+npm run test
+# または
+npx vitest run
+```
 
 ## ビルド
 
-本番用のファイルを生成するには、以下のコマンドを実行します。
-
 ```bash
+# 本番ビルド（dist/ に出力）
 npm run build
+
+# TypeScriptチェック（本番ビルド前に実行推奨）
+npx vue-tsc --noEmit
 ```
-ビルドされたファイルは `dist` ディレクトリに出力されます。
+
+## デプロイ
+
+Docker Compose を使用して本番環境にデプロイします。詳細は [`../thbigmatome/DEPLOY.md`](../thbigmatome/DEPLOY.md) を参照。

@@ -1,6 +1,6 @@
 # シリアライザ仕様
 
-最終更新日: 2026-03-10
+最終更新日: 2026-04-01
 
 ## 参照ソースファイル
 
@@ -158,6 +158,7 @@
 |------|------|
 | `id` | エントリーID |
 | `player_card_id` | 選手カードID |
+| `player_id` | 選手ID（computed） |
 | `player_name` | 選手名（computed） |
 | `role` | 役割（starter/reliever等） |
 | `batting_order` | 打順 |
@@ -167,6 +168,7 @@
 
 **computed属性の計算ロジック**:
 - `player_name`: `object.player_card.player.name` — 関連PlayerCardからPlayer名を取得
+- `player_id`: `object.player_card.player_id` — 関連PlayerCardからPlayer IDを取得
 
 ---
 
@@ -237,10 +239,12 @@
 | `duration` | 欠場期間 |
 | `duration_unit` | 期間単位 |
 | `player_name` | 選手名（computed） |
+| `player_id` | 選手ID（computed） |
 | `effective_end_date` | 実質終了日（computed、モデル側で計算） |
 
 **computed属性の計算ロジック**:
 - `player_name`: `object.team_membership.player.name` — TeamMembership経由でPlayer名を取得
+- `player_id`: `object.team_membership.player_id` — TeamMembership経由でPlayer IDを取得
 
 ---
 
@@ -383,9 +387,14 @@
 | `name` | 選手名 |
 | `short_name` | 略称 |
 | `number` | 背番号 |
+| `series` | 作品シリーズ |
+| `costs` | コスト情報一覧（computed） |
 
 **ネスト関係**:
 - `has_many :player_cards, serializer: PlayerCardSummarySerializer` — 保有カード一覧（サマリー形式）
+
+**computed属性の計算ロジック**:
+- `costs`: `object.cost_players.includes(:cost)` から各コスト情報（cost_name, normal_cost, pitcher_only_cost, fielder_only_cost, relief_only_cost, two_way_cost）の配列を返す
 
 ---
 
@@ -406,12 +415,14 @@
 | `number` | 背番号 |
 | `short_name` | 略称 |
 | `handedness` | 利き手（computed） |
+| `position` | ポジション（computed） |
 
 **ネスト関係**:
 - `has_many :cost_players, serializer: CostPlayerSerializer` — コスト情報一覧
 
 **computed属性の計算ロジック**:
 - `handedness`: `object.player_cards.first&.handedness` — 最初のPlayerCardのhandedness属性
+- `position`: pitcherカードがあれば"pitcher"、なければ最初のカードの守備位置(downcase)
 
 ---
 
@@ -482,6 +493,8 @@
 | `current_date` | 現在日付 |
 | `start_date` | シーズン開始日（computed） |
 | `end_date` | シーズン終了日（computed） |
+| `key_player_id` | 特例選手のTeamMembership ID |
+| `key_player_name` | 特例選手名（computed） |
 
 **ネスト関係**:
 - `has_many :season_schedules, serializer: SeasonScheduleSerializer` — 全試合スケジュール一覧
@@ -489,6 +502,7 @@
 **computed属性の計算ロジック**:
 - `start_date`: `object.season_schedules.minimum(:date)` — シーズンスケジュールの最小日付
 - `end_date`: `object.season_schedules.maximum(:date)` — シーズンスケジュールの最大日付
+- `key_player_name`: `object.key_player&.player&.name` — 特例選手のPlayer名
 
 ---
 
@@ -565,13 +579,18 @@
 | `id` | チームメンバーシップID |
 | `team_id` | チームID |
 | `player_id` | 選手ID |
+| `player_card_id` | 選手カードID |
 | `squad` | 所属 (first/second) |
 | `selected_cost_type` | 選択コスト種別 |
 | `excluded_from_team_total` | チーム合計除外フラグ |
 | `display_name` | 表示名 |
+| `player_card_info` | 選手カード情報（computed） |
 
 **ネスト関係**:
 - `belongs_to :player` — 選手情報（PlayerSerializerで展開）
+
+**computed属性の計算ロジック**:
+- `player_card_info`: player_card が存在する場合 `{ id, card_type, card_set_name, card_set_id }` を返す。なければ null
 
 ---
 
@@ -591,14 +610,18 @@
 | `current_cost` | 現在のコスト値（computed） |
 | `excluded_from_team_total` | チーム合計除外フラグ（computed） |
 | `display_name` | 表示名（computed） |
+| `player_card_id` | 選手カードID（computed） |
+| `player_card_info` | 選手カード情報（computed） |
 
 **computed属性の計算ロジック**:
-- `selected_cost_type`: `object.team_memberships.find_by(team_id: @instance_options[:team].id).selected_cost_type` — オプションで渡されたチームのメンバーシップから取得
+- `selected_cost_type`: `membership.selected_cost_type` — オプションで渡されたチームのメンバーシップから取得
 - `current_cost`: `object.cost_players.find_by(cost_id: @instance_options[:cost_list_id])&.send(cost_type)` — コストリストIDから該当CostPlayerを取得し、selected_cost_typeに応じた値を返す
-- `excluded_from_team_total`: `object.team_memberships.find_by(team_id: ...).excluded_from_team_total`
-- `display_name`: `object.team_memberships.find_by(team_id: ...).display_name`
+- `excluded_from_team_total`: `membership.excluded_from_team_total`
+- `display_name`: `membership.display_name`
+- `player_card_id`: `membership.player_card_id`
+- `player_card_info`: player_card が存在する場合 `{ id, card_type, card_set_name, card_set_id }` を返す。なければ null
 
-**注意**: `@instance_options` でコントローラから `team:` と `cost_list_id:` を受け取る
+**注意**: `@instance_options` でコントローラから `team:` と `cost_list_id:` を受け取る。`membership` はteam_idで該当TeamMembershipを検索
 
 ---
 

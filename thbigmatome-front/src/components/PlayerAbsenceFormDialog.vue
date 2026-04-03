@@ -1,5 +1,5 @@
 <template>
-  <v-dialog v-model="isOpen" max-width="600px">
+  <v-dialog v-model="isOpen" max-width="640px" persistent>
     <v-card>
       <v-card-title>
         <span class="text-h5">{{
@@ -15,7 +15,7 @@
                   v-model="newAbsence.team_membership_id"
                   :team-id="props.teamId"
                   :label="t('playerAbsenceDialog.form.playerName')"
-                  :rules="[(v) => !!v || t('playerAbsenceDialog.form.selectPlayerName')]"
+                  :rules="[(v: unknown) => !!v || t('playerAbsenceDialog.form.selectPlayerName')]"
                   required
                 ></TeamMemberSelect>
               </v-col>
@@ -72,10 +72,10 @@
       </v-card-text>
       <v-card-actions>
         <v-spacer></v-spacer>
-        <v-btn color="blue-darken-1" variant="text" @click="isOpen = false">
+        <v-btn variant="text" @click="isOpen = false">
           {{ t('actions.cancel') }}
         </v-btn>
-        <v-btn color="blue-darken-1" variant="text" @click="saveAbsence">
+        <v-btn color="accent" variant="flat" @click="saveAbsence">
           {{ t('actions.save') }}
         </v-btn>
       </v-card-actions>
@@ -99,7 +99,6 @@ const isOpen = defineModel({
 })
 
 const props = defineProps<{
-  modelValue: boolean // Controls dialog visibility
   seasonId: number
   teamId: number
   initialStartDate: string // ADDED
@@ -112,6 +111,7 @@ const form = ref<HTMLFormElement | null>(null)
 const newAbsence = ref<PlayerAbsence>({
   id: 0,
   team_membership_id: 0,
+  player_id: 0,
   season_id: props.seasonId,
   absence_type: 'injury',
   reason: '',
@@ -170,7 +170,8 @@ watch(
         // Creating new absence
         newAbsence.value = {
           id: 0,
-          team_membership_id: null,
+          team_membership_id: 0,
+          player_id: 0,
           season_id: props.seasonId,
           absence_type: 'injury',
           reason: '',

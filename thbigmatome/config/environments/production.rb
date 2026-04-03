@@ -22,10 +22,12 @@ Rails.application.configure do
   config.active_storage.service = :local
 
   # Assume all access to the app is happening through a SSL-terminating reverse proxy.
-  config.assume_ssl = true
+  # Set RAILS_ASSUME_SSL=false when deploying without SSL (e.g. IP direct access in v0.1.0).
+  config.assume_ssl = ENV.fetch("RAILS_ASSUME_SSL", "true") == "true"
 
   # Force all access to the app over SSL, use Strict-Transport-Security, and use secure cookies.
-  config.force_ssl = true
+  # Set RAILS_FORCE_SSL=false when deploying without SSL (e.g. IP direct access in v0.1.0).
+  config.force_ssl = ENV.fetch("RAILS_FORCE_SSL", "true") == "true"
 
   # Skip http-to-https redirect for the default health check endpoint.
   # config.ssl_options = { redirect: { exclude: ->(request) { request.path == "/up" } } }
@@ -55,7 +57,14 @@ Rails.application.configure do
   # config.action_mailer.raise_delivery_errors = false
 
   # Set host to be used by links generated in mailer templates.
-  config.action_mailer.default_url_options = { host: "example.com" }
+  # TODO(P対応後): サーバー契約・ドメイン確定後に本番ドメインを設定すること。
+  config.action_mailer.default_url_options = { host: ENV.fetch("APP_HOST", "example.com") }
+
+  # ActiveStorage URL生成用: HTTPSプロトコルを明示（カード画像等のURL）
+  config.action_controller.default_url_options = {
+    host: ENV.fetch("APP_HOST", "example.com"),
+    protocol: "https"
+  }
 
   # Specify outgoing SMTP server. Remember to add smtp/* credentials via rails credentials:edit.
   # config.action_mailer.smtp_settings = {
@@ -77,9 +86,10 @@ Rails.application.configure do
   config.active_record.attributes_for_inspect = [ :id ]
 
   # Enable DNS rebinding protection and other `Host` header attacks.
+  # TODO(P対応後): サーバー契約・ドメイン確定後に本番ドメインを設定すること。
   # config.hosts = [
-  #   "example.com",     # Allow requests from example.com
-  #   /.*\.example\.com/ # Allow requests from subdomains like `www.example.com`
+  #   "your-production-domain.com",
+  #   /.*\.your-production-domain\.com/
   # ]
   #
   # Skip DNS rebinding protection for the default health check endpoint.

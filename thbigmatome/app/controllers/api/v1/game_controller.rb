@@ -9,6 +9,13 @@ class Api::V1::GameController < Api::V1::BaseController
       return
     end
 
+    year = season_schedule.date.year
+    competition_entry = CompetitionEntry.joins(:competition)
+                                        .where(team_id: team.id)
+                                        .where(competitions: { year: year, competition_type: "league_pennant" })
+                                        .first
+    competition_id = competition_entry&.competition_id
+
     render json: {
       team_id: team.id,
       team_name: team.name,
@@ -16,6 +23,7 @@ class Api::V1::GameController < Api::V1::BaseController
       game_date: season_schedule.date,
       game_number: season_schedule.calculated_game_number,
       announced_starter_id: season_schedule.announced_starter&.id,
+      competition_id: competition_id,
       stadium: season_schedule.stadium,
       home_away: season_schedule.home_away,
       designated_hitter_enabled: season_schedule.designated_hitter_enabled,
@@ -44,7 +52,7 @@ class Api::V1::GameController < Api::V1::BaseController
     if season_schedule.update(update_params)
       render json: season_schedule, status: :ok
     else
-      render json: { errors: season_schedule.errors.full_messages }, status: :unprocessable_entity
+      render json: { errors: season_schedule.errors.full_messages }, status: :unprocessable_content
     end
   rescue ActiveRecord::RecordNotFound
     render json: { error: "Game not found" }, status: :not_found
@@ -62,9 +70,6 @@ class Api::V1::GameController < Api::V1::BaseController
       :score,
       :opponent_score,
       :opponent_team_id,
-      :winning_pitcher_id,
-      :losing_pitcher_id,
-      :save_pitcher_id,
       scoreboard: { home: [], away: [] },
       starting_lineup: [ :player_id, :position, :order ],
       opponent_starting_lineup: [ :player_id, :position, :order ]

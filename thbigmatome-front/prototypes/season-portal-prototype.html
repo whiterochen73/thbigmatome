@@ -1,0 +1,949 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SeasonPortal プロトタイプ - 東方BIG野球まとめ</title>
+  <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@mdi/font@7/css/materialdesignicons.min.css"/>
+  <style>
+    /* ===== 和色パレット ===== */
+    :root {
+      --color-ai:       #1B3A6B; /* 藍色 (primary / 試合日) */
+      --color-chikusa:  #4A7A8A; /* 千草色 (secondary / 移動日) */
+      --color-yamabuki: #D4940A; /* 山吹 (warning / 予備日) */
+      --color-moegi:    #5D8A2F; /* 萌黄 (success / 勝ち) */
+      --color-shu:      #B01C2A; /* 朱色 (error / 負け) */
+      --color-washi:    #F8F6F1; /* 和紙色 (background / 休養日) */
+      --color-surface:  #FFFFFF;
+      --color-text-high:   #1A1A1A;
+      --color-text-med:    #4A4A4A;
+      --color-text-cap:    #777777;
+      --color-text-dis:    #BBBBBB;
+
+      /* 淡色 */
+      --color-ai-light:       #D8E2F2;
+      --color-chikusa-light:  #D6E8ED;
+      --color-yamabuki-light: #FAEBC6;
+      --color-moegi-light:    #D9EBC4;
+      --color-shu-light:      #F5D5D8;
+      --color-off-light:      #EEECE7;
+
+      /* 曜日背景 */
+      --color-sat-bg: #EEF2FA;
+      --color-sun-bg: #FAF0F0;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Hiragino Kaku Gothic ProN', 'Yu Gothic', Meiryo, sans-serif;
+      background: var(--color-washi);
+      color: var(--color-text-high);
+      min-height: 100vh;
+    }
+
+    /* ===== アプリヘッダー ===== */
+    .app-header {
+      background: var(--color-ai);
+      color: #fff;
+      padding: 12px 20px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+      position: sticky; top: 0; z-index: 100;
+    }
+    .app-header .logo { font-size: 17px; font-weight: bold; letter-spacing: 0.04em; }
+    .app-header .team-name {
+      font-size: 14px;
+      font-weight: 600;
+      opacity: 0.9;
+    }
+    .app-header .season-name {
+      margin-left: auto;
+      background: rgba(255,255,255,0.18);
+      border-radius: 16px;
+      padding: 4px 14px;
+      font-size: 13px;
+    }
+
+    /* ===== タブ ===== */
+    .tabs {
+      display: flex;
+      background: var(--color-ai);
+      border-bottom: 2px solid rgba(255,255,255,0.12);
+    }
+    .tab-btn {
+      flex: 1;
+      padding: 11px 8px 9px;
+      background: none;
+      border: none;
+      color: rgba(255,255,255,0.6);
+      cursor: pointer;
+      font-size: 12px;
+      font-family: inherit;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 3px;
+      border-bottom: 3px solid transparent;
+      transition: color 0.2s, border-color 0.2s;
+    }
+    .tab-btn.active {
+      color: #fff;
+      border-bottom-color: var(--color-yamabuki);
+      background: rgba(255,255,255,0.07);
+    }
+    .tab-btn .mdi { font-size: 20px; }
+
+    /* ===== メインコンテンツ ===== */
+    .main { padding: 16px; max-width: 960px; margin: 0 auto; }
+
+    /* ===== カレンダーツールバー ===== */
+    .calendar-toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 14px;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .month-nav { display: flex; align-items: center; gap: 8px; }
+    .month-nav button {
+      background: none;
+      border: 1px solid var(--color-text-dis);
+      border-radius: 6px;
+      width: 32px; height: 32px;
+      cursor: pointer;
+      font-size: 16px;
+      display: flex; align-items: center; justify-content: center;
+      transition: background 0.15s, border-color 0.15s;
+    }
+    .month-nav button:hover { background: rgba(27,58,107,0.1); border-color: var(--color-ai); }
+    .month-label { font-size: 19px; font-weight: bold; min-width: 110px; text-align: center; }
+    .view-toggle { display: flex; gap: 4px; }
+    .view-btn {
+      background: none;
+      border: 1.5px solid var(--color-text-dis);
+      border-radius: 6px;
+      width: 34px; height: 34px;
+      cursor: pointer;
+      font-size: 18px;
+      display: flex; align-items: center; justify-content: center;
+      transition: background 0.15s, border-color 0.2s, color 0.2s;
+      color: var(--color-text-med);
+    }
+    .view-btn.active {
+      background: var(--color-ai);
+      border-color: var(--color-ai);
+      color: #fff;
+    }
+
+    /* ===== カレンダーグリッド ===== */
+    .cal-wrapper {
+      background: var(--color-surface);
+      border-radius: 10px;
+      border: 1px solid #E8E4DC;
+      overflow: hidden;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.07);
+    }
+    .calendar-grid { width: 100%; border-collapse: collapse; table-layout: fixed; }
+    .calendar-grid .dow {
+      text-align: center;
+      padding: 7px 2px;
+      font-size: 11px;
+      color: var(--color-text-cap);
+      font-weight: 600;
+      letter-spacing: 0.05em;
+      background: #F3F0EA;
+      border-bottom: 1px solid #E8E4DC;
+    }
+    .calendar-grid .dow.sat { color: #2563EB; }
+    .calendar-grid .dow.sun { color: var(--color-shu); }
+
+    .day-cell {
+      vertical-align: top;
+      border: 1px solid #EDEAD4;
+      background: var(--color-surface);
+      height: 90px;
+      padding: 4px;
+      cursor: pointer;
+      transition: background 0.1s;
+      position: relative;
+    }
+    .day-cell:hover { background: #F5F2EC; }
+    .day-cell.other-month { background: var(--color-washi); cursor: default; }
+    .day-cell.other-month:hover { background: var(--color-washi); }
+    .day-cell.other-month .day-num { color: var(--color-text-dis); }
+    .day-cell.sat { background: var(--color-sat-bg); }
+    .day-cell.sun { background: var(--color-sun-bg); }
+    .day-cell.today { border: 2px solid var(--color-ai) !important; }
+
+    .day-num {
+      font-size: 12px;
+      font-weight: 600;
+      width: 22px; height: 22px;
+      display: flex; align-items: center; justify-content: center;
+      border-radius: 50%;
+      margin-bottom: 3px;
+      flex-shrink: 0;
+    }
+    .day-cell.today .day-num {
+      background: var(--color-ai);
+      color: #fff !important;
+    }
+    .day-cell.sat .day-num { color: #2563EB; }
+    .day-cell.sun .day-num { color: var(--color-shu); }
+
+    .schedule-chip {
+      display: block;
+      width: 100%;
+      font-size: 10px;
+      border-radius: 3px;
+      padding: 2px 4px;
+      margin-bottom: 2px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      line-height: 1.4;
+    }
+    .chip-game     { background: var(--color-ai-light);       color: var(--color-ai); font-weight: 600; }
+    .chip-travel   { background: var(--color-chikusa-light);  color: var(--color-chikusa); }
+    .chip-reserve  { background: var(--color-yamabuki-light); color: #92660A; }
+    .chip-off      { background: var(--color-off-light);      color: var(--color-text-cap); }
+
+    .result-win  { color: var(--color-moegi); font-weight: 700; }
+    .result-lose { color: var(--color-shu);   font-weight: 700; }
+    .result-draw { color: var(--color-chikusa); font-weight: 700; }
+
+    /* ===== 凡例 ===== */
+    .legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 12px;
+      padding: 10px 14px;
+      background: var(--color-surface);
+      border-radius: 8px;
+      border: 1px solid #E8E4DC;
+    }
+    .legend-item { display: flex; align-items: center; gap: 5px; font-size: 12px; color: var(--color-text-med); }
+    .legend-dot { width: 12px; height: 10px; border-radius: 3px; flex-shrink: 0; }
+
+    /* ===== 表形式ビュー ===== */
+    .filter-bar {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 12px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+    .filter-label { font-size: 12px; color: var(--color-text-cap); }
+    .filter-chip {
+      padding: 4px 12px;
+      border-radius: 20px;
+      border: 1.5px solid var(--color-text-dis);
+      background: var(--color-surface);
+      font-size: 12px;
+      cursor: pointer;
+      transition: background 0.15s, border-color 0.2s;
+      font-family: inherit;
+    }
+    .filter-chip.active { border-color: var(--color-ai); background: var(--color-ai); color: #fff; }
+    .filter-chip:hover:not(.active) { background: #f0ede6; border-color: var(--color-ai); }
+
+    .schedule-table {
+      width: 100%;
+      border-collapse: collapse;
+      background: var(--color-surface);
+      border-radius: 8px;
+      overflow: hidden;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+    }
+    .schedule-table th {
+      background: var(--color-ai);
+      color: #fff;
+      padding: 9px 12px;
+      text-align: left;
+      font-size: 12px;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+    .schedule-table td {
+      padding: 7px 12px;
+      font-size: 12px;
+      border-bottom: 1px solid #F0EDE8;
+      vertical-align: middle;
+    }
+    .schedule-table tr:last-child td { border-bottom: none; }
+    .schedule-table tr:hover td { background: #F8F5EF; }
+    .schedule-table tr.today-row td { background: #ECF0FA; }
+
+    .type-badge {
+      display: inline-block;
+      padding: 2px 9px;
+      border-radius: 12px;
+      font-size: 11px;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+    .badge-game    { background: var(--color-ai-light);       color: var(--color-ai); }
+    .badge-travel  { background: var(--color-chikusa-light);  color: var(--color-chikusa); }
+    .badge-reserve { background: var(--color-yamabuki-light); color: #92660A; }
+    .badge-off     { background: var(--color-off-light);      color: var(--color-text-cap); }
+
+    .result-badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 20px; height: 20px;
+      border-radius: 50%;
+      font-size: 12px;
+      font-weight: 700;
+    }
+    .result-badge.win  { background: var(--color-moegi-light); color: var(--color-moegi); }
+    .result-badge.lose { background: var(--color-shu-light);   color: var(--color-shu); }
+    .result-badge.draw { background: var(--color-chikusa-light); color: var(--color-chikusa); }
+
+    /* ===== モック（ロスター/離脱者）===== */
+    .mock-section { padding: 32px 16px; text-align: center; }
+    .mock-section .mdi { font-size: 48px; color: var(--color-text-dis); }
+    .mock-section p { margin-top: 12px; color: var(--color-text-cap); font-size: 14px; }
+
+    /* ===== ポップアップ（モバイル用詳細） ===== */
+    .popup-overlay {
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,0.45);
+      z-index: 200;
+      display: flex; align-items: flex-end; justify-content: center;
+    }
+    .popup-sheet {
+      background: var(--color-surface);
+      border-radius: 16px 16px 0 0;
+      padding: 20px;
+      width: 100%;
+      max-width: 480px;
+      box-shadow: 0 -4px 20px rgba(0,0,0,0.15);
+    }
+    .popup-handle {
+      width: 40px; height: 4px;
+      background: var(--color-text-dis);
+      border-radius: 2px;
+      margin: 0 auto 16px;
+    }
+    .popup-date { font-weight: bold; font-size: 15px; margin-bottom: 12px; }
+    .popup-row { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; font-size: 13px; }
+    .popup-label { color: var(--color-text-cap); min-width: 64px; font-size: 12px; }
+    .popup-close {
+      margin-top: 16px;
+      width: 100%;
+      padding: 10px;
+      background: var(--color-ai);
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      font-size: 14px;
+      font-family: inherit;
+      cursor: pointer;
+    }
+
+    /* ===== レスポンシブ ===== */
+    @media (max-width: 768px) {
+      .day-cell { height: 72px; padding: 3px; }
+      .schedule-chip { font-size: 9px; padding: 1px 3px; }
+      .day-num { width: 20px; height: 20px; font-size: 11px; }
+      /* 表ビュー → カード形式 */
+      .schedule-table thead { display: none; }
+      .schedule-table, .schedule-table tbody, .schedule-table tr, .schedule-table td {
+        display: block;
+      }
+      .schedule-table tr {
+        background: var(--color-surface);
+        border-radius: 8px;
+        margin-bottom: 8px;
+        padding: 10px 14px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+        border: 1px solid #EDEAD4;
+      }
+      .schedule-table td {
+        border-bottom: none;
+        padding: 3px 0;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 12px;
+      }
+      .schedule-table td::before {
+        content: attr(data-label);
+        font-size: 11px;
+        color: var(--color-text-cap);
+        min-width: 52px;
+      }
+      .schedule-table tr.today-row {
+        border-color: var(--color-ai);
+        background: #ECF0FA;
+      }
+    }
+
+    @media (max-width: 480px) {
+      .app-header { padding: 10px 14px; }
+      .app-header .logo { font-size: 15px; }
+      .main { padding: 10px; }
+      .month-label { font-size: 16px; min-width: 90px; }
+      .day-cell { height: 60px; }
+    }
+  </style>
+</head>
+<body>
+<div id="app">
+  <!-- ヘッダー -->
+  <div class="app-header">
+    <span class="mdi mdi-torii-gate" style="font-size:22px"></span>
+    <span class="logo">東方BIG野球まとめ</span>
+    <span class="team-name">{{ teamName }}</span>
+    <span class="season-name">{{ seasonName }}</span>
+  </div>
+
+  <!-- タブ -->
+  <div class="tabs">
+    <button class="tab-btn" :class="{active: activeTab==='calendar'}" @click="activeTab='calendar'">
+      <span class="mdi mdi-calendar"></span>
+      カレンダー
+    </button>
+    <button class="tab-btn" :class="{active: activeTab==='roster'}" @click="activeTab='roster'">
+      <span class="mdi mdi-account-group"></span>
+      ロスター
+    </button>
+    <button class="tab-btn" :class="{active: activeTab==='absences'}" @click="activeTab='absences'">
+      <span class="mdi mdi-account-off"></span>
+      離脱者
+    </button>
+  </div>
+
+  <!-- カレンダータブ -->
+  <div class="main" v-if="activeTab==='calendar'">
+    <!-- ツールバー -->
+    <div class="calendar-toolbar">
+      <div class="month-nav">
+        <button @click="prevMonth" title="前月">
+          <span class="mdi mdi-chevron-left"></span>
+        </button>
+        <span class="month-label">{{ monthLabel }}</span>
+        <button @click="nextMonth" title="次月">
+          <span class="mdi mdi-chevron-right"></span>
+        </button>
+      </div>
+      <div class="view-toggle">
+        <button class="view-btn" :class="{active: viewMode==='calendar'}" @click="setView('calendar')" title="カレンダー表示">
+          <span class="mdi mdi-calendar-month"></span>
+        </button>
+        <button class="view-btn" :class="{active: viewMode==='table'}" @click="setView('table')" title="リスト表示">
+          <span class="mdi mdi-format-list-bulleted"></span>
+        </button>
+      </div>
+    </div>
+
+    <!-- カレンダーグリッドビュー -->
+    <template v-if="viewMode==='calendar'">
+      <div class="cal-wrapper">
+        <table class="calendar-grid">
+          <thead>
+            <tr>
+              <th v-for="d in weekdayLabels" :key="d.label" class="dow" :class="d.cls">{{ d.label }}</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="(week, wi) in calendarWeeks" :key="wi">
+              <td
+                v-for="(cell, ci) in week"
+                :key="ci"
+                class="day-cell"
+                :class="cellClass(cell)"
+                @click="openPopup(cell)"
+              >
+                <div class="day-num">{{ cell ? cell.d : '' }}</div>
+                <template v-if="cell && cell.schedule">
+                  <span class="schedule-chip" :class="chipClass(cell.schedule.type)">
+                    <template v-if="cell.schedule.type==='game'">
+                      <template v-if="cell.schedule.consumed">
+                        vs {{ cell.schedule.opponent_short }}
+                        <span :class="resultClass(cell.schedule.result)">
+                          {{ resultMark(cell.schedule.result) }}
+                        </span>
+                        {{ cell.schedule.score }}
+                      </template>
+                      <template v-else>
+                        vs {{ cell.schedule.opponent_short }}
+                        <span style="opacity:0.8">{{ cell.schedule.starter }}</span>
+                      </template>
+                    </template>
+                    <template v-else>{{ typeLabel(cell.schedule.type) }}</template>
+                  </span>
+                </template>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- 凡例 -->
+      <div class="legend">
+        <div class="legend-item">
+          <span class="legend-dot" style="background:var(--color-ai-light); border:1px solid var(--color-ai);"></span>
+          試合日
+        </div>
+        <div class="legend-item">
+          <span class="legend-dot" style="background:var(--color-chikusa-light);"></span>
+          移動日
+        </div>
+        <div class="legend-item">
+          <span class="legend-dot" style="background:var(--color-yamabuki-light);"></span>
+          予備日
+        </div>
+        <div class="legend-item">
+          <span class="legend-dot" style="background:var(--color-off-light); border:1px solid #DDD;"></span>
+          休養日
+        </div>
+        <div class="legend-item" style="margin-left:auto;">
+          <span class="result-win">○</span>勝
+          <span class="result-lose" style="margin-left:6px;">●</span>負
+          <span class="result-draw" style="margin-left:6px;">△</span>分
+        </div>
+      </div>
+    </template>
+
+    <!-- 表形式ビュー -->
+    <template v-else>
+      <div class="filter-bar">
+        <span class="filter-label">表示：</span>
+        <button class="filter-chip" :class="{active: tableFilter==='all'}" @click="tableFilter='all'">全日程</button>
+        <button class="filter-chip" :class="{active: tableFilter==='game'}" @click="tableFilter='game'">試合日のみ</button>
+      </div>
+      <div style="overflow-x:auto;">
+        <table class="schedule-table">
+          <thead>
+            <tr>
+              <th>日付</th>
+              <th>曜日</th>
+              <th>種別</th>
+              <th>対戦相手</th>
+              <th>球場</th>
+              <th>先発投手</th>
+              <th>スコア</th>
+              <th>勝敗</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr
+              v-for="row in filteredTableRows"
+              :key="row.date"
+              :class="{'today-row': row.isToday}"
+            >
+              <td data-label="日付">{{ formatDate(row.date) }}</td>
+              <td data-label="曜日" :style="dowStyle(row.dow)">{{ row.dowLabel }}</td>
+              <td data-label="種別"><span class="type-badge" :class="badgeClass(row.schedule?.type)">{{ typeLabel(row.schedule?.type) }}</span></td>
+              <td data-label="対戦相手">{{ row.schedule?.opponent || '—' }}</td>
+              <td data-label="球場">{{ row.schedule?.venue || '—' }}</td>
+              <td data-label="先発投手">
+                <template v-if="row.schedule?.type==='game' && !row.schedule.consumed">
+                  {{ row.schedule.starter }}
+                </template>
+                <template v-else>—</template>
+              </td>
+              <td data-label="スコア">{{ row.schedule?.score || '—' }}</td>
+              <td data-label="勝敗">
+                <template v-if="row.schedule?.consumed">
+                  <span class="result-badge" :class="row.schedule.result">
+                    {{ resultMark(row.schedule.result) }}
+                  </span>
+                </template>
+                <template v-else>—</template>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </template>
+  </div>
+
+  <!-- ロスタータブ（モック） -->
+  <div class="main" v-if="activeTab==='roster'">
+    <div class="mock-section">
+      <span class="mdi mdi-account-group"></span>
+      <p>ロスター情報（本実装で追加予定）</p>
+      <p style="margin-top:8px; font-size:12px;">選手一覧・能力・ポジション</p>
+    </div>
+  </div>
+
+  <!-- 離脱者タブ（モック） -->
+  <div class="main" v-if="activeTab==='absences'">
+    <div class="mock-section">
+      <span class="mdi mdi-account-off"></span>
+      <p>離脱者情報（本実装で追加予定）</p>
+      <p style="margin-top:8px; font-size:12px;">怪我・病気による離脱選手リスト</p>
+    </div>
+  </div>
+
+  <!-- ポップアップ（モバイル用詳細） -->
+  <div class="popup-overlay" v-if="popup" @click.self="popup=null">
+    <div class="popup-sheet">
+      <div class="popup-handle"></div>
+      <div class="popup-date">{{ popupDateLabel }}</div>
+      <template v-if="popup.schedule">
+        <div class="popup-row">
+          <span class="popup-label">種別</span>
+          <span class="type-badge" :class="badgeClass(popup.schedule.type)">{{ typeLabel(popup.schedule.type) }}</span>
+        </div>
+        <template v-if="popup.schedule.type==='game'">
+          <div class="popup-row">
+            <span class="popup-label">対戦相手</span>
+            <span>{{ popup.schedule.opponent }}</span>
+          </div>
+          <div class="popup-row">
+            <span class="popup-label">球場</span>
+            <span>{{ popup.schedule.venue }}</span>
+          </div>
+          <template v-if="popup.schedule.consumed">
+            <div class="popup-row">
+              <span class="popup-label">スコア</span>
+              <span>{{ popup.schedule.score }}</span>
+            </div>
+            <div class="popup-row">
+              <span class="popup-label">結果</span>
+              <span class="result-badge" :class="popup.schedule.result" style="font-size:14px;">
+                {{ resultMark(popup.schedule.result) }}
+              </span>
+              <span style="margin-left:4px; font-size:13px;" :class="popup.schedule.result==='win'?'result-win':popup.schedule.result==='lose'?'result-lose':'result-draw'">
+                {{ popup.schedule.result==='win'?'勝ち':popup.schedule.result==='lose'?'負け':'引分' }}
+              </span>
+            </div>
+          </template>
+          <template v-else>
+            <div class="popup-row">
+              <span class="popup-label">先発投手</span>
+              <span>{{ popup.schedule.starter }}</span>
+            </div>
+          </template>
+        </template>
+      </template>
+      <template v-else>
+        <div class="popup-row" style="color:var(--color-text-cap);">この日は試合なし</div>
+      </template>
+      <button class="popup-close" @click="popup=null">閉じる</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const { createApp, ref, computed } = Vue
+
+// ===== サンプルデータ（3ヶ月分ダミーペナント日程）=====
+// 今日: 2026-04-25 (未消化境界)
+const TODAY = '2026-04-25'
+
+const TEAMS = [
+  { id: 1, name: '博麗神社',  short: '博麗', venue: '博麗神社球場' },
+  { id: 2, name: '紅魔館',    short: '紅魔', venue: '紅魔球場' },
+  { id: 3, name: '白玉楼',    short: '白玉', venue: '白玉楼球場' },
+  { id: 4, name: '永遠亭',    short: '永遠', venue: '竹林球場' },
+  { id: 5, name: '守矢神社',  short: '守矢', venue: '守矢球場' },
+  { id: 6, name: '命蓮寺',    short: '命蓮', venue: '命蓮球場' },
+  { id: 7, name: '輝針城',    short: '輝針', venue: '輝針球場' },
+]
+const STARTERS = ['早苗', 'アリス', '妹紅', 'パチュリー', '聖', '勇儀', '天子']
+
+function makeGame(date, teamIdx, homeAway, consumed, result, score, starter) {
+  const t = TEAMS[teamIdx]
+  return {
+    type: 'game',
+    opponent: t.name,
+    opponent_short: t.short,
+    venue: homeAway === 'home' ? '守矢球場（本拠地）' : t.venue,
+    consumed,
+    result: consumed ? result : null,
+    score: consumed ? score : null,
+    starter: !consumed ? starter : null,
+  }
+}
+
+// 日程データ: { 'YYYY-MM-DD': schedule }
+const SCHEDULE_DATA = {
+  // === 4月 ===
+  '2026-04-01': makeGame('2026-04-01', 0, 'home', true, 'win', '5-3', null),
+  '2026-04-02': makeGame('2026-04-02', 0, 'home', true, 'win', '7-1', null),
+  '2026-04-03': makeGame('2026-04-03', 0, 'home', true, 'lose', '2-4', null),
+  '2026-04-04': { type: 'travel' },
+  '2026-04-05': makeGame('2026-04-05', 1, 'away', true, 'lose', '1-6', null),
+  '2026-04-06': makeGame('2026-04-06', 1, 'away', true, 'win', '4-2', null),
+  '2026-04-07': makeGame('2026-04-07', 1, 'away', true, 'win', '3-0', null),
+  '2026-04-08': { type: 'reserve' },
+  '2026-04-09': makeGame('2026-04-09', 3, 'home', true, 'win', '8-5', null),
+  '2026-04-10': makeGame('2026-04-10', 3, 'home', true, 'lose', '0-3', null),
+  '2026-04-11': makeGame('2026-04-11', 3, 'home', true, 'draw', '2-2', null),
+  '2026-04-12': { type: 'off' },
+  '2026-04-13': makeGame('2026-04-13', 2, 'away', true, 'win', '6-4', null),
+  '2026-04-14': makeGame('2026-04-14', 2, 'away', true, 'lose', '3-5', null),
+  '2026-04-15': makeGame('2026-04-15', 2, 'away', true, 'win', '4-1', null),
+  '2026-04-16': { type: 'travel' },
+  '2026-04-17': makeGame('2026-04-17', 5, 'home', true, 'win', '7-3', null),
+  '2026-04-18': makeGame('2026-04-18', 5, 'home', true, 'win', '5-2', null),
+  '2026-04-19': makeGame('2026-04-19', 5, 'home', true, 'lose', '1-4', null),
+  '2026-04-20': { type: 'reserve' },
+  '2026-04-21': makeGame('2026-04-21', 4, 'away', true, 'lose', '2-5', null),
+  '2026-04-22': makeGame('2026-04-22', 4, 'away', true, 'win', '6-1', null),
+  '2026-04-23': makeGame('2026-04-23', 4, 'away', true, 'win', '3-2', null),
+  '2026-04-24': { type: 'travel' },
+  // --- 今日 (2026-04-25) 以降は未消化 ---
+  '2026-04-25': makeGame('2026-04-25', 6, 'home', false, null, null, STARTERS[0]),
+  '2026-04-26': makeGame('2026-04-26', 6, 'home', false, null, null, STARTERS[1]),
+  '2026-04-27': makeGame('2026-04-27', 6, 'home', false, null, null, STARTERS[2]),
+  '2026-04-28': { type: 'off' },
+  '2026-04-29': makeGame('2026-04-29', 0, 'away', false, null, null, STARTERS[3]),
+  '2026-04-30': makeGame('2026-04-30', 0, 'away', false, null, null, STARTERS[4]),
+
+  // === 5月 ===
+  '2026-05-01': makeGame('2026-05-01', 0, 'away', false, null, null, STARTERS[5]),
+  '2026-05-02': { type: 'travel' },
+  '2026-05-03': makeGame('2026-05-03', 1, 'home', false, null, null, STARTERS[6]),
+  '2026-05-04': makeGame('2026-05-04', 1, 'home', false, null, null, STARTERS[0]),
+  '2026-05-05': makeGame('2026-05-05', 1, 'home', false, null, null, STARTERS[1]),
+  '2026-05-06': { type: 'reserve' },
+  '2026-05-07': makeGame('2026-05-07', 3, 'away', false, null, null, STARTERS[2]),
+  '2026-05-08': makeGame('2026-05-08', 3, 'away', false, null, null, STARTERS[3]),
+  '2026-05-09': makeGame('2026-05-09', 3, 'away', false, null, null, STARTERS[4]),
+  '2026-05-10': { type: 'off' },
+  '2026-05-11': makeGame('2026-05-11', 2, 'home', false, null, null, STARTERS[5]),
+  '2026-05-12': makeGame('2026-05-12', 2, 'home', false, null, null, STARTERS[6]),
+  '2026-05-13': makeGame('2026-05-13', 2, 'home', false, null, null, STARTERS[0]),
+  '2026-05-14': { type: 'travel' },
+  '2026-05-15': makeGame('2026-05-15', 5, 'away', false, null, null, STARTERS[1]),
+  '2026-05-16': makeGame('2026-05-16', 5, 'away', false, null, null, STARTERS[2]),
+  '2026-05-17': makeGame('2026-05-17', 5, 'away', false, null, null, STARTERS[3]),
+  '2026-05-18': { type: 'reserve' },
+  '2026-05-19': makeGame('2026-05-19', 4, 'home', false, null, null, STARTERS[4]),
+  '2026-05-20': makeGame('2026-05-20', 4, 'home', false, null, null, STARTERS[5]),
+  '2026-05-21': makeGame('2026-05-21', 4, 'home', false, null, null, STARTERS[6]),
+  '2026-05-22': { type: 'travel' },
+  '2026-05-23': makeGame('2026-05-23', 6, 'away', false, null, null, STARTERS[0]),
+  '2026-05-24': makeGame('2026-05-24', 6, 'away', false, null, null, STARTERS[1]),
+  '2026-05-25': makeGame('2026-05-25', 6, 'away', false, null, null, STARTERS[2]),
+  '2026-05-26': { type: 'off' },
+  '2026-05-27': makeGame('2026-05-27', 0, 'home', false, null, null, STARTERS[3]),
+  '2026-05-28': makeGame('2026-05-28', 0, 'home', false, null, null, STARTERS[4]),
+  '2026-05-29': makeGame('2026-05-29', 0, 'home', false, null, null, STARTERS[5]),
+  '2026-05-30': { type: 'reserve' },
+  '2026-05-31': makeGame('2026-05-31', 1, 'away', false, null, null, STARTERS[6]),
+
+  // === 6月 ===
+  '2026-06-01': makeGame('2026-06-01', 1, 'away', false, null, null, STARTERS[0]),
+  '2026-06-02': makeGame('2026-06-02', 1, 'away', false, null, null, STARTERS[1]),
+  '2026-06-03': { type: 'travel' },
+  '2026-06-04': makeGame('2026-06-04', 3, 'home', false, null, null, STARTERS[2]),
+  '2026-06-05': makeGame('2026-06-05', 3, 'home', false, null, null, STARTERS[3]),
+  '2026-06-06': makeGame('2026-06-06', 3, 'home', false, null, null, STARTERS[4]),
+  '2026-06-07': { type: 'off' },
+  '2026-06-08': makeGame('2026-06-08', 2, 'away', false, null, null, STARTERS[5]),
+  '2026-06-09': makeGame('2026-06-09', 2, 'away', false, null, null, STARTERS[6]),
+  '2026-06-10': makeGame('2026-06-10', 2, 'away', false, null, null, STARTERS[0]),
+  '2026-06-11': { type: 'reserve' },
+  '2026-06-12': makeGame('2026-06-12', 5, 'home', false, null, null, STARTERS[1]),
+  '2026-06-13': makeGame('2026-06-13', 5, 'home', false, null, null, STARTERS[2]),
+  '2026-06-14': makeGame('2026-06-14', 5, 'home', false, null, null, STARTERS[3]),
+  '2026-06-15': { type: 'travel' },
+  '2026-06-16': makeGame('2026-06-16', 4, 'away', false, null, null, STARTERS[4]),
+  '2026-06-17': makeGame('2026-06-17', 4, 'away', false, null, null, STARTERS[5]),
+  '2026-06-18': makeGame('2026-06-18', 4, 'away', false, null, null, STARTERS[6]),
+  '2026-06-19': { type: 'off' },
+  '2026-06-20': makeGame('2026-06-20', 6, 'home', false, null, null, STARTERS[0]),
+  '2026-06-21': makeGame('2026-06-21', 6, 'home', false, null, null, STARTERS[1]),
+  '2026-06-22': makeGame('2026-06-22', 6, 'home', false, null, null, STARTERS[2]),
+  '2026-06-23': { type: 'reserve' },
+  '2026-06-24': makeGame('2026-06-24', 0, 'away', false, null, null, STARTERS[3]),
+  '2026-06-25': makeGame('2026-06-25', 0, 'away', false, null, null, STARTERS[4]),
+  '2026-06-26': makeGame('2026-06-26', 0, 'away', false, null, null, STARTERS[5]),
+  '2026-06-27': { type: 'travel' },
+  '2026-06-28': makeGame('2026-06-28', 1, 'home', false, null, null, STARTERS[6]),
+  '2026-06-29': makeGame('2026-06-29', 1, 'home', false, null, null, STARTERS[0]),
+  '2026-06-30': makeGame('2026-06-30', 1, 'home', false, null, null, STARTERS[1]),
+}
+
+createApp({
+  setup() {
+    const teamName = '守矢神社'
+    const seasonName = '幻想郷ペナントレース 2026'
+
+    // タブ
+    const activeTab = ref(localStorage.getItem('sp_tab') || 'calendar')
+    function setTab(t) {
+      activeTab.value = t
+      localStorage.setItem('sp_tab', t)
+    }
+
+    // ビュー切替
+    const viewMode = ref(localStorage.getItem('sp_view') || 'calendar')
+    function setView(v) {
+      viewMode.value = v
+      localStorage.setItem('sp_view', v)
+    }
+
+    // 表示月
+    const todayParts = TODAY.split('-').map(Number)
+    const displayYear = ref(todayParts[0])
+    const displayMonth = ref(todayParts[1])
+
+    function prevMonth() {
+      if (displayMonth.value === 1) { displayYear.value--; displayMonth.value = 12 }
+      else displayMonth.value--
+    }
+    function nextMonth() {
+      if (displayMonth.value === 12) { displayYear.value++; displayMonth.value = 1 }
+      else displayMonth.value++
+    }
+
+    const monthLabel = computed(() => `${displayYear.value}年${displayMonth.value}月`)
+
+    // 曜日ラベル
+    const weekdayLabels = [
+      { label: '月', cls: '' },
+      { label: '火', cls: '' },
+      { label: '水', cls: '' },
+      { label: '木', cls: '' },
+      { label: '金', cls: '' },
+      { label: '土', cls: 'sat' },
+      { label: '日', cls: 'sun' },
+    ]
+
+    // カレンダーセル生成
+    const calendarWeeks = computed(() => {
+      const y = displayYear.value
+      const m = displayMonth.value
+      const first = new Date(y, m - 1, 1)
+      const last = new Date(y, m, 0)
+      // 月曜始まり: 0=Mon,...,6=Sun
+      const startDow = (first.getDay() + 6) % 7
+      const weeks = []
+      let cells = []
+      // 前月埋め
+      for (let i = 0; i < startDow; i++) cells.push(null)
+      for (let d = 1; d <= last.getDate(); d++) {
+        const dateStr = `${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`
+        const dow = (new Date(y, m - 1, d).getDay() + 6) % 7
+        cells.push({ d, dateStr, dow, schedule: SCHEDULE_DATA[dateStr] || null })
+        if (cells.length === 7) { weeks.push(cells); cells = [] }
+      }
+      if (cells.length > 0) {
+        while (cells.length < 7) cells.push(null)
+        weeks.push(cells)
+      }
+      return weeks
+    })
+
+    function cellClass(cell) {
+      if (!cell) return 'other-month'
+      const cls = []
+      if (cell.dow === 5) cls.push('sat')
+      if (cell.dow === 6) cls.push('sun')
+      if (cell.dateStr === TODAY) cls.push('today')
+      return cls
+    }
+
+    function chipClass(type) {
+      return {
+        game: 'chip-game',
+        travel: 'chip-travel',
+        reserve: 'chip-reserve',
+        off: 'chip-off',
+      }[type] || ''
+    }
+
+    function badgeClass(type) {
+      return {
+        game: 'badge-game',
+        travel: 'badge-travel',
+        reserve: 'badge-reserve',
+        off: 'badge-off',
+      }[type] || ''
+    }
+
+    function typeLabel(type) {
+      return { game: '試合', travel: '移動', reserve: '予備', off: '休養' }[type] || type || '—'
+    }
+
+    function resultMark(r) {
+      return { win: '○', lose: '●', draw: '△' }[r] || ''
+    }
+    function resultClass(r) {
+      return { win: 'result-win', lose: 'result-lose', draw: 'result-draw' }[r] || ''
+    }
+
+    // ポップアップ
+    const popup = ref(null)
+    const popupDateLabel = computed(() => {
+      if (!popup.value) return ''
+      const d = new Date(popup.value.dateStr + 'T00:00:00')
+      const dow = ['日','月','火','水','木','金','土'][d.getDay()]
+      return `${d.getMonth()+1}月${d.getDate()}日（${dow}）`
+    })
+    function openPopup(cell) {
+      if (!cell) return
+      popup.value = cell
+    }
+
+    // 表ビューデータ
+    const tableFilter = ref('all')
+    const DOW_LABELS = ['日','月','火','水','木','金','土']
+
+    function allRowsForMonth() {
+      const y = displayYear.value
+      const m = displayMonth.value
+      const last = new Date(y, m, 0).getDate()
+      const rows = []
+      for (let d = 1; d <= last; d++) {
+        const dateStr = `${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`
+        const dow = new Date(y, m - 1, d).getDay()
+        rows.push({
+          date: dateStr,
+          dow,
+          dowLabel: DOW_LABELS[dow],
+          schedule: SCHEDULE_DATA[dateStr] || null,
+          isToday: dateStr === TODAY,
+        })
+      }
+      return rows
+    }
+
+    const filteredTableRows = computed(() => {
+      const rows = allRowsForMonth()
+      if (tableFilter.value === 'game') return rows.filter(r => r.schedule?.type === 'game')
+      return rows
+    })
+
+    function formatDate(dateStr) {
+      const d = new Date(dateStr + 'T00:00:00')
+      return `${d.getMonth()+1}/${d.getDate()}`
+    }
+
+    function dowStyle(dow) {
+      if (dow === 0) return 'color:var(--color-shu); font-weight:600;'
+      if (dow === 6) return 'color:#2563EB; font-weight:600;'
+      return ''
+    }
+
+    return {
+      teamName, seasonName,
+      activeTab, setTab,
+      viewMode, setView,
+      displayYear, displayMonth,
+      prevMonth, nextMonth, monthLabel,
+      weekdayLabels, calendarWeeks,
+      cellClass, chipClass, badgeClass,
+      typeLabel, resultMark, resultClass,
+      popup, popupDateLabel, openPopup,
+      tableFilter, filteredTableRows,
+      formatDate, dowStyle,
+    }
+  }
+}).mount('#app')
+</script>
+</body>
+</html>

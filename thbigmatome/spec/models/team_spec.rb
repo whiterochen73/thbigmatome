@@ -18,22 +18,21 @@ RSpec.describe Team, type: :model do
     { player: player, membership: membership }
   end
 
-  # ヘルパー: 外の世界タイプを選手に付与
-  def assign_outside_world_type(player)
-    ow_type = PlayerType.find_or_create_by!(name: "外の世界", category: "outside_world")
-    PlayerPlayerType.create!(player: player, player_type: ow_type)
-  end
+  # ============================================================
+  # user_id (optional)
+  # ============================================================
 
-  # ヘルパー: 東方タイプを選手に付与
-  def assign_touhou_type(player)
-    touhou_type = PlayerType.find_or_create_by!(name: "東方", category: "touhou")
-    PlayerPlayerType.create!(player: player, player_type: touhou_type)
-  end
+  describe "user association" do
+    it "user_idがnilでも有効" do
+      team = build(:team, user_id: nil)
+      expect(team).to be_valid
+    end
 
-  # ヘルパー: 二刀流タイプを選手に付与
-  def assign_two_way_type(player)
-    two_way_type = PlayerType.find_or_create_by!(name: "二刀流")
-    PlayerPlayerType.create!(player: player, player_type: two_way_type)
+    it "user_idを持つ場合はそのユーザーと関連付けられる" do
+      user = create(:user)
+      team = create(:team, user_id: user.id)
+      expect(team.user).to eq(user)
+    end
   end
 
   # ============================================================
@@ -161,9 +160,113 @@ RSpec.describe Team, type: :model do
   end
 
   # ============================================================
-  # 外の世界枠バリデーション
+  # team_type バリデーション
   # ============================================================
 
+  describe "team_type validation" do
+    it "デフォルトはnormal" do
+      team = build(:team)
+      expect(team.team_type).to eq("normal")
+    end
+
+    it "normalは有効" do
+      expect(build(:team, team_type: "normal")).to be_valid
+    end
+
+    it "hachinaiは有効" do
+      expect(build(:team, team_type: "hachinai")).to be_valid
+    end
+
+    it "不正な値はエラー" do
+      expect(build(:team, team_type: "invalid")).not_to be_valid
+    end
+  end
+
+  # ============================================================
+  # outside_world_first_squad_memberships（team_type対応）
+  # ============================================================
+
+  describe "#outside_world_first_squad_memberships" do
+    def add_first_squad_player(team:, series:)
+      player = create(:player, series: series)
+      create(:team_membership, team: team, player: player, squad: "first")
+      player
+    end
+
+    context "normal チーム（東方がネイティブ）" do
+      let(:normal_team) { create(:team, team_type: "normal") }
+
+      it "touhou 選手は外の世界枠にカウントされない" do
+        add_first_squad_player(team: normal_team, series: "touhou")
+        expect(normal_team.outside_world_first_squad_memberships.size).to eq(0)
+      end
+
+      it "hachinai 選手は外の世界枠にカウントされる" do
+        add_first_squad_player(team: normal_team, series: "hachinai")
+        expect(normal_team.outside_world_first_squad_memberships.size).to eq(1)
+      end
+
+      it "tamayomi 選手は外の世界枠にカウントされる" do
+        add_first_squad_player(team: normal_team, series: "tamayomi")
+        expect(normal_team.outside_world_first_squad_memberships.size).to eq(1)
+      end
+
+      it "original 選手は外の世界枠にカウントされる" do
+        add_first_squad_player(team: normal_team, series: "original")
+        expect(normal_team.outside_world_first_squad_memberships.size).to eq(1)
+      end
+
+      it "touhou 2人 + hachinai 2人 = 外の世界2人" do
+        2.times { add_first_squad_player(team: normal_team, series: "touhou") }
+        2.times { add_first_squad_player(team: normal_team, series: "hachinai") }
+        expect(normal_team.outside_world_first_squad_memberships.size).to eq(2)
+      end
+    end
+
+    context "hachinai チーム（hachinai/tamayomi がネイティブ）" do
+      let(:hachinai_team) { create(:team, team_type: "hachinai") }
+
+      it "hachinai 選手は外の世界枠にカウントされない" do
+        add_first_squad_player(team: hachinai_team, series: "hachinai")
+        expect(hachinai_team.outside_world_first_squad_memberships.size).to eq(0)
+      end
+
+      it "tamayomi 選手は外の世界枠にカウントされない" do
+        add_first_squad_player(team: hachinai_team, series: "tamayomi")
+        expect(hachinai_team.outside_world_first_squad_memberships.size).to eq(0)
+      end
+
+      it "touhou 選手は外の世界枠にカウントされる" do
+        add_first_squad_player(team: hachinai_team, series: "touhou")
+        expect(hachinai_team.outside_world_first_squad_memberships.size).to eq(1)
+      end
+
+      it "original 選手は外の世界枠にカウントされる" do
+        add_first_squad_player(team: hachinai_team, series: "original")
+        expect(hachinai_team.outside_world_first_squad_memberships.size).to eq(1)
+      end
+
+      it "hachinai 2人 + tamayomi 1人 + touhou 2人 = 外の世界2人" do
+        2.times { add_first_squad_player(team: hachinai_team, series: "hachinai") }
+        add_first_squad_player(team: hachinai_team, series: "tamayomi")
+        2.times { add_first_squad_player(team: hachinai_team, series: "touhou") }
+        expect(hachinai_team.outside_world_first_squad_memberships.size).to eq(2)
+      end
+    end
+
+    context "2軍選手はカウントしない" do
+      it "squad: second の選手は team_type に関係なく除外" do
+        player = create(:player, series: "hachinai")
+        create(:team_membership, team: team, player: player, squad: "second")
+        expect(team.outside_world_first_squad_memberships.size).to eq(0)
+      end
+    end
+  end
+
+  # 外の世界枠バリデーション: player_player_typesテーブル廃止(cmd_511 Phase 2b)によりテスト削除
+end
+
+=begin REMOVED: outside_world validation tests - player_player_types table dropped (cmd_511 Phase 2b)
   describe "#validate_outside_world_limit" do
     context "人数制限" do
       it "外の世界選手が0人なら有効" do
@@ -388,4 +491,4 @@ RSpec.describe Team, type: :model do
       expect(result.first.player).to eq(ow_result[:player])
     end
   end
-end
+=end

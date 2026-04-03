@@ -2,7 +2,7 @@
   "topMenu": {
     "welcome": {
       "title": "ようこそ！",
-      "subtitle": "東方BIG野球まとめツールへ",
+      "subtitle": "THBIG Dugoutへ",
       "message": "左側のナビゲーションメニューから各機能をご利用ください。"
     },
     "teamSelection": {
@@ -23,11 +23,6 @@
       "title": "シーズン画面へ",
       "playerRegistration": "出場選手登録",
       "gameResultInput": "試合結果入力"
-    },
-    "commissionerMode": {
-      "title": "コミッショナーモード",
-      "button": "コミッショナーモードへ",
-      "switchLabel": "コミッショナーモード（全チーム操作）"
     },
     "officialWiki": {
       "title": "東方BIG野球 公式Wiki",
@@ -50,8 +45,79 @@
     },
     "teamMembers": "メンバー管理",
     "registerAbsence": "離脱者登録",
+    "goToStats": "成績集計",
     "absenceInfo": "離脱者情報",
-    "noAbsenceInfo": "離脱者情報はありません。"
+    "noAbsenceInfo": "離脱者情報はありません。",
+    "noSeasonData": "シーズンデータが見つかりません",
+    "initForm": {
+      "title": "シーズン開始",
+      "seasonNameLabel": "シーズン名",
+      "selectScheduleLabel": "日程表を選択",
+      "startButton": "シーズン開始",
+      "noSchedules": "日程表が登録されていません。先に日程表を作成してください。"
+    },
+    "announcedStarterPrefix": "先発",
+    "viewLabel": "表示",
+    "viewAll": "全日程",
+    "viewGameOnly": "試合日のみ",
+    "legendWin": "勝",
+    "legendLose": "負",
+    "legendDraw": "分",
+    "noSchedule": "スケジュールなし",
+    "tableHeaders": {
+      "date": "日付",
+      "dow": "曜日",
+      "type": "種別",
+      "opponent": "対戦相手",
+      "starter": "先発投手",
+      "score": "スコア",
+      "result": "勝敗"
+    },
+    "detailDialog": {
+      "type": "種別",
+      "opponent": "対戦相手",
+      "score": "スコア",
+      "result": "結果",
+      "starter": "先発投手",
+      "win": "勝ち",
+      "lose": "負け",
+      "draw": "引分"
+    },
+    "keyPlayer": {
+      "label": "特例選手",
+      "placeholder": "未設定",
+      "notSet": "未設定",
+      "save": "保存"
+    },
+    "tabs": {
+      "calendar": "カレンダー",
+      "roster": "ロスター",
+      "absences": "離脱者",
+      "members": "チーム編成",
+      "lineup": "オーダー",
+      "stats": "成績集計",
+      "promotionHistory": "昇降格履歴"
+    }
+  },
+  "lineupTemplate": {
+    "title": "打順テンプレート",
+    "patterns": {
+      "dhRight": "DH有・対右",
+      "dhLeft": "DH有・対左",
+      "noDhRight": "DH無・対右",
+      "noDhLeft": "DH無・対左"
+    },
+    "battingOrder": "打順",
+    "position": "ポジション",
+    "player": "選手",
+    "save": "保存",
+    "delete": "削除",
+    "saved": "テンプレートを保存しました",
+    "deleted": "テンプレートを削除しました",
+    "saveError": "保存に失敗しました",
+    "deleteError": "削除に失敗しました",
+    "noFirstSquad": "1軍メンバーが登録されていません",
+    "confirmDelete": "このテンプレートを削除しますか？"
   },
   "playerAbsenceHistory": {
     "title": "離脱者履歴",
@@ -100,6 +166,7 @@
     "firstSquadCost": "1軍コスト",
     "keyPlayerSelection": "特例選手選択",
     "selectKeyPlayer": "特例選手を選択",
+    "selectKeyPlayerHint": "シーズン開始日のみ変更可能",
     "saveKeyPlayer": "特例選手を保存",
     "keyPlayerRestriction": "特例選手はシーズン開始日にのみ設定可能です。",
     "keyPlayerLocked": "特例選手（抹消不可）",
@@ -160,6 +227,20 @@
       "injury": "負傷離脱",
       "suspension": "出場停止",
       "reconditioning": "再調整"
+    },
+    "tabs": {
+      "roster": "ロスター",
+      "history": "昇降格履歴"
+    }
+  },
+  "promotionHistory": {
+    "noHistory": "昇降格の履歴はありません。",
+    "promote": "昇格",
+    "demote": "降格",
+    "headers": {
+      "date": "日付",
+      "player": "選手名",
+      "type": "種別"
     }
   },
   "gameResult": {
@@ -199,17 +280,6 @@
     "lose": "負け",
     "draw": "引き分け"
   },
-  "startingMemberDialog": {
-    "title": "スタメン登録",
-    "tableHeaders": {
-      "battingOrder": "打順",
-      "position": "ポジション",
-      "player": "選手",
-      "defenseRating": "守備力"
-    },
-    "homeTeamLineup": "自チームスタメン",
-    "opponentTeamLineup": "相手チームスタメン"
-  },
   "actions": {
     "save": "保存",
     "cancel": "キャンセル",
@@ -231,7 +301,7 @@
     "loginFailed": "ログインに失敗しました"
   },
   "layout": {
-    "appTitle": "東方BIG野球まとめツール",
+    "appTitle": "THBIG Dugout",
     "logout": "ログアウト"
   },
   "navigation": {
@@ -254,9 +324,14 @@
       "id": "ID",
       "name": "名前",
       "shortName": "短縮名",
+      "teamType": "種別",
       "managerName": "監督名",
       "isActive": "稼働中",
       "actions": "操作"
+    },
+    "teamTypes": {
+      "normal": "通常",
+      "hachinai": "ハチナイ"
     },
     "actions": {
       "editMembers": "メンバー編集",
@@ -279,7 +354,8 @@
       "shortName": "短縮名",
       "ircName": "IRCネーム",
       "userId": "ユーザーID",
-      "actions": "操作"
+      "actions": "操作",
+      "teamCount": "チーム数"
     },
     "expanded": {
       "title": "担当チーム",
@@ -292,7 +368,8 @@
     "deleteConfirmMessage": "本当にこの監督を削除しますか？\n関連するチームも削除されます。",
     "fetchFailed": "監督一覧の取得に失敗しました。",
     "deleteSuccess": "監督を削除しました。",
-    "deleteFailed": "監督の削除に失敗しました。"
+    "deleteFailed": "監督の削除に失敗しました。",
+    "atCapacity": "上限"
   },
   "managerDialog": {
     "title": {
@@ -321,7 +398,12 @@
       "name": "名前",
       "shortName": "短縮名",
       "manager": "監督",
-      "isActive": "稼働中"
+      "isActive": "稼働中",
+      "teamType": "チーム種別",
+      "teamTypeNormal": "通常チーム（東方キャラがネイティブ）",
+      "teamTypeHachinai": "ハチナイチーム（ハチナイ/球詠キャラがネイティブ）",
+      "teamTypeReadonly": "チーム種別は作成後に変更できません",
+      "directorAtCapacity": "上限到達(2チーム)"
     },
     "validation": {
       "required": "必須項目です。"
@@ -334,15 +416,15 @@
       "saveFailed": "チーム情報の保存に失敗しました。"
     }
   },
-  "confirmDialog": {
-  },
+  "confirmDialog": {},
   "settings": {
     "title": "設定",
     "description": "この画面では、アプリケーション全体で利用される細かいマスターデータの設定を行います。",
     "managedByConfigFile": "この設定は設定ファイルで管理されているため、ここでは閲覧のみ可能です。",
     "tabs": {
       "player": "選手設定",
-      "squad": "その他"
+      "squad": "その他",
+      "account": "アカウント"
     },
     "player": {
       "description": "選手に関する設定を行います。"
@@ -643,15 +725,35 @@
     "selectPlayer": "選手を選択して追加",
     "addPlayer": "追加",
     "noData": "選手が登録されていません。",
+    "addCandidateLabel": "追加候補",
+    "loadingCostList": "コスト一覧表を読み込み中...",
+    "noMatchingPlayers": "該当する選手がいません",
+    "totalCostLabel": "チーム全体コスト",
+    "positionFilterLabel": "ポジション",
+    "positionAll": "全て",
+    "positionPitcher": "投手",
+    "positionFielder": "野手",
+    "unknownType": "不明",
+    "costDisplayLabels": {
+      "normal_cost": "通常",
+      "relief_only_cost": "リリーフ",
+      "pitcher_only_cost": "投手専念",
+      "fielder_only_cost": "野手専念",
+      "two_way_cost": "二刀流",
+      "noData": "コストデータなし",
+      "prefix": "コスト"
+    },
     "headers": {
       "number": "背番号",
       "name": "名前",
+      "display_name": "通称",
       "position": "ポジション",
       "throws": "投",
       "bats": "打",
       "player_types": "選手タイプ",
       "cost": "コスト",
       "excluded": "除外",
+      "costExcluded": "コスト除外",
       "actions": "操作"
     },
     "teamMembersTitle": "チームメンバー",
@@ -728,6 +830,7 @@
       "name": "名前",
       "number": "背番号",
       "short_name": "短縮名",
+      "series": "所属作品",
       "position": "ポジション",
       "throwing_hand": "投",
       "batting_hand": "打",
@@ -738,7 +841,7 @@
       "defenseSectionTitle": "守備・送球",
       "injury_rate": "怪我特徴",
       "batting_style": "打者特徴",
-      "batting_style_description" : "打者特徴補足",
+      "batting_style_description": "打者特徴補足",
       "batting_skills": "打者特殊能力",
       "player_types": "選手タイプ",
       "biorhythms": "バイオリズム",
@@ -749,7 +852,7 @@
       "relief_stamina": "中継疲労P",
       "is_relief_only": "リリーフ専任",
       "pitching_style": "投手特徴",
-      "pitching_style_description" : "投手特徴補足",
+      "pitching_style_description": "投手特徴補足",
       "pinch_pitching_style": "有走者時投手特徴",
       "pitching_skills": "投手特殊能力",
       "hasPartnerCatchers": "専属捕手",
@@ -784,7 +887,20 @@
       "left_fielder": "左翼手",
       "center_fielder": "中堅手",
       "right_fielder": "右翼手",
-      "dh": "DH"
+      "dh": "DH",
+      "p": "投手",
+      "c": "捕手",
+      "1b": "一塁手",
+      "2b": "二塁手",
+      "3b": "三塁手",
+      "ss": "遊撃手",
+      "of": "外野手",
+      "lf": "左翼手",
+      "cf": "中堅手",
+      "rf": "右翼手",
+      "lr": "両翼手",
+      "cr": "中右翼手",
+      "lc": "左中翼手"
     },
     "throwingHands": {
       "right_throw": "右",
@@ -814,6 +930,9 @@
       "second_baseman": "二",
       "third_baseman": "三",
       "shortstop": "遊",
+      "of": "外",
+      "cr": "中継",
+      "lr": "両翼",
       "outfielder": "外",
       "left_fielder": "左",
       "center_fielder": "中",
@@ -839,33 +958,6 @@
         "games": "試合"
       }
     }
-  },
-  "scoreSheet": {
-    "order": "打順",
-    "player": "選手",
-    "position": "守備",
-    "hits": "安打",
-    "rbi": "打点",
-    "backToGameResult": "試合結果に戻る",
-    "atBatResults": {
-      "single": "安打",
-      "double": "二塁打",
-      "triple": "三塁打",
-      "homerun": "本塁打",
-      "sacrifice_hit": "犠打",
-      "sacrifice_fly": "犠飛",
-      "walk": "四球",
-      "hit_by_pitch": "死球",
-      "strikeout": "三振",
-      "double_play": "併殺",
-      "ground_out": "ゴロ",
-      "fly_out": "フライ"
-    }
-  },
-  "messages": {
-    "startingMembersSaved": "スターティングメンバーを保存しました。",
-    "failedToSaveStartingMembers": "スターティングメンバーの保存に失敗しました。",
-    "noMembersToSave": "保存するメンバーがいません"
   },
   "commissioner": {
     "detail": {
@@ -919,6 +1011,36 @@
     "seasonPortal": "シーズン",
     "playerAbsenceHistory": "離脱者履歴"
   },
+  "seasonRosterTab": {
+    "firstSquadCostLabel": "1軍コスト",
+    "statusHeader": "状態",
+    "outsideWorldShort": "外",
+    "outsideWorldLabel": "外の世界",
+    "specialLabel": "特例",
+    "groups": {
+      "starter": "★ 先発ローテーション",
+      "reliever": "◎ 中継ぎ / クローザー",
+      "fielder": "野手"
+    },
+    "absenceLabel": {
+      "injuryWithDays": "負傷 残{days}",
+      "injury": "負傷",
+      "suspensionWithDays": "停止 残{days}",
+      "suspension": "出場停止",
+      "reconditioning": "再調整"
+    }
+  },
+  "seasonAbsenceTab": {
+    "currentAbsences": "現在の離脱者",
+    "pastAbsences": "過去の離脱履歴（{count}件）",
+    "unknownRemaining": "未定",
+    "unknownEndDate": "未定",
+    "headers": {
+      "remaining": "残り",
+      "returnDate": "復帰日",
+      "duration": "期間"
+    }
+  },
   "routes": {
     "dashboard": "ダッシュボード",
     "managers": "監督一覧",
@@ -930,7 +1052,47 @@
     "seasonPortal": "シーズンポータル",
     "activeRoster": "出場選手登録",
     "gameResult": "試合結果入力",
-    "scoreSheet": "スコアシート",
     "playerAbsenceHistory": "離脱者履歴"
+  },
+  "squadTextSettings": {
+    "title": "スカッドテキスト書式設定",
+    "positionFormat": "ポジション表記",
+    "positionFormatEnglish": "英語略称（RF, 3B）",
+    "positionFormatJapanese": "漢字略称（右, 三）",
+    "handednessFormat": "投打表記",
+    "handednessFormatAlphabet": "アルファベット（RR, LL）",
+    "handednessFormatKanji": "漢字（右右, 左左）",
+    "dateFormat": "登板履歴日付",
+    "dateFormatAbsolute": "絶対日付（MM/DD）",
+    "dateFormatRelative": "相対日付（N日前）",
+    "sectionHeaderFormat": "セクションヘッダー",
+    "sectionHeaderFormatBracket": "括弧付き（＜控え野手＞）",
+    "sectionHeaderFormatNone": "無印（控え野手）",
+    "showNumberPrefix": "背番号接頭辞",
+    "show": "表示する",
+    "hide": "表示しない",
+    "battingStatsItems": "打者成績項目",
+    "pitchingStatsItems": "投手成績項目",
+    "battingStats": {
+      "avg": "打率",
+      "hr": "本塁打",
+      "rbi": "打点",
+      "sb": "盗塁",
+      "obp": "出塁率",
+      "ops": "OPS"
+    },
+    "pitchingStats": {
+      "w_l": "勝敗",
+      "games": "登板数",
+      "era": "防御率",
+      "so": "奪三振",
+      "ip": "投球回",
+      "hold": "ホールド",
+      "save": "セーブ"
+    },
+    "save": "保存",
+    "saved": "保存しました",
+    "saveError": "保存に失敗しました",
+    "loadError": "設定の読み込みに失敗しました"
   }
 }

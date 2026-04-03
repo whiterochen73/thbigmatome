@@ -1,6 +1,9 @@
 module Api
   module V1
     class TeamSeasonsController < Api::V1::BaseController
+      include TeamAccessible
+      before_action :authorize_team_access!
+
       def show
         team = Team.find(params[:team_id])
         season = team.season
@@ -18,7 +21,7 @@ module Api
         if season.update(season_params)
           render json: { season: season }, status: :ok
         else
-          render json: { errors: season.errors.full_messages }, status: :unprocessable_entity
+          render json: { errors: season.errors.full_messages }, status: :unprocessable_content
         end
       rescue ActiveRecord::RecordNotFound => e
         render json: { error: e.message }, status: :not_found
@@ -29,7 +32,7 @@ module Api
         if season_schedule.update(season_schedule_params)
           render json: season_schedule
         else
-          render json: season_schedule.errors, status: :unprocessable_entity
+          render json: season_schedule.errors, status: :unprocessable_content
         end
       end
 

@@ -1,11 +1,12 @@
-import { type Team } from './team';
+import { type Team } from './team'
 
 export interface Manager {
-  id: number;
-  name: string;
-  short_name?: string | null;
-  irc_name?: string | null;
-  user_id?: string | null;
-  teams?: Team[];
-  role: 'director' | 'coach';
+  id: number
+  name: string
+  short_name?: string | null
+  irc_name?: string | null
+  user_id?: string | null
+  teams?: Team[]
+  role: 'director' | 'coach'
+  active_director_team_count?: number
 }

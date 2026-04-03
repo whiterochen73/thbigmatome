@@ -1,6 +1,6 @@
 {
   "name": "thbigmatome-front",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "type": "module",
   "scripts": {
@@ -17,10 +17,11 @@
   "dependencies": {
     "@mdi/font": "^7.4.47",
     "axios": "^1.10.0",
+    "pinia": "^3.0.4",
     "vue": "^3.5.17",
     "vue-i18n": "^11.1.11",
-    "vue-router": "^4.5.1",
-    "vuetify": "^3.9.0"
+    "vue-router": "^5",
+    "vuetify": "4.0.3"
   },
   "devDependencies": {
     "@playwright/test": "^1.58.2",
@@ -31,9 +32,9 @@
     "@vue/eslint-config-typescript": "^14.5.1",
     "@vue/test-utils": "^2.4.6",
     "@vue/tsconfig": "^0.7.0",
-    "eslint": "^9.29.0",
-    "eslint-plugin-vue": "~10.2.0",
-    "happy-dom": "^20.6.1",
+    "eslint": "^10",
+    "eslint-plugin-vue": "^10.8.0",
+    "happy-dom": "^20.8.9",
     "jiti": "^2.4.2",
     "npm-run-all2": "^8.0.4",
     "prettier": "3.5.3",
@@ -41,6 +42,13 @@
     "vite": "^7.0.0",
     "vite-plugin-vue-devtools": "^7.7.7",
     "vitest": "^4.0.18",
-    "vue-tsc": "^2.2.10"
+    "vue-tsc": "^3"
+  },
+  "resolutions": {
+    "rollup": ">=4.59.0",
+    "minimatch": ">=10.2.3",
+    "flatted": ">=3.4.2",
+    "brace-expansion": ">=5.0.5",
+    "picomatch": ">=4.0.4"
   }
 }

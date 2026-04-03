@@ -1,82 +1,95 @@
 <template>
   <v-container>
-    <v-card>
-      <v-card-title class="d-flex align-center">
-        {{ t('managerList.title') }}
-        <v-spacer></v-spacer>
-        <v-btn color="primary" @click="openDialog()" prepend-icon="mdi-plus">
+    <PageHeader :title="t('managerList.title')">
+      <template #actions>
+        <v-btn color="accent" variant="flat" @click="openDialog()" prepend-icon="mdi-plus">
           {{ t('managerList.addManager') }}
         </v-btn>
-      </v-card-title>
-      <v-card-text>
-        <v-data-table
-          :headers="headers"
-          :items="managers"
-          :loading="loading"
-          :items-length="totalItems"
-          :items-per-page="itemsPerPage"
-          class="elevation-1"
-          item-value="id"
-          show-expand
-          :no-data-text="t('managerList.noData')"
-          @update:options="onOptionsUpdate"
-        >
-          <!-- eslint-disable-next-line vue/valid-v-slot -->
-          <template #item.actions="{ item }">
-            <v-icon size="small" class="mr-2" @click="openDialog(item)"> mdi-pencil </v-icon>
-            <v-icon size="small" @click="deleteManager(item.id)"> mdi-delete </v-icon>
-          </template>
+      </template>
+    </PageHeader>
+    <DataCard title="">
+      <FilterBar />
+      <v-data-table
+        :headers="headers"
+        :items="managers"
+        :loading="loading"
+        :items-length="totalItems"
+        :items-per-page="itemsPerPage"
+        class="elevation-1"
+        item-value="id"
+        show-expand
+        :no-data-text="t('managerList.noData')"
+        @update:options="onOptionsUpdate"
+      >
+        <!-- eslint-disable-next-line vue/valid-v-slot -->
+        <template #item.team_count="{ item }">
+          <span>{{ item.active_director_team_count ?? 0 }}/2</span>
+          <v-chip
+            v-if="(item.active_director_team_count ?? 0) >= 2"
+            size="x-small"
+            color="warning"
+            variant="tonal"
+            class="ml-1"
+          >
+            {{ t('managerList.atCapacity') }}
+          </v-chip>
+        </template>
 
-          <template #expanded-row="{ columns, item }">
-            <tr>
-              <td :colspan="columns.length">
-                <div class="pa-4 bg-grey-lighten-5">
-                  <div class="d-flex align-center mb-2">
-                    <h4 class="text-subtitle-1">{{ t('managerList.expanded.title') }}</h4>
-                    <v-spacer></v-spacer>
-                    <v-btn
-                      size="small"
-                      color="primary"
-                      @click="openTeamDialog(null, item.id)"
-                      prepend-icon="mdi-plus"
-                    >
-                      {{ t('managerList.expanded.addTeam') }}
-                    </v-btn>
-                  </div>
+        <!-- eslint-disable-next-line vue/valid-v-slot -->
+        <template #item.actions="{ item }">
+          <v-icon size="small" class="mr-2" @click="openDialog(item)"> mdi-pencil </v-icon>
+          <v-icon size="small" @click="deleteManager(item.id)"> mdi-delete </v-icon>
+        </template>
 
-                  <div v-if="item.teams && item.teams.length > 0">
-                    <v-list density="compact" lines="one">
-                      <v-list-item v-for="team in item.teams" :key="team.id" :title="team.name">
-                        <template #append>
-                          <v-chip
-                            :color="team.is_active ? 'success' : 'default'"
-                            size="small"
-                            variant="tonal"
-                            class="mr-4"
-                          >
-                            {{
-                              team.is_active
-                                ? t('managerList.expanded.active')
-                                : t('managerList.expanded.inactive')
-                            }}
-                          </v-chip>
-                          <v-icon size="small" @click="openTeamDialog(team, item.id)"
-                            >mdi-pencil</v-icon
-                          >
-                        </template>
-                      </v-list-item>
-                    </v-list>
-                  </div>
-                  <div v-else class="py-4 text-center text-grey">
-                    {{ t('managerList.expanded.noTeams') }}
-                  </div>
+        <template #expanded-row="{ columns, item }">
+          <tr>
+            <td :colspan="columns.length">
+              <div class="pa-4 bg-grey-lighten-5">
+                <div class="d-flex align-center mb-2">
+                  <h4 class="text-subtitle-1">{{ t('managerList.expanded.title') }}</h4>
+                  <v-spacer></v-spacer>
+                  <v-btn
+                    size="small"
+                    color="primary"
+                    @click="openTeamDialog(null, item.id)"
+                    prepend-icon="mdi-plus"
+                  >
+                    {{ t('managerList.expanded.addTeam') }}
+                  </v-btn>
                 </div>
-              </td>
-            </tr>
-          </template>
-        </v-data-table>
-      </v-card-text>
-    </v-card>
+
+                <div v-if="item.teams && item.teams.length > 0">
+                  <v-list density="compact" lines="one">
+                    <v-list-item v-for="team in item.teams" :key="team.id" :title="team.name">
+                      <template #append>
+                        <v-chip
+                          :color="team.is_active ? 'success' : 'default'"
+                          size="small"
+                          variant="tonal"
+                          class="mr-4"
+                        >
+                          {{
+                            team.is_active
+                              ? t('managerList.expanded.active')
+                              : t('managerList.expanded.inactive')
+                          }}
+                        </v-chip>
+                        <v-icon size="small" @click="openTeamDialog(team, item.id)"
+                          >mdi-pencil</v-icon
+                        >
+                      </template>
+                    </v-list-item>
+                  </v-list>
+                </div>
+                <div v-else class="py-4 text-center text-grey">
+                  {{ t('managerList.expanded.noTeams') }}
+                </div>
+              </div>
+            </td>
+          </tr>
+        </template>
+      </v-data-table>
+    </DataCard>
 
     <ManagerDialog
       v-model:isVisible="dialogVisible"
@@ -106,6 +119,9 @@ import { type Team } from '@/types/team'
 import { type PaginatedResponse } from '@/types/pagination'
 import ManagerDialog from '@/components/ManagerDialog.vue'
 import TeamDialog from '@/components/TeamDialog.vue'
+import DataCard from '@/components/shared/DataCard.vue'
+import FilterBar from '@/components/shared/FilterBar.vue'
+import PageHeader from '@/components/shared/PageHeader.vue'
 
 const { t } = useI18n()
 
@@ -119,6 +135,7 @@ const headers = computed(() => [
   { title: t('managerList.headers.shortName'), key: 'short_name' },
   { title: t('managerList.headers.ircName'), key: 'irc_name' },
   { title: t('managerList.headers.userId'), key: 'user_id' },
+  { title: t('managerList.headers.teamCount'), key: 'team_count', sortable: false },
   { title: t('managerList.headers.actions'), key: 'actions', sortable: false },
 ])
 

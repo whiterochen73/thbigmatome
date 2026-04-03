@@ -6,6 +6,7 @@ import * as components from 'vuetify/components'
 import * as directives from 'vuetify/directives'
 import { createI18n } from 'vue-i18n'
 import { createRouter, createMemoryHistory } from 'vue-router'
+import { createPinia } from 'pinia'
 import DefaultLayout from '../DefaultLayout.vue'
 
 // Mock axios with full defaults/interceptors support
@@ -65,7 +66,7 @@ const i18n = createI18n({
   messages: {
     ja: {
       layout: {
-        appTitle: '東方BIG野球まとめツール',
+        appTitle: 'THBIG Dugout',
         logout: 'ログアウト',
       },
       navigation: {
@@ -105,9 +106,10 @@ function createTestRouter() {
 
 function mountDefaultLayout(options = {}) {
   const router = createTestRouter()
+  const pinia = createPinia()
   return mount(DefaultLayout, {
     global: {
-      plugins: [vuetify, i18n, router],
+      plugins: [vuetify, i18n, router, pinia],
     },
     slots: {
       default: '<div class="test-content">Test Content</div>',
@@ -254,12 +256,11 @@ describe('DefaultLayout.vue', () => {
       const wrapper = mountDefaultLayout()
       await flushPromises()
 
-      expect(wrapper.text()).toContain('トップページ')
-      expect(wrapper.text()).toContain('監督一覧')
-      expect(wrapper.text()).toContain('チーム一覧')
-      expect(wrapper.text()).toContain('選手一覧')
-      expect(wrapper.text()).toContain('コスト登録')
-      expect(wrapper.text()).toContain('各種設定')
+      expect(wrapper.text()).toContain('ホーム')
+      expect(wrapper.text()).toContain('試合ログ')
+      // リリース向けUI整理: 試合一覧・成績は非表示
+      expect(wrapper.text()).not.toContain('試合一覧')
+      expect(wrapper.text()).not.toContain('成績')
     })
 
     it('does not display commissioner menu for regular users', async () => {
@@ -268,7 +269,7 @@ describe('DefaultLayout.vue', () => {
       const wrapper = mountDefaultLayout()
       await flushPromises()
 
-      expect(wrapper.text()).not.toContain('リーグ管理')
+      expect(wrapper.text()).not.toContain('大会管理')
     })
 
     it('displays commissioner menu when user is commissioner', async () => {
@@ -277,7 +278,8 @@ describe('DefaultLayout.vue', () => {
       const wrapper = mountDefaultLayout()
       await flushPromises()
 
-      expect(wrapper.text()).toContain('リーグ管理')
+      expect(wrapper.text()).toContain('ダッシュボード')
+      expect(wrapper.text()).toContain('ユーザー管理')
     })
   })
 
@@ -286,7 +288,7 @@ describe('DefaultLayout.vue', () => {
       const wrapper = mountDefaultLayout()
       await flushPromises()
 
-      expect(wrapper.text()).toContain('東方BIG野球まとめツール')
+      expect(wrapper.text()).toContain('THBIG Dugout')
     })
   })
 })

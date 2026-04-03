@@ -1,6 +1,9 @@
 module Api
   module V1
     class TeamKeyPlayersController < Api::V1::BaseController
+      include TeamAccessible
+      before_action :authorize_team_access!
+
       def create
         team = Team.find(params[:team_id])
         season = team.season
@@ -28,7 +31,7 @@ module Api
       rescue ActiveRecord::RecordNotFound => e
         render json: { error: e.message }, status: :not_found
       rescue => e
-        render json: { error: e.message }, status: :unprocessable_entity
+        render json: { error: e.message }, status: :unprocessable_content
       end
     end
   end

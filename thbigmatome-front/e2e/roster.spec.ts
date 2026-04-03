@@ -2,7 +2,7 @@ import { test, expect, type Page } from '@playwright/test'
 
 // TODO: テスト用ユーザー情報
 // seeds.rb にユーザーデータなし。テスト実行前に下記コマンドで作成すること:
-//   rails runner -e test "User.create!(name: 'testuser', display_name: 'テストユーザー', password: 'testpassword', role: :general)"
+//   rails runner -e test "User.create!(name: 'testuser', display_name: 'テストユーザー', password: 'testpassword', role: :player)"
 // また、チームデータ（roster確認用）も事前作成が必要:
 //   rails runner -e test "Manager.create!(name: 'testmgr', display_name: 'テスト監督'); Team.create!(name: 'テストチーム', manager_id: Manager.first.id)"
 const TEST_USER = {

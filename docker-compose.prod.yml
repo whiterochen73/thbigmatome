@@ -1,0 +1,76 @@
+# Docker Compose for thbigmatome PRODUCTION environment
+# Usage:
+#   cp thbigmatome/.env.production.example .env.production
+#   # .env.production を編集して環境変数を設定
+#   docker compose -f docker-compose.prod.yml --env-file .env.production up -d --build
+
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    environment:
+      POSTGRES_USER: thbigmatome
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: thbigmatome_production
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U thbigmatome -d thbigmatome_production"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  rails:
+    build:
+      context: ./thbigmatome
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      RAILS_ENV: production
+      DB_HOST: db
+      DB_PORT: 5432
+      THBIGMATOME_DATABASE_PASSWORD: ${DB_PASSWORD}
+      RAILS_MASTER_KEY: ${RAILS_MASTER_KEY}
+      CORS_ALLOWED_ORIGIN: ${CORS_ALLOWED_ORIGIN}
+      INITIAL_PASSWORD: ${INITIAL_PASSWORD}
+      APP_HOST: ${APP_HOST}
+      # IP直アクセス（ドメインなし）時はSSLを無効化する
+      RAILS_FORCE_SSL: "false"
+      RAILS_ASSUME_SSL: "false"
+      RAILS_LOG_LEVEL: info
+      WEB_CONCURRENCY: 2
+
+  frontend:
+    build:
+      context: ./thbigmatome-front
+      dockerfile: Dockerfile.prod
+      args:
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL}
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - /etc/letsencrypt:/etc/letsencrypt:ro
+    depends_on:
+      - rails
+
+  parser:
+    build:
+      context: ./thbig-irc-parser
+      dockerfile: Dockerfile.dev
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_USERNAME: thbigmatome
+      DB_PASSWORD: ${DB_PASSWORD}
+
+volumes:
+  pgdata:

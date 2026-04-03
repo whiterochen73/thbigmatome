@@ -1,53 +1,52 @@
-/* color palette from <https://github.com/vuejs/theme> */
-:root {
-  --vt-c-white: #ffffff;
-  --vt-c-white-soft: #f8f8f8;
-  --vt-c-white-mute: #f2f2f2;
-
-  --vt-c-black: #181818;
-  --vt-c-black-soft: #222222;
-  --vt-c-black-mute: #282828;
-
-  --vt-c-indigo: #2c3e50;
-
-  --vt-c-divider-light-1: rgba(60, 60, 60, 0.29);
-  --vt-c-divider-light-2: rgba(60, 60, 60, 0.12);
-  --vt-c-divider-dark-1: rgba(84, 84, 84, 0.65);
-  --vt-c-divider-dark-2: rgba(84, 84, 84, 0.48);
-
-  --vt-c-text-light-1: var(--vt-c-indigo);
-  --vt-c-text-light-2: rgba(60, 60, 60, 0.66);
-  --vt-c-text-dark-1: var(--vt-c-white);
-  --vt-c-text-dark-2: rgba(235, 235, 235, 0.64);
-}
-
 /* semantic color variables for this project */
 :root {
-  --color-background: var(--vt-c-white);
-  --color-background-soft: var(--vt-c-white-soft);
-  --color-background-mute: var(--vt-c-white-mute);
+  --color-home: #2c5f2e;
+  --color-visitor: #1b3a6b;
 
-  --color-border: var(--vt-c-divider-light-2);
-  --color-border-hover: var(--vt-c-divider-light-1);
+  /* 和色パレット（既存 --color-visitor/--color-home も維持） */
+  --ai: #1B3A6B;       /* 藍色（--color-visitor と同値） */
+  --shu: #C0392B;      /* 朱色 */
+  --chigusa: #4A7A8A;  /* 千草色 */
+  --moegi: #5D8A2F;    /* 萌黄 */
+  --yamabuki: #D4940A; /* 山吹 */
+  --beni: #B01C2A;     /* 紅 */
+  --asagi: #2E86AB;    /* 浅葱 */
+  --fuji: #6b4c8a;     /* 藤色 */
+  --usuiro: #C8B89A;   /* 薄色（薄茶） */
 
-  --color-heading: var(--vt-c-text-light-1);
-  --color-text: var(--vt-c-text-light-1);
+  /* Surface */
+  --bg: #F8F6F1;           /* 和紙色 */
+  --bg-elevated: #FFFFFF;  /* 白 */
+  --bg-inset: #F0EDE5;     /* くぼみ背景 */
+  --bg-stripe: rgba(240,237,229,0.6);  /* テーブル縞模様 */
+  --border: #D8D0C4;
+  --border-light: #E8E2D8;
 
-  --section-gap: 160px;
-}
+  /* Text */
+  --text-medium: #6B6058;
+  --text-caption: #9A8E84;
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --color-background: var(--vt-c-black);
-    --color-background-soft: var(--vt-c-black-soft);
-    --color-background-mute: var(--vt-c-black-mute);
+  /* Shadow */
+  --shadow-card: 0 1px 4px rgba(0,0,0,0.08);
+  --shadow-elevated: 0 2px 8px rgba(0,0,0,0.12);
 
-    --color-border: var(--vt-c-divider-dark-2);
-    --color-border-hover: var(--vt-c-divider-dark-1);
+  /* Typography */
+  --font-display: 'Shippori Mincho', 'Noto Serif JP', serif;
+  --font-mono: 'JetBrains Mono', 'Roboto Mono', monospace;
 
-    --color-heading: var(--vt-c-text-dark-1);
-    --color-text: var(--vt-c-text-dark-2);
-  }
+  /* Vuetify 4 font override (defaults to "Roboto" if not set) */
+  --v-font-body: 'Zen Kaku Gothic New', 'Noto Sans JP', Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --v-font-heading: 'Zen Kaku Gothic New', 'Noto Sans JP', Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+
+  /* Spacing (8px base) */
+  --sp-1: 4px;
+  --sp-2: 8px;
+  --sp-3: 12px;
+  --sp-4: 16px;
+  --sp-5: 20px;
+  --sp-6: 24px;
+  --sp-8: 32px;
+  --sp-10: 40px;
 }
 
 *,
@@ -64,10 +63,21 @@
   padding-top: 0;
 }
 
+/* Vuetify 4 スペーシング修正 - V3相当の表示に戻す */
+/* v-alert-title: V4では1.5remに増加（V3は約1rem）→ コンパクトに戻す */
+.v-alert-title {
+  font-size: 1rem;
+  line-height: 1.5;
+}
+
+/* v-card-title: V4では1.375remに増加（V3は1.25rem）→ V3相当に戻す */
+.v-card-title {
+  font-size: 1.25rem;
+  line-height: 1.4;
+}
+
 body {
   min-height: 100vh;
-  color: var(--color-text);
-  background: var(--color-background);
   transition:
     color 0.5s,
     background-color 0.5s;

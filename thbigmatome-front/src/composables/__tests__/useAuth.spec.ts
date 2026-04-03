@@ -15,6 +15,20 @@ vi.mock('@/router', () => ({
   },
 }))
 
+// Mock stores (required by initializeUserState/logout)
+vi.mock('@/stores/teamSelection', () => ({
+  useTeamSelectionStore: vi.fn(() => ({
+    teamsLoaded: false,
+    hasTeam: false,
+    myTeams: [],
+    allTeamsLoaded: false,
+    setMyTeams: vi.fn(),
+    setAllTeams: vi.fn(),
+    clearTeam: vi.fn(),
+    resetTeams: vi.fn(),
+  })),
+}))
+
 import axios from 'axios'
 import router from '@/router'
 import { useAuth } from '../useAuth'
@@ -150,6 +164,52 @@ describe('useAuth', () => {
 
     const { login } = useAuth()
     await expect(login('wrong', 'wrong')).rejects.toThrow('ログインに失敗しました')
+  })
+
+  it('initializeUserState calls GET /teams for commissioner user', async () => {
+    const mockUser = { id: 1, name: 'admin', role: 'commissioner' }
+    const allTeamsMock = [
+      { id: 10, name: 'チームA' },
+      { id: 11, name: 'チームB' },
+    ]
+    const setAllTeamsMock = vi.fn()
+
+    const { useTeamSelectionStore } = await import('@/stores/teamSelection')
+    vi.mocked(useTeamSelectionStore).mockReturnValueOnce({
+      teamsLoaded: true,
+      hasTeam: true,
+      myTeams: [{ id: 1, name: '自チーム' }],
+      allTeamsLoaded: false,
+      setMyTeams: vi.fn(),
+      setAllTeams: setAllTeamsMock,
+      clearTeam: vi.fn(),
+      resetTeams: vi.fn(),
+    } as ReturnType<typeof useTeamSelectionStore>)
+
+    vi.mocked(axios.post).mockResolvedValueOnce({
+      data: { user: mockUser, message: 'OK' },
+    })
+    vi.mocked(axios.get).mockResolvedValueOnce({ data: allTeamsMock })
+
+    const { login } = useAuth()
+    await login('admin', 'pass')
+
+    expect(axios.get).toHaveBeenCalledWith('/teams')
+    expect(setAllTeamsMock).toHaveBeenCalledWith(allTeamsMock)
+  })
+
+  it('initializeUserState does not call GET /teams for non-commissioner user', async () => {
+    const mockUser = { id: 2, name: 'director', role: 'director' }
+
+    vi.mocked(axios.post).mockResolvedValueOnce({
+      data: { user: mockUser, message: 'OK' },
+    })
+
+    const { login } = useAuth()
+    await login('director', 'pass')
+
+    const getCalls = vi.mocked(axios.get).mock.calls
+    expect(getCalls.every((call) => call[0] !== '/teams')).toBe(true)
   })
 
   it('logout clears user even on error', async () => {

@@ -17,9 +17,9 @@
           </div>
         </template>
         <div v-if="filteredAbsences.length > 0">
-          <p v-for="absence in filteredAbsences" :key="absence.id" class="mb-0">
+          <div v-for="absence in filteredAbsences" :key="absence.id" class="ma-0">
             {{ getAbsenceDisplayText(absence) }}
-          </p>
+          </div>
         </div>
         <div v-else>
           {{ t('seasonPortal.noAbsenceInfo') }}

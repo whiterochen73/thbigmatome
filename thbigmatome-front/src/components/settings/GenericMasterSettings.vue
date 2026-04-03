@@ -6,9 +6,14 @@
           <div class="d-flex align-center w-100">
             <span class="text-no-wrap">{{ title }}</span>
             <v-spacer></v-spacer>
-            <v-btn v-if="!readonly" color="primary" @click.stop="openNewDialog" size="small">{{
-              t(`${i18nKey}.add`)
-            }}</v-btn>
+            <v-btn
+              v-if="!readonly"
+              color="accent"
+              variant="flat"
+              @click.stop="openNewDialog"
+              size="small"
+              >{{ t(`${i18nKey}.add`) }}</v-btn
+            >
           </div>
         </v-expansion-panel-title>
         <v-expansion-panel-text>
@@ -43,8 +48,10 @@
 
             <!-- eslint-disable-next-line vue/valid-v-slot -->
             <template v-if="!readonly" v-slot:item.actions="{ item }">
-              <v-icon size="small" class="me-2" @click="openEditDialog(item)">mdi-pencil</v-icon>
-              <v-icon size="small" @click="confirmDelete(item)">mdi-delete</v-icon>
+              <v-icon size="small" class="me-2" @click="openEditDialog(item as T)"
+                >mdi-pencil</v-icon
+              >
+              <v-icon size="small" @click="confirmDelete(item as T)">mdi-delete</v-icon>
             </template>
           </v-data-table>
         </v-expansion-panel-text>

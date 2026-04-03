@@ -1,6 +1,10 @@
 module Api
   module V1
     class TeamRostersController < Api::V1::BaseController
+      include CooldownCalculable
+      include TeamAccessible
+      before_action :authorize_team_access!
+
       def show
         team = Team.find(params[:team_id])
         season = team.season
@@ -15,10 +19,11 @@ module Api
         target_date = season.current_date
 
         # Fetch all team memberships for the team
-        team_memberships = team.team_memberships.preload(:season_rosters, :player_absences, player: [ :cost_players, :player_types ])
+        team_memberships = team.team_memberships.preload(:season_rosters, :player_absences, player: [ :cost_players, { player_cards: :player_card_defenses } ])
         start_date = season.season_schedules.minimum(:date)
 
         # Determine current squad for each player based on the latest SeasonRoster entry
+        native_series = Team::NATIVE_SERIES[team.team_type] || Team::NATIVE_SERIES["normal"]
         roster_data = team_memberships.map do |tm|
           latest_roster_entry = tm.season_rosters
                                   .where("registered_on <= ?", target_date)
@@ -34,26 +39,34 @@ module Api
             player_id: tm.player.id,
             number: tm.player.number,
             player_name: tm.player.short_name,
-            throwing_hand: tm.player.throwing_hand,
-            batting_hand: tm.player.batting_hand,
+            handedness: tm.player.player_cards.first&.handedness,
+            position: (tm.player.player_cards.first&.card_type == "pitcher" ? "pitcher" : tm.player.player_cards.first&.player_card_defenses&.first&.position&.downcase),
             squad: squad_status,
-            position: tm.player.position, # Add player position
-            player_types: tm.player.player_types.pluck([ :name ]), # Add player types
+            player_types: [],
             selected_cost_type: tm.selected_cost_type, # Add selected cost type
             cost: tm.player.cost_players.find { |pc| pc.cost_id == current_cost_list.id }.send(tm.selected_cost_type), # Assuming player has cost methods
             # Add cooldown information if applicable
             cooldown_until: cooldown_info[:cooldown_until],
             same_day_exempt: cooldown_info[:same_day_exempt],
-            is_outside_world: tm.player.player_types.any? { |pt| pt.category == "outside_world" },
+            is_outside_world: !native_series.include?(tm.player.series),
+            is_starter_pitcher: (tm.player.player_cards.first&.is_pitcher && tm.player.player_cards.first&.starter_stamina.present? && tm.player.player_cards.first&.starter_stamina >= 4) || false,
+            is_relief_only: (tm.player.player_cards.first&.is_pitcher && tm.player.player_cards.first&.is_relief_only) || false,
             **absence_info_for(tm, target_date)
           }
         end
+
+        previous_game_date = season.season_schedules
+          .where("date < ?", target_date)
+          .order(date: :desc)
+          .limit(1)
+          .pick(:date)
 
         render json: {
           season_id: season.id,
           current_date: target_date,
           season_start_date: start_date, # Assuming season has schedule association
           key_player_id: season.key_player_id,
+          previous_game_date: previous_game_date,
           roster: roster_data
         }, status: :ok
       rescue ActiveRecord::RecordNotFound
@@ -77,6 +90,9 @@ module Api
         target_date = Date.parse(params[:target_date]) # Date for which the roster is being set
         season_start_date = season.season_schedules.minimum(:date) # Calculate season start date once
 
+        is_commissioner = current_user.commissioner?
+        commissioner_warnings = []
+
         ActiveRecord::Base.transaction do
           # Phase 1: Apply all squad changes (cooldown check only, no cost validation yet)
           roster_updates.each do |update|
@@ -92,7 +108,7 @@ module Api
                 registered_on: target_date
               )
             elsif team_membership.squad == "second" && new_squad == "first"
-              # Check reconditioning: block promotion for reconditioning players
+              # Check reconditioning: block promotion for reconditioning players (even commissioners)
               absence = absence_info_for(team_membership, target_date)
               if absence[:is_absent] && absence[:absence_info][:absence_type] == "reconditioning"
                 raise "#{team_membership.player.name}は再調整中のため1軍登録できません。"
@@ -117,28 +133,40 @@ module Api
 
           # Phase 2: Validate final state of 1st squad after all changes
           final_first_squad = team.team_memberships.reload.select { |tm| tm.squad == "first" }
-          validate_first_squad_constraints(final_first_squad, target_date, season, season_start_date)
+          validate_first_squad_constraints(final_first_squad, target_date, season, season_start_date,
+            commissioner_mode: is_commissioner, commissioner_warnings: commissioner_warnings)
 
           # Phase 3: Validate outside world constraints
           team.reload
           team.errors.clear
           unless team.validate_outside_world_limit
-            raise team.errors.full_messages.first
+            msg = team.errors.full_messages.first
+            if is_commissioner
+              commissioner_warnings << msg
+            else
+              raise msg
+            end
           end
           team.errors.clear
           unless team.validate_outside_world_balance
-            raise team.errors.full_messages.first
+            msg = team.errors.full_messages.first
+            if is_commissioner
+              commissioner_warnings << msg
+            else
+              raise msg
+            end
           end
         end
 
         # Collect warnings for absent players being promoted
         warnings = collect_absence_warnings(team, target_date, roster_updates)
+        warnings.concat(commissioner_warnings.map { |msg| { type: "commissioner_override", message: msg } })
 
         render json: { message: "Roster updated successfully", warnings: warnings }, status: :ok
       rescue ActiveRecord::RecordNotFound => e
         render json: { error: e.message }, status: :not_found
       rescue => e
-        render json: { error: e.message }, status: :unprocessable_entity
+        render json: { error: e.message }, status: :unprocessable_content
       end
 
       private
@@ -156,35 +184,6 @@ module Api
             nil
           end
         end.compact
-      end
-
-      # Rule 3: Cooldown calculation with same-day exemption info
-      # Returns { cooldown_until: Date|nil, same_day_exempt: boolean }
-      def calculate_cooldown_info(team_membership, current_date)
-        last_demotion = team_membership.season_rosters
-                          .where(squad: "second")
-                          .order(registered_on: :desc, created_at: :desc)
-                          .first
-
-        return { cooldown_until: nil, same_day_exempt: false } unless last_demotion
-
-        # Find the most recent promotion before this demotion (including same-day entries)
-        previous_promotion = team_membership.season_rosters
-                               .where(squad: "first")
-                               .where(
-                                 "registered_on < :date OR (registered_on = :date AND created_at < :cat)",
-                                 date: last_demotion.registered_on, cat: last_demotion.created_at
-                               )
-                               .order(registered_on: :desc, created_at: :desc)
-                               .first
-
-        return { cooldown_until: nil, same_day_exempt: false } unless previous_promotion
-
-        cooldown_end_date = last_demotion.registered_on + 10.days
-        return { cooldown_until: nil, same_day_exempt: false } unless current_date < cooldown_end_date
-
-        same_day = previous_promotion.registered_on == last_demotion.registered_on
-        { cooldown_until: cooldown_end_date, same_day_exempt: same_day }
       end
 
       # Check if a team_membership has an active absence at the given date
@@ -234,7 +233,7 @@ module Api
       end
 
       # Rule 4 & 5: Validate 1st team constraints
-      def validate_first_squad_constraints(first_squad_memberships, target_date, season, season_start_date)
+      def validate_first_squad_constraints(first_squad_memberships, target_date, season, season_start_date, commissioner_mode: false, commissioner_warnings: [])
         player_count = first_squad_memberships.count
         total_cost = first_squad_memberships.sum { |tm| tm.player.cost_players.find { |pc| pc.cost_id == @current_cost_list.id }.send(tm.selected_cost_type) }
 
@@ -251,18 +250,21 @@ module Api
           if is_first_game_day_of_season && player_count < minimum_players
             # Do not raise error for minimum player count on the first game day during initial setup
           elsif player_count < minimum_players
-            raise "試合日には1軍に最低#{minimum_players}人を登録する必要があります。"
+            msg = "試合日には1軍に最低#{minimum_players}人を登録する必要があります。"
+            commissioner_mode ? (commissioner_warnings << msg) : raise(msg)
           end
         end
 
         if player_count > max_players
-          raise "1軍に登録できる選手の最大数（#{max_players}人）を超えています。"
+          msg = "1軍に登録できる選手の最大数（#{max_players}人）を超えています。"
+          commissioner_mode ? (commissioner_warnings << msg) : raise(msg)
         end
 
         # 1軍コスト上限: 人数別段階制（config/cost_limits.yml）
         max_cost = Team.first_squad_cost_limit_for_count(player_count)
         if max_cost && total_cost > max_cost
-          raise "1軍に登録されている選手の合計コストが上限（#{max_cost}）を超えています。"
+          msg = "1軍に登録されている選手の合計コストが上限（#{max_cost}）を超えています。"
+          commissioner_mode ? (commissioner_warnings << msg) : raise(msg)
         end
       end
     end

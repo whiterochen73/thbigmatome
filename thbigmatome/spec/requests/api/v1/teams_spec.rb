@@ -57,7 +57,7 @@ RSpec.describe "Api::V1::TeamsController", type: :request do
     include_context "authenticated user"
 
     it "returns 200 with team details" do
-      team = create(:team, name: "詳細チーム")
+      team = create(:team, name: "詳細チーム", user: user)
 
       get "/api/v1/teams/#{team.id}", as: :json
 
@@ -74,7 +74,7 @@ RSpec.describe "Api::V1::TeamsController", type: :request do
   end
 
   describe "POST /api/v1/teams" do
-    include_context "authenticated user"
+    include_context "authenticated commissioner"
 
     it "creates a team and returns 201" do
       expect {
@@ -89,7 +89,7 @@ RSpec.describe "Api::V1::TeamsController", type: :request do
     it "returns 422 with invalid params" do
       post "/api/v1/teams", params: { team: { name: "", short_name: "" } }, as: :json
 
-      expect(response).to have_http_status(:unprocessable_entity)
+      expect(response).to have_http_status(:unprocessable_content)
       json = response.parsed_body
       expect(json["errors"]).to be_present
     end
@@ -112,7 +112,7 @@ RSpec.describe "Api::V1::TeamsController", type: :request do
   describe "PATCH /api/v1/teams/:id" do
     include_context "authenticated user"
 
-    let!(:team) { create(:team, name: "旧名前") }
+    let!(:team) { create(:team, name: "旧名前", user: user) }
 
     it "updates the team" do
       patch "/api/v1/teams/#{team.id}", params: { team: { name: "新名前" } }, as: :json
@@ -129,7 +129,7 @@ RSpec.describe "Api::V1::TeamsController", type: :request do
   end
 
   describe "DELETE /api/v1/teams/:id" do
-    include_context "authenticated user"
+    include_context "authenticated commissioner"
 
     let!(:team) { create(:team) }
 

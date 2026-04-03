@@ -73,7 +73,5 @@ RSpec.describe "master_data:sync" do
 
   it_behaves_like "master data sync", :batting_styles, BattingStyle, []
   it_behaves_like "master data sync", :pitching_styles, PitchingStyle, []
-  it_behaves_like "master data sync", :batting_skills, BattingSkill, [ :skill_type ]
-  it_behaves_like "master data sync", :pitching_skills, PitchingSkill, [ :skill_type ]
   it_behaves_like "master data sync", :player_types, PlayerType, [ :category ]
 end

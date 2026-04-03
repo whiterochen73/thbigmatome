@@ -1,0 +1,1023 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>チーム運営プロトタイプ - 東方BIG野球まとめ</title>
+  <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@mdi/font@7/css/materialdesignicons.min.css"/>
+  <style>
+    /* ===== 和色パレット ===== */
+    :root {
+      --color-ai:       #1B3A6B; /* 藍 primary */
+      --color-chikusa:  #4A7A8A; /* 千草 secondary */
+      --color-yamabuki: #D4940A; /* 山吹 warning */
+      --color-moegi:    #5D8A2F; /* 萌黄 success */
+      --color-shu:      #B01C2A; /* 朱 error */
+      --color-murasaki: #6B3FA0; /* 紫 key player */
+      --color-amber:    #B07800; /* 琥珀 cooldown */
+      --color-washi:    #F8F6F1; /* 和紙色 bg */
+      --color-surface:  #FFFFFF;
+      --color-text-high:   #1A1A1A;
+      --color-text-med:    #4A4A4A;
+      --color-text-cap:    #777777;
+      --color-text-dis:    #BBBBBB;
+
+      --color-ai-light:       #D8E2F2;
+      --color-chikusa-light:  #D6E8ED;
+      --color-yamabuki-light: #FAEBC6;
+      --color-moegi-light:    #D9EBC4;
+      --color-shu-light:      #F5D5D8;
+      --color-murasaki-light: #EDE0F8;
+      --color-amber-light:    #FDF0C0;
+      --color-blue-grey-light:#E8EDEF;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Hiragino Kaku Gothic ProN', 'Yu Gothic', Meiryo, sans-serif;
+      background: var(--color-washi);
+      color: var(--color-text-high);
+      min-height: 100vh;
+    }
+
+    /* ===== ヘッダー ===== */
+    .app-header {
+      background: var(--color-ai);
+      color: #fff;
+      padding: 10px 18px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      position: sticky; top: 0; z-index: 100;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.25);
+    }
+    .app-header .logo { font-size: 15px; font-weight: bold; }
+    .app-header .breadcrumb { font-size: 12px; opacity: 0.7; }
+    .app-header .breadcrumb a { color: rgba(255,255,255,0.75); text-decoration: none; }
+    .app-header .breadcrumb a:hover { text-decoration: underline; }
+    .app-header .team-name { font-weight: 600; font-size: 14px; }
+    .app-header .spacer { flex: 1; }
+
+    /* ===== ページタブ ===== */
+    .page-tabs {
+      display: flex;
+      background: var(--color-ai);
+      border-bottom: 2px solid rgba(255,255,255,0.12);
+    }
+    .page-tab {
+      padding: 10px 16px 8px;
+      background: none;
+      border: none;
+      color: rgba(255,255,255,0.6);
+      cursor: pointer;
+      font-size: 12px;
+      font-family: inherit;
+      display: flex; align-items: center; gap: 5px;
+      border-bottom: 3px solid transparent;
+      transition: color 0.2s, border-color 0.2s;
+      white-space: nowrap;
+    }
+    .page-tab.active {
+      color: #fff;
+      border-bottom-color: var(--color-yamabuki);
+      background: rgba(255,255,255,0.07);
+    }
+    .page-tab .mdi { font-size: 18px; }
+
+    /* ===== メインコンテンツ ===== */
+    .main { padding: 14px 16px; max-width: 1100px; margin: 0 auto; }
+
+    /* ===== カードベース ===== */
+    .card {
+      background: var(--color-surface);
+      border-radius: 8px;
+      border: 1px solid #E4E0D8;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.07);
+      overflow: hidden;
+    }
+    .card-header {
+      padding: 12px 16px;
+      border-bottom: 1px solid #EDE9E0;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .card-title {
+      font-size: 14px;
+      font-weight: 700;
+      flex: 1;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .card-body { padding: 12px 16px; }
+
+    /* ===== アラート ===== */
+    .alert {
+      padding: 8px 12px;
+      border-radius: 6px;
+      font-size: 12px;
+      margin-bottom: 10px;
+      display: flex;
+      align-items: flex-start;
+      gap: 6px;
+    }
+    .alert-warning { background: var(--color-yamabuki-light); color: #7A5500; border: 1px solid #E8C060; }
+    .alert-error   { background: var(--color-shu-light);      color: var(--color-shu); border: 1px solid #E0A0A8; }
+    .alert-info    { background: var(--color-moegi-light);    color: #3A6010; border: 1px solid #A8CF80; }
+    .alert .mdi { flex-shrink: 0; font-size: 15px; margin-top: 1px; }
+
+    /* ===== コストバー ===== */
+    .cost-bar-wrapper { margin: 10px 0; }
+    .cost-bar-label {
+      display: flex;
+      justify-content: space-between;
+      font-size: 12px;
+      margin-bottom: 4px;
+    }
+    .cost-bar-track {
+      height: 8px;
+      background: #E8E4DC;
+      border-radius: 4px;
+      overflow: hidden;
+    }
+    .cost-bar-fill {
+      height: 100%;
+      border-radius: 4px;
+      transition: width 0.3s;
+    }
+
+    /* ===== グリッドレイアウト ===== */
+    .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    @media (max-width: 768px) { .two-col { grid-template-columns: 1fr; } }
+
+    /* ===== テーブル共通 ===== */
+    .data-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12px;
+    }
+    .data-table th {
+      background: #F0EDE6;
+      color: var(--color-text-med);
+      padding: 7px 10px;
+      text-align: left;
+      font-weight: 600;
+      font-size: 11px;
+      white-space: nowrap;
+      border-bottom: 1px solid #E4E0D8;
+    }
+    .data-table td {
+      padding: 6px 10px;
+      border-bottom: 1px solid #F0EDE8;
+      vertical-align: middle;
+    }
+    .data-table tr:last-child td { border-bottom: none; }
+    .data-table tr:hover td { background: #FAFAF6; }
+
+    /* ===== 行ハイライト ===== */
+    .row-key-player td { background: var(--color-murasaki-light) !important; }
+    .row-injury td     { background: var(--color-shu-light) !important; }
+    .row-suspension td { background: var(--color-yamabuki-light) !important; }
+    .row-reconditioning td { background: var(--color-blue-grey-light) !important; }
+    .row-cooldown td   { background: var(--color-amber-light) !important; }
+    .row-near-return td { background: var(--color-moegi-light) !important; }
+
+    /* ===== バッジ/チップ ===== */
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 3px;
+      padding: 2px 7px;
+      border-radius: 12px;
+      font-size: 10px;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+    .badge-primary    { background: var(--color-ai-light);       color: var(--color-ai); }
+    .badge-murasaki   { background: var(--color-murasaki-light); color: var(--color-murasaki); }
+    .badge-injury     { background: var(--color-shu-light);      color: var(--color-shu); }
+    .badge-suspension { background: var(--color-yamabuki-light); color: #7A5500; }
+    .badge-reconditioning { background: var(--color-blue-grey-light); color: #455A64; }
+    .badge-cooldown   { background: var(--color-amber-light);   color: var(--color-amber); }
+    .badge-near-return { background: var(--color-moegi-light);  color: var(--color-moegi); }
+    .badge-sp  { background: #EDF2FF; color: #3B5BDB; }
+    .badge-rp  { background: #F3F0FF; color: #7048E8; }
+    .badge-cl  { background: #FFF3BF; color: #E67700; }
+
+    /* ===== ポジション ===== */
+    .pos-badge {
+      display: inline-block;
+      width: 26px; height: 18px;
+      border-radius: 3px;
+      font-size: 10px;
+      font-weight: 700;
+      text-align: center;
+      line-height: 18px;
+      background: #E8E4DC;
+      color: var(--color-text-med);
+    }
+    .pos-p  { background: #E8EEF8; color: #2E5BAA; }
+    .pos-c  { background: #FFF0E8; color: #C85000; }
+    .pos-if { background: #F0F8E8; color: #3A7020; }
+    .pos-of { background: #F8F0E8; color: #904800; }
+
+    /* ===== ボタン ===== */
+    .btn {
+      padding: 4px 10px;
+      border-radius: 16px;
+      border: none;
+      cursor: pointer;
+      font-size: 11px;
+      font-family: inherit;
+      font-weight: 600;
+      display: inline-flex;
+      align-items: center;
+      gap: 3px;
+      transition: opacity 0.15s, box-shadow 0.15s;
+    }
+    .btn:hover { opacity: 0.85; box-shadow: 0 2px 6px rgba(0,0,0,0.18); }
+    .btn:disabled { opacity: 0.45; cursor: default; box-shadow: none; }
+    .btn-promote { background: var(--color-ai); color: #fff; }
+    .btn-demote  { background: #607D8B; color: #fff; }
+    .btn-primary { background: var(--color-ai); color: #fff; }
+    .btn-outline { background: none; border: 1.5px solid var(--color-ai); color: var(--color-ai); }
+    .btn-danger  { background: var(--color-shu); color: #fff; }
+    .btn-edit    { background: #546E7A; color: #fff; }
+    .btn-sm { padding: 3px 8px; font-size: 10px; }
+
+    /* ===== 投手グループヘッダー ===== */
+    .group-header td {
+      background: #EDEAF4 !important;
+      color: var(--color-murasaki);
+      font-size: 11px;
+      font-weight: 700;
+      padding: 4px 10px;
+      letter-spacing: 0.03em;
+    }
+
+    /* ===== フィルタバー ===== */
+    .filter-bar {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+    .filter-label { font-size: 11px; color: var(--color-text-cap); }
+    .filter-chip {
+      padding: 4px 11px;
+      border-radius: 16px;
+      border: 1.5px solid var(--color-text-dis);
+      background: var(--color-surface);
+      font-size: 11px;
+      cursor: pointer;
+      font-family: inherit;
+      transition: all 0.15s;
+    }
+    .filter-chip.active { background: var(--color-ai); border-color: var(--color-ai); color: #fff; }
+    .filter-chip:hover:not(.active) { border-color: var(--color-ai); background: #F0F3FA; }
+
+    /* ===== コストゲージ（大型） ===== */
+    .cost-gauge {
+      margin: 14px 0;
+      padding: 14px 16px;
+      background: var(--color-surface);
+      border-radius: 8px;
+      border: 1px solid #E4E0D8;
+    }
+    .cost-gauge-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      margin-bottom: 8px;
+    }
+    .cost-gauge-title { font-size: 13px; font-weight: 600; }
+    .cost-gauge-value { font-size: 18px; font-weight: 700; }
+    .cost-gauge-limit { font-size: 12px; color: var(--color-text-cap); }
+    .cost-gauge-track {
+      height: 14px;
+      background: #E8E4DC;
+      border-radius: 7px;
+      overflow: hidden;
+      position: relative;
+    }
+    .cost-gauge-fill {
+      height: 100%;
+      border-radius: 7px;
+      transition: width 0.4s;
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      padding-right: 6px;
+      font-size: 9px;
+      color: #fff;
+      font-weight: 700;
+    }
+    .cost-gauge-ticks {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 3px;
+      font-size: 10px;
+      color: var(--color-text-cap);
+    }
+
+    /* ===== 折りたたみ ===== */
+    .collapsible-header {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 10px 14px;
+      cursor: pointer;
+      border-radius: 6px;
+      background: #F5F2EC;
+      border: 1px solid #E4E0D8;
+      margin-bottom: 8px;
+      font-size: 13px;
+      font-weight: 600;
+      user-select: none;
+      transition: background 0.15s;
+    }
+    .collapsible-header:hover { background: #EEEAD8; }
+    .collapsible-header .mdi { transition: transform 0.2s; }
+    .collapsible-header.open .mdi-chevron-down { transform: rotate(180deg); }
+
+    /* ===== 動線ボタンエリア ===== */
+    .nav-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 5px 12px;
+      border-radius: 16px;
+      background: rgba(27,58,107,0.08);
+      color: var(--color-ai);
+      font-size: 11px;
+      font-weight: 600;
+      cursor: pointer;
+      border: 1px solid var(--color-ai-light);
+      transition: background 0.15s;
+      font-family: inherit;
+    }
+    .nav-link:hover { background: var(--color-ai-light); }
+
+    /* ===== 凡例 ===== */
+    .legend-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      padding: 8px 12px;
+      background: #FAFAF6;
+      border-radius: 6px;
+      border: 1px solid #EDEAE0;
+      margin-bottom: 10px;
+    }
+    .legend-item { display: flex; align-items: center; gap: 4px; font-size: 11px; color: var(--color-text-med); }
+    .legend-dot { width: 10px; height: 10px; border-radius: 2px; flex-shrink: 0; }
+
+    /* ===== モバイル対応 ===== */
+    @media (max-width: 640px) {
+      .main { padding: 10px 10px; }
+      .data-table thead { display: none; }
+      .data-table, .data-table tbody, .data-table tr, .data-table td { display: block; }
+      .data-table tr {
+        background: var(--color-surface);
+        border-radius: 8px;
+        margin-bottom: 8px;
+        padding: 10px 12px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+        border: 1px solid #EDEAD4;
+      }
+      .data-table td {
+        border-bottom: none;
+        padding: 3px 0;
+        font-size: 12px;
+      }
+      .data-table td::before {
+        content: attr(data-label) ': ';
+        font-size: 10px;
+        color: var(--color-text-cap);
+        font-weight: 600;
+      }
+      .data-table tr.group-header { display: none; }
+      .page-tab .tab-label { display: none; }
+    }
+  </style>
+</head>
+<body>
+<div id="app">
+  <!-- ヘッダー -->
+  <div class="app-header">
+    <span class="mdi mdi-torii-gate" style="font-size:20px"></span>
+    <span class="logo">東方BIG野球まとめ</span>
+    <span class="breadcrumb">
+      <a href="#">ホーム</a> &rsaquo; 守矢神社
+    </span>
+    <span class="spacer"></span>
+    <span class="team-name">守矢神社</span>
+  </div>
+
+  <!-- ページタブ（3画面動線） -->
+  <div class="page-tabs">
+    <button class="page-tab" :class="{active: page==='roster'}" @click="page='roster'">
+      <span class="mdi mdi-account-group"></span>
+      <span class="tab-label">ロスター</span>
+    </button>
+    <button class="page-tab" :class="{active: page==='absences'}" @click="page='absences'">
+      <span class="mdi mdi-account-off"></span>
+      <span class="tab-label">離脱者</span>
+    </button>
+    <button class="page-tab" :class="{active: page==='members'}" @click="page='members'">
+      <span class="mdi mdi-clipboard-account"></span>
+      <span class="tab-label">メンバー管理</span>
+    </button>
+  </div>
+
+  <!-- ===== ロスタータブ ===== -->
+  <div class="main" v-if="page==='roster'">
+
+    <!-- アラート -->
+    <div class="alert alert-info" v-if="nearReturnPlayers.length > 0" style="margin-bottom:12px;">
+      <span class="mdi mdi-alert-circle"></span>
+      <div>
+        <strong>復帰間近の選手:</strong>
+        <span v-for="p in nearReturnPlayers" :key="p.id" style="margin-left:8px;">
+          {{ p.name }}（残{{ p.absence?.remaining }}試合）
+        </span>
+      </div>
+    </div>
+
+    <!-- 1軍コストサマリー -->
+    <div style="margin-bottom:14px;">
+      <div style="display:flex; align-items:center; gap:16px; flex-wrap:wrap; margin-bottom:6px;">
+        <div style="font-size:13px; font-weight:700;">
+          1軍: <span>{{ firstSquad.length }}</span>/29人 &nbsp;
+          <span :style="rosterCostColor">コスト: {{ firstSquadCost }}/{{ firstCostLimit }}</span>
+        </div>
+        <div style="font-size:11px; color:var(--color-text-cap);">
+          投手 {{ firstPitcherCount }}人 &nbsp; 野手 {{ firstFielderCount }}人 &nbsp;
+          異世界 {{ outsideWorldCount }}/4
+        </div>
+        <button class="nav-link" @click="page='members'" style="margin-left:auto;">
+          <span class="mdi mdi-clipboard-account"></span> メンバー管理
+        </button>
+      </div>
+      <div class="cost-bar-wrapper">
+        <div class="cost-bar-track">
+          <div class="cost-bar-fill" :style="costBarStyle"></div>
+        </div>
+        <div style="display:flex; justify-content:space-between; font-size:10px; color:var(--color-text-cap); margin-top:2px;">
+          <span>0</span>
+          <span>{{ firstCostLimit }}</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- 凡例 -->
+    <div class="legend-row">
+      <div class="legend-item"><span class="legend-dot" style="background:var(--color-murasaki-light); border:1px solid var(--color-murasaki);"></span>特例選手</div>
+      <div class="legend-item"><span class="legend-dot" style="background:var(--color-shu-light);"></span>負傷</div>
+      <div class="legend-item"><span class="legend-dot" style="background:var(--color-yamabuki-light);"></span>出場停止</div>
+      <div class="legend-item"><span class="legend-dot" style="background:var(--color-blue-grey-light);"></span>再調整中</div>
+      <div class="legend-item"><span class="legend-dot" style="background:var(--color-amber-light);"></span>クールダウン</div>
+    </div>
+
+    <!-- 1軍 / 2軍 2カラム -->
+    <div class="two-col">
+      <!-- 1軍テーブル -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title"><span class="mdi mdi-star"></span>1軍</div>
+          <button class="btn btn-primary btn-sm" disabled>ロスター保存</button>
+        </div>
+        <div style="overflow-x:auto;">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>選手名</th>
+                <th>POS</th>
+                <th>COST</th>
+                <th>状態</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              <template v-for="(group, gi) in firstSquadGroups" :key="gi">
+                <tr class="group-header">
+                  <td colspan="6">{{ group.label }}</td>
+                </tr>
+                <tr v-for="p in group.players" :key="p.id" :class="rowClass(p)">
+                  <td data-label="#">{{ p.number }}</td>
+                  <td data-label="選手名">
+                    {{ p.name }}
+                    <span class="mdi mdi-star" style="color:var(--color-murasaki);font-size:13px;" v-if="p.isKey" title="特例選手"></span>
+                  </td>
+                  <td data-label="POS"><span class="pos-badge" :class="posBadgeClass(p.position)">{{ shortPos(p.position) }}</span></td>
+                  <td data-label="COST">{{ p.cost }}</td>
+                  <td data-label="状態">
+                    <span class="badge" :class="statusBadge(p)" v-if="p.absence || p.isKey">
+                      <span class="mdi" :class="statusIcon(p)"></span>
+                      {{ statusLabel(p) }}
+                    </span>
+                  </td>
+                  <td>
+                    <button class="btn btn-demote btn-sm" :disabled="p.isKey" @click="demotion(p)">
+                      <span class="mdi mdi-arrow-down"></span> 降格
+                    </button>
+                  </td>
+                </tr>
+              </template>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- 2軍テーブル -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title"><span class="mdi mdi-account-multiple"></span>2軍</div>
+        </div>
+        <!-- 凡例(2軍) -->
+        <div class="card-body" style="padding-bottom:0;">
+          <div style="display:flex; flex-wrap:wrap; gap:6px; margin-bottom:8px;">
+            <span class="badge badge-cooldown"><span class="mdi mdi-timer-sand"></span>CD中</span>
+            <span class="badge badge-injury"><span class="mdi mdi-hospital-box"></span>負傷</span>
+            <span class="badge badge-suspension"><span class="mdi mdi-gavel"></span>出場停止</span>
+            <span class="badge badge-reconditioning"><span class="mdi mdi-wrench"></span>再調整中</span>
+          </div>
+        </div>
+        <div style="overflow-x:auto;">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th></th>
+                <th>#</th>
+                <th>選手名</th>
+                <th>POS</th>
+                <th>COST</th>
+                <th>状態</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="p in secondSquad" :key="p.id" :class="rowClass(p)">
+                <td>
+                  <button class="btn btn-promote btn-sm"
+                    :disabled="p.absence?.type==='reconditioning' || p.cooldown"
+                    @click="promotion(p)">
+                    <span class="mdi mdi-arrow-up"></span> 昇格
+                  </button>
+                </td>
+                <td data-label="#">{{ p.number }}</td>
+                <td data-label="選手名">{{ p.name }}</td>
+                <td data-label="POS"><span class="pos-badge" :class="posBadgeClass(p.position)">{{ shortPos(p.position) }}</span></td>
+                <td data-label="COST">{{ p.cost }}</td>
+                <td data-label="状態">
+                  <span class="badge" :class="statusBadge(p)" v-if="p.absence || p.cooldown">
+                    <span class="mdi" :class="statusIcon(p)"></span>
+                    {{ statusLabel(p) }}
+                  </span>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== 離脱者タブ ===== -->
+  <div class="main" v-if="page==='absences'">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; flex-wrap:wrap; gap:8px;">
+      <h2 style="font-size:15px; font-weight:700;">現在の離脱者</h2>
+      <button class="btn btn-primary">
+        <span class="mdi mdi-plus"></span> 離脱登録
+      </button>
+    </div>
+
+    <!-- 離脱中テーブル -->
+    <div class="card" style="margin-bottom:14px;">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>選手名</th>
+            <th>種別</th>
+            <th>理由</th>
+            <th>開始日</th>
+            <th>復帰予定日</th>
+            <th>残り</th>
+            <th>操作</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="a in activeAbsences" :key="a.id" :class="absenceRowClass(a)">
+            <td data-label="選手名"><strong>{{ a.playerName }}</strong></td>
+            <td data-label="種別">
+              <span class="badge" :class="absenceBadge(a.type)">
+                <span class="mdi" :class="absenceIcon(a.type)"></span>
+                {{ absenceLabel(a.type) }}
+              </span>
+            </td>
+            <td data-label="理由" style="color:var(--color-text-med);">{{ a.reason }}</td>
+            <td data-label="開始日">{{ a.startDate }}</td>
+            <td data-label="復帰予定">{{ a.returnDate }}</td>
+            <td data-label="残り">
+              <span :class="a.remaining <= 2 ? 'badge badge-near-return' : ''">
+                {{ a.remaining }}試合
+              </span>
+            </td>
+            <td style="display:flex; gap:4px;">
+              <button class="btn btn-edit btn-sm"><span class="mdi mdi-pencil"></span></button>
+              <button class="btn btn-danger btn-sm"><span class="mdi mdi-delete"></span></button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- 過去の離脱履歴（折りたたみ） -->
+    <div class="collapsible-header" :class="{open: historyOpen}" @click="historyOpen=!historyOpen">
+      <span class="mdi mdi-history"></span>
+      過去の離脱履歴（{{ pastAbsences.length }}件）
+      <span class="mdi mdi-chevron-down" style="margin-left:auto;"></span>
+    </div>
+    <div v-if="historyOpen" class="card">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>選手名</th>
+            <th>種別</th>
+            <th>理由</th>
+            <th>開始日</th>
+            <th>復帰日</th>
+            <th>日数</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="a in pastAbsences" :key="a.id">
+            <td data-label="選手名">{{ a.playerName }}</td>
+            <td data-label="種別">
+              <span class="badge" :class="absenceBadge(a.type)">{{ absenceLabel(a.type) }}</span>
+            </td>
+            <td data-label="理由" style="color:var(--color-text-med);">{{ a.reason }}</td>
+            <td data-label="開始日">{{ a.startDate }}</td>
+            <td data-label="復帰日">{{ a.returnDate }}</td>
+            <td data-label="日数">{{ a.duration }}試合</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ===== メンバー管理タブ ===== -->
+  <div class="main" v-if="page==='members'">
+    <!-- チーム全体コストゲージ -->
+    <div class="cost-gauge">
+      <div class="cost-gauge-header">
+        <span class="cost-gauge-title">チーム全体コスト</span>
+        <div>
+          <span class="cost-gauge-value" :style="teamCostValueStyle">{{ totalTeamCost }}</span>
+          <span class="cost-gauge-limit"> / 200</span>
+        </div>
+      </div>
+      <div class="cost-gauge-track">
+        <div class="cost-gauge-fill" :style="teamCostGaugeStyle">
+          {{ Math.round(totalTeamCost/200*100) }}%
+        </div>
+      </div>
+      <div class="cost-gauge-ticks">
+        <span>0</span><span>50</span><span>100</span><span>150</span><span>200</span>
+      </div>
+    </div>
+
+    <!-- ポジション内訳 -->
+    <div style="display:flex; flex-wrap:wrap; gap:6px; margin-bottom:12px;">
+      <span class="badge badge-primary">投手: {{ posCounts.pitcher }}</span>
+      <span class="badge badge-primary">捕手: {{ posCounts.catcher }}</span>
+      <span class="badge badge-primary">内野: {{ posCounts.infielder }}</span>
+      <span class="badge badge-primary">外野: {{ posCounts.outfielder }}</span>
+      <span style="margin-left:auto; font-size:12px; color:var(--color-text-cap);">{{ allPlayers.length }}/50名</span>
+    </div>
+
+    <!-- フィルタ -->
+    <div class="filter-bar">
+      <span class="filter-label">ポジション:</span>
+      <button class="filter-chip" :class="{active: posFilter==='all'}" @click="posFilter='all'">全て</button>
+      <button class="filter-chip" :class="{active: posFilter==='pitcher'}" @click="posFilter='pitcher'">投手</button>
+      <button class="filter-chip" :class="{active: posFilter==='fielder'}" @click="posFilter='fielder'">野手</button>
+      &nbsp;
+      <span class="filter-label">表示:</span>
+      <button class="filter-chip" :class="{active: squadFilter==='all'}" @click="squadFilter='all'">全員</button>
+      <button class="filter-chip" :class="{active: squadFilter==='first'}" @click="squadFilter='first'">1軍</button>
+      <button class="filter-chip" :class="{active: squadFilter==='second'}" @click="squadFilter='second'">2軍</button>
+    </div>
+
+    <!-- 全選手テーブル -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title"><span class="mdi mdi-account-multiple-outline"></span>選手一覧</div>
+        <button class="btn btn-outline btn-sm"><span class="mdi mdi-plus"></span> 選手追加</button>
+      </div>
+      <div style="overflow-x:auto;">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>選手名</th>
+              <th>POS</th>
+              <th>投/打</th>
+              <th>コスト種別</th>
+              <th>COST</th>
+              <th>所属</th>
+              <th>借金</th>
+              <th>操作</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="p in filteredAllPlayers" :key="p.id" :class="memberRowClass(p)">
+              <td data-label="#">{{ p.number }}</td>
+              <td data-label="選手名">
+                {{ p.name }}
+                <span class="mdi mdi-star" style="color:var(--color-murasaki); font-size:12px;" v-if="p.isKey"></span>
+              </td>
+              <td data-label="POS"><span class="pos-badge" :class="posBadgeClass(p.position)">{{ shortPos(p.position) }}</span></td>
+              <td data-label="投/打" style="color:var(--color-text-cap); font-size:11px;">{{ p.throws }}投{{ p.bats }}打</td>
+              <td data-label="コスト種別">
+                <select style="font-size:11px; padding:2px 4px; border:1px solid #DDD; border-radius:4px; background:var(--color-surface);">
+                  <option>通常</option>
+                  <option v-if="p.position==='pitcher'">中継ぎ専</option>
+                  <option v-if="p.isTwoWay">二刀流</option>
+                </select>
+              </td>
+              <td data-label="COST"><strong>{{ p.cost }}</strong></td>
+              <td data-label="所属">
+                <span class="badge" :class="p.squad==='first'?'badge-primary':''">
+                  {{ p.squad==='first'?'1軍':'2軍' }}
+                </span>
+              </td>
+              <td data-label="借金">
+                <input type="checkbox" :checked="p.excluded" style="cursor:pointer;" />
+              </td>
+              <td>
+                <button class="btn btn-danger btn-sm"><span class="mdi mdi-delete"></span></button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:14px;">
+      <button class="btn btn-outline" @click="page='roster'">キャンセル</button>
+      <button class="btn btn-primary">保存</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const { createApp, ref, computed } = Vue
+
+// ===== サンプルデータ =====
+const PLAYERS = [
+  // 投手（先発）
+  { id:1,  number:11, name:'東風谷早苗',  position:'pitcher', role:'sp', rotOrder:1, squad:'first',  cost:8,  throws:'右', bats:'左', isKey:false, excluded:false, isTwoWay:false },
+  { id:2,  number:18, name:'八坂神奈子',  position:'pitcher', role:'sp', rotOrder:2, squad:'first',  cost:9,  throws:'右', bats:'右', isKey:false, excluded:false, isTwoWay:false },
+  { id:3,  number:38, name:'洩矢諏訪子',  position:'pitcher', role:'sp', rotOrder:3, squad:'first',  cost:7,  throws:'右', bats:'右', isKey:false, excluded:false, isTwoWay:false },
+  { id:4,  number:16, name:'射命丸文',    position:'pitcher', role:'sp', rotOrder:4, squad:'first',  cost:6,  throws:'左', bats:'左', isKey:false, excluded:false, isTwoWay:false },
+  { id:5,  number:24, name:'霧雨魔理沙',  position:'pitcher', role:'sp', rotOrder:5, squad:'first',  cost:7,  throws:'右', bats:'左', isKey:false, excluded:false, isTwoWay:false,
+    absence:{ type:'injury', reason:'右肩炎症', remaining:3 } },
+  // 投手（中継ぎ・クローザー）
+  { id:6,  number:45, name:'魂魄妖夢',    position:'pitcher', role:'rp', squad:'first',  cost:5,  throws:'右', bats:'右', isKey:false, excluded:false },
+  { id:7,  number:33, name:'蓬莱山輝夜',  position:'pitcher', role:'rp', squad:'first',  cost:4,  throws:'左', bats:'左', isKey:false, excluded:false },
+  { id:8,  number:14, name:'八意永琳',    position:'pitcher', role:'cl', squad:'first',  cost:8,  throws:'右', bats:'右', isKey:false, excluded:false },
+  // 野手
+  { id:9,  number:1,  name:'博麗霊夢',   position:'catcher',   squad:'first',  cost:10, throws:'右', bats:'右', isKey:true,  excluded:false },
+  { id:10, number:2,  name:'西行寺幽々子',position:'catcher',   squad:'first',  cost:7,  throws:'右', bats:'右', isKey:false, excluded:false },
+  { id:11, number:3,  name:'紅美鈴',     position:'outfielder', squad:'first',  cost:6,  throws:'右', bats:'右', isKey:false, excluded:false },
+  { id:12, number:4,  name:'アリス',     position:'infielder',  squad:'first',  cost:6,  throws:'右', bats:'左', isKey:false, excluded:false },
+  { id:13, number:6,  name:'レミリア',   position:'infielder',  squad:'first',  cost:8,  throws:'右', bats:'右', isKey:false, excluded:false },
+  { id:14, number:13, name:'フランドール',position:'infielder',  squad:'first',  cost:7,  throws:'右', bats:'右', isKey:false, excluded:false },
+  { id:15, number:22, name:'上白沢慧音', position:'infielder',  squad:'first',  cost:5,  throws:'右', bats:'左', isKey:false, excluded:false },
+  { id:16, number:29, name:'藤原妹紅',   position:'outfielder', squad:'first',  cost:6,  throws:'右', bats:'右', isKey:false, excluded:false },
+  { id:17, number:37, name:'パチュリー', position:'outfielder', squad:'first',  cost:5,  throws:'左', bats:'左', isKey:false, excluded:false },
+  { id:18, number:88, name:'比那名居天子',position:'infielder', squad:'first',  cost:4,  throws:'右', bats:'右', isKey:false, excluded:false,
+    absence:{ type:'suspension', reason:'妨害行為', remaining:2 } },
+  { id:19, number:15, name:'鈴仙・優曇華院',position:'outfielder',squad:'first', cost:4,throws:'右', bats:'左', isKey:false, excluded:false },
+  { id:20, number:9,  name:'小野塚小町', position:'outfielder', squad:'first',  cost:3,  throws:'右', bats:'左', isKey:false, excluded:false },
+  { id:21, number:35, name:'永江衣哩',   position:'infielder',  squad:'first',  cost:3,  throws:'右', bats:'右', isKey:false, excluded:false },
+  { id:22, number:27, name:'多々良小傘', position:'outfielder', squad:'first',  cost:2,  throws:'右', bats:'右', isKey:false, excluded:false },
+  { id:23, number:20, name:'封獣ぬえ',   position:'infielder',  squad:'first',  cost:2,  throws:'右', bats:'左', isKey:false, excluded:false },
+  { id:24, number:10, name:'四季映姫',   position:'infielder',  squad:'first',  cost:3,  throws:'右', bats:'右', isKey:false, excluded:false },
+  { id:25, number:7,  name:'因幡てゐ',   position:'infielder',  squad:'first',  cost:2,  throws:'右', bats:'右', isKey:false, excluded:false },
+  // 2軍
+  { id:26, number:51, name:'二ッ岩マミゾウ',position:'pitcher', role:'sp', squad:'second', cost:5, throws:'右', bats:'右', isKey:false, excluded:false,
+    absence:{ type:'reconditioning', reason:'体力調整', remaining:null } },
+  { id:27, number:52, name:'風見幽香',   position:'pitcher', role:'rp', squad:'second', cost:4, throws:'左', bats:'左', isKey:false, excluded:false },
+  { id:28, number:53, name:'黒谷ヤマメ', position:'outfielder', squad:'second', cost:2, throws:'右', bats:'右', isKey:false, excluded:false },
+  { id:29, number:54, name:'古明地こいし',position:'infielder', squad:'second', cost:3, throws:'右', bats:'左', isKey:false, excluded:false,
+    cooldown: '2026-04-27' },
+  { id:30, number:55, name:'古明地さとり',position:'catcher',   squad:'second', cost:4, throws:'右', bats:'両', isKey:false, excluded:false },
+]
+
+const ACTIVE_ABSENCES = [
+  { id:1, playerName:'霧雨魔理沙', type:'injury',     reason:'右肩炎症',   startDate:'4/22', returnDate:'4/28', remaining:3 },
+  { id:2, playerName:'比那名居天子', type:'suspension', reason:'妨害行為', startDate:'4/24', returnDate:'4/26', remaining:2 },
+  { id:3, playerName:'二ッ岩マミゾウ', type:'reconditioning', reason:'体力調整', startDate:'4/20', returnDate:'未定', remaining:null },
+]
+
+const PAST_ABSENCES = [
+  { id:10, playerName:'博麗霊夢',  type:'injury',    reason:'左足捻挫', startDate:'3/10', returnDate:'3/17', duration:7 },
+  { id:11, playerName:'西行寺幽々子', type:'suspension', reason:'球審抗議', startDate:'3/22', returnDate:'3/24', duration:2 },
+  { id:12, playerName:'蓬莱山輝夜', type:'injury',   reason:'腰部疲労', startDate:'4/01', returnDate:'4/08', duration:7 },
+]
+
+createApp({
+  setup() {
+    const page = ref(localStorage.getItem('tm_page') || 'roster')
+    const historyOpen = ref(false)
+    const posFilter = ref('all')
+    const squadFilter = ref('all')
+    const allPlayers = ref(PLAYERS.map(p => ({...p})))
+
+    // ページ切替+localStorage保存
+    // (watch相当はgetterで代用)
+
+    // ===== ロスター =====
+    const firstSquad = computed(() => allPlayers.value.filter(p => p.squad === 'first'))
+    const secondSquad = computed(() => allPlayers.value.filter(p => p.squad === 'second'))
+
+    const firstPitcherCount = computed(() => firstSquad.value.filter(p => p.position === 'pitcher').length)
+    const firstFielderCount = computed(() => firstSquad.value.filter(p => p.position !== 'pitcher').length)
+    const outsideWorldCount = computed(() => 0) // サンプルでは0
+
+    const firstSquadCost = computed(() => firstSquad.value.reduce((s, p) => s + p.cost, 0))
+    const firstCostLimit = computed(() => {
+      const n = firstSquad.value.length
+      if (n >= 28) return 120
+      if (n >= 27) return 119
+      if (n >= 26) return 117
+      if (n >= 25) return 114
+      return null
+    })
+
+    const costRatio = computed(() => {
+      if (!firstCostLimit.value) return 0
+      return Math.min(firstSquadCost.value / firstCostLimit.value, 1)
+    })
+
+    const costBarStyle = computed(() => {
+      const r = costRatio.value
+      let bg = r >= 0.95 ? 'var(--color-shu)' : r >= 0.85 ? 'var(--color-yamabuki)' : 'var(--color-moegi)'
+      return { width: (r * 100) + '%', background: bg }
+    })
+
+    const rosterCostColor = computed(() => {
+      if (firstCostLimit.value && firstSquadCost.value > firstCostLimit.value) return 'color:var(--color-shu); font-weight:700;'
+      if (costRatio.value >= 0.9) return 'color:var(--color-yamabuki); font-weight:700;'
+      return ''
+    })
+
+    // 1軍 投手グループ化
+    const firstSquadGroups = computed(() => {
+      const pitchers = firstSquad.value.filter(p => p.position === 'pitcher')
+      const fielders = firstSquad.value.filter(p => p.position !== 'pitcher')
+      return [
+        { label: '★ 先発ローテーション', players: pitchers.filter(p => p.role === 'sp').sort((a,b) => (a.rotOrder||99)-(b.rotOrder||99)) },
+        { label: '◎ 中継ぎ / クローザー', players: pitchers.filter(p => p.role !== 'sp') },
+        { label: '野手', players: fielders },
+      ]
+    })
+
+    const nearReturnPlayers = computed(() =>
+      allPlayers.value.filter(p => p.absence && p.absence.remaining !== null && p.absence.remaining <= 2)
+    )
+
+    function demotion(player) {
+      const p = allPlayers.value.find(x => x.id === player.id)
+      if (p) p.squad = 'second'
+    }
+    function promotion(player) {
+      const p = allPlayers.value.find(x => x.id === player.id)
+      if (p && !p.cooldown && p.absence?.type !== 'reconditioning') p.squad = 'first'
+    }
+
+    function rowClass(p) {
+      if (p.isKey) return 'row-key-player'
+      if (p.absence?.type === 'injury') return 'row-injury'
+      if (p.absence?.type === 'suspension') return 'row-suspension'
+      if (p.absence?.type === 'reconditioning') return 'row-reconditioning'
+      if (p.cooldown) return 'row-cooldown'
+      return ''
+    }
+
+    function statusLabel(p) {
+      if (p.isKey) return '特例'
+      if (p.absence?.type === 'injury') return `負傷 残${p.absence.remaining}試合`
+      if (p.absence?.type === 'suspension') return `停止 残${p.absence.remaining}試合`
+      if (p.absence?.type === 'reconditioning') return '再調整'
+      if (p.cooldown) return 'CD中'
+      return ''
+    }
+    function statusBadge(p) {
+      if (p.isKey) return 'badge-murasaki'
+      if (p.absence?.type === 'injury') return 'badge-injury'
+      if (p.absence?.type === 'suspension') return 'badge-suspension'
+      if (p.absence?.type === 'reconditioning') return 'badge-reconditioning'
+      if (p.cooldown) return 'badge-cooldown'
+      return ''
+    }
+    function statusIcon(p) {
+      if (p.isKey) return 'mdi-lock'
+      if (p.absence?.type === 'injury') return 'mdi-hospital-box'
+      if (p.absence?.type === 'suspension') return 'mdi-gavel'
+      if (p.absence?.type === 'reconditioning') return 'mdi-wrench'
+      if (p.cooldown) return 'mdi-timer-sand'
+      return ''
+    }
+
+    function shortPos(pos) {
+      return { pitcher:'P', catcher:'C', infielder:'IF', outfielder:'OF' }[pos] || pos
+    }
+    function posBadgeClass(pos) {
+      return { pitcher:'pos-p', catcher:'pos-c', infielder:'pos-if', outfielder:'pos-of' }[pos] || ''
+    }
+
+    // ===== 離脱者 =====
+    const activeAbsences = ref(ACTIVE_ABSENCES)
+    const pastAbsences = ref(PAST_ABSENCES)
+
+    function absenceLabel(type) {
+      return { injury:'負傷', suspension:'出場停止', reconditioning:'再調整' }[type] || type
+    }
+    function absenceBadge(type) {
+      return { injury:'badge-injury', suspension:'badge-suspension', reconditioning:'badge-reconditioning' }[type] || ''
+    }
+    function absenceIcon(type) {
+      return { injury:'mdi-hospital-box', suspension:'mdi-gavel', reconditioning:'mdi-wrench' }[type] || ''
+    }
+    function absenceRowClass(a) {
+      if (a.remaining !== null && a.remaining <= 2) return 'row-near-return'
+      return ''
+    }
+
+    // ===== メンバー管理 =====
+    const totalTeamCost = computed(() => allPlayers.value.filter(p => !p.excluded).reduce((s, p) => s + p.cost, 0))
+
+    const posCounts = computed(() => ({
+      pitcher:    allPlayers.value.filter(p => p.position === 'pitcher').length,
+      catcher:    allPlayers.value.filter(p => p.position === 'catcher').length,
+      infielder:  allPlayers.value.filter(p => p.position === 'infielder').length,
+      outfielder: allPlayers.value.filter(p => p.position === 'outfielder').length,
+    }))
+
+    const filteredAllPlayers = computed(() => {
+      let list = allPlayers.value
+      if (posFilter.value === 'pitcher') list = list.filter(p => p.position === 'pitcher')
+      if (posFilter.value === 'fielder') list = list.filter(p => p.position !== 'pitcher')
+      if (squadFilter.value === 'first') list = list.filter(p => p.squad === 'first')
+      if (squadFilter.value === 'second') list = list.filter(p => p.squad === 'second')
+      return list
+    })
+
+    const teamCostRatio = computed(() => Math.min(totalTeamCost.value / 200, 1))
+
+    const teamCostGaugeStyle = computed(() => {
+      const r = teamCostRatio.value
+      let bg = r >= 0.95 ? 'var(--color-shu)' :
+               r >= 0.85 ? 'linear-gradient(90deg, var(--color-yamabuki), var(--color-shu))' :
+               r >= 0.7  ? 'linear-gradient(90deg, var(--color-moegi), var(--color-yamabuki))' :
+               'var(--color-moegi)'
+      return { width: (r * 100) + '%', background: bg }
+    })
+    const teamCostValueStyle = computed(() => {
+      const r = teamCostRatio.value
+      return r >= 0.95 ? 'color:var(--color-shu);' : r >= 0.85 ? 'color:var(--color-yamabuki);' : ''
+    })
+
+    function memberRowClass(p) {
+      if (p.isKey) return 'row-key-player'
+      if (p.absence?.type === 'injury') return 'row-injury'
+      if (p.absence?.type === 'suspension') return 'row-suspension'
+      return ''
+    }
+
+    return {
+      page, historyOpen, posFilter, squadFilter, allPlayers,
+      firstSquad, secondSquad, firstSquadGroups,
+      firstPitcherCount, firstFielderCount, outsideWorldCount,
+      firstSquadCost, firstCostLimit, costBarStyle, rosterCostColor,
+      nearReturnPlayers,
+      demotion, promotion, rowClass,
+      statusLabel, statusBadge, statusIcon,
+      shortPos, posBadgeClass,
+      activeAbsences, pastAbsences,
+      absenceLabel, absenceBadge, absenceIcon, absenceRowClass,
+      totalTeamCost, posCounts, filteredAllPlayers,
+      teamCostGaugeStyle, teamCostValueStyle,
+      memberRowClass,
+    }
+  }
+}).mount('#app')
+</script>
+</body>
+</html>

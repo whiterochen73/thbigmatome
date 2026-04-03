@@ -1,47 +1,85 @@
 <template>
   <v-container>
-    <v-card>
-      <v-card-title class="d-flex align-center">
-        {{ t('teamList.title') }}
-        <v-spacer></v-spacer>
-        <v-btn color="primary" @click="openDialog()" prepend-icon="mdi-plus">
+    <PageHeader :title="t('teamList.title')">
+      <template #actions>
+        <v-btn color="accent" variant="flat" @click="openDialog()" prepend-icon="mdi-plus">
           {{ t('teamList.addTeam') }}
         </v-btn>
-      </v-card-title>
-      <v-card-text>
-        <v-data-table
-          :headers="headers"
-          :items="teams"
-          :loading="loading"
-          class="elevation-1"
-          item-value="id"
-          :no-data-text="t('teamList.noData')"
-        >
-          <template #[`item.is_active`]="{ item }">
-            <v-icon v-if="item.is_active"> mdi-check </v-icon>
-          </template>
+      </template>
+    </PageHeader>
+    <DataCard title="">
+      <FilterBar />
+      <v-data-table
+        :headers="headers"
+        :items="teams"
+        :loading="loading"
+        class="elevation-1"
+        item-value="id"
+        :no-data-text="t('teamList.noData')"
+        :row-props="
+          (row: { item: Team }) => (row.item.is_active ? {} : { class: 'text-medium-emphasis' })
+        "
+      >
+        <template #[`item.team_type`]="{ item }">
+          <v-chip v-if="item.team_type === 'hachinai'" size="small" color="purple" variant="tonal">
+            {{ t('teamList.teamTypes.hachinai') }}
+          </v-chip>
+          <span v-else class="text-caption text-medium-emphasis">{{
+            t('teamList.teamTypes.normal')
+          }}</span>
+        </template>
 
-          <template #[`item.manager_name`]="{ item }">
-            {{ item.director?.name || '-' }}
-          </template>
+        <template #[`item.is_active`]="{ item }">
+          <v-icon v-if="item.is_active"> mdi-check </v-icon>
+        </template>
 
-          <template #[`item.actions`]="{ item }">
-            <v-icon
-              size="small"
-              class="mr-2"
-              @click="navigateToMembers(item.id)"
-              title="メンバー編集"
-            >
-              mdi-account-group
-            </v-icon>
-            <v-icon size="small" class="mr-2" @click="openDialog(item)" title="チーム編集">
-              mdi-pencil
-            </v-icon>
-            <v-icon size="small" @click="deleteTeam(item.id)" title="削除"> mdi-delete </v-icon>
-          </template>
-        </v-data-table>
-      </v-card-text>
-    </v-card>
+        <template #[`item.manager_name`]="{ item }">
+          {{ item.director?.name || '-' }}
+        </template>
+
+        <template #[`item.actions`]="{ item }">
+          <v-tooltip text="シーズンポータル">
+            <template #activator="{ props }">
+              <v-icon v-bind="props" size="small" class="mr-2" @click="navigateToSeason(item)">
+                mdi-calendar-star
+              </v-icon>
+            </template>
+          </v-tooltip>
+          <v-tooltip text="メンバー編集">
+            <template #activator="{ props }">
+              <v-icon v-bind="props" size="small" class="mr-2" @click="navigateToMembers(item.id)">
+                mdi-account-group
+              </v-icon>
+            </template>
+          </v-tooltip>
+          <v-tooltip text="チーム編集">
+            <template #activator="{ props }">
+              <v-icon v-bind="props" size="small" class="mr-2" @click="openDialog(item)">
+                mdi-pencil
+              </v-icon>
+            </template>
+          </v-tooltip>
+          <v-tooltip text="削除">
+            <template #activator="{ props }">
+              <v-icon v-bind="props" size="small" @click="deleteTeam(item.id)"> mdi-delete </v-icon>
+            </template>
+          </v-tooltip>
+        </template>
+
+        <template #no-data>
+          <div class="d-flex flex-column align-center py-8">
+            <v-icon size="48" class="mb-2 text-medium-emphasis">mdi-account-group-outline</v-icon>
+            <p class="text-medium-emphasis mb-1">チームが登録されていません</p>
+            <p class="text-caption text-disabled mb-4">
+              「チーム追加」からチームを作成し、メンバーを登録してシーズンを開始できます
+            </p>
+            <v-btn color="accent" variant="flat" prepend-icon="mdi-plus" @click="openDialog()">
+              {{ t('teamList.addTeam') }}
+            </v-btn>
+          </div>
+        </template>
+      </v-data-table>
+    </DataCard>
 
     <TeamDialog v-model:isVisible="dialogVisible" :team="editingTeam" @save="fetchTeams" />
 
@@ -56,17 +94,23 @@ import { useRouter } from 'vue-router'
 import axios from '@/plugins/axios'
 import { useSnackbar } from '@/composables/useSnackbar'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
+import DataCard from '@/components/shared/DataCard.vue'
+import FilterBar from '@/components/shared/FilterBar.vue'
+import PageHeader from '@/components/shared/PageHeader.vue'
 import { type Team } from '@/types/team'
 import TeamDialog from '@/components/TeamDialog.vue'
+import { useTeamSelectionStore } from '@/stores/teamSelection'
 
 const { t } = useI18n()
 const router = useRouter()
+const teamSelectionStore = useTeamSelectionStore()
 
 // v-data-tableのヘッダー定義
 const headers = computed(() => [
   { title: t('teamList.headers.id'), key: 'id' },
   { title: t('teamList.headers.name'), key: 'name' },
   { title: t('teamList.headers.shortName'), key: 'short_name' },
+  { title: t('teamList.headers.teamType'), key: 'team_type', sortable: false },
   { title: t('teamList.headers.managerName'), key: 'manager_name', sortable: false },
   { title: t('teamList.headers.isActive'), key: 'is_active', sortable: false },
   { title: t('teamList.headers.actions'), key: 'actions', sortable: false },
@@ -136,6 +180,15 @@ const openDialog = (team: Team | null = null) => {
  */
 const navigateToMembers = (teamId: number) => {
   router.push(`/teams/${teamId}/members`)
+}
+
+/**
+ * シーズンポータルへ遷移する
+ * @param team チームデータ
+ */
+const navigateToSeason = (team: Team) => {
+  teamSelectionStore.selectTeam(team.id, team.name)
+  router.push(`/teams/${team.id}/season`)
 }
 
 // コンポーネントがマウントされた時にTeam一覧を取得

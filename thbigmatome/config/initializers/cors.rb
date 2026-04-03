@@ -14,13 +14,18 @@
 #       methods: [:get, :post, :put, :patch, :delete, :options, :head]
 #   end
 # end
+# CORS_ALLOWED_ORIGIN 環境変数で許可するオリジンを指定する。
+# 複数指定する場合はカンマ区切りで列挙（例: "https://example.com,https://www.example.com"）。
+# 未設定時は開発用デフォルト（localhost:5173）にフォールバック。
 Rails.application.config.middleware.insert_before 0, Rack::Cors do
+  allowed_origins = ENV.fetch("CORS_ALLOWED_ORIGIN", "http://localhost:5173").split(",").map(&:strip)
+
   allow do
-    origins 'http://localhost:5173' # Vue.js の開発サーバーのポート
-    resource '*',
+    origins(*allowed_origins)
+    resource "*",
       headers: :any,
-      methods: [:get, :post, :put, :patch, :delete, :options, :head],
+      methods: [ :get, :post, :put, :patch, :delete, :options, :head ],
       credentials: true,
-      expose: ['X-CSRF-Token']
+      expose: [ "X-CSRF-Token" ]
   end
 end

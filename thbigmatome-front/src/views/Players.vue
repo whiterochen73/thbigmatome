@@ -1,58 +1,56 @@
 <!-- eslint-disable vue/multi-word-component-names, vue/valid-v-slot -->
 <template>
   <v-container fluid>
-    <v-card>
-      <v-card-title>
-        {{ t('playerList.title') }}
-        <v-spacer></v-spacer>
-        <v-btn color="primary" @click="openDialog">
+    <PageHeader :title="t('playerList.title')">
+      <template #actions>
+        <v-btn color="accent" variant="flat" @click="openDialog">
           {{ t('playerList.addPlayer') }}
         </v-btn>
-      </v-card-title>
-      <v-card-text>
-        <!-- フィルターUI -->
-        <v-row dense class="mb-4">
-          <v-col cols="12" sm="6" md="4">
-            <v-text-field
-              v-model="searchText"
-              :label="t('playerList.filters.searchPlaceholder')"
-              prepend-inner-icon="mdi-magnify"
-              clearable
-              dense
-              hide-details
-            ></v-text-field>
-          </v-col>
-          <v-col cols="12" sm="6" md="3">
-            <v-select
-              v-model="selectedPosition"
-              :items="positionFilterOptions"
-              :label="t('playerList.filters.position')"
-              clearable
-              dense
-              hide-details
-            ></v-select>
-          </v-col>
-        </v-row>
+      </template>
+    </PageHeader>
+    <DataCard title="">
+      <!-- フィルターUI -->
+      <FilterBar>
+        <template #search>
+          <v-text-field
+            v-model="searchText"
+            :label="t('playerList.filters.searchPlaceholder')"
+            prepend-inner-icon="mdi-magnify"
+            clearable
+            hide-details
+          ></v-text-field>
+        </template>
+      </FilterBar>
 
-        <v-data-table
-          :headers="headers"
-          :items="filteredPlayers"
-          :loading="loading"
-          :no-data-text="t('playerList.noData')"
-          :class="displayClasses"
-          item-value="id"
-          class="elevation-1"
-        >
-          <template #item.position="{ item }">
-            {{ t(`baseball.positions.${item.position}`) }}
-          </template>
-          <template #item.actions="{ item }">
-            <v-icon size="small" class="me-2" @click="openDialog(item)" icon="mdi-pencil"></v-icon>
-            <v-icon size="small" @click="deletePlayer(item.id!)" icon="mdi-delete"></v-icon>
-          </template>
-        </v-data-table>
-      </v-card-text>
-    </v-card>
+      <v-data-table
+        :headers="headers"
+        :items="filteredPlayers"
+        :loading="loading"
+        :no-data-text="t('playerList.noData')"
+        :class="displayClasses"
+        item-value="id"
+        class="elevation-1"
+      >
+        <template #item.series="{ item }">
+          <StatusChip
+            v-if="item.series"
+            :status="item.series"
+            :label="seriesLabelMap[item.series] ?? item.series"
+            size="small"
+          />
+          <span v-else class="text-grey">—</span>
+        </template>
+        <template #item.card_count="{ item }">
+          <a href="#" class="card-count-link" @click.prevent="router.push(`/players/${item.id}`)">
+            {{ item.player_cards?.length ?? 0 }}枚
+          </a>
+        </template>
+        <template #item.actions="{ item }">
+          <v-icon size="small" class="me-2" @click="openDialog(item)" icon="mdi-pencil"></v-icon>
+          <v-icon size="small" @click="deletePlayer(item.id!)" icon="mdi-delete"></v-icon>
+        </template>
+      </v-data-table>
+    </DataCard>
 
     <PlayerDialog v-model="dialog" :item="editedItem" @save="onSave" />
 
@@ -63,16 +61,24 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { useRouter, onBeforeRouteLeave } from 'vue-router'
 import axios from '@/plugins/axios'
 import { useSnackbar } from '@/composables/useSnackbar'
 import PlayerDialog from '@/components/players/PlayerDialog.vue'
 import { useDisplay } from 'vuetify'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
+import DataCard from '@/components/shared/DataCard.vue'
+import FilterBar from '@/components/shared/FilterBar.vue'
+import PageHeader from '@/components/shared/PageHeader.vue'
+import StatusChip from '@/components/shared/StatusChip.vue'
 import type { PlayerDetail } from '@/types/playerDetail'
+import { usePlayersSearchStore } from '@/stores/playersSearch'
 
 const { t } = useI18n()
 const { showSnackbar } = useSnackbar()
 const { displayClasses } = useDisplay()
+const router = useRouter()
+const playersSearchStore = usePlayersSearchStore()
 
 const players = ref<PlayerDetail[]>([])
 const loading = ref(true)
@@ -80,31 +86,29 @@ const dialog = ref(false)
 const confirmDialog = ref<InstanceType<typeof ConfirmDialog> | null>(null)
 const editedItem = ref<PlayerDetail | null>(null)
 
-// フィルター用のstate
-const searchText = ref('')
-const selectedPosition = ref<string | null>(null)
+const searchText = computed({
+  get: () => playersSearchStore.searchText,
+  set: (val: string) => playersSearchStore.setSearchText(val),
+})
+
+const seriesLabelMap: Record<string, string> = {
+  touhou: '東方Project',
+  hachinai: 'ハチナイ',
+  tamayomi: '球詠',
+  original: 'オリジナル',
+}
 
 const headers = computed(() => [
-  { title: t('playerList.headers.number'), key: 'number', width: '15%' },
-  { title: t('playerList.headers.name'), key: 'name', width: '30%' },
-  { title: t('playerList.headers.short_name'), key: 'short_name', width: '20%' },
-  { title: t('playerList.headers.position'), key: 'position', width: '15%' },
-  { title: t('playerList.headers.actions'), key: 'actions', sortable: false, width: '10%' },
+  { title: t('playerList.headers.number'), key: 'number', width: '10%' },
+  { title: t('playerList.headers.name'), key: 'name', width: '40%' },
+  { title: '所属作品', key: 'series', sortable: false, width: '20%' },
+  { title: 'カード数', key: 'card_count', sortable: false, width: '15%' },
+  { title: t('playerList.headers.actions'), key: 'actions', sortable: false, width: '15%' },
 ])
 
-// ポジションフィルターのオプション
-const positionFilterOptions = computed(() => [
-  { value: 'pitcher', title: t('baseball.positions.pitcher') },
-  { value: 'catcher', title: t('baseball.positions.catcher') },
-  { value: 'infielder', title: t('baseball.positions.infielder') },
-  { value: 'outfielder', title: t('baseball.positions.outfielder') },
-])
-
-// フィルター適用後の選手リスト
 const filteredPlayers = computed(() => {
   let result = players.value
 
-  // 名前検索フィルター（name または short_name に部分一致）
   if (searchText.value) {
     const search = searchText.value.toLowerCase()
     result = result.filter(
@@ -112,11 +116,6 @@ const filteredPlayers = computed(() => {
         player.name.toLowerCase().includes(search) ||
         (player.short_name && player.short_name.toLowerCase().includes(search)),
     )
-  }
-
-  // ポジションフィルター
-  if (selectedPosition.value) {
-    result = result.filter((player) => player.position === selectedPosition.value)
   }
 
   return result
@@ -134,10 +133,17 @@ const fetchPlayers = async () => {
   }
 }
 
-onMounted(fetchPlayers)
+onMounted(async () => {
+  await fetchPlayers()
+  window.scrollTo(0, playersSearchStore.scrollY)
+})
+
+onBeforeRouteLeave(() => {
+  playersSearchStore.setScrollY(window.scrollY)
+})
 
 const openDialog = (player: PlayerDetail | null = null) => {
-  editedItem.value = player ? { ...player } : null // 参照渡しを防ぐためスプレッド構文でコピー
+  editedItem.value = player ? { ...player } : null
   dialog.value = true
 }
 
@@ -154,7 +160,7 @@ const deletePlayer = async (id: number) => {
   try {
     await axios.delete(`/players/${id}`)
     showSnackbar(t('playerList.deleteSuccess'), 'success')
-    fetchPlayers() // 削除後、一覧を再取得
+    fetchPlayers()
   } catch (error) {
     console.error('Error deleting player:', error)
     showSnackbar(t('playerList.deleteFailed'), 'error')
@@ -165,3 +171,15 @@ const onSave = () => {
   fetchPlayers()
 }
 </script>
+
+<style scoped>
+.card-count-link {
+  color: #5a3e20;
+  text-decoration: none;
+  font-size: 0.88em;
+}
+
+.card-count-link:hover {
+  text-decoration: underline;
+}
+</style>

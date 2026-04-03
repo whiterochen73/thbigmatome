@@ -31,11 +31,7 @@
           {{ error }}
         </div>
 
-        <button
-          type="submit"
-          :disabled="loading || !isFormValid"
-          class="login-button"
-        >
+        <button type="submit" :disabled="loading || !isFormValid" class="login-button">
           {{ loading ? t('loginForm.loggingIn') : t('loginForm.login') }}
         </button>
       </form>
@@ -44,7 +40,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuth } from '@/composables/useAuth'
 import { useI18n } from 'vue-i18n'
@@ -56,7 +52,7 @@ const { login, loading } = useAuth()
 
 const form = ref({
   loginName: '',
-  password: ''
+  password: '',
 })
 
 const error = ref('')
@@ -70,9 +66,10 @@ const handleLogin = async () => {
 
   try {
     await login(form.value.loginName, form.value.password)
-    router.push('/menu') // ログイン成功後のリダイレクト先
-  } catch (err: any) {
-    error.value = err.message || t('loginForm.loginFailed')
+    await nextTick() // リアクティビティ伝播を待つ
+    router.push('/') // ログイン成功後のリダイレクト先
+  } catch (err: unknown) {
+    error.value = err instanceof Error ? err.message : t('loginForm.loginFailed')
   }
 }
 </script>

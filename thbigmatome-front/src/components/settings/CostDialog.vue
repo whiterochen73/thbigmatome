@@ -1,8 +1,10 @@
 <template>
-  <v-dialog v-model="dialog" max-width="500px">
+  <v-dialog v-model="isOpen" max-width="500px" persistent>
     <v-card>
       <v-card-title>
-        <span class="text-h5">{{ isNew ? t('settings.cost.dialog.title.add') : t('settings.cost.dialog.title.edit') }}</span>
+        <span class="text-h5">{{
+          isNew ? t('settings.cost.dialog.title.add') : t('settings.cost.dialog.title.edit')
+        }}</span>
       </v-card-title>
 
       <v-card-text>
@@ -38,10 +40,10 @@
 
       <v-card-actions>
         <v-spacer></v-spacer>
-        <v-btn color="blue-darken-1" variant="text" @click="cancel">
+        <v-btn variant="text" @click="cancel">
           {{ t('actions.cancel') }}
         </v-btn>
-        <v-btn color="blue-darken-1" variant="text" @click="save" :disabled="!isFormValid">
+        <v-btn color="accent" variant="flat" @click="save" :disabled="!isFormValid">
           {{ t('actions.save') }}
         </v-btn>
       </v-card-actions>
@@ -50,45 +52,46 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue';
-import { useI18n } from 'vue-i18n';
+import { ref, computed, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 
-const { t } = useI18n();
+const { t } = useI18n()
 
 interface Props {
-  modelValue: boolean;
-  cost: { name: string; start_date: string | null; end_date: string | null } | null;
+  cost: { name: string; start_date: string | null; end_date: string | null } | null
 }
 
-const props = defineProps<Props>();
-const emit = defineEmits(['update:modelValue', 'save']);
+const props = defineProps<Props>()
+const emit = defineEmits(['save'])
 
-const dialog = computed({
-  get: () => props.modelValue,
-  set: (value) => emit('update:modelValue', value),
-});
+const isOpen = defineModel<boolean>({ default: false })
 
-const isNew = computed(() => !props.cost);
+const isNew = computed(() => !props.cost)
 
 const editedCost = ref({
   name: props.cost?.name || '',
   start_date: props.cost?.start_date || '',
   end_date: props.cost?.end_date || '',
-});
+})
 
-watch(() => props.cost, (newCost) => {
-  editedCost.value = {
-    name: newCost?.name || '',
-    start_date: newCost?.start_date || '',
-    end_date: newCost?.end_date || '',
-  };
-});
+watch(
+  () => props.cost,
+  (newCost) => {
+    editedCost.value = {
+      name: newCost?.name || '',
+      start_date: newCost?.start_date || '',
+      end_date: newCost?.end_date || '',
+    }
+  },
+)
 
 const rules = {
   required: (value: string) => !!value || t('validation.required'),
-};
+}
 
-const isFormValid = computed(() => !!editedCost.value.name && !!editedCost.value.start_date);
-const cancel = () => emit('update:modelValue', false);
-const save = () => emit('save', editedCost.value);
+const isFormValid = computed(() => !!editedCost.value.name && !!editedCost.value.start_date)
+const cancel = () => {
+  isOpen.value = false
+}
+const save = () => emit('save', editedCost.value)
 </script>

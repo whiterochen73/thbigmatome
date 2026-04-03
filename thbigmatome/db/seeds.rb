@@ -13,8 +13,6 @@ master_data_dir = Rails.root.join("config", "master_data")
 master_data_models = {
   batting_styles: { model: BattingStyle, fields: %i[name description] },
   pitching_styles: { model: PitchingStyle, fields: %i[name description] },
-  batting_skills: { model: BattingSkill, fields: %i[name description skill_type] },
-  pitching_skills: { model: PitchingSkill, fields: %i[name description skill_type] },
   player_types: { model: PlayerType, fields: %i[name description category] }
 }
 
@@ -316,6 +314,50 @@ puts 'Seeding Schedule Details...'
     priority: detail_attrs[:priority]
   )
 end
+
+# =============================================================================
+# 本番用コミッショナーユーザー (mori, sian, tomoya, ni_lan_cui)
+# パスワードは環境変数 INITIAL_PASSWORD で指定する（ハードコード禁止）
+# =============================================================================
+load Rails.root.join('db/seeds/production_users.rb')
+
+puts 'Seeding Competition: 幻想郷ペナントレースR...'
+competition = Competition.find_or_initialize_by(name: '幻想郷ペナントレースR', year: 2026)
+competition.update!(competition_type: 'league_pennant')
+puts '  幻想郷ペナントレースR seeded.'
+
+puts 'Seeding Team: 若尊バレーナ...'
+team = Team.find_or_initialize_by(name: '若尊バレーナ')
+team.update!(short_name: '若尊', is_active: true, user_id: User.find_by(role: :commissioner)&.id || User.first&.id)
+puts '  若尊バレーナ seeded.'
+
+puts 'Seeding CompetitionEntry: 幻想郷ペナントレースR × 若尊バレーナ...'
+CompetitionEntry.find_or_create_by!(competition: competition, team: team)
+puts '  CompetitionEntry seeded.'
+
+# =============================================================================
+# 全チーム（34チーム）・ユーザー（30名）・Manager/TeamManager
+# 詳細は各 seeds/ ファイルを参照
+# =============================================================================
+
+# チーム・CompetitionEntry（34チーム完全版）
+load Rails.root.join('db/seeds/production_teams.rb')
+
+# Manager 31レコード + TeamManager 34件
+load Rails.root.join('db/seeds/production_managers.rb')
+
+# 特徴・条件マスタシードデータ
+load Rails.root.join('db/seeds/master_traits.rb')
+
+# 選手カード・選手データ（db/import/から読み込み）
+puts "=== Importing Card Data ==="
+load Rails.root.join('db/seeds/import_cards.rb')
+
+# コストマスタ・コストプレイヤー（選手データ投入後に実行）
+load Rails.root.join('db/seeds/production_costs.rb')
+
+# 全チームシーズン初期化（チームデータ投入後に実行）
+load Rails.root.join('db/seeds/production_seasons.rb')
 
 # テスト環境専用シードデータ
 load Rails.root.join('db/seeds/test.rb') if Rails.env.test?

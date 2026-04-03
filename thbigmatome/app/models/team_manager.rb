@@ -7,22 +7,23 @@ class TeamManager < ApplicationRecord
   validates :role, presence: true
   validates :team_id, uniqueness: { scope: :role, if: -> { director? }, message: :director_already_exists }
   validate :manager_cannot_be_assigned_to_multiple_teams_in_same_league, on: [ :create, :update ]
+  validate :director_team_limit, on: [ :create, :update ], if: -> { director? }
 
   private
 
   def manager_cannot_be_assigned_to_multiple_teams_in_same_league
-    return unless manager_id.present? && team.present?
+    # league系テーブル廃止(cmd_511 Phase 3)により、リーグベースの制約チェックは無効化
+  end
 
-    # 現在のチームが所属するリーグを取得
-    current_league = team.leagues.first # チームは複数のリーグに所属する可能性があるが、コミッショナーモードでは1つのリーグを想定
-    return unless current_league.present?
-
-    # 同じリーグに所属する他のチームを取得
-    other_teams_in_same_league = current_league.teams.where.not(id: team.id)
-
-    # 同じマネージャーが他のチームに割り当てられているかチェック
-    if TeamManager.where(manager_id: manager_id, team_id: other_teams_in_same_league.select(:id)).exists?
-      errors.add(:manager_id, :cannot_manage_multiple_teams_in_same_league)
+  def director_team_limit
+    existing_count = TeamManager.joins(:team)
+                                .where(manager_id: manager_id, role: :director)
+                                .where(teams: { is_active: true })
+                                .where.not(id: id)
+                                .count
+    if existing_count >= 2
+      errors.add(:manager_id,
+        I18n.t("activerecord.errors.models.team_manager.director_team_limit"))
     end
   end
 end

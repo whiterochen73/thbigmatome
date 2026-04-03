@@ -1,16 +1,21 @@
 class RosterPlayerSerializer < ActiveModel::Serializer
-  attributes :team_membership_id, :player_id, :number, :player_name, :squad, :cooldown_until, :same_day_exempt, :cost, :selected_cost_type, :throwing_hand, :batting_hand
+  attributes :team_membership_id, :player_id, :number, :player_name, :squad, :cooldown_until, :same_day_exempt, :cost, :selected_cost_type, :handedness, :position
 
   def number
     object.player.number
   end
 
-  def throwing_hand
-    object.player.throwing_hand
+  def handedness
+    object.player.player_cards.first&.handedness
   end
 
-  def batting_hand
-    object.player.batting_hand
+  def position
+    pc = object.player.player_cards.first
+    if pc&.card_type == "pitcher"
+      "pitcher"
+    else
+      pc&.player_card_defenses&.first&.position&.downcase
+    end
   end
 
   def player_name

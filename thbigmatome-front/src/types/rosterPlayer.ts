@@ -13,14 +13,20 @@ export interface RosterPlayer {
   player_name: string
   squad: 'first' | 'second'
   cost: number
-  selected_cost_type: string
-  position: string // Added position
-  throwing_hand: string
-  batting_hand: string
-  player_types: string[] // Added player_types (comma-separated string)
+  selected_cost_type:
+    | 'normal_cost'
+    | 'pitcher_only_cost'
+    | 'fielder_only_cost'
+    | 'relief_only_cost'
+    | 'two_way_cost'
+  handedness: string | null
+  position: string | null
+  player_types: string[]
   cooldown_until?: string
   same_day_exempt?: boolean
   is_outside_world?: boolean
+  is_starter_pitcher?: boolean
+  is_relief_only?: boolean
   is_absent?: boolean
   absence_info?: AbsenceInfo | null
 }

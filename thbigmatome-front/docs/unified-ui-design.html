@@ -1,0 +1,1505 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>thbigmatome - Unified UI Design System</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@400;700&family=Noto+Sans+JP:wght@400;500;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  /* ============================================================
+     DESIGN SYSTEM — thbigmatome 統一UIガイド
+     "幻想郷球場" — Gensokyo Ballpark Management Terminal
+     ============================================================ */
+
+  :root {
+    /* ── Japanese Color Palette (from vuetify.ts) ── */
+    --ai:        #1B3A6B;   /* 藍色 — primary */
+    --ai-light:  #2a5298;
+    --shu:       #C0392B;   /* 朱色 — accent */
+    --shu-muted: #a83225;
+    --moegi:     #5D8A2F;   /* 萌黄 — success */
+    --yamabuki:  #D4940A;   /* 山吹 — warning */
+    --beni:      #B01C2A;   /* 紅 — error */
+    --asagi:     #2E86AB;   /* 浅葱 — info */
+    --chigusa:   #4A7A8A;   /* 千草色 — secondary */
+    --fuji:      #6b4c8a;   /* 藤色 */
+    --kohaku:    #c87a10;   /* 琥珀 */
+
+    /* ── Surface & Text ── */
+    --bg:          #F8F6F1;  /* 和紙色 */
+    --bg-elevated: #FFFFFF;
+    --bg-inset:    #F0EDE5;
+    --bg-stripe:   rgba(27, 58, 107, 0.025);
+    --border:      #D8D0C4;
+    --border-light:#E8E2D8;
+
+    --text-high:    #1A1A1A;
+    --text-medium:  #4A4A4A;
+    --text-caption:  #777777;
+    --text-disabled: #BBBBBB;
+    --text-on-dark:  #F0E6D6;
+
+    /* ── Spacing Scale (8px base) ── */
+    --sp-1: 4px;
+    --sp-2: 8px;
+    --sp-3: 12px;
+    --sp-4: 16px;
+    --sp-5: 20px;
+    --sp-6: 24px;
+    --sp-8: 32px;
+    --sp-10: 40px;
+    --sp-12: 48px;
+
+    /* ── Typography ── */
+    --font-display: 'Shippori Mincho', serif;
+    --font-body:    'Noto Sans JP', sans-serif;
+    --font-mono:    'JetBrains Mono', monospace;
+
+    /* ── Shadows ── */
+    --shadow-card: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
+    --shadow-elevated: 0 4px 12px rgba(0,0,0,0.08);
+
+    /* ── Transitions ── */
+    --ease: cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: var(--font-body);
+    font-size: 14px;
+    color: var(--text-high);
+    background: var(--bg);
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* ============================================================
+     GUIDE SHELL — Design doc navigation (not part of the app)
+     ============================================================ */
+
+  .guide-header {
+    background: var(--ai);
+    color: var(--text-on-dark);
+    padding: var(--sp-6) var(--sp-8);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+  }
+  .guide-header h1 {
+    font-family: var(--font-display);
+    font-size: 20px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+  }
+  .guide-header p {
+    font-size: 12px;
+    opacity: 0.7;
+    margin-top: 2px;
+  }
+
+  .guide-nav {
+    background: #15294d;
+    display: flex;
+    gap: 0;
+    padding: 0 var(--sp-8);
+    border-bottom: 2px solid var(--shu);
+  }
+  .guide-nav button {
+    font-family: var(--font-body);
+    font-size: 13px;
+    font-weight: 500;
+    color: rgba(240, 230, 214, 0.6);
+    background: none;
+    border: none;
+    padding: var(--sp-3) var(--sp-5);
+    cursor: pointer;
+    position: relative;
+    transition: color 0.2s var(--ease);
+  }
+  .guide-nav button:hover {
+    color: var(--text-on-dark);
+  }
+  .guide-nav button.active {
+    color: #fff;
+  }
+  .guide-nav button.active::after {
+    content: '';
+    position: absolute;
+    bottom: -2px;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: var(--shu);
+  }
+
+  .guide-section {
+    display: none;
+    animation: fadeIn 0.3s var(--ease);
+  }
+  .guide-section.active { display: block; }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(4px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  /* ============================================================
+     SECTION 1 — DESIGN TOKENS (Color, Typography, Spacing)
+     ============================================================ */
+
+  .tokens-grid {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: var(--sp-8);
+  }
+  .tokens-grid h2 {
+    font-family: var(--font-display);
+    font-size: 22px;
+    color: var(--ai);
+    margin-bottom: var(--sp-6);
+    padding-bottom: var(--sp-3);
+    border-bottom: 1px solid var(--border);
+  }
+  .tokens-grid h3 {
+    font-family: var(--font-body);
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--text-medium);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin: var(--sp-8) 0 var(--sp-4);
+  }
+
+  .color-row {
+    display: flex;
+    gap: var(--sp-3);
+    flex-wrap: wrap;
+    margin-bottom: var(--sp-6);
+  }
+  .color-chip {
+    width: 120px;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: var(--shadow-card);
+  }
+  .color-chip .swatch {
+    height: 56px;
+  }
+  .color-chip .label {
+    padding: var(--sp-2) var(--sp-3);
+    background: #fff;
+    font-size: 11px;
+  }
+  .color-chip .label strong {
+    display: block;
+    font-size: 12px;
+    margin-bottom: 1px;
+  }
+
+  .type-sample {
+    background: var(--bg-elevated);
+    border-radius: 8px;
+    padding: var(--sp-6);
+    box-shadow: var(--shadow-card);
+    margin-bottom: var(--sp-4);
+  }
+  .type-sample .display { font-family: var(--font-display); font-size: 28px; font-weight: 700; }
+  .type-sample .heading { font-family: var(--font-display); font-size: 20px; font-weight: 700; margin-top: var(--sp-3); }
+  .type-sample .body-text { font-family: var(--font-body); font-size: 14px; margin-top: var(--sp-3); color: var(--text-medium); }
+  .type-sample .mono { font-family: var(--font-mono); font-size: 13px; margin-top: var(--sp-3); color: var(--chigusa); }
+
+  .spacing-demo {
+    display: flex;
+    gap: var(--sp-3);
+    align-items: flex-end;
+    margin-bottom: var(--sp-6);
+  }
+  .spacing-block {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+  }
+  .spacing-block .bar {
+    background: var(--ai);
+    opacity: 0.2;
+    width: 32px;
+    border-radius: 3px;
+  }
+  .spacing-block span { font-size: 10px; color: var(--text-caption); font-family: var(--font-mono); }
+
+  /* ============================================================
+     SECTION 2 — UNIFIED LAYOUT ANATOMY
+     ============================================================ */
+
+  .anatomy-wrap {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: var(--sp-8);
+  }
+  .anatomy-wrap h2 {
+    font-family: var(--font-display);
+    font-size: 22px;
+    color: var(--ai);
+    margin-bottom: var(--sp-4);
+    padding-bottom: var(--sp-3);
+    border-bottom: 1px solid var(--border);
+  }
+  .anatomy-wrap > p {
+    color: var(--text-medium);
+    margin-bottom: var(--sp-8);
+    font-size: 13px;
+    line-height: 1.8;
+  }
+
+  .anatomy-diagram {
+    background: var(--bg-elevated);
+    border-radius: 12px;
+    box-shadow: var(--shadow-elevated);
+    overflow: hidden;
+    margin-bottom: var(--sp-8);
+  }
+  .anatomy-label {
+    font-size: 10px;
+    font-family: var(--font-mono);
+    font-weight: 500;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    color: #fff;
+    padding: 2px 8px;
+    border-radius: 3px;
+    display: inline-block;
+  }
+
+  /* ============================================================
+     SECTION 3 — PAGE MOCKUPS (the actual unified design)
+     ============================================================ */
+
+  .mockup-shell {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: var(--sp-8);
+  }
+  .mockup-tabs {
+    display: flex;
+    gap: var(--sp-2);
+    margin-bottom: var(--sp-6);
+  }
+  .mockup-tabs button {
+    font-family: var(--font-body);
+    font-size: 13px;
+    font-weight: 500;
+    padding: var(--sp-2) var(--sp-5);
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background: var(--bg-elevated);
+    color: var(--text-medium);
+    cursor: pointer;
+    transition: all 0.15s var(--ease);
+  }
+  .mockup-tabs button:hover {
+    border-color: var(--ai);
+    color: var(--ai);
+  }
+  .mockup-tabs button.active {
+    background: var(--ai);
+    border-color: var(--ai);
+    color: #fff;
+  }
+
+  .mockup-frame {
+    background: var(--bg);
+    border-radius: 12px;
+    box-shadow: var(--shadow-elevated);
+    overflow: hidden;
+    border: 1px solid var(--border-light);
+  }
+  .mockup-page {
+    display: none;
+    animation: fadeIn 0.25s var(--ease);
+  }
+  .mockup-page.active { display: block; }
+
+  /* ── Unified Page Structure ── */
+
+  .page-container {
+    max-width: 1280px;
+    margin: 0 auto;
+    padding: var(--sp-6) var(--sp-8);
+  }
+
+  /* ── Page Header ── */
+  .page-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: var(--sp-5);
+    min-height: 40px;
+  }
+  .page-header h1 {
+    font-family: var(--font-display);
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--text-high);
+    position: relative;
+    padding-left: var(--sp-4);
+  }
+  .page-header h1::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 2px;
+    bottom: 2px;
+    width: 3px;
+    background: var(--shu);
+    border-radius: 2px;
+  }
+  .page-header .header-actions {
+    display: flex;
+    gap: var(--sp-2);
+  }
+
+  /* ── Filter Bar ── */
+  .filter-bar {
+    background: var(--bg-elevated);
+    border: 1px solid var(--border-light);
+    border-radius: 8px;
+    padding: var(--sp-3) var(--sp-4);
+    margin-bottom: var(--sp-4);
+    display: flex;
+    align-items: center;
+    gap: var(--sp-3);
+    flex-wrap: wrap;
+    box-shadow: var(--shadow-card);
+  }
+  .filter-bar .filter-group {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-2);
+  }
+  .filter-bar .filter-label {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--text-caption);
+    white-space: nowrap;
+  }
+  .filter-bar .filter-spacer {
+    flex: 1;
+  }
+  .filter-bar .result-count {
+    font-size: 12px;
+    color: var(--text-caption);
+    font-family: var(--font-mono);
+    white-space: nowrap;
+  }
+
+  /* ── Form Controls (unified) ── */
+  .ctrl-select,
+  .ctrl-input {
+    font-family: var(--font-body);
+    font-size: 13px;
+    padding: 6px 10px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--bg-elevated);
+    color: var(--text-high);
+    outline: none;
+    transition: border-color 0.15s var(--ease);
+    min-height: 34px;
+  }
+  .ctrl-select:focus,
+  .ctrl-input:focus {
+    border-color: var(--ai);
+    box-shadow: 0 0 0 2px rgba(27, 58, 107, 0.1);
+  }
+  .ctrl-input { min-width: 180px; }
+  .ctrl-input::placeholder { color: var(--text-disabled); }
+  .ctrl-select { cursor: pointer; min-width: 140px; }
+
+  .ctrl-btn {
+    font-family: var(--font-body);
+    font-size: 13px;
+    font-weight: 500;
+    padding: 6px 14px;
+    border-radius: 6px;
+    border: none;
+    cursor: pointer;
+    transition: all 0.15s var(--ease);
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    min-height: 34px;
+  }
+  .ctrl-btn.primary {
+    background: var(--ai);
+    color: #fff;
+  }
+  .ctrl-btn.primary:hover { background: var(--ai-light); }
+  .ctrl-btn.accent {
+    background: var(--shu);
+    color: #fff;
+  }
+  .ctrl-btn.accent:hover { background: var(--shu-muted); }
+  .ctrl-btn.tonal {
+    background: rgba(27, 58, 107, 0.08);
+    color: var(--ai);
+  }
+  .ctrl-btn.tonal:hover { background: rgba(27, 58, 107, 0.14); }
+  .ctrl-btn.tonal.active {
+    background: var(--ai);
+    color: #fff;
+  }
+  .ctrl-btn.ghost {
+    background: transparent;
+    color: var(--text-medium);
+  }
+  .ctrl-btn.ghost:hover { background: rgba(0,0,0,0.04); }
+
+  .ctrl-btn-group {
+    display: flex;
+    gap: 0;
+  }
+  .ctrl-btn-group .ctrl-btn {
+    border-radius: 0;
+    border: 1px solid var(--border);
+    margin-left: -1px;
+  }
+  .ctrl-btn-group .ctrl-btn:first-child { border-radius: 6px 0 0 6px; margin-left: 0; }
+  .ctrl-btn-group .ctrl-btn:last-child  { border-radius: 0 6px 6px 0; }
+  .ctrl-btn-group .ctrl-btn.active {
+    background: var(--ai);
+    color: #fff;
+    border-color: var(--ai);
+    z-index: 1;
+    position: relative;
+  }
+
+  /* ── Data Card (content wrapper) ── */
+  .data-card {
+    background: var(--bg-elevated);
+    border: 1px solid var(--border-light);
+    border-radius: 8px;
+    box-shadow: var(--shadow-card);
+    overflow: hidden;
+  }
+
+  /* ── Data Table (unified) ── */
+  .data-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+  }
+  .data-table thead {
+    background: var(--bg-inset);
+    border-bottom: 1px solid var(--border);
+  }
+  .data-table th {
+    font-weight: 600;
+    font-size: 12px;
+    color: var(--text-medium);
+    text-align: left;
+    padding: var(--sp-2) var(--sp-4);
+    white-space: nowrap;
+    letter-spacing: 0.3px;
+    user-select: none;
+    cursor: default;
+  }
+  .data-table th.sortable { cursor: pointer; }
+  .data-table th.sortable:hover { color: var(--ai); }
+  .data-table th.numeric,
+  .data-table td.numeric {
+    text-align: right;
+    font-family: var(--font-mono);
+  }
+
+  .data-table tbody tr {
+    border-bottom: 1px solid var(--border-light);
+    transition: background 0.1s var(--ease);
+  }
+  .data-table tbody tr:nth-child(even) {
+    background: var(--bg-stripe);
+  }
+  .data-table tbody tr:hover {
+    background: rgba(27, 58, 107, 0.04);
+  }
+  .data-table td {
+    padding: var(--sp-2) var(--sp-4);
+    vertical-align: middle;
+  }
+  .data-table td.name-cell {
+    font-weight: 500;
+  }
+  .data-table td.mono {
+    font-family: var(--font-mono);
+    font-size: 12px;
+  }
+
+  /* ── Status Chips ── */
+  .chip {
+    font-size: 11px;
+    font-weight: 600;
+    padding: 2px 10px;
+    border-radius: 4px;
+    display: inline-block;
+    letter-spacing: 0.3px;
+  }
+  .chip.pitcher {
+    background: rgba(27, 58, 107, 0.1);
+    color: var(--ai);
+  }
+  .chip.fielder {
+    background: rgba(93, 138, 47, 0.1);
+    color: var(--moegi);
+  }
+  .chip.injury {
+    background: rgba(176, 28, 42, 0.08);
+    color: var(--beni);
+  }
+  .chip.reconditioning {
+    background: rgba(93, 138, 47, 0.08);
+    color: var(--moegi);
+    border: 1px solid rgba(93, 138, 47, 0.2);
+  }
+  .chip.series {
+    background: rgba(27, 58, 107, 0.06);
+    color: var(--ai);
+    border: 1px solid rgba(27, 58, 107, 0.12);
+  }
+  .chip.days-ok {
+    background: rgba(93, 138, 47, 0.1);
+    color: var(--moegi);
+    font-family: var(--font-mono);
+  }
+
+  /* ── Pagination ── */
+  .pagination-bar {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: var(--sp-4);
+    padding: var(--sp-3) var(--sp-4);
+    border-top: 1px solid var(--border-light);
+    font-size: 12px;
+    color: var(--text-caption);
+  }
+  .pagination-bar .page-info {
+    font-family: var(--font-mono);
+    font-size: 12px;
+  }
+  .pagination-bar .page-controls {
+    display: flex;
+    gap: 2px;
+  }
+  .pagination-bar .page-btn {
+    width: 28px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    background: var(--bg-elevated);
+    color: var(--text-medium);
+    cursor: pointer;
+    font-size: 12px;
+    transition: all 0.1s var(--ease);
+  }
+  .pagination-bar .page-btn:hover { border-color: var(--ai); color: var(--ai); }
+  .pagination-bar .page-btn.disabled { opacity: 0.3; cursor: default; }
+
+  /* ── Table Action Icons ── */
+  .action-icons {
+    display: flex;
+    gap: var(--sp-2);
+  }
+  .action-icon {
+    width: 28px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 4px;
+    cursor: pointer;
+    color: var(--text-caption);
+    transition: all 0.1s var(--ease);
+    border: none;
+    background: none;
+    font-size: 14px;
+  }
+  .action-icon:hover { background: rgba(0,0,0,0.06); color: var(--text-high); }
+  .action-icon.danger:hover { background: rgba(176,28,42,0.08); color: var(--beni); }
+
+  /* ── Card Thumbnail ── */
+  .card-thumb {
+    width: 36px;
+    height: 48px;
+    border-radius: 3px;
+    background: var(--bg-inset);
+    border: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 8px;
+    color: var(--text-disabled);
+    overflow: hidden;
+    flex-shrink: 0;
+  }
+
+  /* ── Tabs (for sub-navigation) ── */
+  .sub-tabs {
+    display: flex;
+    gap: 0;
+    border-bottom: 2px solid var(--border-light);
+    margin-bottom: var(--sp-5);
+  }
+  .sub-tab {
+    font-family: var(--font-body);
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text-caption);
+    padding: var(--sp-2) var(--sp-5);
+    border: none;
+    background: none;
+    cursor: pointer;
+    position: relative;
+    transition: color 0.15s var(--ease);
+  }
+  .sub-tab:hover { color: var(--text-high); }
+  .sub-tab.active {
+    color: var(--ai);
+  }
+  .sub-tab.active::after {
+    content: '';
+    position: absolute;
+    bottom: -2px;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: var(--ai);
+    border-radius: 1px 1px 0 0;
+  }
+
+  /* ── Row hover highlight for linked rows ── */
+  .data-table tbody tr.clickable { cursor: pointer; }
+  .data-table tbody tr.clickable:hover {
+    background: rgba(27, 58, 107, 0.06);
+  }
+
+  /* ── Absence row coloring ── */
+  .data-table tbody tr.absence-row {
+    background: rgba(93, 138, 47, 0.03);
+  }
+  .data-table tbody tr.absence-row.injury-row {
+    background: rgba(176, 28, 42, 0.02);
+  }
+
+  /* ── Search icon ── */
+  .search-wrap {
+    position: relative;
+  }
+  .search-wrap .search-icon {
+    position: absolute;
+    left: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--text-disabled);
+    font-size: 14px;
+    pointer-events: none;
+  }
+  .search-wrap .ctrl-input {
+    padding-left: 32px;
+  }
+
+  /* ============================================================
+     SECTION 4 — COMPONENT SPEC NOTES
+     ============================================================ */
+
+  .spec-grid {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: var(--sp-8);
+  }
+  .spec-grid h2 {
+    font-family: var(--font-display);
+    font-size: 22px;
+    color: var(--ai);
+    margin-bottom: var(--sp-4);
+    padding-bottom: var(--sp-3);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .spec-card {
+    background: var(--bg-elevated);
+    border: 1px solid var(--border-light);
+    border-radius: 8px;
+    padding: var(--sp-6);
+    margin-bottom: var(--sp-5);
+    box-shadow: var(--shadow-card);
+  }
+  .spec-card h3 {
+    font-family: var(--font-body);
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--ai);
+    margin-bottom: var(--sp-3);
+  }
+  .spec-card p {
+    font-size: 13px;
+    color: var(--text-medium);
+    line-height: 1.8;
+    margin-bottom: var(--sp-2);
+  }
+  .spec-card code {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    background: var(--bg-inset);
+    padding: 2px 6px;
+    border-radius: 3px;
+    color: var(--shu);
+  }
+  .spec-card ul {
+    margin: var(--sp-2) 0 var(--sp-2) var(--sp-5);
+    font-size: 13px;
+    color: var(--text-medium);
+  }
+  .spec-card li { margin-bottom: 4px; }
+
+  .code-block {
+    background: #1e1e2e;
+    color: #cdd6f4;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    padding: var(--sp-4);
+    border-radius: 6px;
+    margin-top: var(--sp-3);
+    overflow-x: auto;
+    line-height: 1.7;
+  }
+  .code-block .tag { color: #89b4fa; }
+  .code-block .attr { color: #a6e3a1; }
+  .code-block .str { color: #f9e2af; }
+  .code-block .cmt { color: #6c7086; }
+</style>
+</head>
+<body>
+
+<!-- ════════════════════════════════════════════════════════════
+     GUIDE HEADER
+     ════════════════════════════════════════════════════════════ -->
+<header class="guide-header">
+  <h1>thbigmatome 統一UIデザインシステム</h1>
+  <p>幻想郷球場 — Gensokyo Ballpark Management Terminal</p>
+</header>
+
+<nav class="guide-nav">
+  <button class="active" onclick="showSection('tokens', this)">デザイントークン</button>
+  <button onclick="showSection('anatomy', this)">レイアウト構造</button>
+  <button onclick="showSection('mockups', this)">画面プレビュー</button>
+  <button onclick="showSection('specs', this)">実装ガイド</button>
+</nav>
+
+<!-- ════════════════════════════════════════════════════════════
+     SECTION 1: DESIGN TOKENS
+     ════════════════════════════════════════════════════════════ -->
+<section id="sec-tokens" class="guide-section active">
+  <div class="tokens-grid">
+    <h2>デザイントークン</h2>
+
+    <h3>Color — 和色パレット</h3>
+    <div class="color-row">
+      <div class="color-chip"><div class="swatch" style="background:#1B3A6B"></div><div class="label"><strong>藍色 --ai</strong>#1B3A6B</div></div>
+      <div class="color-chip"><div class="swatch" style="background:#C0392B"></div><div class="label"><strong>朱色 --shu</strong>#C0392B</div></div>
+      <div class="color-chip"><div class="swatch" style="background:#4A7A8A"></div><div class="label"><strong>千草色 --chigusa</strong>#4A7A8A</div></div>
+      <div class="color-chip"><div class="swatch" style="background:#5D8A2F"></div><div class="label"><strong>萌黄 --moegi</strong>#5D8A2F</div></div>
+      <div class="color-chip"><div class="swatch" style="background:#D4940A"></div><div class="label"><strong>山吹 --yamabuki</strong>#D4940A</div></div>
+      <div class="color-chip"><div class="swatch" style="background:#B01C2A"></div><div class="label"><strong>紅 --beni</strong>#B01C2A</div></div>
+      <div class="color-chip"><div class="swatch" style="background:#2E86AB"></div><div class="label"><strong>浅葱 --asagi</strong>#2E86AB</div></div>
+      <div class="color-chip"><div class="swatch" style="background:#6b4c8a"></div><div class="label"><strong>藤色 --fuji</strong>#6b4c8a</div></div>
+    </div>
+
+    <h3>Surface — 背景・ボーダー</h3>
+    <div class="color-row">
+      <div class="color-chip"><div class="swatch" style="background:#F8F6F1; border: 1px solid #ddd"></div><div class="label"><strong>和紙色 --bg</strong>#F8F6F1</div></div>
+      <div class="color-chip"><div class="swatch" style="background:#FFFFFF; border: 1px solid #ddd"></div><div class="label"><strong>白 --bg-elevated</strong>#FFFFFF</div></div>
+      <div class="color-chip"><div class="swatch" style="background:#F0EDE5; border: 1px solid #ddd"></div><div class="label"><strong>--bg-inset</strong>#F0EDE5</div></div>
+      <div class="color-chip"><div class="swatch" style="background:#D8D0C4"></div><div class="label"><strong>--border</strong>#D8D0C4</div></div>
+      <div class="color-chip"><div class="swatch" style="background:#E8E2D8"></div><div class="label"><strong>--border-light</strong>#E8E2D8</div></div>
+    </div>
+
+    <h3>Typography — 書体</h3>
+    <div class="type-sample">
+      <div class="display">しっぽり明朝 — 選手カード一覧</div>
+      <div class="heading">Shippori Mincho — ページタイトル・見出し</div>
+      <div class="body-text">Noto Sans JP — 本文テキスト。テーブルのセル、フィルターラベル、ボタンテキストに使用。情報密度を保ちつつ可読性を確保します。</div>
+      <div class="mono">JetBrains Mono — 425件 / 背番号: 06 / コスト: 8 / スタミナ: 3</div>
+    </div>
+
+    <h3>Spacing — 間隔スケール (8px base)</h3>
+    <div class="spacing-demo">
+      <div class="spacing-block"><div class="bar" style="height:4px"></div><span>4px</span></div>
+      <div class="spacing-block"><div class="bar" style="height:8px"></div><span>8px</span></div>
+      <div class="spacing-block"><div class="bar" style="height:12px"></div><span>12px</span></div>
+      <div class="spacing-block"><div class="bar" style="height:16px"></div><span>16px</span></div>
+      <div class="spacing-block"><div class="bar" style="height:20px"></div><span>20px</span></div>
+      <div class="spacing-block"><div class="bar" style="height:24px"></div><span>24px</span></div>
+      <div class="spacing-block"><div class="bar" style="height:32px"></div><span>32px</span></div>
+      <div class="spacing-block"><div class="bar" style="height:40px"></div><span>40px</span></div>
+      <div class="spacing-block"><div class="bar" style="height:48px"></div><span>48px</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- ════════════════════════════════════════════════════════════
+     SECTION 2: LAYOUT ANATOMY
+     ════════════════════════════════════════════════════════════ -->
+<section id="sec-anatomy" class="guide-section">
+  <div class="anatomy-wrap">
+    <h2>統一レイアウト構造</h2>
+    <p>全画面が以下の4層構造に従います。既存の <code>PageHeader</code> / <code>FilterBar</code> / <code>DataCard</code> コンポーネントをベースに統一。<br>
+    現状 <code>PlayerCardsView.vue</code> がカスタムフィルターを使っている等の不統一を解消します。</p>
+
+    <!-- Live anatomy diagram -->
+    <div class="anatomy-diagram">
+      <div style="padding: var(--sp-6) var(--sp-8);">
+
+        <!-- Layer 1: Page Header -->
+        <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:var(--sp-2); position:relative;">
+          <div style="display:flex; align-items:center; gap:var(--sp-3);">
+            <span class="anatomy-label" style="background:var(--shu);">Layer 1: PageHeader</span>
+          </div>
+        </div>
+        <div class="page-header" style="border:2px dashed rgba(192,57,43,0.3); border-radius:6px; padding:var(--sp-2) var(--sp-4); margin-bottom:var(--sp-5);">
+          <h1>ページタイトル</h1>
+          <div class="header-actions">
+            <button class="ctrl-btn accent">＋ アクション</button>
+          </div>
+        </div>
+
+        <!-- Layer 2: Filter Bar -->
+        <div style="margin-bottom:var(--sp-2);">
+          <span class="anatomy-label" style="background:var(--ai);">Layer 2: FilterBar</span>
+        </div>
+        <div class="filter-bar" style="border:2px dashed rgba(27,58,107,0.3); margin-bottom:var(--sp-5);">
+          <div class="search-wrap">
+            <span class="search-icon">&#128269;</span>
+            <input type="text" class="ctrl-input" placeholder="検索..." style="min-width:200px">
+          </div>
+          <div class="filter-group">
+            <span class="filter-label">種別:</span>
+            <select class="ctrl-select"><option>すべて</option></select>
+          </div>
+          <div class="filter-group">
+            <span class="filter-label">表示:</span>
+            <div class="ctrl-btn-group">
+              <button class="ctrl-btn tonal active">&#9638;</button>
+              <button class="ctrl-btn tonal">&#9638;&#9638;</button>
+            </div>
+          </div>
+          <div class="filter-spacer"></div>
+          <span class="result-count">425件</span>
+        </div>
+
+        <!-- Layer 3: Data Content -->
+        <div style="margin-bottom:var(--sp-2);">
+          <span class="anatomy-label" style="background:var(--moegi);">Layer 3: DataCard + DataTable</span>
+        </div>
+        <div class="data-card" style="border:2px dashed rgba(93,138,47,0.3); margin-bottom:var(--sp-5);">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th style="width:60px"></th>
+                <th>背番号</th>
+                <th>名前</th>
+                <th>種別</th>
+                <th class="numeric">スタミナ</th>
+                <th class="numeric">コスト</th>
+                <th>カードセット</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><div class="card-thumb">IMG</div></td>
+                <td class="mono">01</td>
+                <td class="name-cell">茨木 華扇</td>
+                <td><span class="chip pitcher">投手</span></td>
+                <td class="numeric mono">3</td>
+                <td class="numeric mono">8</td>
+                <td style="font-size:12px; color:var(--text-caption)">2025THBIG</td>
+              </tr>
+              <tr>
+                <td><div class="card-thumb">IMG</div></td>
+                <td class="mono">06</td>
+                <td class="name-cell">博麗 霊夢</td>
+                <td><span class="chip pitcher">投手</span></td>
+                <td class="numeric mono">1</td>
+                <td class="numeric mono">8</td>
+                <td style="font-size:12px; color:var(--text-caption)">2025THBIG</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <!-- Layer 4: Pagination -->
+          <div style="position:relative;">
+            <div style="position:absolute; top:-12px; right:var(--sp-4);">
+              <span class="anatomy-label" style="background:var(--chigusa);">Layer 4: Pagination</span>
+            </div>
+            <div class="pagination-bar" style="border-top:2px dashed rgba(74,122,138,0.3);">
+              <span>Items per page:</span>
+              <select class="ctrl-select" style="min-width:60px; padding:3px 6px;"><option>10</option></select>
+              <span class="page-info">1-10 of 425</span>
+              <div class="page-controls">
+                <button class="page-btn disabled">&laquo;</button>
+                <button class="page-btn disabled">&lsaquo;</button>
+                <button class="page-btn">&rsaquo;</button>
+                <button class="page-btn">&raquo;</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ════════════════════════════════════════════════════════════
+     SECTION 3: PAGE MOCKUPS
+     ════════════════════════════════════════════════════════════ -->
+<section id="sec-mockups" class="guide-section">
+  <div class="mockup-shell">
+    <h2 style="font-family:var(--font-display); font-size:22px; color:var(--ai); margin-bottom:var(--sp-4); padding-bottom:var(--sp-3); border-bottom:1px solid var(--border);">画面プレビュー — 統一デザイン適用後</h2>
+
+    <div class="mockup-tabs">
+      <button class="active" onclick="showMockup('cards', this)">選手カード一覧</button>
+      <button onclick="showMockup('players', this)">選手一覧</button>
+      <button onclick="showMockup('dashboard', this)">ダッシュボード</button>
+    </div>
+
+    <div class="mockup-frame">
+
+      <!-- ── 選手カード一覧 ── -->
+      <div id="mock-cards" class="mockup-page active">
+        <div class="page-container">
+          <div class="page-header">
+            <h1>選手カード一覧</h1>
+          </div>
+
+          <div class="filter-bar">
+            <div class="filter-group">
+              <span class="filter-label">カードセット:</span>
+              <select class="ctrl-select">
+                <option>すべて</option>
+                <option>2025THBIG</option>
+                <option>PM2026</option>
+              </select>
+            </div>
+            <div class="filter-group">
+              <span class="filter-label">種別:</span>
+              <div class="ctrl-btn-group">
+                <button class="ctrl-btn tonal active">全</button>
+                <button class="ctrl-btn tonal">投手</button>
+                <button class="ctrl-btn tonal">野手</button>
+              </div>
+            </div>
+            <div class="search-wrap">
+              <span class="search-icon">&#128269;</span>
+              <input type="text" class="ctrl-input" placeholder="選手名...">
+            </div>
+            <div class="filter-spacer"></div>
+            <span class="result-count">425件</span>
+            <div class="ctrl-btn-group">
+              <button class="ctrl-btn tonal active" title="テーブル表示">&#9638;</button>
+              <button class="ctrl-btn tonal" title="グリッド表示">&#9638;&#9638;</button>
+            </div>
+          </div>
+
+          <div class="data-card">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th style="width:52px"></th>
+                  <th class="sortable" style="width:72px">背番号</th>
+                  <th class="sortable">名前</th>
+                  <th style="width:64px">種別</th>
+                  <th style="width:48px">投打</th>
+                  <th class="numeric sortable" style="width:80px">スタミナ</th>
+                  <th class="numeric sortable" style="width:64px">コスト</th>
+                  <th style="width:120px">カードセット</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr class="clickable">
+                  <td><div class="card-thumb">IMG</div></td>
+                  <td class="mono">01</td>
+                  <td class="name-cell">茨木 華扇</td>
+                  <td><span class="chip pitcher">投手</span></td>
+                  <td style="font-size:12px">P 右右</td>
+                  <td class="numeric mono">3</td>
+                  <td class="numeric mono">8</td>
+                  <td style="font-size:12px; color:var(--text-caption)">2025THBIG</td>
+                </tr>
+                <tr class="clickable">
+                  <td><div class="card-thumb">IMG</div></td>
+                  <td class="mono">06</td>
+                  <td class="name-cell">博麗 霊夢</td>
+                  <td><span class="chip pitcher">投手</span></td>
+                  <td style="font-size:12px">P 右右</td>
+                  <td class="numeric mono">1</td>
+                  <td class="numeric mono">8</td>
+                  <td style="font-size:12px; color:var(--text-caption)">2025THBIG</td>
+                </tr>
+                <tr class="clickable">
+                  <td><div class="card-thumb">IMG</div></td>
+                  <td class="mono">1</td>
+                  <td class="name-cell">霧雨 魔理沙</td>
+                  <td><span class="chip pitcher">投手</span></td>
+                  <td style="font-size:12px">P 右左</td>
+                  <td class="numeric mono">4</td>
+                  <td class="numeric mono">12</td>
+                  <td style="font-size:12px; color:var(--text-caption)">2025THBIG</td>
+                </tr>
+                <tr class="clickable">
+                  <td><div class="card-thumb">IMG</div></td>
+                  <td class="mono">29</td>
+                  <td class="name-cell">少名 針妙丸</td>
+                  <td><span class="chip pitcher">投手</span></td>
+                  <td style="font-size:12px">P 右右</td>
+                  <td class="numeric mono">1</td>
+                  <td class="numeric mono">5</td>
+                  <td style="font-size:12px; color:var(--text-caption)">2025THBIG</td>
+                </tr>
+                <tr class="clickable">
+                  <td><div class="card-thumb">IMG</div></td>
+                  <td class="mono">47</td>
+                  <td class="name-cell">蘇我 屠自古</td>
+                  <td><span class="chip pitcher">投手</span></td>
+                  <td style="font-size:12px">P 右右</td>
+                  <td class="numeric mono">1</td>
+                  <td class="numeric mono">7</td>
+                  <td style="font-size:12px; color:var(--text-caption)">2025THBIG</td>
+                </tr>
+                <tr class="clickable">
+                  <td><div class="card-thumb">IMG</div></td>
+                  <td class="mono">165</td>
+                  <td class="name-cell">戎 瓔花</td>
+                  <td><span class="chip pitcher">投手</span></td>
+                  <td style="font-size:12px">P 左左</td>
+                  <td class="numeric mono">1</td>
+                  <td class="numeric mono">2</td>
+                  <td style="font-size:12px; color:var(--text-caption)">2025THBIG</td>
+                </tr>
+                <tr class="clickable">
+                  <td><div class="card-thumb">IMG</div></td>
+                  <td class="mono">7</td>
+                  <td class="name-cell">アリス・マーガトロイド</td>
+                  <td><span class="chip fielder">野手</span></td>
+                  <td style="font-size:12px">右右</td>
+                  <td class="numeric mono">—</td>
+                  <td class="numeric mono">8</td>
+                  <td style="font-size:12px; color:var(--text-caption)">2025THBIG</td>
+                </tr>
+                <tr class="clickable">
+                  <td><div class="card-thumb">IMG</div></td>
+                  <td class="mono">58</td>
+                  <td class="name-cell">九十九 八橋</td>
+                  <td><span class="chip fielder">野手</span></td>
+                  <td style="font-size:12px">右両</td>
+                  <td class="numeric mono">—</td>
+                  <td class="numeric mono">5</td>
+                  <td style="font-size:12px; color:var(--text-caption)">2025THBIG</td>
+                </tr>
+              </tbody>
+            </table>
+            <div class="pagination-bar">
+              <span>Items per page:</span>
+              <select class="ctrl-select" style="min-width:60px; padding:3px 6px;"><option>10</option></select>
+              <span class="page-info">1-10 of 425</span>
+              <div class="page-controls">
+                <button class="page-btn disabled">&laquo;</button>
+                <button class="page-btn disabled">&lsaquo;</button>
+                <button class="page-btn">&rsaquo;</button>
+                <button class="page-btn">&raquo;</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── 選手一覧 ── -->
+      <div id="mock-players" class="mockup-page">
+        <div class="page-container">
+          <div class="page-header">
+            <h1>選手一覧</h1>
+            <div class="header-actions">
+              <button class="ctrl-btn accent">＋ 選手追加</button>
+            </div>
+          </div>
+
+          <div class="filter-bar">
+            <div class="search-wrap">
+              <span class="search-icon">&#128269;</span>
+              <input type="text" class="ctrl-input" placeholder="選手名で検索" style="min-width:240px;">
+            </div>
+            <div class="filter-group">
+              <span class="filter-label">所属作品:</span>
+              <select class="ctrl-select">
+                <option>すべて</option>
+                <option>東方Project</option>
+                <option>八月のシンデレラナイン</option>
+              </select>
+            </div>
+            <div class="filter-spacer"></div>
+            <span class="result-count">408件</span>
+          </div>
+
+          <div class="data-card">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th class="sortable" style="width:80px">背番号</th>
+                  <th class="sortable">名前</th>
+                  <th style="width:100px">短縮名</th>
+                  <th style="width:120px">所属作品</th>
+                  <th class="numeric" style="width:80px">カード数</th>
+                  <th style="width:80px">操作</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td class="mono">06</td>
+                  <td class="name-cell">博麗 霊夢</td>
+                  <td>霊夢</td>
+                  <td><span class="chip series">東方Project</span></td>
+                  <td class="numeric mono">2枚</td>
+                  <td>
+                    <div class="action-icons">
+                      <button class="action-icon" title="編集">&#9998;</button>
+                      <button class="action-icon danger" title="削除">&#128465;</button>
+                    </div>
+                  </td>
+                </tr>
+                <tr>
+                  <td class="mono">1</td>
+                  <td class="name-cell">霧雨 魔理沙</td>
+                  <td>魔理沙</td>
+                  <td><span class="chip series">東方Project</span></td>
+                  <td class="numeric mono">1枚</td>
+                  <td>
+                    <div class="action-icons">
+                      <button class="action-icon" title="編集">&#9998;</button>
+                      <button class="action-icon danger" title="削除">&#128465;</button>
+                    </div>
+                  </td>
+                </tr>
+                <tr>
+                  <td class="mono">01</td>
+                  <td class="name-cell">茨木 華扇</td>
+                  <td>華扇</td>
+                  <td><span class="chip series">東方Project</span></td>
+                  <td class="numeric mono">1枚</td>
+                  <td>
+                    <div class="action-icons">
+                      <button class="action-icon" title="編集">&#9998;</button>
+                      <button class="action-icon danger" title="削除">&#128465;</button>
+                    </div>
+                  </td>
+                </tr>
+                <tr>
+                  <td class="mono">29</td>
+                  <td class="name-cell">少名 針妙丸</td>
+                  <td>針妙丸</td>
+                  <td><span class="chip series">東方Project</span></td>
+                  <td class="numeric mono">1枚</td>
+                  <td>
+                    <div class="action-icons">
+                      <button class="action-icon" title="編集">&#9998;</button>
+                      <button class="action-icon danger" title="削除">&#128465;</button>
+                    </div>
+                  </td>
+                </tr>
+                <tr>
+                  <td class="mono">47</td>
+                  <td class="name-cell">蘇我 屠自古</td>
+                  <td>屠自古</td>
+                  <td><span class="chip series">東方Project</span></td>
+                  <td class="numeric mono">1枚</td>
+                  <td>
+                    <div class="action-icons">
+                      <button class="action-icon" title="編集">&#9998;</button>
+                      <button class="action-icon danger" title="削除">&#128465;</button>
+                    </div>
+                  </td>
+                </tr>
+                <tr>
+                  <td class="mono">141</td>
+                  <td class="name-cell">奥野田 美宵</td>
+                  <td>美宵</td>
+                  <td><span class="chip series">東方Project</span></td>
+                  <td class="numeric mono">2枚</td>
+                  <td>
+                    <div class="action-icons">
+                      <button class="action-icon" title="編集">&#9998;</button>
+                      <button class="action-icon danger" title="削除">&#128465;</button>
+                    </div>
+                  </td>
+                </tr>
+                <tr>
+                  <td class="mono">7</td>
+                  <td class="name-cell">アリス・マーガトロイド</td>
+                  <td>アリス</td>
+                  <td><span class="chip series">東方Project</span></td>
+                  <td class="numeric mono">1枚</td>
+                  <td>
+                    <div class="action-icons">
+                      <button class="action-icon" title="編集">&#9998;</button>
+                      <button class="action-icon danger" title="削除">&#128465;</button>
+                    </div>
+                  </td>
+                </tr>
+                <tr>
+                  <td class="mono">58</td>
+                  <td class="name-cell">九十九 八橋</td>
+                  <td>八橋</td>
+                  <td><span class="chip series">東方Project</span></td>
+                  <td class="numeric mono">1枚</td>
+                  <td>
+                    <div class="action-icons">
+                      <button class="action-icon" title="編集">&#9998;</button>
+                      <button class="action-icon danger" title="削除">&#128465;</button>
+                    </div>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+            <div class="pagination-bar">
+              <span>Items per page:</span>
+              <select class="ctrl-select" style="min-width:60px; padding:3px 6px;"><option>10</option></select>
+              <span class="page-info">1-10 of 408</span>
+              <div class="page-controls">
+                <button class="page-btn disabled">&laquo;</button>
+                <button class="page-btn disabled">&lsaquo;</button>
+                <button class="page-btn">&rsaquo;</button>
+                <button class="page-btn">&raquo;</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── ダッシュボード ── -->
+      <div id="mock-dashboard" class="mockup-page">
+        <div class="page-container">
+          <div class="page-header">
+            <h1>ダッシュボード</h1>
+          </div>
+
+          <div class="sub-tabs">
+            <button class="sub-tab active">離脱者一覧</button>
+            <button class="sub-tab">コスト状況</button>
+            <button class="sub-tab">クールダウン</button>
+          </div>
+
+          <div class="filter-bar">
+            <div class="search-wrap">
+              <span class="search-icon">&#128269;</span>
+              <input type="text" class="ctrl-input" placeholder="選手名検索" style="min-width:200px;">
+            </div>
+            <div class="filter-group">
+              <span class="filter-label">離脱種別:</span>
+              <select class="ctrl-select">
+                <option>すべて</option>
+                <option>負傷</option>
+                <option>リコンディショニング</option>
+              </select>
+            </div>
+            <div class="filter-spacer"></div>
+            <span class="result-count">2件</span>
+          </div>
+
+          <div class="data-card">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th class="sortable">チーム</th>
+                  <th class="sortable">選手名</th>
+                  <th style="width:140px">離脱種別</th>
+                  <th>理由</th>
+                  <th class="sortable" style="width:100px">開始日</th>
+                  <th class="sortable" style="width:100px">復帰予定日</th>
+                  <th class="numeric sortable" style="width:72px">残り</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr class="absence-row injury-row">
+                  <td class="name-cell">若尊バレーナ</td>
+                  <td class="name-cell">オレンジ</td>
+                  <td><span class="chip injury">負傷</span></td>
+                  <td>試合前負傷</td>
+                  <td class="mono">6月9日</td>
+                  <td class="mono">7月19日</td>
+                  <td class="numeric"><span class="chip days-ok">0日</span></td>
+                </tr>
+                <tr class="absence-row">
+                  <td class="name-cell">若尊バレーナ</td>
+                  <td class="name-cell">本居 小鈴</td>
+                  <td><span class="chip reconditioning">リコンディショニング</span></td>
+                  <td>再調整ルール</td>
+                  <td class="mono">6月19日</td>
+                  <td class="mono">7月19日</td>
+                  <td class="numeric"><span class="chip days-ok">0日</span></td>
+                </tr>
+              </tbody>
+            </table>
+            <div class="pagination-bar">
+              <span>Items per page:</span>
+              <select class="ctrl-select" style="min-width:60px; padding:3px 6px;"><option>10</option></select>
+              <span class="page-info">1-2 of 2</span>
+              <div class="page-controls">
+                <button class="page-btn disabled">&laquo;</button>
+                <button class="page-btn disabled">&lsaquo;</button>
+                <button class="page-btn disabled">&rsaquo;</button>
+                <button class="page-btn disabled">&raquo;</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- ════════════════════════════════════════════════════════════
+     SECTION 4: IMPLEMENTATION SPECS
+     ════════════════════════════════════════════════════════════ -->
+<section id="sec-specs" class="guide-section">
+  <div class="spec-grid">
+    <h2>実装ガイド</h2>
+
+    <div class="spec-card">
+      <h3>1. ページ構造の統一ルール</h3>
+      <p>全ページが以下の4層構造を守ること。層の省略は可（例: フィルター不要ならFilterBar省略）、層の順序変更・独自レイアウトは不可。</p>
+      <ul>
+        <li><strong>Layer 1 — PageHeader</strong>: 既存 <code>PageHeader.vue</code> を使用。タイトル左に朱色3pxバー。右端にアクションボタン</li>
+        <li><strong>Layer 2 — FilterBar</strong>: 既存 <code>FilterBar.vue</code> を使用。PlayerCardsViewのインラインフィルターを廃止してこちらに統一</li>
+        <li><strong>Layer 3 — DataCard</strong>: 既存 <code>DataCard.vue</code> 内に <code>v-data-table</code>。カスタムリスト形式は原則廃止しテーブルに統一</li>
+        <li><strong>Layer 4 — Pagination</strong>: <code>v-data-table</code> 標準ページネーション。右寄せ、Items per page付き</li>
+      </ul>
+      <div class="code-block">
+<span class="cmt">&lt;!-- 全ページの基本テンプレート --&gt;</span>
+<span class="tag">&lt;template&gt;</span>
+  <span class="tag">&lt;v-container&gt;</span>
+    <span class="tag">&lt;PageHeader</span> <span class="attr">:title</span>=<span class="str">"t('page.title')"</span><span class="tag">&gt;</span>
+      <span class="tag">&lt;template</span> <span class="attr">#title-actions</span><span class="tag">&gt;</span>
+        <span class="tag">&lt;v-btn</span> <span class="attr">color</span>=<span class="str">"accent"</span><span class="tag">&gt;</span>...<span class="tag">&lt;/v-btn&gt;</span>
+      <span class="tag">&lt;/template&gt;</span>
+    <span class="tag">&lt;/PageHeader&gt;</span>
+
+    <span class="cmt">&lt;!-- タブがある場合のみ --&gt;</span>
+    <span class="tag">&lt;v-tabs</span> <span class="attr">v-model</span>=<span class="str">"tab"</span> <span class="attr">color</span>=<span class="str">"primary"</span><span class="tag">&gt;</span>...<span class="tag">&lt;/v-tabs&gt;</span>
+
+    <span class="tag">&lt;FilterBar&gt;</span>
+      <span class="tag">&lt;template</span> <span class="attr">#search</span><span class="tag">&gt;</span>
+        <span class="tag">&lt;v-text-field</span> ... <span class="tag">/&gt;</span>
+      <span class="tag">&lt;/template&gt;</span>
+      <span class="tag">&lt;template</span> <span class="attr">#filters</span><span class="tag">&gt;</span>
+        <span class="tag">&lt;v-select</span> ... <span class="tag">/&gt;</span>
+      <span class="tag">&lt;/template&gt;</span>
+      <span class="tag">&lt;template</span> <span class="attr">#toggles</span><span class="tag">&gt;</span>
+        <span class="tag">&lt;span</span> <span class="attr">class</span>=<span class="str">"result-count"</span><span class="tag">&gt;</span>{{ count }}件<span class="tag">&lt;/span&gt;</span>
+      <span class="tag">&lt;/template&gt;</span>
+    <span class="tag">&lt;/FilterBar&gt;</span>
+
+    <span class="tag">&lt;DataCard&gt;</span>
+      <span class="tag">&lt;v-data-table</span> <span class="attr">:headers</span> <span class="attr">:items</span> <span class="attr">density</span>=<span class="str">"compact"</span> <span class="attr">hover</span> <span class="tag">/&gt;</span>
+    <span class="tag">&lt;/DataCard&gt;</span>
+  <span class="tag">&lt;/v-container&gt;</span>
+<span class="tag">&lt;/template&gt;</span>
+      </div>
+    </div>
+
+    <div class="spec-card">
+      <h3>2. PageHeader 改修ポイント</h3>
+      <p>既存の <code>PageHeader.vue</code> に朱色左バーを追加。h1のフォントを <code>Shippori Mincho</code> に明示。</p>
+      <ul>
+        <li>タイトル左に <code>border-left: 3px solid var(--shu)</code> + <code>padding-left: 16px</code></li>
+        <li>タイトルフォント: <code>font-family: var(--font-display)</code>, <code>font-size: 22px</code></li>
+        <li>マージン下: <code>margin-bottom: 20px</code></li>
+        <li>アクションボタン: 右端に <code>flex</code> 配置（既存通り）</li>
+      </ul>
+    </div>
+
+    <div class="spec-card">
+      <h3>3. FilterBar 改修ポイント</h3>
+      <p>既存の <code>FilterBar.vue</code> にカード風背景とボーダーを追加。slot構成は維持。</p>
+      <ul>
+        <li>背景: <code>var(--bg-elevated)</code> + <code>border: 1px solid var(--border-light)</code> + <code>border-radius: 8px</code></li>
+        <li>パディング: <code>12px 16px</code></li>
+        <li>影: <code>box-shadow: var(--shadow-card)</code></li>
+        <li>結果件数は <code>#toggles</code> スロットに統一配置（JetBrains Mono, 12px, caption色）</li>
+        <li><code>PlayerCardsView.vue</code> のインラインフィルターを廃止し、FilterBarの各slotに移行</li>
+      </ul>
+    </div>
+
+    <div class="spec-card">
+      <h3>4. DataTable スタイル統一</h3>
+      <p>Vuetifyの <code>v-data-table</code> にグローバルCSSオーバーライドを適用。</p>
+      <ul>
+        <li>ヘッダー背景: <code>var(--bg-inset)</code> (#F0EDE5)</li>
+        <li>ヘッダーテキスト: <code>12px</code>, <code>font-weight: 600</code>, <code>color: var(--text-medium)</code></li>
+        <li>行ストライプ: 偶数行に <code>var(--bg-stripe)</code></li>
+        <li>ホバー: <code>rgba(27, 58, 107, 0.04)</code></li>
+        <li>数値列: <code>text-align: right</code> + <code>JetBrains Mono</code></li>
+        <li>ボーダー: 行間 <code>var(--border-light)</code></li>
+      </ul>
+    </div>
+
+    <div class="spec-card">
+      <h3>5. チップ (StatusChip) 統一</h3>
+      <p>投手/野手/負傷等のステータス表示を統一。<code>StatusChip.vue</code> または <code>v-chip</code> にカスタムクラスを適用。</p>
+      <ul>
+        <li><strong>投手</strong>: 藍色背景10%透過 + 藍色テキスト</li>
+        <li><strong>野手</strong>: 萌黄色背景10%透過 + 萌黄テキスト</li>
+        <li><strong>負傷</strong>: 紅色背景8%透過 + 紅色テキスト</li>
+        <li><strong>リコンディショニング</strong>: 萌黄色ボーダー + 萌黄テキスト</li>
+        <li><strong>所属作品</strong>: 藍色6%透過 + 藍色ボーダー12%</li>
+        <li>共通: <code>font-size: 11px</code>, <code>font-weight: 600</code>, <code>border-radius: 4px</code>, <code>padding: 2px 10px</code></li>
+      </ul>
+    </div>
+
+    <div class="spec-card">
+      <h3>6. 適用対象ページと優先度</h3>
+      <ul>
+        <li><strong>Phase 1</strong>: 共通CSS追加 (App.vue or base.css) + PageHeader/FilterBar改修</li>
+        <li><strong>Phase 2</strong>: PlayerCardsView.vue — インラインフィルター→FilterBar移行、カスタムリスト→DataTable移行</li>
+        <li><strong>Phase 3</strong>: Players.vue — DataCard内のスタイル統一（既にほぼ準拠、微調整のみ）</li>
+        <li><strong>Phase 4</strong>: HomeView/HomePortalView — ダッシュボード系画面の統一</li>
+        <li><strong>Phase 5</strong>: 残り全画面（GameRecordListView, ActiveRoster, CostAssignment等）</li>
+      </ul>
+    </div>
+
+  </div>
+</section>
+
+<script>
+  function showSection(id, btn) {
+    document.querySelectorAll('.guide-section').forEach(s => s.classList.remove('active'));
+    document.querySelectorAll('.guide-nav button').forEach(b => b.classList.remove('active'));
+    document.getElementById('sec-' + id).classList.add('active');
+    btn.classList.add('active');
+  }
+
+  function showMockup(id, btn) {
+    document.querySelectorAll('.mockup-page').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.mockup-tabs button').forEach(b => b.classList.remove('active'));
+    document.getElementById('mock-' + id).classList.add('active');
+    btn.classList.add('active');
+  }
+</script>
+
+</body>
+</html>

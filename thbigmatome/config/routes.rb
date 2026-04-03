@@ -26,27 +26,55 @@ Rails.application.routes.draw do
         resource :key_player, only: [ :create ], controller: "team_key_players"
         resources :team_players, only: [ :index, :create ]
         resources :team_memberships, only: [ :index ]
+        resources :lineup_templates, only: [ :index, :show, :create, :update, :destroy ]
+        resource :game_lineup, only: [ :show, :update ]
+        resource :squad_text_settings, only: [ :show, :update ]
+        resources :roster_changes, only: [ :index ]
+        resources :pitcher_game_states, only: [ :index ] do
+          collection do
+            get :fatigue_summary
+          end
+        end
       end
 
       resources :game, only: [ :show, :update ]
+      # 試合記録（v1 API）
+      resources :games, only: [ :index, :show, :create ] do
+        collection do
+          post :import_log
+          post :parse_log
+        end
+        member do
+          post :confirm
+        end
+        resource :lineup, only: [ :show, :create, :update ],
+                          controller: "game_lineup_entries"
+      end
+
+      # パーサー結果取り込みAPI
+      resources :game_records, only: [ :index, :show, :create ] do
+        member do
+          post :confirm
+        end
+      end
+      resources :at_bat_records, only: [ :update ]
 
       # 選手一覧
       resources :players, only: [ :index, :show, :create, :update, :destroy ]
       resources :team_registration_players, only: [ :index ]
 
       # 各種設定マスタ
+      resources :card_sets, only: [ :index, :show ]
       resources :player_types, path: "player-types", only: [ :index, :create, :update, :destroy ]
       resources :pitching_styles, path: "pitching-styles", only: [ :index, :create, :update, :destroy ]
-      resources :pitching_skills, path: "pitching-skills", only: [ :index, :create, :update, :destroy ]
       resources :batting_styles, path: "batting-styles", only: [ :index, :create, :update, :destroy ]
-      resources :batting_skills, path: "batting-skills", only: [ :index, :create, :update, :destroy ]
       resources :biorhythms, only: [ :index, :create, :update, :destroy ]
       resources :costs, only: [ :index, :show, :create, :update, :destroy ] do
         post :duplicate, on: :member
       end
 
       # シーズンマスタ
-      resources :seasons, only: [ :create ]
+      resources :seasons, only: [ :create, :destroy, :update ]
       resources :player_absences, only: [ :index, :create, :update, :destroy ]
 
       # 日程表マスタ
@@ -58,26 +86,57 @@ Rails.application.routes.draw do
         end
       end
 
+      # 大会管理
+      resources :competitions, only: [ :index, :show, :create, :update, :destroy ] do
+        get :teams, on: :member
+        get "roster", to: "competition_rosters#index"
+        post "roster/players", to: "competition_rosters#add_player"
+        delete "roster/players/:player_card_id", to: "competition_rosters#remove_player"
+        get "roster/cost_check", to: "competition_rosters#cost_check"
+      end
+      # 選手カード
+      resources :player_cards, only: [ :index, :show, :update ]
+
+      # 投手登板管理
+      resources :pitcher_appearances, only: [ :index, :create ] do
+        collection do
+          post :bulk_save
+        end
+      end
+
+      # ホーム画面
+      get "home/summary", to: "home#summary"
+
+      # 成績集計
+      get "stats/batting",  to: "stats#batting"
+      get "stats/pitching", to: "stats#pitching"
+      get "stats/team",     to: "stats#team"
+
       # コストアサインメント
       resources :cost_assignments, only: [ :index, :create ]
 
-      # ユーザー登録
-      post "users", to: "users#create"
+      # 球場マスタ
+      resources :stadiums, only: [ :index, :show, :create, :update ]
 
+      # 自分のチーム一覧（全ログインユーザー利用可）
+      get "users/me/teams", to: "users#my_teams"
+      # 自分のパスワード変更（全ログインユーザー利用可）
+      post "users/change_password", to: "users#change_password"
+
+      # コミッショナー横断管理（commissioner専用）
       namespace :commissioner do
-        resources :leagues do
-          resources :league_memberships, only: [ :index, :create, :destroy ]
-          resources :league_seasons do
-            post "generate_schedule", on: :member
-            resources :league_games, only: [ :index, :show ]
-            resources :league_pool_players, only: [ :index, :create, :destroy ]
-          end
-          resources :teams do
-            resources :team_memberships, only: [ :index, :update, :destroy ] do
-              resources :player_absences, only: [ :index, :create, :update, :destroy ]
-            end
-            resources :team_managers, only: [ :index, :create, :update, :destroy ]
-          end
+        get "dashboard/absences", to: "dashboard#absences"
+        get "dashboard/costs", to: "dashboard#costs"
+        get "dashboard/cooldowns", to: "dashboard#cooldowns"
+        get "dashboard/roster_status", to: "dashboard#roster_status", defaults: { format: :json }
+        get "dashboard/roster_status.csv", to: "dashboard#roster_status", defaults: { format: :csv }
+      end
+
+      # ユーザー管理（commissioner専用）
+      resources :users, only: [ :index, :create ] do
+        member do
+          patch :reset_password
+          patch :update_role
         end
       end
     end

@@ -43,7 +43,7 @@
       </v-card-text>
       <v-card-actions>
         <v-spacer></v-spacer>
-        <v-btn color="primary" @click="saveAssignments" :disabled="loading">
+        <v-btn color="accent" variant="flat" @click="saveAssignments" :disabled="loading">
           {{ t('costAssignment.save') }}
         </v-btn>
       </v-card-actions>

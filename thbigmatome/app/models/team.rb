@@ -2,12 +2,22 @@ class Team < ApplicationRecord
   COST_LIMIT_CONFIG = YAML.load_file(Rails.root.join("config", "cost_limits.yml")).freeze
   TEAM_TOTAL_MAX_COST = COST_LIMIT_CONFIG["team_total_max_cost"]
 
+  belongs_to :user, optional: true
+
   has_one :season, dependent: :restrict_with_error
   has_many :team_memberships, dependent: :destroy
   has_many :players, through: :team_memberships
 
-  has_many :league_memberships, dependent: :destroy
-  has_many :leagues, through: :league_memberships
+  has_many :competition_entries, dependent: :destroy
+  has_many :competitions, through: :competition_entries
+  has_many :home_games, class_name: "Game", foreign_key: :home_team_id, dependent: :destroy, inverse_of: :home_team
+  has_many :visitor_games, class_name: "Game", foreign_key: :visitor_team_id, dependent: :destroy, inverse_of: :visitor_team
+  has_many :pitcher_game_states, dependent: :destroy
+  has_many :imported_stats, dependent: :destroy
+
+  has_many :lineup_templates, dependent: :destroy
+  has_one :squad_text_setting, dependent: :destroy
+  has_one :game_lineup, dependent: :destroy
 
   has_many :team_managers, dependent: :destroy
   has_one :director_team_manager, -> { where(role: :director) }, class_name: "TeamManager", dependent: :destroy
@@ -15,7 +25,14 @@ class Team < ApplicationRecord
   has_many :coach_team_managers, -> { where(role: :coach) }, class_name: "TeamManager", dependent: :destroy
   has_many :coaches, through: :coach_team_managers, source: :manager
 
+  VALID_TEAM_TYPES = %w[normal hachinai].freeze
+  NATIVE_SERIES = {
+    "normal"   => %w[touhou].freeze,
+    "hachinai" => %w[hachinai tamayomi].freeze
+  }.freeze
+
   validates :name, presence: true
+  validates :team_type, inclusion: { in: VALID_TEAM_TYPES }
 
   # シーズンが存在するかどうか（TopMenu等のUI表示で使用）
   def has_season
@@ -45,11 +62,12 @@ class Team < ApplicationRecord
     end
   end
 
-  # 1軍の外の世界枠選手（outside_worldカテゴリのタイプを持つ選手）
+  # 1軍の外の世界枠選手（team_type に応じたネイティブ series 以外が外の世界枠）
   def outside_world_first_squad_memberships
-    team_memberships.where(squad: "first").includes(player: :player_types).select do |tm|
-      tm.player.player_types.any? { |pt| pt.category == "outside_world" }
-    end
+    native = NATIVE_SERIES[team_type] || NATIVE_SERIES["normal"]
+    team_memberships.where(squad: "first")
+      .joins(:player)
+      .where.not(players: { series: native })
   end
 
   # 外の世界枠: 最大4人チェック
@@ -65,31 +83,16 @@ class Team < ApplicationRecord
   end
 
   # 外の世界枠: 4人のとき投手/野手混在必須チェック
-  # 二刀流選手は投手・野手どちらにもカウント可能
+  # player_cards.card_type で判定。pitcherカードがあれば投手扱い
   def validate_outside_world_balance
     ow_memberships = outside_world_first_squad_memberships
     return true if ow_memberships.size < OUTSIDE_WORLD_LIMIT
 
-    two_way_type = PlayerType.find_by(name: "二刀流")
-    two_way_count = 0
-    pure_pitcher_count = 0
-    pure_fielder_count = 0
+    ow_with_cards = ow_memberships.includes(player: :player_cards)
+    has_pitcher = ow_with_cards.any? { |tm| tm.player.player_cards.any? { |pc| pc.card_type == "pitcher" } }
+    has_fielder = ow_with_cards.any? { |tm| tm.player.player_cards.any? { |pc| pc.card_type == "batter" } }
 
-    ow_memberships.each do |tm|
-      is_two_way = two_way_type && tm.player.player_types.include?(two_way_type)
-      if is_two_way
-        two_way_count += 1
-      elsif tm.player.is_pitcher
-        pure_pitcher_count += 1
-      else
-        pure_fielder_count += 1
-      end
-    end
-
-    pitcher_capable = pure_pitcher_count + two_way_count >= 1
-    fielder_capable = pure_fielder_count + two_way_count >= 1
-
-    unless pitcher_capable && fielder_capable
+    unless has_pitcher && has_fielder
       errors.add(:base, I18n.t("activerecord.errors.models.team.outside_world.balance_required"))
       false
     else

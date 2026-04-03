@@ -1,0 +1,96 @@
+# Docker Compose for thbigmatome development environment
+# Usage:
+#   docker compose up                        # db + rails + frontend + parser + irc
+#   docker compose run --rm parser pytest    # run parser tests
+
+services:
+  db:
+    restart: unless-stopped
+    image: postgres:16-alpine
+    ports:
+      - "5433:5432"   # ホストPG(5432)との競合回避
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    environment:
+      POSTGRES_USER: morinaga
+      POSTGRES_HOST_AUTH_METHOD: trust
+      POSTGRES_DB: thbigmatome_development
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U morinaga -d thbigmatome_development"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  rails:
+    restart: unless-stopped
+    build:
+      context: ./thbigmatome
+      dockerfile: Dockerfile.dev
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./thbigmatome:/app
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DB_HOST: db
+      DB_USERNAME: morinaga
+      RAILS_ENV: development
+      RAILS_MASTER_KEY: ${RAILS_MASTER_KEY}
+      PARSER_API_URL: http://parser:5000
+      INITIAL_PASSWORD: ${INITIAL_PASSWORD}
+    command: bin/rails server -b 0.0.0.0
+
+  frontend:
+    restart: unless-stopped
+    build:
+      context: ./thbigmatome-front
+      dockerfile: Dockerfile.dev
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./thbigmatome-front:/app
+    environment:
+      VITE_API_BASE_URL: http://localhost:3000/api/v1
+    command: yarn dev -- --host 0.0.0.0
+
+  parser:
+    build:
+      context: ./thbig-irc-parser
+      dockerfile: Dockerfile.dev
+    ports:
+      - "5000:5000"
+    volumes:
+      # テストコードがハードコードされたホストパスを参照するため同一パスでマウント
+      - /home/morinaga/projects/thbig-irc-parser:/home/morinaga/projects/thbig-irc-parser
+      # PDFカードデータ・IRCログ（テストがWindowsパスをハードコード）
+      - /mnt/c/Users/necro/Documents/to_team:/mnt/c/Users/necro/Documents/to_team
+    working_dir: /home/morinaga/projects/thbig-irc-parser
+    depends_on:
+      - db
+    environment:
+      DB_HOST: db
+      DB_USERNAME: morinaga
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:5000/health')"]
+      interval: 5s
+      timeout: 10s
+      retries: 12
+      start_period: 15s
+
+  irc:
+    build:
+      context: ./thbig-irc
+      dockerfile: Dockerfile.dev
+    ports:
+      - "8080:8080"
+      - "5174:5173"
+    restart: unless-stopped
+    volumes:
+      - ./thbig-irc:/app
+    env_file:
+      - ./thbig-irc/.env
+
+volumes:
+  pgdata:

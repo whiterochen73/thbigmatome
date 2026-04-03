@@ -4,10 +4,14 @@ ENV['RAILS_ENV'] ||= 'test'
 require_relative '../config/environment'
 # Prevent database truncation if the environment is production
 abort("The Rails environment is running in production mode!") if Rails.env.production?
+# Prevent test suite from running against development DB (RAILS_ENV must be test)
+abort("ERROR: rspec must be run with RAILS_ENV=test. Current: #{Rails.env}") unless Rails.env.test?
 # Uncomment the line below in case you have `--require rails_helper` in the `.rspec` file
 # that will avoid rails generators crashing because migrations haven't been run yet
 # return unless Rails.env.test?
 require 'rspec/rails'
+require 'shoulda/matchers'
+require 'database_cleaner/active_record'
 # Add additional requires below this line. Rails is not loaded until this point!
 
 # Requires supporting ruby files with custom matchers and macros, etc, in
@@ -40,6 +44,12 @@ RSpec.configure do |config|
   config.include FactoryBot::Syntax::Methods
 
   config.before(:suite) do
+    # 2026-03-09 subtask_507b: devDB truncation incident調査
+    # 原因: RAILS_ENV=developmentで明示的にrspecを実行したか、ガード追加前の実行と推測。
+    # line 3の ||= はexport済みENVには無効 → 明示的RAILS_ENV=developmentで上書き可能。
+    # line 8のabortガードはこのrails_helper.rbがロードされる前にRAILS_ENVが確定している前提。
+    # 対策: 二重ガード（line 8 + この行）により、どちらかで必ず停止する。
+    raise "DatabaseCleaner: RAILS_ENV must be 'test', got '#{Rails.env}'" unless Rails.env.test?
     DatabaseCleaner.clean_with(:truncation)
     DatabaseCleaner.strategy = :transaction
     # ActionController::API does not inherit allow_forgery_protection from

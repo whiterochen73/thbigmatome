@@ -17,7 +17,7 @@ class Api::V1::Commissioner::TeamManagersController < Api::V1::Commissioner::Bas
     if @team_manager.save
       render json: @team_manager, status: :created
     else
-      render json: @team_manager.errors, status: :unprocessable_entity
+      render json: @team_manager.errors, status: :unprocessable_content
     end
   end
 
@@ -25,7 +25,7 @@ class Api::V1::Commissioner::TeamManagersController < Api::V1::Commissioner::Bas
     if @team_manager.update(team_manager_params)
       render json: @team_manager
     else
-      render json: @team_manager.errors, status: :unprocessable_entity
+      render json: @team_manager.errors, status: :unprocessable_content
     end
   end
 

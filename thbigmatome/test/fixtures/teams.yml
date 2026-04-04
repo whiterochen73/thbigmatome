@@ -4,10 +4,8 @@ one:
   name: MyString
   short_name: MyString
   is_active: false
-  manager: one
 
 two:
   name: MyString
   short_name: MyString
   is_active: false
-  manager: two

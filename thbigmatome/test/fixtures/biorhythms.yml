@@ -1,11 +1,11 @@
 # Read about fixtures at https://api.rubyonrails.org/classes/ActiveRecord/FixtureSet.html
 
 one:
-  name: MyString
+  name: Biorhythm1
   start_date: 2025-07-25
   end_date: 2025-07-25
 
 two:
-  name: MyString
+  name: Biorhythm2
   start_date: 2025-07-25
   end_date: 2025-07-25

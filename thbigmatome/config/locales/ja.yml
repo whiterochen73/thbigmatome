@@ -43,6 +43,8 @@ ja:
               cannot_manage_multiple_teams_in_same_league: "は同一リーグ内の複数のチームに兼任することはできません"
         team_membership:
           player_in_sibling_team: "%{player_name}は既に%{team_name}に所属しています"
+          roster_max_exceeded: "ロスター人数が上限(%{max}人)に達しています"
+          roster_min_required: "ロスター人数が最低人数(%{min}人)を下回るため削除できません"
         biorhythm:
           attributes:
             end_date:

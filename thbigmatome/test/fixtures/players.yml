@@ -1,9 +1,11 @@
 # Read about fixtures at https://api.rubyonrails.org/classes/ActiveRecord/FixtureSet.html
 
 one:
-  name: MyString
-  short_name: MyString
+  name: Player1
+  short_name: P1
+  number: "001"
 
 two:
-  name: MyString
-  short_name: MyString
+  name: Player2
+  short_name: P2
+  number: "002"

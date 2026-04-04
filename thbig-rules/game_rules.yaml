@@ -3,8 +3,7 @@
 # 東方BIG野球というゲームのルールを正確に参照するためのファイル。
 # プロジェクト固有の情報（整合性リスク・実装メモ等）は各アプリ側で管理する。
 #
-# 管理: AI整合性フレームワーク（cmd_849/cmd_905/cmd_909/cmd_910）
-# 参照: thbig-rules/README.md
+# 参照: thbig-rules/README.md, thbig-rules/docs/
 
 version: "1.4"
 created_at: "2026-04-01"
@@ -14,30 +13,30 @@ changelog:
     date: "2026-04-04"
     breaking: false
     changes:
-      - "2レイヤー構造（東方BIG野球 / Lペナ）に再編（cmd_910）"
-      - "known_integrity_risks 除去（Dugout側 dugout_integrity.yaml に移動）"
+      - "2レイヤー構造（東方BIG野球 / Lペナ）に再編"
+      - "known_integrity_risks 除去（アプリ側に移動）"
       - "note: / implementation: キー除去（ゲームルールとして独立）"
   - version: "1.3"
     date: "2026-04-04"
     breaking: false
     changes:
-      - "roster.max:50/min:25（P承認）、試合未実施スキップ条件追加"
-      - "implementation:→note:全置換、competition上書き機構追加（cmd_909）"
+      - "roster.max:50/min:25、試合未実施スキップ条件追加"
+      - "implementation:→note:全置換、competition上書き機構追加"
   - version: "1.2"
     date: "2026-04-04"
     breaking: false
     changes:
-      - "game セクション追加（batting_order、ko_innings_threshold）（cmd_908）"
+      - "game セクション追加（batting_order、ko_innings_threshold）"
   - version: "1.1"
     date: "2026-04-04"
     breaking: false
     changes:
-      - "AIエージェント向けフォーマット（why/exception/related）（cmd_905）"
+      - "AIエージェント向けフォーマット（why/exception/related）"
   - version: "1.0"
     date: "2026-04-01"
     breaking: false
     changes:
-      - "初版作成（cmd_849）"
+      - "初版作成"
 
 # ═══════════════════════════════════════════════════════════════
 # Layer 1: 東方BIG野球（ゲーム本体のルール）
@@ -268,8 +267,7 @@ lpena:
   competition:
     override_mechanism:
       description: "全ルール値は大会ごとに上書き可能"
-      storage: "competitionモデルのrulesフィールド（jsonb）"
-      priority: "competition.rules（jsonb） > game_rules.yaml デフォルト値"
+      priority: "大会固有ルール > game_rules.yaml デフォルト値"
 
     no_duplicate_entry:
       value: true

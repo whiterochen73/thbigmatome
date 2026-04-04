@@ -13,16 +13,16 @@
 
 | ファイル | 内容 | 状態 |
 |----------|------|------|
-| `01-players-and-cards.md` | カード構造・能力値・守備値 | 未着手 |
-| `02-teams-and-rosters.md` | チーム構成・ロスター・コスト・監督 | 未着手 |
-| `03-seasons-and-schedules.md` | シーズン・日程・大会・離脱管理 | 未着手 |
-| `04-game-setup.md` | 試合準備（オーダー・先発・球場・天候） | 未着手 |
-| `05-at-bat-resolution.md` | 打席処理（エミュレーター中核） | 未着手 |
-| `06-special-events.md` | UP表・エラー・レンジ・特徴 | 未着手 |
-| `07-baserunning.md` | 走塁表・盗塁・エンドラン | 未着手 |
-| `08-bunt-system.md` | バント3テーブル・FC判定 | 未着手 |
-| `09-pitching.md` | 投手管理（疲労・KO・交代・投球番号決定） | 未着手 |
-| `10-injuries-and-traits.md` | 怪我テーブル・特殊能力一覧 | 未着手 |
+| `01-players-and-cards.md` | カード構造・能力値・守備値 | 実装済み |
+| `02-teams-and-rosters.md` | チーム構成・ロスター・コスト・監督 | 実装済み |
+| `03-seasons-and-schedules.md` | シーズン・日程・大会・離脱管理 | 実装済み |
+| `04-game-setup.md` | 試合準備（オーダー・先発・球場・天候・DH） | 実装済み |
+| `05-at-bat-resolution.md` | 打席処理（エミュレーター中核） | 実装済み |
+| `06-up-table.md` | UP表・エラーチェック・レンジチェック・特徴発動 | 実装済み |
+| `07-baserunning.md` | 走塁表・盗塁・エンドラン・バント | 実装済み |
+| `08-pitcher-management.md` | 投手管理（疲労・KO・休養・交代） | 実装済み |
+| `09-injuries.md` | けが特徴・負傷判定プロトコル・けが表 | 実装済み |
+| `10-competitions.md` | 大会ルール・ルール上書き機構 | 実装済み |
 
 ## data/ サブディレクトリ
 

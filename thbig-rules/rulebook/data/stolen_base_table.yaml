@@ -1,0 +1,101 @@
+# 盗塁判定テーブル
+# 出典: wiki/steal.md（https://thbigbaseball.wiki.fc2.com/wiki/盗塁）
+# 取得日: 2026-02-18
+#
+# 盗塁は2段階判定（スタート判定 → 成否判定）で実行する
+# 各判定は補正後の値 ≦ 基準値なら成功
+
+metadata:
+  source: "wiki/steal.md"
+  description: "盗塁の2段階判定（スタート判定・成否判定）の補正値テーブル"
+  flow: |
+    1. 走者が盗塁宣言
+    2. 守備側が許可
+    3. スタート判定
+    4. スタート成功時 → 成否判定
+
+# ===== スタート判定 =====
+start_check:
+  syntax: "{背番号}-st{塁}"
+  example: "10-st2 = 背番号10の選手が2塁への盗塁"
+  rule: "st値 ≧ (ダイス出目 + 補正値) なら成功"
+  dice: "1d20"
+
+  modifiers:
+    - condition: "基本（二盗）"
+      modifier: 0
+      note: "st値そのまま"
+
+    - condition: "左投手での二盗"
+      modifier: -2
+      note: "st値から-2"
+
+    - condition: "三盗"
+      modifier: -4
+      note: "3塁への盗塁"
+
+    - condition: "本盗"
+      modifier: -8
+      note: "ホームベースへの盗塁"
+
+    - condition: "クイック投法使用中"
+      modifier: -2
+      note: "投手オプション。他の補正と累積"
+
+    - condition: "出目「2」以下（二盗・三盗）"
+      override: "no_modifier"
+      note: "出目が低い場合は補正なし"
+
+    - condition: "出目「1」（本盗）"
+      override: "no_modifier"
+      note: "本盗時のみ適用"
+
+    - condition: "出目「20」"
+      result: "牽制死"
+      note: "失敗ではなく牽制で刺される（アウト）"
+
+# ===== 成否判定 =====
+result_check:
+  syntax: "{背番号}-ed{塁}"
+  example: "10-ed2 = 背番号10の選手が2塁での成否判定"
+  rule: "ed値 ≧ (ダイス出目 + 捕手T値補正) なら成功"
+  dice: "1d20"
+
+  modifiers:
+    - condition: "基本（ed値）"
+      modifier: 0
+      note: "走塁値の基礎値"
+
+    - condition: "捕手T値加算"
+      modifier: "+T値（ダイスに加算）"
+      note: "例: T値+4なら出目に+4"
+
+    - condition: "クイック投法使用中"
+      modifier: "+2（捕手T値に加算）"
+      note: "投手オプション時の補正"
+
+    - condition: "本盗（ホーム盗塁）"
+      modifier: -8
+      note: "ed値-8で判定。T値補正は適用されない"
+
+    - condition: "出目「20」"
+      result: "無条件失敗"
+      note: "最高値でも失敗"
+
+# ===== 制約 =====
+constraints:
+  after_success:
+    description: "盗塁成功後"
+    rule: "次の塁に進むまで再度盗塁指示不可"
+
+  after_start_failure:
+    description: "スタート失敗後"
+    rule: "打撃結果で進塁するまで再盗塁不可"
+
+  after_start_any:
+    description: "スタートを切った場合（成功・失敗問わず）"
+    rule: "両者が作戦変更・選手交代可能。バントはスリーバント扱い（-5修正、ファール→三振）"
+
+  after_start_failed_only:
+    description: "スタートを切れなかった場合"
+    rule: "作戦変更・選手交代は不可。バントはスリーバント扱い"

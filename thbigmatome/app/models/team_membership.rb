@@ -1,7 +1,7 @@
 class TeamMembership < ApplicationRecord
   GAME_RULES = YAML.load_file(Rails.root.join("config", "game_rules.yaml")).freeze
-  ROSTER_MAX = GAME_RULES.dig("rules", "team_composition", "roster_max")
-  ROSTER_MIN = GAME_RULES.dig("rules", "team_composition", "roster_min")
+  ROSTER_MAX = GAME_RULES.dig("rules", "team_composition", "roster", "max")
+  ROSTER_MIN = GAME_RULES.dig("rules", "team_composition", "roster", "min")
 
   belongs_to :team
   belongs_to :player

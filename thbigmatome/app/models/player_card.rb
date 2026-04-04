@@ -24,7 +24,7 @@ class PlayerCard < ApplicationRecord
 
   validates :card_set_id, :player_id, presence: true
   validates :card_type, presence: true, inclusion: { in: %w[pitcher batter] }
-  validates :card_set_id, uniqueness: { scope: [ :player_id, :card_type ] }
+  validates :card_set_id, uniqueness: { scope: [ :player_id, :card_type, :variant ] }
 
   validates :speed, presence: true,
             numericality: { only_integer: true },

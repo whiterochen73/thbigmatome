@@ -1,5 +1,5 @@
 class PlayerCardSerializer < ActiveModel::Serializer
-  attributes :id, :card_set_id, :player_id, :card_type,
+  attributes :id, :card_set_id, :player_id, :card_type, :variant,
              :speed, :bunt, :steal_start, :steal_end, :injury_rate,
              :is_pitcher, :is_relief_only,
              :starter_stamina, :relief_stamina,

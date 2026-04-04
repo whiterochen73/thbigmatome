@@ -203,6 +203,20 @@ rules:
       related: []
       implementation: "DBのユニーク制約で保証する。モデルバリデーションでも重複確認を行う"
 
+    variant:
+      description: "同一カードセット内で同一選手・同一card_typeの複数バリエーションを区別するラベル"
+      type: "string（nullable）"
+      examples:
+        - "湘南（PM2026の初瀬麻里安投手・湘南バージョン）"
+        - "町田（PM2026の初瀬麻里安投手・町田バージョン）"
+        - "UR（PM2026の初瀬麻里安投手・URバージョン）"
+      why: "PM2026カードセット等で同一選手の同タイプカードが複数存在する場合に対応するため。variantがnullの通常カードは従来通り1枚制限"
+      exception: null
+      related:
+        - "player_card.uniqueness"
+        - "team_registration.card_selection"
+      implementation: "チーム登録時はvariant単位でカードを個別選択する。FEはカードセット名+variant名（例: 'PM2026 (湘南)'）で表示"
+
   # ─────────────────────────────────────────────────────────────
   # シーズンルール
   # ─────────────────────────────────────────────────────────────

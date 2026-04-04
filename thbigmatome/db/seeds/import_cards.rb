@@ -95,7 +95,10 @@ CSV.foreach("#{data_dir}/player_cards.csv", headers: true) do |row|
     end
   end
 
-  pc = PlayerCard.find_or_create_by!(card_set_id: card_set.id, player_id: player.id, card_type: card_type) do |c|
+  variant_val = row["variant"].presence
+
+  pc = PlayerCard.find_or_create_by!(card_set_id: card_set.id, player_id: player.id, card_type: card_type, variant: variant_val) do |c|
+    c.variant          = variant_val
     c.is_pitcher       = row["is_pitcher"] == "true"
     c.handedness       = handedness_val
     c.is_relief_only   = row["is_relief_only"] == "true"

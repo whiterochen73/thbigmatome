@@ -77,7 +77,7 @@
               <!-- カードバージョン選択（複数バージョンがある場合のみ表示） -->
               <div v-if="cardSetOptions.length > 1" class="mt-1">
                 <v-radio-group
-                  v-model="selectedCardSetId"
+                  v-model="selectedCardOptionKey"
                   inline
                   density="compact"
                   hide-details
@@ -85,9 +85,9 @@
                 >
                   <v-radio
                     v-for="opt in cardSetOptions"
-                    :key="opt.card_set_id"
-                    :value="opt.card_set_id"
-                    :label="opt.card_set_name"
+                    :key="opt.option_key"
+                    :value="opt.option_key"
+                    :label="opt.display_name"
                   />
                 </v-radio-group>
               </div>
@@ -384,11 +384,15 @@ interface PlayerCardInfo {
   card_type: string
   card_set_name: string
   card_set_id: number
+  variant?: string | null
 }
 
 interface CardSetOption {
+  option_key: string
   card_set_id: number
   card_set_name: string
+  variant: string | null
+  display_name: string
   pitcher_card_id: number | null
   batter_card_id: number | null
   any_card_id: number
@@ -423,20 +427,25 @@ const selectedCostListId = computed(() => (selectedCost.value ? selectedCost.val
 const selectedPlayer = ref<Player | null>(null)
 const playerTypes = ref<PlayerType[]>([])
 const availablePlayerCards = ref<PlayerCardInfo[]>([])
-const selectedCardSetId = ref<number | null>(null)
+const selectedCardOptionKey = ref<string | null>(null)
 const fetchingCards = ref(false)
 
 const cardSetOptions = computed<CardSetOption[]>(() => {
-  const map = new Map<number, CardSetOption>()
+  const map = new Map<string, CardSetOption>()
   for (const card of availablePlayerCards.value) {
-    const existing = map.get(card.card_set_id)
+    const key = `${card.card_set_id}-${card.variant ?? ''}`
+    const existing = map.get(key)
     if (existing) {
       if (card.card_type === 'pitcher') existing.pitcher_card_id = card.id
       else existing.batter_card_id = card.id
     } else {
-      map.set(card.card_set_id, {
+      const display = card.variant ? `${card.card_set_name} (${card.variant})` : card.card_set_name
+      map.set(key, {
+        option_key: key,
         card_set_id: card.card_set_id,
         card_set_name: card.card_set_name,
+        variant: card.variant ?? null,
+        display_name: display,
         pitcher_card_id: card.card_type === 'pitcher' ? card.id : null,
         batter_card_id: card.card_type === 'batter' ? card.id : null,
         any_card_id: card.id,
@@ -742,7 +751,7 @@ async function fetchPlayerCards(playerId: number): Promise<PlayerCardInfo[]> {
 }
 
 watch(selectedPlayer, async (newPlayer) => {
-  selectedCardSetId.value = null
+  selectedCardOptionKey.value = null
   availablePlayerCards.value = []
   if (!newPlayer) return
   fetchingCards.value = true
@@ -750,7 +759,7 @@ watch(selectedPlayer, async (newPlayer) => {
     availablePlayerCards.value = await fetchPlayerCards(newPlayer.id)
     if (cardSetOptions.value.length > 0) {
       const normalOption = cardSetOptions.value.find((opt) => opt.card_set_name.includes('通常'))
-      selectedCardSetId.value = normalOption?.card_set_id ?? cardSetOptions.value[0].card_set_id
+      selectedCardOptionKey.value = normalOption?.option_key ?? cardSetOptions.value[0].option_key
     }
   } finally {
     fetchingCards.value = false
@@ -788,13 +797,13 @@ const doAddPlayer = () => {
     }
   }
 
-  // カードIDの解決: selectedCardSetId + player.position から適切なcard_idを決定
+  // カードIDの解決: selectedCardOptionKey + player.position から適切なcard_idを決定
   let resolvedCardId: number | null = null
   let resolvedCardInfo: PlayerCardInfo | null = null
 
-  if (selectedCardSetId.value !== null) {
+  if (selectedCardOptionKey.value !== null) {
     const selectedOption = cardSetOptions.value.find(
-      (opt) => opt.card_set_id === selectedCardSetId.value,
+      (opt) => opt.option_key === selectedCardOptionKey.value,
     )
     if (selectedOption) {
       resolvedCardId = resolveCardIdFromCardSet(selectedOption, selectedPlayer.value.position)
@@ -818,7 +827,7 @@ const doAddPlayer = () => {
 
   teamPlayers.value.push(newPlayer)
   selectedPlayer.value = null
-  selectedCardSetId.value = null
+  selectedCardOptionKey.value = null
   availablePlayerCards.value = []
 
   // Check limits and show warnings

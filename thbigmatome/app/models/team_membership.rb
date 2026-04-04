@@ -67,10 +67,17 @@ class TeamMembership < ApplicationRecord
 
   def check_roster_min
     return unless team
+    # 試合が1試合も行われていない場合は下限チェックをスキップ（game_rules.yaml roster.exception）
+    return if no_confirmed_games?
     if team.team_memberships.count <= ROSTER_MIN
       errors.add(:base,
         I18n.t("activerecord.errors.models.team_membership.roster_min_required", min: ROSTER_MIN))
       throw :abort
     end
+  end
+
+  def no_confirmed_games?
+    !team.home_games.where(status: "confirmed").exists? &&
+      !team.visitor_games.where(status: "confirmed").exists?
   end
 end

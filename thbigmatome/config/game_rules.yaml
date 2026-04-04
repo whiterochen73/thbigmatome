@@ -4,13 +4,21 @@
 # AIエージェント（足軽・マキノ）がこれだけ読めば正しいバリデーションコードを書ける粒度を目指す。
 # 変更時は関連するモデル・仕様書・テストと照合を必須とする。
 #
-# 管理: AI整合性フレームワーク Phase 1 (cmd_849), フォーマット更新 (cmd_905)
+# 管理: AI整合性フレームワーク Phase 1 (cmd_849), フォーマット更新 (cmd_905), 構造改善 (cmd_909)
 # 参照: context/dugout-integrity-audit.md, context/game-rules-management-design.md
 
-version: "1.2"
+version: "1.3"
 created_at: "2026-04-01"
 format_updated: "2026-04-04"
 changelog:
+  - version: "1.3"
+    date: "2026-04-04"
+    breaking: false
+    changes:
+      - "roster.max: 30→50、roster.min: 9→25（P承認済み、cmd_909）"
+      - "roster.min に試合未実施スキップ条件を追加"
+      - "implementation: キーを全削除し note: に置き換え（Rails固有情報除去）"
+      - "competition セクションを上書き機構として再設計"
   - version: "1.2"
     date: "2026-04-04"
     breaking: false
@@ -43,7 +51,7 @@ rules:
       related:
         - "team_composition.first_squad_cost"
         - "team_composition.roster"
-      implementation: "TeamMembership更新後、コントローラ層で明示的にチームの合計コストを検証する。バリデーションは自動発火しない点に注意"
+      note: "メンバー変更後、コントローラ層で明示的にチームの合計コストを検証する。バリデーションは自動発火しない"
 
     first_squad_cost:
       tiers:
@@ -61,7 +69,7 @@ rules:
       related:
         - "team_composition.team_total_cost"
         - "team_composition.roster"
-      implementation: "tiersをmin_players降順で検索し、count >= min_playersの最初のtierを採用する。一致なしの場合はnil（登録不可）"
+      note: "tiersをmin_players降順で検索し、count >= min_playersの最初のtierを採用する。一致なしの場合はnil（登録不可）"
 
     outside_world:
       max: 4
@@ -73,17 +81,17 @@ rules:
       related:
         - "team_types"
         - "player_card.card_types"
-      implementation: "1軍登録時に外の世界枠選手数を検証。4名時は投手・野手（card_type）の混在を確認する"
+      note: "1軍登録時に外の世界枠選手数を検証。4名時は投手・野手（card_type）の混在を確認する"
 
     roster:
-      max: 30
-      min: 9
-      why: "30人超はコスト制約が形骸化する。9人未満はDH不使用時に守備の9ポジションが埋まらない"
-      exception: "excluded_from_team_totalの設定に関係なく、roster人数カウントには全TeamMembershipを含む"
+      max: 50
+      min: 25
+      why: "50人超は管理しきれない。25人は1軍登録の最低人数（first_squad_cost.minimum_playersと一致）"
+      exception: "試合が1試合も行われていない場合は下限バリデーションをスキップする（シーズン前の一時保存登録を許容）"
       related:
         - "team_composition.first_squad_cost"
         - "team_composition.outside_world"
-      implementation: "TeamMembership追加時(on:create)に上限チェック、削除時(before_destroy)に下限チェック。TeamMembershipから親Teamの人数を検証する"
+      note: "追加時に上限チェック、削除時に下限チェック（試合未実施なら下限はスキップ）。全TeamMembershipをカウント対象とする"
 
     second_team:
       max_teams_per_owner: 2
@@ -92,7 +100,7 @@ rules:
       exception: "コミッショナーはskip_commissioner_validationで排他チェックを一時無効にできる（移籍処理用途）。この属性はコントローラ層でのみ設定可能でAPIから直接渡せない"
       related:
         - "manager.max_active_teams_per_director"
-      implementation: "TeamMembership追加・更新時(on:[:create,:update])に同一監督が管理する兄弟チームへの所属を確認する"
+      note: "追加・更新時に同一監督が管理する兄弟チームへの所属を確認する"
 
   # ─────────────────────────────────────────────────────────────
   # チーム種別と「外の世界」分類
@@ -107,7 +115,7 @@ rules:
       exception: "series=originalは常に外の世界枠（どちらのチームタイプでも同じ）"
       related:
         - "team_composition.outside_world"
-      implementation: "NATIVE_SERIES['normal'] = ['touhou']。team_type=normalのチームでnative_series以外は外枠扱い"
+      note: "native_series以外のseriesを持つ選手が外枠扱いになる"
 
     hachinai:
       description: "ハチナイチーム（チーム作成時に選択。後から変更不可）"
@@ -119,7 +127,7 @@ rules:
       exception: "series=originalは常に外の世界枠"
       related:
         - "team_composition.outside_world"
-      implementation: "NATIVE_SERIES['hachinai'] = ['hachinai', 'tamayomi']。normalとhachinaiで外枠の定義が異なる点に注意"
+      note: "normalとhachinaiで外枠の定義が異なる点に注意"
 
     original:
       description: "オリジナル選手（series=original）"
@@ -130,7 +138,7 @@ rules:
         - "team_composition.outside_world"
         - "team_types.normal"
         - "team_types.hachinai"
-      implementation: "series='original'を持つ選手は常に外の世界枠としてカウントする"
+      note: "series='original'を持つ選手は常に外の世界枠としてカウントする"
 
   # ─────────────────────────────────────────────────────────────
   # 選手カードルール
@@ -145,7 +153,7 @@ rules:
       related:
         - "team_composition.outside_world"
         - "player_card.stamina"
-      implementation: "card_typeで投手・野手を判定。外の世界枠バランスチェック（4名時の混成確認）に使用する"
+      note: "card_typeで投手・野手を判定。外の世界枠バランスチェック（4名時の混成確認）に使用する"
 
     stamina:
       starter:
@@ -158,7 +166,7 @@ rules:
       exception: null
       related:
         - "player_card.card_types"
-      implementation: "カード登録時にcard_type（pitcher限定）とstaminaの組み合わせを検証する"
+      note: "カード登録時にcard_type（pitcher限定）とstaminaの組み合わせを検証する"
 
     speed:
       min: 1
@@ -166,7 +174,7 @@ rules:
       why: "走力を5段階で表現。盗塁判定やエンドランに使用する"
       exception: null
       related: []
-      implementation: "登録時に1..5の範囲を検証する"
+      note: "1..5の範囲で検証する"
 
     bunt:
       min: 1
@@ -174,7 +182,7 @@ rules:
       why: "バント能力を10段階で表現"
       exception: null
       related: []
-      implementation: "登録時に1..10の範囲を検証する"
+      note: "1..10の範囲で検証する"
 
     steal_start:
       min: 1
@@ -183,7 +191,7 @@ rules:
       exception: null
       related:
         - "player_card.steal_end"
-      implementation: "登録時に1..22の範囲を検証する"
+      note: "1..22の範囲で検証する"
 
     steal_end:
       min: 1
@@ -192,7 +200,7 @@ rules:
       exception: null
       related:
         - "player_card.steal_start"
-      implementation: "登録時に1..22の範囲を検証する"
+      note: "1..22の範囲で検証する"
 
     injury_rate:
       min: 0
@@ -200,14 +208,14 @@ rules:
       why: "負傷確率を0-7で表現（0=負傷しない）。好プレ珍プレ表（UP表）の判定に使用する"
       exception: null
       related: []
-      implementation: "登録時に0..7の範囲を検証する"
+      note: "0..7の範囲で検証する"
 
     uniqueness:
       constraint: "(card_set_id, player_id, card_type)"
       why: "同一カードセット内で同一選手の同種カードは1枚のみ。異なるカードセット間では同一選手の複数カードを持てる"
       exception: null
       related: []
-      implementation: "DBのユニーク制約で保証する。モデルバリデーションでも重複確認を行う"
+      note: "DBのユニーク制約で保証する。アプリ層でも重複確認を行う"
 
     variant:
       description: "同一カードセット内で同一選手・同一card_typeの複数バリエーションを区別するラベル"
@@ -221,7 +229,7 @@ rules:
       related:
         - "player_card.uniqueness"
         - "team_registration.card_selection"
-      implementation: "チーム登録時はvariant単位でカードを個別選択する。FEはカードセット名+variant名（例: 'PM2026 (湘南)'）で表示"
+      note: "チーム登録時はvariant単位でカードを個別選択する"
 
   # ─────────────────────────────────────────────────────────────
   # シーズンルール
@@ -232,7 +240,7 @@ rules:
       why: "1チームにつき1シーズンのみ存在する。シーズン管理を単純化し、二重管理を防ぐ"
       exception: null
       related: []
-      implementation: "team_idのUNIQUE制約で保証する"
+      note: "team_idのUNIQUE制約で保証する"
 
     cooldown_days:
       value: 10
@@ -240,25 +248,36 @@ rules:
       exception: "コミッショナーはクールダウン制限なしでメンバー変更できる"
       related:
         - "team_composition.roster"
-      implementation: "メンバー変更日からcooldown_days日以内の再変更を拒否する"
+      note: "メンバー変更日からcooldown_days日以内の再変更を拒否する"
 
   # ─────────────────────────────────────────────────────────────
   # 大会ルール
   # ─────────────────────────────────────────────────────────────
   competition:
+    # 上書き機構
+    # game_rules.yaml のデフォルト値は全ルールにおいて大会ごとに上書き可能。
+    # competitionモデルの rules フィールド（jsonb）に上書き値を格納する。
+    # 未指定の場合は game_rules.yaml のデフォルト値を使用する。
+    # 優先順位: competition.rules（jsonb） > game_rules.yaml デフォルト値
+    override_mechanism:
+      description: "全ルール値は大会ごとに上書き可能"
+      storage: "competitionモデルのrulesフィールド（jsonb）"
+      priority: "competition.rules（jsonb） > game_rules.yaml デフォルト値"
+      note: "上書き可能なルール例: roster.max/min、outside_world.max、first_squad_cost.tiers など"
+
     no_duplicate_entry:
       value: true
       why: "同一チームの同一大会への重複エントリーを防ぐ。1チーム1エントリーが公平性の基本"
       exception: null
       related: []
-      implementation: "(competition_id, team_id)のUNIQUE制約で保証する"
+      note: "competition_id + team_id のユニーク制約で保証する"
 
     no_duplicate_roster:
       value: true
       why: "同一大会ロスターへの同一選手カードの重複登録を防ぐ"
       exception: null
       related: []
-      implementation: "(competition_entry_id, player_card_id)のUNIQUE制約で保証する"
+      note: "competition_entry_id + player_card_id のユニーク制約で保証する"
 
   # ─────────────────────────────────────────────────────────────
   # 監督・コーチルール
@@ -269,7 +288,7 @@ rules:
       why: "1チームの監督は1名のみ。意思決定の責任を明確にする"
       exception: null
       related: []
-      implementation: "(team_id, role=director)のUNIQUE制約で保証する"
+      note: "team_id + role=director のUNIQUE制約で保証する"
 
     max_active_teams_per_director:
       value: 2
@@ -277,7 +296,7 @@ rules:
       exception: null
       related:
         - "team_composition.second_team"
-      implementation: "チームマネージャー登録時に、同一監督の既存アクティブチーム数を確認し2未満であることを検証する"
+      note: "チームマネージャー登録時に、同一監督の既存アクティブチーム数を確認する"
 
   # ─────────────────────────────────────────────────────────────
   # 試合ルール
@@ -291,7 +310,7 @@ rules:
       exception: null
       related:
         - "team_composition.first_squad_cost"
-      implementation: "GameLineupEntry.batting_orderは1..9の範囲で検証する（allow_nil: true）"
+      note: "batting_orderは1..9の範囲で検証する（nil許容）"
 
     ko_innings_threshold:
       value: 5
@@ -299,7 +318,7 @@ rules:
       exception: null
       related:
         - "player_card.stamina"
-      implementation: "PitcherGameState.calculate_result_categoryでinnings < ko_innings_thresholdの場合、後継投手あり・敗戦投手なら'ko'"
+      note: "innings < ko_innings_thresholdの場合、後継投手あり・敗戦投手なら'ko'"
 
   # ─────────────────────────────────────────────────────────────
   # 整合性リスク管理

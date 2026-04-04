@@ -58,14 +58,14 @@ class TeamMembershipTest < ActiveSupport::TestCase
 
   # ─── P1-2: 定数値確認（game_rules.yaml参照） ─────────────────────────────
 
-  test "P1-2: ROSTER_MAX is 30 (from game_rules.yaml)" do
-    assert_equal 30, TeamMembership::ROSTER_MAX,
-      "ROSTER_MAX は game_rules.yaml の rules.team_composition.roster_max から読まれること"
+  test "P1-2: ROSTER_MAX is 50 (from game_rules.yaml)" do
+    assert_equal 50, TeamMembership::ROSTER_MAX,
+      "ROSTER_MAX は game_rules.yaml の rules.team_composition.roster.max から読まれること"
   end
 
-  test "P1-2: ROSTER_MIN is 9 (from game_rules.yaml)" do
-    assert_equal 9, TeamMembership::ROSTER_MIN,
-      "ROSTER_MIN は game_rules.yaml の rules.team_composition.roster_min から読まれること"
+  test "P1-2: ROSTER_MIN is 25 (from game_rules.yaml)" do
+    assert_equal 25, TeamMembership::ROSTER_MIN,
+      "ROSTER_MIN は game_rules.yaml の rules.team_composition.roster.min から読まれること"
   end
 
   # ─── P1-2: validate_roster_max ───────────────────────────────────────────
@@ -102,7 +102,11 @@ class TeamMembershipTest < ActiveSupport::TestCase
 
   # ─── P1-2: check_roster_min (before_destroy) ──────────────────────────────
 
-  test "P1-2: blocks removing player when roster is at min" do
+  test "P1-2: blocks removing player when roster is at min (with confirmed game)" do
+    # 試合未実施スキップ条件を発動させないため、confirmedゲームを事前作成
+    visitor = Team.create!(name: "Visitor", short_name: "V", team_type: "normal")
+    Game.create!(home_team: @team, visitor_team: visitor, status: "confirmed", source: "summary")
+
     min = TeamMembership::ROSTER_MIN
     memberships = min.times.map do |i|
       p = Player.create!(name: "RMin#{i}", short_name: "RM#{i}", number: format("%03d", i + 1))
@@ -112,6 +116,17 @@ class TeamMembershipTest < ActiveSupport::TestCase
     result = memberships.first.destroy
     assert_not result, "ロスター最低人数時はdestroy失敗すること"
     assert_equal min, @team.team_memberships.reload.count, "人数が変わっていないこと"
+  end
+
+  test "P1-2: allows removing player when roster is at min but no confirmed games" do
+    # 試合未実施（confirmed game なし）なら下限スキップ（game_rules.yaml roster.exception）
+    min = TeamMembership::ROSTER_MIN
+    memberships = min.times.map do |i|
+      p = Player.create!(name: "RNoG#{i}", short_name: "RN#{i}", number: format("%03d", i + 1))
+      TeamMembership.create!(team: @team, player: p, squad: "second", selected_cost_type: "normal_cost")
+    end
+
+    assert memberships.first.destroy, "試合未実施時は下限を下回っても削除可能であること"
   end
 
   test "P1-2: allows removing player when roster is above min" do

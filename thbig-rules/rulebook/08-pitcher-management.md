@@ -343,8 +343,9 @@ PRE_GAME_PITCHER_VALIDATION:
   STEP 2: 登板可否判定
     IF role == "starter" AND effective_rest_days <= 2:
       → 登板不可（エラー）
-    IF role == "reliever" AND effective_rest_days <= 0:
-      → 登板不可（要確認）
+    IF role == "reliever":
+      → 登板不可制限なし（中0日=連投も可能）
+        累積イニング管理で疲労は蓄積するが、登板自体に日数制限はない
   
   STEP 3: 疲労P計算
     → §8.3の対応テーブルを参照

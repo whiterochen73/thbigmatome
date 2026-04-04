@@ -1,6 +1,6 @@
 class TeamManager < ApplicationRecord
   GAME_RULES = YAML.load_file(Rails.root.join("config", "game_rules.yaml")).freeze
-  MAX_DIRECTOR_TEAMS = GAME_RULES.dig("rules", "manager", "max_active_teams_per_director", "value")
+  MAX_DIRECTOR_TEAMS = GAME_RULES.dig("lpena", "manager", "max_active_teams_per_director", "value")
 
   belongs_to :team
   belongs_to :manager

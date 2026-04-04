@@ -1,7 +1,7 @@
 class GameLineupEntry < ApplicationRecord
   GAME_RULES = YAML.load_file(Rails.root.join("config", "game_rules.yaml")).freeze
-  BATTING_ORDER_MIN = GAME_RULES.dig("rules", "game", "batting_order", "min")
-  BATTING_ORDER_MAX = GAME_RULES.dig("rules", "game", "batting_order", "max")
+  BATTING_ORDER_MIN = GAME_RULES.dig("thbig_baseball", "game", "batting_order", "min")
+  BATTING_ORDER_MAX = GAME_RULES.dig("thbig_baseball", "game", "batting_order", "max")
 
   belongs_to :game
   belongs_to :player_card

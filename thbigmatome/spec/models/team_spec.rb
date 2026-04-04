@@ -145,10 +145,10 @@ RSpec.describe Team, type: :model do
     it "game_rules.yamlの設定値と一致する" do
       rules = YAML.load_file(Rails.root.join("config", "game_rules.yaml"))
 
-      expect(Team::TEAM_TOTAL_MAX_COST).to eq(rules.dig("rules", "team_composition", "team_total_cost", "max"))
+      expect(Team::TEAM_TOTAL_MAX_COST).to eq(rules.dig("lpena", "team_composition", "team_total_cost", "max"))
       expect(Team::TEAM_TOTAL_MAX_COST).to eq(200)
 
-      tiers = rules.dig("rules", "team_composition", "first_squad_cost", "tiers")
+      tiers = rules.dig("lpena", "team_composition", "first_squad_cost", "tiers")
       expect(tiers.size).to eq(4)
       expect(tiers[0]["min_players"]).to eq(28)
       expect(tiers[0]["max_cost"]).to eq(120)
@@ -159,7 +159,7 @@ RSpec.describe Team, type: :model do
       expect(tiers[3]["min_players"]).to eq(25)
       expect(tiers[3]["max_cost"]).to eq(114)
 
-      expect(rules.dig("rules", "team_composition", "first_squad_cost", "minimum_players")).to eq(25)
+      expect(rules.dig("lpena", "team_composition", "first_squad_cost", "minimum_players")).to eq(25)
     end
   end
 

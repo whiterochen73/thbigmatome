@@ -1,6 +1,6 @@
 class PlayerCard < ApplicationRecord
   GAME_RULES = YAML.load_file(Rails.root.join("config", "game_rules.yaml")).freeze
-  PC_RULES = GAME_RULES.dig("rules", "player_card").freeze
+  PC_RULES = GAME_RULES.dig("thbig_baseball", "player_card").freeze
 
   has_one_attached :card_image
 

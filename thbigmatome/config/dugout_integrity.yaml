@@ -1,0 +1,45 @@
+# THBIG Dugout 整合性リスク管理
+#
+# game_rules.yaml から分離されたプロジェクト固有の情報。
+# ゲームルールの実装状況・既知リスク・対処履歴を管理する。
+#
+# 管理: AI整合性フレームワーク（cmd_849/cmd_910）
+# 参照: context/dugout-integrity-audit.md, context/game-rules-management-design.md
+
+known_integrity_risks:
+  - id: "P1-1"
+    severity: critical
+    status: fixed
+    fixed_by: "cmd_903"
+    rule: "lpena.team_composition.second_team.player_exclusivity"
+    description: "player_not_in_director_sibling_team が on: :create のみで、update時に排他チェックがバイパス可能だった"
+    fix: "on: [:create, :update] に変更済み（cmd_903）。updateでも兄弟チームへの所属チェックが発火する"
+
+  - id: "P1-2"
+    severity: critical
+    status: fixed
+    fixed_by: "cmd_903"
+    rule: "lpena.team_composition.roster"
+    description: "ロスター人数制限のバリデーションが存在せず、無制限に選手を追加・削除可能だった"
+    fix: "validate_roster_max(on:create)とbefore_destroy:check_roster_minを追加済み（cmd_903）"
+
+  - id: "P2-1"
+    severity: high
+    status: open
+    rule: "lpena.team_composition.team_total_cost"
+    description: "validate_team_total_cost は Team のバリデーション。TeamMembership追加・更新時にTeam.valid?が自動発火しない。コントローラ層での明示的呼び出しが必要"
+    recommended_fix: "TeamMembership に before_save で親Team のコスト検証を呼ぶ、または TeamMembership association に validate: true を追加"
+
+  - id: "P2-2"
+    severity: high
+    status: open
+    rule: "DB外部キー制約"
+    description: "teams.user_id に DB レベルの外部キー制約がない。存在しないuser_idを持つ孤立チームが発生しうる"
+    recommended_fix: "migration で FK 制約を追加。optional: true は維持（コミッショナー作成チームがuserなしの可能性）"
+
+  - id: "P2-3"
+    severity: high
+    status: open
+    rule: "DB制約 season_rosters"
+    description: "season_rosters に (season_id, team_membership_id) のユニーク制約がない。同一選手が同一シーズンに複数回登録される可能性がある"
+    recommended_fix: "migration でユニークインデックスを追加"

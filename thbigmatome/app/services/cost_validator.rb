@@ -1,7 +1,7 @@
 class CostValidator
   GAME_RULES = YAML.load_file(Rails.root.join("config", "game_rules.yaml")).freeze
-  TOTAL_LIMIT = GAME_RULES.dig("rules", "team_composition", "team_total_cost", "max")
-  FIRST_SQUAD_TIERS = GAME_RULES.dig("rules", "team_composition", "first_squad_cost", "tiers").freeze
+  TOTAL_LIMIT = GAME_RULES.dig("lpena", "team_composition", "team_total_cost", "max")
+  FIRST_SQUAD_TIERS = GAME_RULES.dig("lpena", "team_composition", "first_squad_cost", "tiers").freeze
 
   def initialize(competition_entry_id)
     @competition_entry = CompetitionEntry.find(competition_entry_id)

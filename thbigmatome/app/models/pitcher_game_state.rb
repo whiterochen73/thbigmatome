@@ -1,6 +1,6 @@
 class PitcherGameState < ApplicationRecord
   GAME_RULES = YAML.load_file(Rails.root.join("config", "game_rules.yaml")).freeze
-  KO_INNINGS_THRESHOLD = GAME_RULES.dig("rules", "game", "ko_innings_threshold", "value")
+  KO_INNINGS_THRESHOLD = GAME_RULES.dig("thbig_baseball", "game", "ko_innings_threshold", "value")
 
   belongs_to :game
   belongs_to :pitcher, class_name: "Player"

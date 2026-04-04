@@ -1,0 +1,315 @@
+# THBIG Dugout ゲームルール正本
+#
+# このファイルがビジネスルールの唯一の正本（Single Source of Truth）。
+# AIエージェント（足軽・マキノ）がこれだけ読めば正しいバリデーションコードを書ける粒度を目指す。
+# 変更時は関連するモデル・仕様書・テストと照合を必須とする。
+#
+# 管理: AI整合性フレームワーク Phase 1 (cmd_849), フォーマット更新 (cmd_905)
+# 参照: context/dugout-integrity-audit.md, context/game-rules-management-design.md
+
+version: "1.1"
+created_at: "2026-04-01"
+format_updated: "2026-04-04"
+changelog:
+  - version: "1.1"
+    date: "2026-04-04"
+    breaking: false
+    changes:
+      - "AIエージェント向けフォーマットに書き直し（why/exception/related/implementation追加）"
+      - "known_integrity_risks: P1-1/P1-2を修正済みに更新（cmd_903）"
+      - "roster_max/roster_min を roster.max/roster.min に統合"
+  - version: "1.0"
+    date: "2026-04-01"
+    breaking: false
+    changes:
+      - "初版作成（cmd_849）"
+
+rules:
+  # ─────────────────────────────────────────────────────────────
+  # チーム構成ルール
+  # ─────────────────────────────────────────────────────────────
+  team_composition:
+
+    team_total_cost:
+      max: 200
+      why: "チーム間のコスト格差を制限し、競技バランスを維持する。上限200はコミッショナーが設定した公平性の基準値"
+      exception: "excluded_from_team_total=true の選手（助っ人枠等）はコスト計算対象外"
+      related:
+        - "team_composition.first_squad_cost"
+        - "team_composition.roster"
+      implementation: "TeamMembership更新後、コントローラ層で明示的にチームの合計コストを検証する。バリデーションは自動発火しない点に注意"
+
+    first_squad_cost:
+      tiers:
+        - min_players: 28
+          max_cost: 120
+        - min_players: 27
+          max_cost: 119
+        - min_players: 26
+          max_cost: 117
+        - min_players: 25
+          max_cost: 114
+      minimum_players: 25
+      why: "1軍規模が大きいほどコスト上限が上がるスライド制。最低25人は試合成立の最小単位"
+      exception: "1軍人数が25人未満の場合はコスト上限ティアが存在せず、登録（シーズン開始）が不可"
+      related:
+        - "team_composition.team_total_cost"
+        - "team_composition.roster"
+      implementation: "tiersをmin_players降順で検索し、count >= min_playersの最初のtierを採用する。一致なしの場合はnil（登録不可）"
+
+    outside_world:
+      max: 4
+      balance:
+        trigger_count: 4
+        requirement: "投手1名以上 AND 野手1名以上"
+      why: "外の世界（他シリーズ）選手の無制限参加を制限し、ゲームの世界観整合性を保つ。4名フル活用時は混成を必須とし多様な戦術を促す"
+      exception: "チームタイプ（normal/hachinai）によって外の世界の定義が反転する。team_typesセクション参照"
+      related:
+        - "team_types"
+        - "player_card.card_types"
+      implementation: "1軍登録時に外の世界枠選手数を検証。4名時は投手・野手（card_type）の混在を確認する"
+
+    roster:
+      max: 30
+      min: 9
+      why: "30人超はコスト制約が形骸化する。9人未満はDH不使用時に守備の9ポジションが埋まらない"
+      exception: "excluded_from_team_totalの設定に関係なく、roster人数カウントには全TeamMembershipを含む"
+      related:
+        - "team_composition.first_squad_cost"
+        - "team_composition.outside_world"
+      implementation: "TeamMembership追加時(on:create)に上限チェック、削除時(before_destroy)に下限チェック。TeamMembershipから親Teamの人数を検証する"
+
+    second_team:
+      max_teams_per_owner: 2
+      player_exclusivity: true
+      why: "1オーナーが複数チームを管理する場合も、同一選手の重複所属を禁止して公平性を保つ"
+      exception: "コミッショナーはskip_commissioner_validationで排他チェックを一時無効にできる（移籍処理用途）。この属性はコントローラ層でのみ設定可能でAPIから直接渡せない"
+      related:
+        - "manager.max_active_teams_per_director"
+      implementation: "TeamMembership追加・更新時(on:[:create,:update])に同一監督が管理する兄弟チームへの所属を確認する"
+
+  # ─────────────────────────────────────────────────────────────
+  # チーム種別と「外の世界」分類
+  # ─────────────────────────────────────────────────────────────
+  team_types:
+    normal:
+      description: "通常チーム"
+      native_series:
+        - "touhou"
+      outside_series_condition: "series != touhou（touhou以外が外の世界枠）"
+      why: "東方キャラが本来の所属（内の世界）。他シリーズキャラは世界観的に外来者"
+      exception: "series=originalは常に外の世界枠（どちらのチームタイプでも同じ）"
+      related:
+        - "team_composition.outside_world"
+      implementation: "NATIVE_SERIES['normal'] = ['touhou']。team_type=normalのチームでnative_series以外は外枠扱い"
+
+    hachinai:
+      description: "ハチナイチーム（チーム作成時に選択。後から変更不可）"
+      native_series:
+        - "hachinai"
+        - "tamayomi"
+      outside_series_condition: "series == touhou（touhouが外の世界枠 = 反転）"
+      why: "ハチナイ・タマヨミキャラが本来の所属。東方キャラはこのチームでは外来者（設定の逆転）"
+      exception: "series=originalは常に外の世界枠"
+      related:
+        - "team_composition.outside_world"
+      implementation: "NATIVE_SERIES['hachinai'] = ['hachinai', 'tamayomi']。normalとhachinaiで外枠の定義が異なる点に注意"
+
+    original:
+      description: "オリジナル選手（series=original）"
+      classification: "always_outside"
+      why: "特定シリーズに属さないオリジナル選手は、チームタイプに関わらず常に外の世界枠扱い"
+      exception: null
+      related:
+        - "team_composition.outside_world"
+        - "team_types.normal"
+        - "team_types.hachinai"
+      implementation: "series='original'を持つ選手は常に外の世界枠としてカウントする"
+
+  # ─────────────────────────────────────────────────────────────
+  # 選手カードルール
+  # ─────────────────────────────────────────────────────────────
+  player_card:
+    card_types:
+      values:
+        - "pitcher"
+        - "batter"
+      why: "投手と野手は役割が根本的に異なり、別カードとして管理する。同一選手が両種別のカードを持つことはある（二刀流）"
+      exception: null
+      related:
+        - "team_composition.outside_world"
+        - "player_card.stamina"
+      implementation: "card_typeで投手・野手を判定。外の世界枠バランスチェック（4名時の混成確認）に使用する"
+
+    stamina:
+      starter:
+        min: 4
+        max: 9
+      relief:
+        min: 0
+        max: 3
+      why: "先発投手は多イニングを担うため高スタミナ（4-9）。中継ぎは短回専門のため低スタミナ（0-3）"
+      exception: null
+      related:
+        - "player_card.card_types"
+      implementation: "カード登録時にcard_type（pitcher限定）とstaminaの組み合わせを検証する"
+
+    speed:
+      min: 1
+      max: 5
+      why: "走力を5段階で表現。盗塁判定やエンドランに使用する"
+      exception: null
+      related: []
+      implementation: "登録時に1..5の範囲を検証する"
+
+    bunt:
+      min: 1
+      max: 10
+      why: "バント能力を10段階で表現"
+      exception: null
+      related: []
+      implementation: "登録時に1..10の範囲を検証する"
+
+    steal_start:
+      min: 1
+      max: 22
+      why: "盗塁開始判定値。ダイス値との比較で盗塁を試みるかを決定する"
+      exception: null
+      related:
+        - "player_card.steal_end"
+      implementation: "登録時に1..22の範囲を検証する"
+
+    steal_end:
+      min: 1
+      max: 22
+      why: "盗塁完了判定値。steal_startと組み合わせて盗塁成功判定に使用する"
+      exception: null
+      related:
+        - "player_card.steal_start"
+      implementation: "登録時に1..22の範囲を検証する"
+
+    injury_rate:
+      min: 0
+      max: 7
+      why: "負傷確率を0-7で表現（0=負傷しない）。好プレ珍プレ表（UP表）の判定に使用する"
+      exception: null
+      related: []
+      implementation: "登録時に0..7の範囲を検証する"
+
+    uniqueness:
+      constraint: "(card_set_id, player_id, card_type)"
+      why: "同一カードセット内で同一選手の同種カードは1枚のみ。異なるカードセット間では同一選手の複数カードを持てる"
+      exception: null
+      related: []
+      implementation: "DBのユニーク制約で保証する。モデルバリデーションでも重複確認を行う"
+
+    variant:
+      description: "同一カードセット内で同一選手・同一card_typeの複数バリエーションを区別するラベル"
+      type: "string（nullable）"
+      examples:
+        - "湘南（PM2026の初瀬麻里安投手・湘南バージョン）"
+        - "町田（PM2026の初瀬麻里安投手・町田バージョン）"
+        - "UR（PM2026の初瀬麻里安投手・URバージョン）"
+      why: "PM2026カードセット等で同一選手の同タイプカードが複数存在する場合に対応するため。variantがnullの通常カードは従来通り1枚制限"
+      exception: null
+      related:
+        - "player_card.uniqueness"
+        - "team_registration.card_selection"
+      implementation: "チーム登録時はvariant単位でカードを個別選択する。FEはカードセット名+variant名（例: 'PM2026 (湘南)'）で表示"
+
+  # ─────────────────────────────────────────────────────────────
+  # シーズンルール
+  # ─────────────────────────────────────────────────────────────
+  season:
+    one_team_one_season:
+      value: true
+      why: "1チームにつき1シーズンのみ存在する。シーズン管理を単純化し、二重管理を防ぐ"
+      exception: null
+      related: []
+      implementation: "team_idのUNIQUE制約で保証する"
+
+    cooldown_days:
+      value: 10
+      why: "メンバー変更後10日間は再変更不可。頻繁な入れ替えによる戦術的不公平を防ぐ"
+      exception: "コミッショナーはクールダウン制限なしでメンバー変更できる"
+      related:
+        - "team_composition.roster"
+      implementation: "メンバー変更日からcooldown_days日以内の再変更を拒否する"
+
+  # ─────────────────────────────────────────────────────────────
+  # 大会ルール
+  # ─────────────────────────────────────────────────────────────
+  competition:
+    no_duplicate_entry:
+      value: true
+      why: "同一チームの同一大会への重複エントリーを防ぐ。1チーム1エントリーが公平性の基本"
+      exception: null
+      related: []
+      implementation: "(competition_id, team_id)のUNIQUE制約で保証する"
+
+    no_duplicate_roster:
+      value: true
+      why: "同一大会ロスターへの同一選手カードの重複登録を防ぐ"
+      exception: null
+      related: []
+      implementation: "(competition_entry_id, player_card_id)のUNIQUE制約で保証する"
+
+  # ─────────────────────────────────────────────────────────────
+  # 監督・コーチルール
+  # ─────────────────────────────────────────────────────────────
+  manager:
+    one_director_per_team:
+      value: true
+      why: "1チームの監督は1名のみ。意思決定の責任を明確にする"
+      exception: null
+      related: []
+      implementation: "(team_id, role=director)のUNIQUE制約で保証する"
+
+    max_active_teams_per_director:
+      value: 2
+      why: "監督は最大2チームを同時に管理可能。セカンドチーム制度に対応する"
+      exception: null
+      related:
+        - "team_composition.second_team"
+      implementation: "チームマネージャー登録時に、同一監督の既存アクティブチーム数を確認し2未満であることを検証する"
+
+  # ─────────────────────────────────────────────────────────────
+  # 整合性リスク管理
+  # ─────────────────────────────────────────────────────────────
+  known_integrity_risks:
+    - id: "P1-1"
+      severity: critical
+      status: fixed
+      fixed_by: "cmd_903"
+      rule: "team_composition.second_team.player_exclusivity"
+      description: "player_not_in_director_sibling_team が on: :create のみで、update時に排他チェックがバイパス可能だった"
+      fix: "on: [:create, :update] に変更済み（cmd_903）。updateでも兄弟チームへの所属チェックが発火する"
+
+    - id: "P1-2"
+      severity: critical
+      status: fixed
+      fixed_by: "cmd_903"
+      rule: "team_composition.roster"
+      description: "ロスター人数制限のバリデーションが存在せず、無制限に選手を追加・削除可能だった"
+      fix: "validate_roster_max(on:create)とbefore_destroy:check_roster_minを追加済み（cmd_903）"
+
+    - id: "P2-1"
+      severity: high
+      status: open
+      rule: "team_composition.team_total_cost"
+      description: "validate_team_total_cost は Team のバリデーション。TeamMembership追加・更新時にTeam.valid?が自動発火しない。コントローラ層での明示的呼び出しが必要"
+      recommended_fix: "TeamMembership に before_save で親Team のコスト検証を呼ぶ、または TeamMembership association に validate: true を追加"
+
+    - id: "P2-2"
+      severity: high
+      status: open
+      rule: "DB外部キー制約"
+      description: "teams.user_id に DB レベルの外部キー制約がない。存在しないuser_idを持つ孤立チームが発生しうる"
+      recommended_fix: "migration で FK 制約を追加。optional: true は維持（コミッショナー作成チームがuserなしの可能性）"
+
+    - id: "P2-3"
+      severity: high
+      status: open
+      rule: "season_rosters 重複"
+      description: "season_rosters に (season_id, team_membership_id) のユニーク制約がない。同一選手が同一シーズンに複数回登録される可能性がある"
+      recommended_fix: "migration でユニークインデックスを追加"

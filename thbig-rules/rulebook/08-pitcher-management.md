@@ -360,51 +360,7 @@ PRE_GAME_PITCHER_VALIDATION:
 
 ---
 
-## 8.8 他章との関係
-
-| 参照先 | 内容 |
-|--------|------|
-| `01-players-and-cards.md` | スタミナ値（starter:4-9 / relief:0-3）・is_relief_only |
-| `04-game-setup.md` | 予告先発・オープナー起用宣言のタイミング |
-| `05-at-bat-resolution.md §1.7` | 試合中の投球番号決定 |
-| `05-at-bat-resolution.md §1.8` | 試合中の疲労判定 |
-| `10-injuries-and-traits.md` | 怪我チェック（けが表参照・休場日数決定） |
-| `game_rules.yaml` | `thbig_baseball.game.ko_innings_threshold.value = 5` |
-| `sources/pitcher-rest-rules-analysis.md` | 投手休養ルール調査メモ（正本参照元） |
-
----
-
-## 8.9 警告試合
-
-```
-WARNING_GAME:
-
-  # 発動条件（以下のいずれかが発生すると警告試合になる）
-  発動条件:
-    1. DB乱闘が発生した後
-    2. 危険球退場が発生した後、その死球を受けたチームの選手が死球を与えた場合
-    3. 両チームが1試合で3個以上ずつ死球を与えた場合
-
-  ※ sources/procedures.md §9.3 の記述との対応:
-    - 「DB乱闘後に危険球を受けた側がDB発生」= 条件1（DB乱闘後）+ 条件2（危険球後に被DB側が発生）
-    - 「互いにDB3個以上」= 条件3
-
-  # 警告試合中のDB処理
-  WARNING_GAME_DB:
-    死球が発生した場合:
-      1. 打者は通常通りDB処理で出塁
-      2. 投手は即退場（危険球退場と同じ扱い、投手交代が必要）
-      3. 打者の負傷判定はなし（通常の警告試合DB退場には負傷判定なし）
-
-  ※ 警告試合に「なる前」のDB（発動条件3の3個目等）は通常のDB処理。
-  ※ 解除条件: Wikiに明記なし（試合終了まで継続と解釈）
-```
-
-> 出典: https://thbigbaseball.wiki.fc2.com/wiki/追加ルール / sources/procedures.md §9.3
-
----
-
-## 8.10 精神疲労ルール
+## 8.8 精神疲労ルール
 
 ⚠️ **「精神疲労」は2つの別概念**:
 
@@ -470,3 +426,18 @@ MENTAL_FATIGUE_RULE:
 ```
 
 > 出典: https://thbigbaseball.wiki.fc2.com/wiki/追加ルール
+
+---
+
+## 8.9 他章との関係
+
+| 参照先 | 内容 |
+|--------|------|
+| `01-players-and-cards.md` | スタミナ値（starter:4-9 / relief:0-3）・is_relief_only |
+| `04-game-setup.md` | 予告先発・オープナー起用宣言のタイミング |
+| `05-at-bat-resolution.md §1.7` | 試合中の投球番号決定 |
+| `05-at-bat-resolution.md §1.8` | 試合中の疲労判定 |
+| `10-injuries-and-traits.md` | 怪我チェック（けが表参照・休場日数決定） |
+| `game_rules.yaml` | `thbig_baseball.game.ko_innings_threshold.value = 5` |
+| `sources/pitcher-rest-rules-analysis.md` | 投手休養ルール調査メモ（正本参照元） |
+| `09-injuries.md §9.6` | 警告試合ルール |

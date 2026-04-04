@@ -1,44 +1,157 @@
-# THBIG Dugout ゲームルール正本
+# THBIG ゲームルール正本
 #
-# このファイルがビジネスルールの唯一の正本（Single Source of Truth）。
-# AIエージェント（足軽・マキノ）がこれだけ読めば正しいバリデーションコードを書ける粒度を目指す。
-# 変更時は関連するモデル・仕様書・テストと照合を必須とする。
+# 東方BIG野球というゲームのルールを正確に参照するためのファイル。
+# プロジェクト固有の情報（整合性リスク・実装メモ等）は各アプリ側で管理する。
 #
-# 管理: AI整合性フレームワーク Phase 1 (cmd_849), フォーマット更新 (cmd_905), 構造改善 (cmd_909)
-# 参照: context/dugout-integrity-audit.md, context/game-rules-management-design.md
+# 管理: AI整合性フレームワーク（cmd_849/cmd_905/cmd_909/cmd_910）
+# 参照: thbig-rules/README.md
 
-version: "1.3"
+version: "1.4"
 created_at: "2026-04-01"
 format_updated: "2026-04-04"
 changelog:
+  - version: "1.4"
+    date: "2026-04-04"
+    breaking: false
+    changes:
+      - "2レイヤー構造（東方BIG野球 / Lペナ）に再編（cmd_910）"
+      - "known_integrity_risks 除去（Dugout側 dugout_integrity.yaml に移動）"
+      - "note: / implementation: キー除去（ゲームルールとして独立）"
   - version: "1.3"
     date: "2026-04-04"
     breaking: false
     changes:
-      - "roster.max: 30→50、roster.min: 9→25（P承認済み、cmd_909）"
-      - "roster.min に試合未実施スキップ条件を追加"
-      - "implementation: キーを全削除し note: に置き換え（Rails固有情報除去）"
-      - "competition セクションを上書き機構として再設計"
+      - "roster.max:50/min:25（P承認）、試合未実施スキップ条件追加"
+      - "implementation:→note:全置換、competition上書き機構追加（cmd_909）"
   - version: "1.2"
     date: "2026-04-04"
     breaking: false
     changes:
-      - "game セクション追加（batting_order、ko_innings_threshold）"
-      - "Dugoutハードコード解消に伴い既存コードの値を正本に収録（cmd_908）"
+      - "game セクション追加（batting_order、ko_innings_threshold）（cmd_908）"
   - version: "1.1"
     date: "2026-04-04"
     breaking: false
     changes:
-      - "AIエージェント向けフォーマットに書き直し（why/exception/related/implementation追加）"
-      - "known_integrity_risks: P1-1/P1-2を修正済みに更新（cmd_903）"
-      - "roster_max/roster_min を roster.max/roster.min に統合"
+      - "AIエージェント向けフォーマット（why/exception/related）（cmd_905）"
   - version: "1.0"
     date: "2026-04-01"
     breaking: false
     changes:
       - "初版作成（cmd_849）"
 
-rules:
+# ═══════════════════════════════════════════════════════════════
+# Layer 1: 東方BIG野球（ゲーム本体のルール）
+# ─ IRCチャットで行われる東方BIG野球そのもののルール
+# ═══════════════════════════════════════════════════════════════
+thbig_baseball:
+
+  # ─────────────────────────────────────────────────────────────
+  # 選手カード能力値
+  # ─────────────────────────────────────────────────────────────
+  player_card:
+
+    card_types:
+      values:
+        - "pitcher"
+        - "batter"
+      why: "投手と野手は役割が根本的に異なり、別カードとして管理する。同一選手が両種別のカードを持つことはある（二刀流）"
+      exception: null
+      related:
+        - "lpena.team_composition.outside_world"
+
+    stamina:
+      starter:
+        min: 4
+        max: 9
+      relief:
+        min: 0
+        max: 3
+      why: "先発投手は多イニングを担うため高スタミナ（4-9）。中継ぎは短回専門のため低スタミナ（0-3）"
+      exception: null
+      related:
+        - "thbig_baseball.player_card.card_types"
+
+    speed:
+      min: 1
+      max: 5
+      why: "走力を5段階で表現。盗塁判定やエンドランに使用する"
+      exception: null
+      related: []
+
+    bunt:
+      min: 1
+      max: 10
+      why: "バント能力を10段階で表現"
+      exception: null
+      related: []
+
+    steal_start:
+      min: 1
+      max: 22
+      why: "盗塁開始判定値。ダイス値との比較で盗塁を試みるかを決定する"
+      exception: null
+      related:
+        - "thbig_baseball.player_card.steal_end"
+
+    steal_end:
+      min: 1
+      max: 22
+      why: "盗塁完了判定値。steal_startと組み合わせて盗塁成功判定に使用する"
+      exception: null
+      related:
+        - "thbig_baseball.player_card.steal_start"
+
+    injury_rate:
+      min: 0
+      max: 7
+      why: "負傷確率を0-7で表現（0=負傷しない）。UP表（好プレイ珍プレイ表）の判定に使用する"
+      exception: null
+      related: []
+
+    uniqueness:
+      constraint: "(card_set_id, player_id, card_type)"
+      why: "同一カードセット内で同一選手の同種カードは1枚のみ。異なるカードセット間では同一選手の複数カードを持てる"
+      exception: null
+      related:
+        - "thbig_baseball.player_card.variant"
+
+    variant:
+      description: "同一カードセット内で同一選手・同一card_typeの複数バリエーションを区別するラベル"
+      type: "string（nullable）"
+      examples:
+        - "湘南（PM2026の初瀬麻里安投手・湘南バージョン）"
+        - "町田（PM2026の初瀬麻里安投手・町田バージョン）"
+        - "UR（PM2026の初瀬麻里安投手・URバージョン）"
+      why: "PM2026カードセット等で同一選手の同タイプカードが複数存在する場合に対応するため。variantがnullの通常カードは従来通り1枚制限"
+      exception: null
+      related:
+        - "thbig_baseball.player_card.uniqueness"
+
+  # ─────────────────────────────────────────────────────────────
+  # 試合メカニクス
+  # ─────────────────────────────────────────────────────────────
+  game:
+
+    batting_order:
+      min: 1
+      max: 9
+      why: "9人打線が野球の基本ルール。DH制採用時も打順は1〜9の9枠"
+      exception: null
+      related: []
+
+    ko_innings_threshold:
+      value: 5
+      why: "先発投手が5イニング未満で交代した場合はKO（knocked out）扱い。勝利投手の権利は5イニング完投が条件"
+      exception: null
+      related:
+        - "thbig_baseball.player_card.stamina"
+
+# ═══════════════════════════════════════════════════════════════
+# Layer 2: Lペナ（IRCリーグ東方BIG野球ペナントレース 運営ルール）
+# ─ IRCリーグ（東方BIG野球ペナントレース）の運営・チーム管理ルール
+# ═══════════════════════════════════════════════════════════════
+lpena:
+
   # ─────────────────────────────────────────────────────────────
   # チーム構成ルール
   # ─────────────────────────────────────────────────────────────
@@ -49,9 +162,8 @@ rules:
       why: "チーム間のコスト格差を制限し、競技バランスを維持する。上限200はコミッショナーが設定した公平性の基準値"
       exception: "excluded_from_team_total=true の選手（助っ人枠等）はコスト計算対象外"
       related:
-        - "team_composition.first_squad_cost"
-        - "team_composition.roster"
-      note: "メンバー変更後、コントローラ層で明示的にチームの合計コストを検証する。バリデーションは自動発火しない"
+        - "lpena.team_composition.first_squad_cost"
+        - "lpena.team_composition.roster"
 
     first_squad_cost:
       tiers:
@@ -67,9 +179,8 @@ rules:
       why: "1軍規模が大きいほどコスト上限が上がるスライド制。最低25人は試合成立の最小単位"
       exception: "1軍人数が25人未満の場合はコスト上限ティアが存在せず、登録（シーズン開始）が不可"
       related:
-        - "team_composition.team_total_cost"
-        - "team_composition.roster"
-      note: "tiersをmin_players降順で検索し、count >= min_playersの最初のtierを採用する。一致なしの場合はnil（登録不可）"
+        - "lpena.team_composition.team_total_cost"
+        - "lpena.team_composition.roster"
 
     outside_world:
       max: 4
@@ -79,9 +190,8 @@ rules:
       why: "外の世界（他シリーズ）選手の無制限参加を制限し、ゲームの世界観整合性を保つ。4名フル活用時は混成を必須とし多様な戦術を促す"
       exception: "チームタイプ（normal/hachinai）によって外の世界の定義が反転する。team_typesセクション参照"
       related:
-        - "team_types"
-        - "player_card.card_types"
-      note: "1軍登録時に外の世界枠選手数を検証。4名時は投手・野手（card_type）の混在を確認する"
+        - "lpena.team_types"
+        - "thbig_baseball.player_card.card_types"
 
     roster:
       max: 50
@@ -89,18 +199,16 @@ rules:
       why: "50人超は管理しきれない。25人は1軍登録の最低人数（first_squad_cost.minimum_playersと一致）"
       exception: "試合が1試合も行われていない場合は下限バリデーションをスキップする（シーズン前の一時保存登録を許容）"
       related:
-        - "team_composition.first_squad_cost"
-        - "team_composition.outside_world"
-      note: "追加時に上限チェック、削除時に下限チェック（試合未実施なら下限はスキップ）。全TeamMembershipをカウント対象とする"
+        - "lpena.team_composition.first_squad_cost"
+        - "lpena.team_composition.outside_world"
 
     second_team:
       max_teams_per_owner: 2
       player_exclusivity: true
       why: "1オーナーが複数チームを管理する場合も、同一選手の重複所属を禁止して公平性を保つ"
-      exception: "コミッショナーはskip_commissioner_validationで排他チェックを一時無効にできる（移籍処理用途）。この属性はコントローラ層でのみ設定可能でAPIから直接渡せない"
+      exception: "コミッショナーによる排他チェック一時無効化を許可する（移籍処理用途）"
       related:
-        - "manager.max_active_teams_per_director"
-      note: "追加・更新時に同一監督が管理する兄弟チームへの所属を確認する"
+        - "lpena.manager.max_active_teams_per_director"
 
   # ─────────────────────────────────────────────────────────────
   # チーム種別と「外の世界」分類
@@ -114,8 +222,7 @@ rules:
       why: "東方キャラが本来の所属（内の世界）。他シリーズキャラは世界観的に外来者"
       exception: "series=originalは常に外の世界枠（どちらのチームタイプでも同じ）"
       related:
-        - "team_composition.outside_world"
-      note: "native_series以外のseriesを持つ選手が外枠扱いになる"
+        - "lpena.team_composition.outside_world"
 
     hachinai:
       description: "ハチナイチーム（チーム作成時に選択。後から変更不可）"
@@ -126,8 +233,7 @@ rules:
       why: "ハチナイ・タマヨミキャラが本来の所属。東方キャラはこのチームでは外来者（設定の逆転）"
       exception: "series=originalは常に外の世界枠"
       related:
-        - "team_composition.outside_world"
-      note: "normalとhachinaiで外枠の定義が異なる点に注意"
+        - "lpena.team_composition.outside_world"
 
     original:
       description: "オリジナル選手（series=original）"
@@ -135,101 +241,9 @@ rules:
       why: "特定シリーズに属さないオリジナル選手は、チームタイプに関わらず常に外の世界枠扱い"
       exception: null
       related:
-        - "team_composition.outside_world"
-        - "team_types.normal"
-        - "team_types.hachinai"
-      note: "series='original'を持つ選手は常に外の世界枠としてカウントする"
-
-  # ─────────────────────────────────────────────────────────────
-  # 選手カードルール
-  # ─────────────────────────────────────────────────────────────
-  player_card:
-    card_types:
-      values:
-        - "pitcher"
-        - "batter"
-      why: "投手と野手は役割が根本的に異なり、別カードとして管理する。同一選手が両種別のカードを持つことはある（二刀流）"
-      exception: null
-      related:
-        - "team_composition.outside_world"
-        - "player_card.stamina"
-      note: "card_typeで投手・野手を判定。外の世界枠バランスチェック（4名時の混成確認）に使用する"
-
-    stamina:
-      starter:
-        min: 4
-        max: 9
-      relief:
-        min: 0
-        max: 3
-      why: "先発投手は多イニングを担うため高スタミナ（4-9）。中継ぎは短回専門のため低スタミナ（0-3）"
-      exception: null
-      related:
-        - "player_card.card_types"
-      note: "カード登録時にcard_type（pitcher限定）とstaminaの組み合わせを検証する"
-
-    speed:
-      min: 1
-      max: 5
-      why: "走力を5段階で表現。盗塁判定やエンドランに使用する"
-      exception: null
-      related: []
-      note: "1..5の範囲で検証する"
-
-    bunt:
-      min: 1
-      max: 10
-      why: "バント能力を10段階で表現"
-      exception: null
-      related: []
-      note: "1..10の範囲で検証する"
-
-    steal_start:
-      min: 1
-      max: 22
-      why: "盗塁開始判定値。ダイス値との比較で盗塁を試みるかを決定する"
-      exception: null
-      related:
-        - "player_card.steal_end"
-      note: "1..22の範囲で検証する"
-
-    steal_end:
-      min: 1
-      max: 22
-      why: "盗塁完了判定値。steal_startと組み合わせて盗塁成功判定に使用する"
-      exception: null
-      related:
-        - "player_card.steal_start"
-      note: "1..22の範囲で検証する"
-
-    injury_rate:
-      min: 0
-      max: 7
-      why: "負傷確率を0-7で表現（0=負傷しない）。好プレ珍プレ表（UP表）の判定に使用する"
-      exception: null
-      related: []
-      note: "0..7の範囲で検証する"
-
-    uniqueness:
-      constraint: "(card_set_id, player_id, card_type)"
-      why: "同一カードセット内で同一選手の同種カードは1枚のみ。異なるカードセット間では同一選手の複数カードを持てる"
-      exception: null
-      related: []
-      note: "DBのユニーク制約で保証する。アプリ層でも重複確認を行う"
-
-    variant:
-      description: "同一カードセット内で同一選手・同一card_typeの複数バリエーションを区別するラベル"
-      type: "string（nullable）"
-      examples:
-        - "湘南（PM2026の初瀬麻里安投手・湘南バージョン）"
-        - "町田（PM2026の初瀬麻里安投手・町田バージョン）"
-        - "UR（PM2026の初瀬麻里安投手・URバージョン）"
-      why: "PM2026カードセット等で同一選手の同タイプカードが複数存在する場合に対応するため。variantがnullの通常カードは従来通り1枚制限"
-      exception: null
-      related:
-        - "player_card.uniqueness"
-        - "team_registration.card_selection"
-      note: "チーム登録時はvariant単位でカードを個別選択する"
+        - "lpena.team_composition.outside_world"
+        - "lpena.team_types.normal"
+        - "lpena.team_types.hachinai"
 
   # ─────────────────────────────────────────────────────────────
   # シーズンルール
@@ -240,44 +254,34 @@ rules:
       why: "1チームにつき1シーズンのみ存在する。シーズン管理を単純化し、二重管理を防ぐ"
       exception: null
       related: []
-      note: "team_idのUNIQUE制約で保証する"
 
     cooldown_days:
       value: 10
       why: "メンバー変更後10日間は再変更不可。頻繁な入れ替えによる戦術的不公平を防ぐ"
       exception: "コミッショナーはクールダウン制限なしでメンバー変更できる"
       related:
-        - "team_composition.roster"
-      note: "メンバー変更日からcooldown_days日以内の再変更を拒否する"
+        - "lpena.team_composition.roster"
 
   # ─────────────────────────────────────────────────────────────
   # 大会ルール
   # ─────────────────────────────────────────────────────────────
   competition:
-    # 上書き機構
-    # game_rules.yaml のデフォルト値は全ルールにおいて大会ごとに上書き可能。
-    # competitionモデルの rules フィールド（jsonb）に上書き値を格納する。
-    # 未指定の場合は game_rules.yaml のデフォルト値を使用する。
-    # 優先順位: competition.rules（jsonb） > game_rules.yaml デフォルト値
     override_mechanism:
       description: "全ルール値は大会ごとに上書き可能"
       storage: "competitionモデルのrulesフィールド（jsonb）"
       priority: "competition.rules（jsonb） > game_rules.yaml デフォルト値"
-      note: "上書き可能なルール例: roster.max/min、outside_world.max、first_squad_cost.tiers など"
 
     no_duplicate_entry:
       value: true
       why: "同一チームの同一大会への重複エントリーを防ぐ。1チーム1エントリーが公平性の基本"
       exception: null
       related: []
-      note: "competition_id + team_id のユニーク制約で保証する"
 
     no_duplicate_roster:
       value: true
       why: "同一大会ロスターへの同一選手カードの重複登録を防ぐ"
       exception: null
       related: []
-      note: "competition_entry_id + player_card_id のユニーク制約で保証する"
 
   # ─────────────────────────────────────────────────────────────
   # 監督・コーチルール
@@ -288,75 +292,10 @@ rules:
       why: "1チームの監督は1名のみ。意思決定の責任を明確にする"
       exception: null
       related: []
-      note: "team_id + role=director のUNIQUE制約で保証する"
 
     max_active_teams_per_director:
       value: 2
       why: "監督は最大2チームを同時に管理可能。セカンドチーム制度に対応する"
       exception: null
       related:
-        - "team_composition.second_team"
-      note: "チームマネージャー登録時に、同一監督の既存アクティブチーム数を確認する"
-
-  # ─────────────────────────────────────────────────────────────
-  # 試合ルール
-  # ─────────────────────────────────────────────────────────────
-  game:
-
-    batting_order:
-      min: 1
-      max: 9
-      why: "9人打線が野球の基本ルール。DH制採用時も打順は1〜9の9枠"
-      exception: null
-      related:
-        - "team_composition.first_squad_cost"
-      note: "batting_orderは1..9の範囲で検証する（nil許容）"
-
-    ko_innings_threshold:
-      value: 5
-      why: "先発投手が5イニング未満で交代した場合はKO（knocked out）扱い。勝利投手の権利は5イニング完投が条件"
-      exception: null
-      related:
-        - "player_card.stamina"
-      note: "innings < ko_innings_thresholdの場合、後継投手あり・敗戦投手なら'ko'"
-
-  # ─────────────────────────────────────────────────────────────
-  # 整合性リスク管理
-  # ─────────────────────────────────────────────────────────────
-  known_integrity_risks:
-    - id: "P1-1"
-      severity: critical
-      status: fixed
-      fixed_by: "cmd_903"
-      rule: "team_composition.second_team.player_exclusivity"
-      description: "player_not_in_director_sibling_team が on: :create のみで、update時に排他チェックがバイパス可能だった"
-      fix: "on: [:create, :update] に変更済み（cmd_903）。updateでも兄弟チームへの所属チェックが発火する"
-
-    - id: "P1-2"
-      severity: critical
-      status: fixed
-      fixed_by: "cmd_903"
-      rule: "team_composition.roster"
-      description: "ロスター人数制限のバリデーションが存在せず、無制限に選手を追加・削除可能だった"
-      fix: "validate_roster_max(on:create)とbefore_destroy:check_roster_minを追加済み（cmd_903）"
-
-    - id: "P2-1"
-      severity: high
-      status: open
-      rule: "team_composition.team_total_cost"
-      description: "validate_team_total_cost は Team のバリデーション。TeamMembership追加・更新時にTeam.valid?が自動発火しない。コントローラ層での明示的呼び出しが必要"
-      recommended_fix: "TeamMembership に before_save で親Team のコスト検証を呼ぶ、または TeamMembership association に validate: true を追加"
-
-    - id: "P2-2"
-      severity: high
-      status: open
-      rule: "DB外部キー制約"
-      description: "teams.user_id に DB レベルの外部キー制約がない。存在しないuser_idを持つ孤立チームが発生しうる"
-      recommended_fix: "migration で FK 制約を追加。optional: true は維持（コミッショナー作成チームがuserなしの可能性）"
-
-    - id: "P2-3"
-      severity: high
-      status: open
-      rule: "season_rosters 重複"
-      description: "season_rosters に (season_id, team_membership_id) のユニーク制約がない。同一選手が同一シーズンに複数回登録される可能性がある"
-      recommended_fix: "migration でユニークインデックスを追加"
+        - "lpena.team_composition.second_team"

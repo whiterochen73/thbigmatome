@@ -1,13 +1,7 @@
 class CostValidator
-  TOTAL_LIMIT = 200
-
-  # 1軍人数別コスト上限（人数 => 上限）
-  FIRST_SQUAD_LIMITS = {
-    28 => 120,
-    27 => 119,
-    26 => 117,
-    25 => 114
-  }.freeze
+  GAME_RULES = YAML.load_file(Rails.root.join("config", "game_rules.yaml")).freeze
+  TOTAL_LIMIT = GAME_RULES.dig("rules", "team_composition", "team_total_cost", "max")
+  FIRST_SQUAD_TIERS = GAME_RULES.dig("rules", "team_composition", "first_squad_cost", "tiers").freeze
 
   def initialize(competition_entry_id)
     @competition_entry = CompetitionEntry.find(competition_entry_id)
@@ -57,7 +51,8 @@ class CostValidator
   private
 
   def first_squad_limit_for(count)
-    FIRST_SQUAD_LIMITS[[ count, 28 ].min]
+    tier = FIRST_SQUAD_TIERS.find { |t| count >= t["min_players"] }
+    tier ? tier["max_cost"] : nil
   end
 
   def player_cost(player_card)

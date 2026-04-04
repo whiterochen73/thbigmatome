@@ -260,7 +260,7 @@ module Api
           commissioner_mode ? (commissioner_warnings << msg) : raise(msg)
         end
 
-        # 1軍コスト上限: 人数別段階制（config/cost_limits.yml）
+        # 1軍コスト上限: 人数別段階制（config/game_rules.yaml team_composition.first_squad_cost.tiers）
         max_cost = Team.first_squad_cost_limit_for_count(player_count)
         if max_cost && total_cost > max_cost
           msg = "1軍に登録されている選手の合計コストが上限（#{max_cost}）を超えています。"

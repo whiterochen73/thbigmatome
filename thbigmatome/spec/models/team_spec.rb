@@ -42,8 +42,8 @@ RSpec.describe Team, type: :model do
   describe "#validate_team_total_cost" do
     context "チーム全体コスト" do
       it "合計コスト200以下なら有効" do
-        # 40人 x 5コスト = 200
-        40.times { add_player_to_team(team: team, cost: cost, cost_value: 5) }
+        # 25人 x 8コスト = 200（ROSTER_MAX=30以内）
+        25.times { add_player_to_team(team: team, cost: cost, cost_value: 8) }
 
         expect(team.validate_team_total_cost(cost.id)).to be true
         expect(team.errors[:base]).to be_empty
@@ -140,22 +140,26 @@ RSpec.describe Team, type: :model do
     end
   end
 
-  # config/cost_limits.yml との連動確認
-  describe "COST_LIMIT_CONFIG" do
-    it "config/cost_limits.ymlの設定値と一致する" do
-      config = YAML.load_file(Rails.root.join("config", "cost_limits.yml"))
+  # game_rules.yaml との連動確認
+  describe "GAME_RULES" do
+    it "game_rules.yamlの設定値と一致する" do
+      rules = YAML.load_file(Rails.root.join("config", "game_rules.yaml"))
 
-      expect(Team::TEAM_TOTAL_MAX_COST).to eq(config["team_total_max_cost"])
+      expect(Team::TEAM_TOTAL_MAX_COST).to eq(rules.dig("rules", "team_composition", "team_total_cost", "max"))
       expect(Team::TEAM_TOTAL_MAX_COST).to eq(200)
 
-      tiers = config["first_squad_tiers"]
+      tiers = rules.dig("rules", "team_composition", "first_squad_cost", "tiers")
       expect(tiers.size).to eq(4)
-      expect(tiers[0]).to eq({ "min_players" => 28, "max_cost" => 120 })
-      expect(tiers[1]).to eq({ "min_players" => 27, "max_cost" => 119 })
-      expect(tiers[2]).to eq({ "min_players" => 26, "max_cost" => 117 })
-      expect(tiers[3]).to eq({ "min_players" => 25, "max_cost" => 114 })
+      expect(tiers[0]["min_players"]).to eq(28)
+      expect(tiers[0]["max_cost"]).to eq(120)
+      expect(tiers[1]["min_players"]).to eq(27)
+      expect(tiers[1]["max_cost"]).to eq(119)
+      expect(tiers[2]["min_players"]).to eq(26)
+      expect(tiers[2]["max_cost"]).to eq(117)
+      expect(tiers[3]["min_players"]).to eq(25)
+      expect(tiers[3]["max_cost"]).to eq(114)
 
-      expect(config["first_squad_minimum_players"]).to eq(25)
+      expect(rules.dig("rules", "team_composition", "first_squad_cost", "minimum_players")).to eq(25)
     end
   end
 

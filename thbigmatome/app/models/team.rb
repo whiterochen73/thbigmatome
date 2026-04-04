@@ -1,6 +1,6 @@
 class Team < ApplicationRecord
-  COST_LIMIT_CONFIG = YAML.load_file(Rails.root.join("config", "cost_limits.yml")).freeze
-  TEAM_TOTAL_MAX_COST = COST_LIMIT_CONFIG["team_total_max_cost"]
+  GAME_RULES = YAML.load_file(Rails.root.join("config", "game_rules.yaml")).freeze
+  TEAM_TOTAL_MAX_COST = GAME_RULES.dig("rules", "team_composition", "team_total_cost", "max")
 
   belongs_to :user, optional: true
 
@@ -27,8 +27,8 @@ class Team < ApplicationRecord
 
   VALID_TEAM_TYPES = %w[normal hachinai].freeze
   NATIVE_SERIES = {
-    "normal"   => %w[touhou].freeze,
-    "hachinai" => %w[hachinai tamayomi].freeze
+    "normal"   => GAME_RULES.dig("rules", "team_types", "normal", "native_series").freeze,
+    "hachinai" => GAME_RULES.dig("rules", "team_types", "hachinai", "native_series").freeze
   }.freeze
 
   validates :name, presence: true
@@ -41,15 +41,16 @@ class Team < ApplicationRecord
 
   # 1軍登録人数に対応するコスト上限を返す。人数不足の場合はnil
   def self.first_squad_cost_limit_for_count(count)
-    tier = COST_LIMIT_CONFIG["first_squad_tiers"].find { |t| count >= t["min_players"] }
+    tiers = GAME_RULES.dig("rules", "team_composition", "first_squad_cost", "tiers")
+    tier = tiers.find { |t| count >= t["min_players"] }
     tier ? tier["max_cost"] : nil
   end
 
   def self.first_squad_minimum_players
-    COST_LIMIT_CONFIG["first_squad_minimum_players"]
+    GAME_RULES.dig("rules", "team_composition", "first_squad_cost", "minimum_players")
   end
 
-  OUTSIDE_WORLD_LIMIT = 4
+  OUTSIDE_WORLD_LIMIT = GAME_RULES.dig("rules", "team_composition", "outside_world", "max")
 
   # チーム全体コスト（除外選手を除く）が上限（200固定）以下かチェック
   def validate_team_total_cost(cost_list_id)

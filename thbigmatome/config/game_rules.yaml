@@ -7,10 +7,16 @@
 # 管理: AI整合性フレームワーク Phase 1 (cmd_849), フォーマット更新 (cmd_905)
 # 参照: context/dugout-integrity-audit.md, context/game-rules-management-design.md
 
-version: "1.1"
+version: "1.2"
 created_at: "2026-04-01"
 format_updated: "2026-04-04"
 changelog:
+  - version: "1.2"
+    date: "2026-04-04"
+    breaking: false
+    changes:
+      - "game セクション追加（batting_order、ko_innings_threshold）"
+      - "Dugoutハードコード解消に伴い既存コードの値を正本に収録（cmd_908）"
   - version: "1.1"
     date: "2026-04-04"
     breaking: false
@@ -272,6 +278,28 @@ rules:
       related:
         - "team_composition.second_team"
       implementation: "チームマネージャー登録時に、同一監督の既存アクティブチーム数を確認し2未満であることを検証する"
+
+  # ─────────────────────────────────────────────────────────────
+  # 試合ルール
+  # ─────────────────────────────────────────────────────────────
+  game:
+
+    batting_order:
+      min: 1
+      max: 9
+      why: "9人打線が野球の基本ルール。DH制採用時も打順は1〜9の9枠"
+      exception: null
+      related:
+        - "team_composition.first_squad_cost"
+      implementation: "GameLineupEntry.batting_orderは1..9の範囲で検証する（allow_nil: true）"
+
+    ko_innings_threshold:
+      value: 5
+      why: "先発投手が5イニング未満で交代した場合はKO（knocked out）扱い。勝利投手の権利は5イニング完投が条件"
+      exception: null
+      related:
+        - "player_card.stamina"
+      implementation: "PitcherGameState.calculate_result_categoryでinnings < ko_innings_thresholdの場合、後継投手あり・敗戦投手なら'ko'"
 
   # ─────────────────────────────────────────────────────────────
   # 整合性リスク管理

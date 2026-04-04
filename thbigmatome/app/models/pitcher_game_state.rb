@@ -1,4 +1,7 @@
 class PitcherGameState < ApplicationRecord
+  GAME_RULES = YAML.load_file(Rails.root.join("config", "game_rules.yaml")).freeze
+  KO_INNINGS_THRESHOLD = GAME_RULES.dig("rules", "game", "ko_innings_threshold", "value")
+
   belongs_to :game
   belongs_to :pitcher, class_name: "Player"
   belongs_to :competition, optional: true
@@ -27,7 +30,7 @@ class PitcherGameState < ApplicationRecord
     has_successor = pitchers_in_game > 1
     innings = innings_pitched.to_f
     fp = fatigue_p.to_i
-    if innings > 0 && innings < 5 && has_successor && game_result == "lose" && decision == "L"
+    if innings > 0 && innings < KO_INNINGS_THRESHOLD && has_successor && game_result == "lose" && decision == "L"
       "ko"
     elsif game_result == "lose" && fp > 0 && innings > fp + 1
       "long_loss"

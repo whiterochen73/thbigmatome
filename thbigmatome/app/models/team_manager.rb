@@ -1,4 +1,7 @@
 class TeamManager < ApplicationRecord
+  GAME_RULES = YAML.load_file(Rails.root.join("config", "game_rules.yaml")).freeze
+  MAX_DIRECTOR_TEAMS = GAME_RULES.dig("rules", "manager", "max_active_teams_per_director", "value")
+
   belongs_to :team
   belongs_to :manager
 
@@ -21,7 +24,7 @@ class TeamManager < ApplicationRecord
                                 .where(teams: { is_active: true })
                                 .where.not(id: id)
                                 .count
-    if existing_count >= 2
+    if existing_count >= MAX_DIRECTOR_TEAMS
       errors.add(:manager_id,
         I18n.t("activerecord.errors.models.team_manager.director_team_limit"))
     end

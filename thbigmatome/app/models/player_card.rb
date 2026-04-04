@@ -1,4 +1,7 @@
 class PlayerCard < ApplicationRecord
+  GAME_RULES = YAML.load_file(Rails.root.join("config", "game_rules.yaml")).freeze
+  PC_RULES = GAME_RULES.dig("rules", "player_card").freeze
+
   has_one_attached :card_image
 
   belongs_to :card_set
@@ -28,27 +31,27 @@ class PlayerCard < ApplicationRecord
 
   validates :speed, presence: true,
             numericality: { only_integer: true },
-            inclusion: { in: 1..5 }
+            inclusion: { in: PC_RULES.dig("speed", "min")..PC_RULES.dig("speed", "max") }
   validates :bunt, presence: true,
             numericality: { only_integer: true },
-            inclusion: { in: 1..10 }
+            inclusion: { in: PC_RULES.dig("bunt", "min")..PC_RULES.dig("bunt", "max") }
   validates :steal_start, presence: true,
             numericality: { only_integer: true },
-            inclusion: { in: 1..22 }
+            inclusion: { in: PC_RULES.dig("steal_start", "min")..PC_RULES.dig("steal_start", "max") }
   validates :steal_end, presence: true,
             numericality: { only_integer: true },
-            inclusion: { in: 1..22 }
+            inclusion: { in: PC_RULES.dig("steal_end", "min")..PC_RULES.dig("steal_end", "max") }
   validates :injury_rate, presence: true,
             numericality: { only_integer: true },
-            inclusion: { in: 0..7 }
+            inclusion: { in: PC_RULES.dig("injury_rate", "min")..PC_RULES.dig("injury_rate", "max") }
   validates :starter_stamina,
             numericality: { only_integer: true },
-            inclusion: { in: 4..9 },
+            inclusion: { in: PC_RULES.dig("stamina", "starter", "min")..PC_RULES.dig("stamina", "starter", "max") },
             allow_blank: true,
             unless: :is_relief_only
   validates :relief_stamina,
             numericality: { only_integer: true },
-            inclusion: { in: 0..3 },
+            inclusion: { in: PC_RULES.dig("stamina", "relief", "min")..PC_RULES.dig("stamina", "relief", "max") },
             allow_blank: true
   validates :special_defense_c,
             format: { with: /\A[0-5][A-ES]\z/ },

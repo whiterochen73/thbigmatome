@@ -1,0 +1,175 @@
+# 特徴・特殊能力 汎用パターン定義
+#
+# 汎用パターンの特徴を type + パラメータで定義する。
+# 固有特徴（パターン外）はここに入れない — 選手データ側で個別に記述する。
+#
+# 参照: rulebook/11-traits.md
+
+version: "1.0"
+
+# ─────────────────────────────────────────────────────────────
+# 投手特徴（トリガー型）
+# 発動条件: UP表で「投手特徴確認」を引いた時
+# ─────────────────────────────────────────────────────────────
+pitcher_trigger:
+
+  - type: wp
+    name_ja: "WP"
+    effect: "暴投。走者1進塁して再投球。走者なし時は投球から振り直し"
+    parameters: {}
+
+  - type: db
+    name_ja: "DB"
+    effect: "死球。怪我・危険球退場は発生しない"
+    parameters: {}
+
+  - type: balk
+    name_ja: "ボーク"
+    effect: "走者1進塁して再投球。走者なし時は投球から振り直し"
+    parameters: {}
+
+  - type: home_run
+    name_ja: "ホームラン"
+    effect: "ホームランを被弾"
+    parameters: {}
+
+  - type: injury
+    name_ja: "けが"
+    effect: "投手が自分のけがレベルで怪我チェック"
+    parameters: {}
+
+  - type: injury_days
+    name_ja: "けが＊＊日"
+    effect: "指定日数分怪我して降板。投手交代が必要"
+    parameters:
+      days: null  # 選手カードの記載値を使用
+
+  - type: vs_right
+    name_ja: "対右"
+    effect: "右打者なら投球5、左打者なら投球1で打つ"
+    parameters:
+      right_pitch: 5
+      left_pitch: 1
+
+  - type: vs_left
+    name_ja: "対左"
+    effect: "右打者なら投球1、左打者なら投球5で打つ"
+    parameters:
+      right_pitch: 1
+      left_pitch: 5
+
+# ─────────────────────────────────────────────────────────────
+# 投手特殊能力（パッシブ型）
+# 発動条件: 常時適用（条件判定なし）
+# ─────────────────────────────────────────────────────────────
+pitcher_passive:
+
+  - type: no_wp
+    name_ja: "WPしない"
+    effect: "あらゆる暴投を防ぐ。UP表の暴投は投球から振り直し。パスボールは防げない"
+    parameters: {}
+
+  - type: no_balk
+    name_ja: "ボークしない"
+    effect: "ボークを防ぐ。UP表のボークは投球から振り直し"
+    parameters: {}
+
+  - type: mental_fatigue
+    name_ja: "精神疲労"
+    effect: "通常の疲労に加え、失点時点で疲労状態になる"
+    parameters: {}
+
+  - type: quick_positive
+    name_ja: "クイック○"
+    effect: "盗塁されにくい"
+    parameters:
+      steal_start_modifier: 2   # st値出目に+2
+      catcher_arm_modifier: 2   # 捕手肩に+2
+
+  - type: quick_negative
+    name_ja: "クイック✕"
+    effect: "盗塁されやすい"
+    parameters:
+      steal_start_modifier: -2  # st値出目に-2
+      catcher_arm_modifier: -2  # 捕手肩に-2
+
+# ─────────────────────────────────────────────────────────────
+# 野手特徴（トリガー型）
+# 発動条件: UP表で「打者特徴確認」を引いた時
+# ─────────────────────────────────────────────────────────────
+batter_trigger:
+
+  - type: db
+    name_ja: "DB"
+    effect: "死球。怪我・危険球退場は発生しない"
+    parameters: {}
+
+  - type: db_injury
+    name_ja: "DBけが＊＊日"
+    effect: "死球で指定日数分怪我。代走が必要"
+    parameters:
+      days: null  # 選手カードの記載値を使用
+
+  - type: db_brawl
+    name_ja: "DB乱闘"
+    effect: "死球で乱闘、打者退場。投手はけがレベル6で怪我チェック"
+    parameters:
+      pitcher_injury_level: 6
+
+  - type: injury_days
+    name_ja: "けが＊＊日"
+    effect: "指定日数分負傷。代打が必要"
+    parameters:
+      days: null  # 選手カードの記載値を使用
+
+  - type: clutch_1c5
+    name_ja: "1C5"
+    effect: "走者なし時は投球1で振り直し、走者あり時は投球5で振り直し"
+    parameters:
+      no_runners_pitch: 1
+      with_runners_pitch: 5
+
+  - type: clutch_chance
+    name_ja: "チャンス"
+    effect: "走者なし時は投球5で振り直し、走者あり時は投球1で振り直し"
+    parameters:
+      no_runners_pitch: 5
+      with_runners_pitch: 1
+
+  - type: infield_hit
+    name_ja: "内野安打"
+    effect: "内野安打。1塁走者ありなら2塁フォースアウト。前進守備時は3塁走者がホームアウト"
+    parameters: {}
+
+  - type: vs_right
+    name_ja: "対右"
+    effect: "右投手なら投球1で振り直し、左投手なら投球5で振り直し"
+    parameters:
+      right_pitcher_pitch: 1
+      left_pitcher_pitch: 5
+
+  - type: vs_left
+    name_ja: "対左"
+    effect: "右投手なら投球5で振り直し、左投手なら投球1で振り直し"
+    parameters:
+      right_pitcher_pitch: 5
+      left_pitcher_pitch: 1
+
+  - type: pinch_hit
+    name_ja: "（代打）"
+    effect: "代打時は投球1で振り直し。代打でない時は他の特徴を使用"
+    parameters:
+      pinch_hit_pitch: 1
+
+# ─────────────────────────────────────────────────────────────
+# 野手特殊能力（パッシブ型）
+# 発動条件: 常時適用（条件判定なし）
+# ─────────────────────────────────────────────────────────────
+batter_passive:
+
+  - type: wind_god
+    name_ja: "風神少女"
+    effect: "走塁表の出目を-2補正。出目20は補正なし（アウト確定）"
+    parameters:
+      baserunning_modifier: -2
+      auto_out_on_20: true

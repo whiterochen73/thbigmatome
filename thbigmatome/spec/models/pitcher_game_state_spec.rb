@@ -110,8 +110,9 @@ RSpec.describe PitcherGameState, type: :model do
 
     describe "境界値テスト" do
       it "innings==5.0 は KO にならない（normal）" do
+        # KO条件（innings < 5）に該当しないことを確認。先発疲労Pを明示してlong_loss境界と分離
         expect(described_class.calculate_result_category(
-          role: "starter", innings_pitched: 5.0, game_result: "lose", pitchers_in_game: 2
+          role: "starter", innings_pitched: 5.0, game_result: "lose", pitchers_in_game: 2, fatigue_p: 6
         )).to eq("normal")
       end
 
@@ -154,6 +155,33 @@ RSpec.describe PitcherGameState, type: :model do
       it "負け試合で先発が4回降板 + decision=nil（リリーフがLを持つ） → KO にならない" do
         expect(described_class.calculate_result_category(
           role: "starter", innings_pitched: 4.0, game_result: "lose", pitchers_in_game: 2, decision: nil
+        )).to eq("normal")
+      end
+    end
+
+    context "先発疲労P未設定（fatigue_p=0）のときデフォルト値3を適用（ルール§8.3, #7修正）" do
+      it "fatigue_p未設定の先発が5.0回完投敗戦 → long_loss（デフォルト疲労P=3で判定）" do
+        expect(described_class.calculate_result_category(
+          role: "starter", innings_pitched: 5.0, game_result: "lose", pitchers_in_game: 1, fatigue_p: 0
+        )).to eq("long_loss")
+      end
+
+      it "fatigue_p未設定の先発が4.0回完投敗戦 → normal（3+1=4以下なのでlong_lossでない）" do
+        expect(described_class.calculate_result_category(
+          role: "starter", innings_pitched: 4.0, game_result: "lose", pitchers_in_game: 1, fatigue_p: 0
+        )).to eq("normal")
+      end
+
+      it "fatigue_p=1の先発（本来は先発疲労P未設定）でも デフォルト適用なし（1のまま判定）" do
+        # fatigue_p > 0 の場合はデフォルト不適用。ユーザーが明示的に入力した値を使用。
+        expect(described_class.calculate_result_category(
+          role: "starter", innings_pitched: 5.0, game_result: "lose", pitchers_in_game: 1, fatigue_p: 1
+        )).to eq("long_loss")
+      end
+
+      it "reliever は fatigue_p=0 でもデフォルト適用されない（normal のまま）" do
+        expect(described_class.calculate_result_category(
+          role: "reliever", innings_pitched: 3.0, game_result: "lose", pitchers_in_game: 1, fatigue_p: 0
         )).to eq("normal")
       end
     end

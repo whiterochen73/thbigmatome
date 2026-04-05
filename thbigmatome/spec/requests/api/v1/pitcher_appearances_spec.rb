@@ -197,7 +197,7 @@ RSpec.describe "Api::V1::PitcherAppearancesController", type: :request do
         expect(json["pitcher_appearance"]["result_category"]).to eq("long_loss")
       end
 
-      it "疲労P == 0 の場合 long_loss にならず normal になる" do
+      it "疲労P == 0（未設定）の場合 デフォルト3を適用して long_loss になる（ルール§8.3, #7修正）" do
         params = valid_params.deep_merge(pitcher_appearance: {
           role: "starter",
           innings_pitched: 8.0,
@@ -210,7 +210,8 @@ RSpec.describe "Api::V1::PitcherAppearancesController", type: :request do
 
         expect(response).to have_http_status(:created)
         json = response.parsed_body
-        expect(json["pitcher_appearance"]["result_category"]).to eq("normal")
+        # デフォルト疲労P=3が適用され、8.0 > 3+1=4 → long_loss
+        expect(json["pitcher_appearance"]["result_category"]).to eq("long_loss")
       end
 
       it "先発で通常パターンの場合 normal になる" do

@@ -127,7 +127,8 @@ class Api::V1::Commissioner::DashboardController < Api::V1::Commissioner::BaseCo
       team_memberships: [
         :season_rosters,
         { player_absences: :season },
-        { player: [ :cost_players, { player_cards: :player_card_defenses } ] }
+        { player: [ :cost_players ] },
+        { player_card: [ :card_set, :player_card_defenses ] }
       ]
     ).order(:name)
 
@@ -208,8 +209,9 @@ class Api::V1::Commissioner::DashboardController < Api::V1::Commissioner::BaseCo
 
         memberships.each do |tm|
           player = tm.player
-          card = player.player_cards.first
-          position = if card&.card_type == "pitcher"
+          card = tm.player_card
+          is_fielder_only = tm.selected_cost_type == "fielder_only_cost"
+          position = if card&.card_type == "pitcher" && !is_fielder_only
             "pitcher"
           else
             card&.player_card_defenses&.first&.position&.downcase
@@ -236,7 +238,8 @@ class Api::V1::Commissioner::DashboardController < Api::V1::Commissioner::BaseCo
             cooldown_until = cooldown_info[:cooldown_until]
           end
 
-          is_outside_world = !native_series.include?(player.series)
+          effective_series = card&.card_set&.series.presence || player.series
+          is_outside_world = effective_series.present? && !native_series.include?(effective_series)
 
           csv << [
             team.name,

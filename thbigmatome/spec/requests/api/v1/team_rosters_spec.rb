@@ -111,9 +111,9 @@ RSpec.describe "Api::V1::TeamRosters", type: :request do
     context "pitcher fields (is_starter_pitcher / is_relief_only)" do
       it "returns is_starter_pitcher=true when pitcher has player_card with starter_stamina >= 4" do
         player = create(:player, :pitcher)
-        create(:team_membership, team: team, player: player, squad: "first", selected_cost_type: "normal_cost")
+        pc = create(:player_card, player: player, is_pitcher: true, starter_stamina: 5, is_relief_only: false)
+        create(:team_membership, team: team, player: player, player_card: pc, squad: "first", selected_cost_type: "normal_cost")
         create(:cost_player, cost: cost, player: player, normal_cost: 5)
-        create(:player_card, player: player, is_pitcher: true, starter_stamina: 5, is_relief_only: false)
 
         get "/api/v1/teams/#{team.id}/roster", as: :json
 
@@ -138,9 +138,9 @@ RSpec.describe "Api::V1::TeamRosters", type: :request do
 
       it "returns is_relief_only=true when player_card.is_relief_only is true" do
         player = create(:player, :pitcher)
-        create(:team_membership, team: team, player: player, squad: "first", selected_cost_type: "normal_cost")
+        pc = create(:player_card, player: player, is_pitcher: true, is_relief_only: true, starter_stamina: nil)
+        create(:team_membership, team: team, player: player, player_card: pc, squad: "first", selected_cost_type: "normal_cost")
         create(:cost_player, cost: cost, player: player, normal_cost: 5)
-        create(:player_card, player: player, is_pitcher: true, is_relief_only: true, starter_stamina: nil)
 
         get "/api/v1/teams/#{team.id}/roster", as: :json
 

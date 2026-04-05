@@ -19,7 +19,7 @@ module Api
         target_date = season.current_date
 
         # Fetch all team memberships for the team
-        team_memberships = team.team_memberships.preload(:season_rosters, :player_absences, player: [ :cost_players, { player_cards: :player_card_defenses } ])
+        team_memberships = team.team_memberships.preload(:season_rosters, :player_absences, player: [ :cost_players ], player_card: [ :card_set, :player_card_defenses ])
         start_date = season.season_schedules.minimum(:date)
 
         # Determine current squad for each player based on the latest SeasonRoster entry
@@ -34,23 +34,27 @@ module Api
 
           cooldown_info = calculate_cooldown_info(tm, target_date)
 
+          # 登録カード（player_card）を優先し、未設定の場合はplayer.seriesにフォールバック
+          pc = tm.player_card
+          effective_series = pc&.card_set&.series.presence || tm.player.series
+          is_fielder_only = tm.selected_cost_type == "fielder_only_cost"
+
           {
             team_membership_id: tm.id,
             player_id: tm.player.id,
             number: tm.player.number,
             player_name: tm.player.short_name,
-            handedness: tm.player.player_cards.first&.handedness,
-            position: (tm.player.player_cards.first&.card_type == "pitcher" ? "pitcher" : tm.player.player_cards.first&.player_card_defenses&.first&.position&.downcase),
+            handedness: pc&.handedness,
+            position: (pc&.card_type == "pitcher" && !is_fielder_only ? "pitcher" : pc&.player_card_defenses&.first&.position&.downcase),
             squad: squad_status,
             player_types: [],
-            selected_cost_type: tm.selected_cost_type, # Add selected cost type
-            cost: tm.player.cost_players.find { |pc| pc.cost_id == current_cost_list.id }.send(tm.selected_cost_type), # Assuming player has cost methods
-            # Add cooldown information if applicable
+            selected_cost_type: tm.selected_cost_type,
+            cost: tm.player.cost_players.find { |cp| cp.cost_id == current_cost_list.id }.send(tm.selected_cost_type),
             cooldown_until: cooldown_info[:cooldown_until],
             same_day_exempt: cooldown_info[:same_day_exempt],
-            is_outside_world: !native_series.include?(tm.player.series),
-            is_starter_pitcher: (tm.player.player_cards.first&.is_pitcher && tm.player.player_cards.first&.starter_stamina.present? && tm.player.player_cards.first&.starter_stamina >= 4) || false,
-            is_relief_only: (tm.player.player_cards.first&.is_pitcher && tm.player.player_cards.first&.is_relief_only) || false,
+            is_outside_world: effective_series.present? && !native_series.include?(effective_series),
+            is_starter_pitcher: (!is_fielder_only && pc&.is_pitcher && pc&.starter_stamina.present? && pc&.starter_stamina >= 4) || false,
+            is_relief_only: (!is_fielder_only && pc&.is_pitcher && pc&.is_relief_only) || false,
             **absence_info_for(tm, target_date)
           }
         end

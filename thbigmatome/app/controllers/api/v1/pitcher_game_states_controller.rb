@@ -14,8 +14,10 @@ module Api
         pitcher_ids = if player_ids.present?
           player_ids
         else
+          # 登録カードが投手カードかつ野手専念契約でない選手のみ投手として扱う（#5 #6）
           @team.team_memberships
-               .joins(player: :player_cards)
+               .where.not(selected_cost_type: "fielder_only_cost")
+               .joins(:player_card)
                .where(player_cards: { is_pitcher: true })
                .distinct
                .pluck(:player_id)
@@ -61,8 +63,10 @@ module Api
         target_date = params[:date]&.to_date || Date.today
 
         # season_rostersベースでtarget_date時点の1軍メンバーを取得（現在のsquadではなく登録履歴で判定）
+        # 登録カードが投手カードかつ野手専念契約でない選手のみ（#5 #6）
         all_pitcher_memberships = @team.team_memberships
-          .joins(player: :player_cards)
+          .where.not(selected_cost_type: "fielder_only_cost")
+          .joins(:player_card)
           .where(player_cards: { card_type: "pitcher" })
           .includes(:player)
           .distinct

@@ -65,9 +65,12 @@ class Team < ApplicationRecord
   # 1軍の外の世界枠選手（team_type に応じたネイティブ series 以外が外の世界枠）
   def outside_world_first_squad_memberships
     native = NATIVE_SERIES[team_type] || NATIVE_SERIES["normal"]
-    team_memberships.where(squad: "first")
-      .joins(:player)
-      .where.not(players: { series: native })
+    memberships = team_memberships.where(squad: "first")
+                                  .includes(:player, { player: :player_cards }, player_card: :card_set)
+    memberships.select do |tm|
+      effective_series = tm.player_card&.card_set&.series.presence || tm.player.series
+      effective_series.present? && !native.include?(effective_series)
+    end
   end
 
   # 外の世界枠: 最大4人チェック
@@ -88,9 +91,8 @@ class Team < ApplicationRecord
     ow_memberships = outside_world_first_squad_memberships
     return true if ow_memberships.size < OUTSIDE_WORLD_LIMIT
 
-    ow_with_cards = ow_memberships.includes(player: :player_cards)
-    has_pitcher = ow_with_cards.any? { |tm| tm.player.player_cards.any? { |pc| pc.card_type == "pitcher" } }
-    has_fielder = ow_with_cards.any? { |tm| tm.player.player_cards.any? { |pc| pc.card_type == "batter" } }
+    has_pitcher = ow_memberships.any? { |tm| tm.player.player_cards.any? { |pc| pc.card_type == "pitcher" } }
+    has_fielder = ow_memberships.any? { |tm| tm.player.player_cards.any? { |pc| pc.card_type == "batter" } }
 
     unless has_pitcher && has_fielder
       errors.add(:base, I18n.t("activerecord.errors.models.team.outside_world.balance_required"))

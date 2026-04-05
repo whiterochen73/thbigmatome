@@ -261,6 +261,32 @@ RSpec.describe Team, type: :model do
         expect(team.outside_world_first_squad_memberships.size).to eq(0)
       end
     end
+
+    context "登録カードのcard_set.seriesを優先（#4 AP鈴仙修正）" do
+      let(:normal_team) { create(:team, team_type: "normal") }
+
+      it "player.series=touhouでもcard_set.series=originalなら外の世界枠になる" do
+        player = create(:player, series: "touhou")
+        original_card_set = create(:card_set, set_type: "pm2026", series: "original")
+        pc = create(:player_card, player: player, card_set: original_card_set, card_type: "batter")
+        create(:team_membership, team: normal_team, player: player, player_card: pc, squad: "first")
+        expect(normal_team.outside_world_first_squad_memberships.size).to eq(1)
+      end
+
+      it "player_card未設定の場合はplayer.seriesにフォールバックする" do
+        player = create(:player, series: "touhou")
+        create(:team_membership, team: normal_team, player: player, squad: "first")
+        expect(normal_team.outside_world_first_squad_memberships.size).to eq(0)
+      end
+
+      it "player.series=touhouでcard_set.series=touhouなら外の世界枠にならない" do
+        player = create(:player, series: "touhou")
+        touhou_card_set = create(:card_set, set_type: "annual", series: "touhou")
+        pc = create(:player_card, player: player, card_set: touhou_card_set, card_type: "batter")
+        create(:team_membership, team: normal_team, player: player, player_card: pc, squad: "first")
+        expect(normal_team.outside_world_first_squad_memberships.size).to eq(0)
+      end
+    end
   end
 
   # 外の世界枠バリデーション: player_player_typesテーブル廃止(cmd_511 Phase 2b)によりテスト削除

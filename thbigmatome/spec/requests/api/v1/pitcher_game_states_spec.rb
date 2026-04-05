@@ -129,8 +129,8 @@ RSpec.describe "Api::V1::PitcherGameStatesController", type: :request do
     describe "GET /api/v1/teams/:team_id/pitcher_game_states/fatigue_summary" do
       let(:card_set) { create(:card_set) }
       let(:pitcher_first) { create(:player, :pitcher) }
-      let!(:pitcher_first_card) { create(:player_card, player: pitcher_first, card_set: card_set, card_type: "pitcher") }
-      let!(:tm_first) { create(:team_membership, :first_squad, team: team, player: pitcher_first) }
+      let!(:pitcher_first_card) { create(:player_card, player: pitcher_first, card_set: card_set, card_type: "pitcher", is_pitcher: true) }
+      let!(:tm_first) { create(:team_membership, :first_squad, team: team, player: pitcher_first, player_card: pitcher_first_card) }
       # season_rostersベース判定のため、target_date以前に1軍登録されていることが必要
       let!(:season_roster_first) { create(:season_roster, team_membership: tm_first, squad: "first", registered_on: "2026-01-01") }
 
@@ -141,8 +141,8 @@ RSpec.describe "Api::V1::PitcherGameStatesController", type: :request do
 
       it "1軍投手のみ返す（squad=firstのみ）" do
         other_pitcher = create(:player, :pitcher)
-        create(:player_card, player: other_pitcher, card_set: card_set, card_type: "pitcher")
-        create(:team_membership, team: team, player: other_pitcher, squad: "second")
+        other_card = create(:player_card, player: other_pitcher, card_set: card_set, card_type: "pitcher", is_pitcher: true)
+        create(:team_membership, team: team, player: other_pitcher, player_card: other_card, squad: "second")
 
         get_fatigue_summary(date: "2026-03-10")
         ids = response.parsed_body.map { |e| e["player_id"] }
@@ -337,6 +337,75 @@ RSpec.describe "Api::V1::PitcherGameStatesController", type: :request do
         entry = response.parsed_body.find { |e| e["player_id"] == pitcher2.id }
         expect(entry["is_injured"]).to be true
       end
+    end
+  end
+
+  describe "GET /api/v1/teams/:team_id/pitcher_game_states（player_ids未指定：登録カード判定）" do
+    include_context "authenticated user"
+
+    let(:team) { create(:team) }
+
+    before { team.update!(user: user) }
+
+    def get_states_no_ids(date:)
+      get "/api/v1/teams/#{team.id}/pitcher_game_states",
+        params: { date: date }
+    end
+
+    # #5: 登録カードがバッターカードの選手は投手リストに含まれない
+    it "登録カードがbatterの選手は投手リストに含まれない（#5 正邪修正）" do
+      batter_player = create(:player)
+      card_set = create(:card_set)
+      batter_card = create(:player_card, player: batter_player, card_type: "batter", is_pitcher: false, card_set: card_set)
+      create(:team_membership, team: team, player: batter_player, player_card: batter_card, squad: "first")
+
+      get_states_no_ids(date: "2026-04-05")
+
+      player_ids = response.parsed_body.map { |e| e["player_id"] }
+      expect(player_ids).not_to include(batter_player.id)
+    end
+
+    # #5: 同一選手が投手カードと野手カードを持つ場合、登録カードで判定
+    it "同一選手の野手カードを登録した場合は投手リストに含まれない（#5 正邪修正）" do
+      two_way_player = create(:player)
+      card_set = create(:card_set)
+      # 投手カードも持つが、登録は野手カード
+      create(:player_card, player: two_way_player, card_type: "pitcher", is_pitcher: true, card_set: card_set)
+      batter_card = create(:player_card, player: two_way_player, card_type: "batter", is_pitcher: false, card_set: card_set)
+      create(:team_membership, team: team, player: two_way_player, player_card: batter_card, squad: "first")
+
+      get_states_no_ids(date: "2026-04-05")
+
+      player_ids = response.parsed_body.map { |e| e["player_id"] }
+      expect(player_ids).not_to include(two_way_player.id)
+    end
+
+    # #6: 野手専念契約の選手は投手リストに含まれない
+    it "fielder_only_cost契約の投手カード選手は投手リストに含まれない（#6 野崎夕姫修正）" do
+      two_way_player = create(:player)
+      card_set = create(:card_set)
+      pitcher_card = create(:player_card, player: two_way_player, card_type: "pitcher", is_pitcher: true, card_set: card_set)
+      create(:team_membership, team: team, player: two_way_player, player_card: pitcher_card,
+             squad: "first", selected_cost_type: "fielder_only_cost")
+
+      get_states_no_ids(date: "2026-04-05")
+
+      player_ids = response.parsed_body.map { |e| e["player_id"] }
+      expect(player_ids).not_to include(two_way_player.id)
+    end
+
+    # 正常系: 投手カード登録かつfielder_only以外は含まれる
+    it "登録カードがpitcherかつnormal_cost → 投手リストに含まれる" do
+      pitcher_player = create(:player)
+      card_set = create(:card_set)
+      pitcher_card = create(:player_card, player: pitcher_player, card_type: "pitcher", is_pitcher: true, card_set: card_set)
+      create(:team_membership, team: team, player: pitcher_player, player_card: pitcher_card,
+             squad: "first", selected_cost_type: "normal_cost")
+
+      get_states_no_ids(date: "2026-04-05")
+
+      player_ids = response.parsed_body.map { |e| e["player_id"] }
+      expect(player_ids).to include(pitcher_player.id)
     end
   end
 end

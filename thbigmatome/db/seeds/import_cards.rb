@@ -53,6 +53,7 @@ CSV.foreach("#{data_dir}/player_cards.csv", headers: true) do |row|
   card_set = CardSet.find_or_create_by!(name: defn[:name]) do |cs|
     cs.year     = defn[:year]
     cs.set_type = defn[:set_type]
+    cs.series   = CARD_SOURCE_SERIES[card_source]
   end
 
   if row["name"].blank?

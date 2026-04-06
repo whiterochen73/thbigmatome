@@ -111,8 +111,8 @@ VPS上の画像配置:
 cd ~/projects
 
 # コード取得
-git -C thbigmatome pull origin release/v0.2.0
-git -C thbigmatome-front pull origin release/v0.2.0
+git -C thbigmatome pull origin main
+git -C thbigmatome-front pull origin main
 git -C thbig-irc-parser pull origin develop
 
 # リビルド・再起動

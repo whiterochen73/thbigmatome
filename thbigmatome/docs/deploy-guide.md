@@ -1,6 +1,6 @@
 # THBIG Dugout 本番デプロイガイド（ConoHa VPS 2GB）
 
-本書は THBIG Dugout v0.1.0 を ConoHa VPS にデプロイする手順をまとめたものです。
+本書は THBIG Dugout を ConoHa VPS にデプロイする手順をまとめたものです。
 
 **構成サマリ:**
 - OS: Ubuntu 24.04 LTS

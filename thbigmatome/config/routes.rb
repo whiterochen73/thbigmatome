@@ -139,6 +139,18 @@ Rails.application.routes.draw do
           patch :update_role
         end
       end
+
+      # 内部サービス間API（APIキー認証、Clubhouse等から使用）
+      namespace :internal do
+        get "players",      to: "exports#players"
+        get "teams",        to: "exports#teams"
+        get "stadiums",     to: "exports#stadiums"
+        get "card_sets",    to: "exports#card_sets"
+        get "player_cards", to: "exports#player_cards"
+        get "seasons",      to: "exports#seasons"
+        get "games",        to: "exports#games"
+        get "games/:id",    to: "exports#game_show"
+      end
     end
   end
 end

@@ -40,6 +40,7 @@ services:
       RAILS_MASTER_KEY: ${RAILS_MASTER_KEY}
       PARSER_API_URL: http://parser:5000
       INITIAL_PASSWORD: ${INITIAL_PASSWORD}
+      INTERNAL_API_KEY: ${INTERNAL_API_KEY:-thbig-internal-sync-key}
     command: bin/rails server -b 0.0.0.0
 
   frontend:

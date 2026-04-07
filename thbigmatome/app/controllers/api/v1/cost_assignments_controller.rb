@@ -3,12 +3,17 @@ module Api
     class CostAssignmentsController < Api::V1::BaseController
       def index
         @cost_id = params[:cost_id]
-        @players = Player.order(:id).preload(:cost_players)
+        @players = Player.order(:id).preload(:cost_players, player_cards: :player_types)
 
         players_with_cost = @players.map do |player|
           player_data = player.as_json(
             except: [ :created_at, :updated_at ]
           )
+
+          player_data[:player_types] = player.player_cards
+            .flat_map(&:player_types)
+            .uniq(&:id)
+            .map { |pt| { id: pt.id, name: pt.name } }
 
           player_data[:normal_cost] = player.cost_players.find { |cp| cp.cost_id == @cost_id.to_i }&.normal_cost
           player_data[:relief_only_cost] = player.cost_players.find { |cp| cp.cost_id == @cost_id.to_i }&.relief_only_cost

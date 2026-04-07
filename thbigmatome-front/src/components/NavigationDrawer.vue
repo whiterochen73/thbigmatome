@@ -173,6 +173,12 @@ const commissionerMenuItems = [
     to: '/commissioner/players',
   },
   {
+    title: 'コスト登録',
+    icon: 'mdi-currency-jpy',
+    value: 'costAssignment',
+    to: '/cost_assignment',
+  },
+  {
     title: '監督一覧',
     icon: 'mdi-account-tie',
     value: 'managers',

@@ -9,6 +9,9 @@ export interface CostPlayer {
   fielder_only_cost: number | null
   two_way_cost: number | null
   available_cost_types?: string[]
+  player_card_id?: number | null
+  variant?: string | null
+  card_label?: string | null
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   [key: string]: any
 }

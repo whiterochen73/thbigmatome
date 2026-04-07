@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_04_05_100000) do
+ActiveRecord::Schema[8.1].define(version: 2026_04_07_233608) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -185,12 +185,15 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_05_100000) do
     t.integer "fielder_only_cost"
     t.integer "normal_cost"
     t.integer "pitcher_only_cost"
+    t.bigint "player_card_id"
     t.bigint "player_id", null: false
     t.integer "relief_only_cost"
     t.integer "two_way_cost"
     t.datetime "updated_at", null: false
-    t.index [ "cost_id", "player_id" ], name: "index_cost_players_on_cost_id_and_player_id"
+    t.index [ "cost_id", "player_id", "player_card_id" ], name: "index_cost_players_variant_unique", unique: true, where: "(player_card_id IS NOT NULL)"
+    t.index [ "cost_id", "player_id" ], name: "index_cost_players_base_unique", unique: true, where: "(player_card_id IS NULL)"
     t.index [ "cost_id" ], name: "index_cost_players_on_cost_id"
+    t.index [ "player_card_id" ], name: "index_cost_players_on_player_card_id"
     t.index [ "player_id" ], name: "index_cost_players_on_player_id"
   end
 
@@ -682,6 +685,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_05_100000) do
   add_foreign_key "competition_rosters", "competition_entries"
   add_foreign_key "competition_rosters", "player_cards"
   add_foreign_key "cost_players", "costs"
+  add_foreign_key "cost_players", "player_cards"
   add_foreign_key "cost_players", "players"
   add_foreign_key "game_events", "games"
   add_foreign_key "game_lineups", "teams"

@@ -13,6 +13,7 @@
           class="elevation-1"
           density="compact"
           items-per-page="-1"
+          :row-props="rowProps"
         >
           <template
             v-for="costDef in costDefinitions"
@@ -31,7 +32,10 @@
             ></v-text-field>
           </template>
           <template #[`item.name`]="{ item }">
-            {{ item.name }}
+            <span>{{ item.name }}</span>
+            <v-chip v-if="item.variant" size="x-small" color="secondary" class="ml-1">
+              {{ item.variant }}
+            </v-chip>
           </template>
           <template #[`item.player_types`]="{ item }">
             <v-chip v-for="type in item.player_types" :key="type.id">{{ type.name }}</v-chip>
@@ -83,6 +87,10 @@ const headers = ref([
   })),
 ])
 
+const rowProps = (item: { item: CostPlayer }) => {
+  return item.item.variant ? { class: 'bg-blue-grey-lighten-5' } : {}
+}
+
 const rules = {
   positiveInteger: (value: number | null) => {
     if (value === null || value === undefined) return true
@@ -111,7 +119,6 @@ const fetchPlayers = async () => {
     const response = await axios.get<CostPlayer[]>(
       `/cost_assignments?cost_id=${selectedCost.value.id}`,
     )
-    console.log('Fetched players:', response.data)
     players.value = response.data.map((player) => ({
       ...player,
       normal_cost: player.normal_cost || null,
@@ -134,11 +141,11 @@ const saveAssignments = async () => {
   }
   loading.value = true
   try {
-    // APIに保存する処理を実装
     const assignments = {
       cost_id: selectedCost.value.id,
       players: players.value.map((player) => ({
         player_id: player.id,
+        player_card_id: player.player_card_id ?? null,
         normal_cost: player.normal_cost,
         relief_only_cost: player.relief_only_cost,
         pitcher_only_cost: player.pitcher_only_cost,

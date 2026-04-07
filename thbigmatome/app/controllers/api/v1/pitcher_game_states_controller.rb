@@ -24,6 +24,7 @@ module Api
         end
 
         injured_ids = build_injured_set(pitcher_ids, target_date)
+        absence_map = preload_pitcher_absences(pitcher_ids)
 
         result = pitcher_ids.map do |player_id|
           last_app = PitcherGameState
@@ -35,14 +36,22 @@ module Api
           rest_days = nil
           cumulative_innings = 0
           last_role = nil
+          absences = absence_map[player_id] || []
 
           if last_app
             last_date = last_app.schedule_date.to_date
-            rest_days = (target_date - last_date).to_i - 1
             last_role = last_app.role
 
+            if full_recovery_absence?(absences, last_date, target_date)
+              rest_days = nil
+            else
+              raw_rest_days = (target_date - last_date).to_i - 1
+              absent_days = absence_days_in_range(absences, last_date + 1, target_date - 1)
+              rest_days = raw_rest_days - absent_days
+            end
+
             if %w[reliever opener].include?(last_role)
-              cumulative_innings = compute_cumulative_innings(player_id, target_date)
+              cumulative_innings = compute_cumulative_innings(player_id, target_date, absences)
             end
           end
 
@@ -83,6 +92,7 @@ module Api
         name_map = pitcher_memberships.each_with_object({}) { |tm, h| h[tm.player_id] = tm.player.name }
 
         injured_ids = build_injured_set(pitcher_ids, target_date)
+        absence_map = preload_pitcher_absences(pitcher_ids)
 
         result = pitcher_ids.map do |player_id|
           last_app = PitcherGameState
@@ -96,16 +106,24 @@ module Api
           last_role = nil
           last_result_category = nil
           consecutive_short_rest_count = 0
+          absences = absence_map[player_id] || []
 
           if last_app
             last_date = last_app.schedule_date.to_date
-            rest_days = (target_date - last_date).to_i - 1
             last_role = last_app.role
             last_result_category = last_app.result_category
             consecutive_short_rest_count = last_app.consecutive_short_rest_count || 0
 
+            if full_recovery_absence?(absences, last_date, target_date)
+              rest_days = nil
+            else
+              raw_rest_days = (target_date - last_date).to_i - 1
+              absent_days = absence_days_in_range(absences, last_date + 1, target_date - 1)
+              rest_days = raw_rest_days - absent_days
+            end
+
             if %w[reliever opener].include?(last_role)
-              cumulative_innings = compute_cumulative_innings(player_id, target_date)
+              cumulative_innings = compute_cumulative_innings(player_id, target_date, absences)
             end
           end
 
@@ -159,6 +177,50 @@ module Api
           .to_set
       end
 
+      # 複数投手の離脱期間を一括取得
+      # 戻り値: { player_id => [{start_date:, end_date:}, ...] }
+      # end_date は復帰可能日（排他的）。nil は無期限離脱。
+      def preload_pitcher_absences(pitcher_ids)
+        tm_map = @team.team_memberships
+          .where(player_id: pitcher_ids)
+          .each_with_object({}) { |tm, h| h[tm.id] = tm.player_id }
+
+        return {} if tm_map.empty?
+
+        result = {}
+        PlayerAbsence.where(team_membership_id: tm_map.keys).each do |pa|
+          player_id = tm_map[pa.team_membership_id]
+          next unless player_id
+          result[player_id] ||= []
+          result[player_id] << { start_date: pa.start_date.to_date, end_date: pa.effective_end_date&.to_date }
+        end
+        result
+      end
+
+      # [from_date, to_date] (両端含む) 内の離脱日数合計を返す
+      # end_date は排他的（復帰可能日）
+      def absence_days_in_range(absences, from_date, to_date)
+        return 0 if absences.empty? || from_date > to_date
+        absences.sum do |pa|
+          i_start = [ pa[:start_date], from_date ].max
+          i_end_excl = pa[:end_date] ? pa[:end_date] : to_date + 1
+          i_end_clamped = [ i_end_excl, to_date + 1 ].min
+          days = (i_end_clamped - i_start).to_i
+          days > 0 ? days : 0
+        end
+      end
+
+      # after_date より後に開始し、target_date 以前に終了する、
+      # 10日を超える（> 10日）の離脱があるか（中10日全快判定）
+      def full_recovery_absence?(absences, after_date, target_date)
+        absences.any? do |pa|
+          pa[:start_date] > after_date &&
+            pa[:end_date] &&
+            pa[:end_date] <= target_date &&
+            (pa[:end_date] - pa[:start_date]).to_i > 10
+        end
+      end
+
       # projected_status: 今日登板した場合の疲労ステータス予測
       # 戻り値: "full" / "reduced_N" / "injury_check" / "unavailable" / "injured"
       def calculate_projected_status(last_role, rest_days, last_result_category, cumulative_innings, is_injured, consecutive_short_rest_count)
@@ -200,7 +262,7 @@ module Api
         end
       end
 
-      def compute_cumulative_innings(pitcher_id, target_date)
+      def compute_cumulative_innings(pitcher_id, target_date, absences = [])
         appearances = PitcherGameState
           .where(pitcher_id: pitcher_id, team_id: @team.id, role: %w[reliever opener])
           .where("schedule_date < ?", target_date.to_s)
@@ -211,9 +273,19 @@ module Api
 
         appearances.each do |app|
           if prev_date
-            rest_days = (app.schedule_date.to_date - prev_date).to_i - 1
-            rest_days.times do
-              cumulative = cumulative <= 3 ? [ cumulative - 2, 0 ].max : cumulative - 1
+            app_date = app.schedule_date.to_date
+            if full_recovery_absence?(absences, prev_date, app_date)
+              # 中10日以上の離脱 → 全快（累積リセット）
+              cumulative = 0
+            else
+              from = prev_date + 1
+              to = app_date - 1
+              idle_days = (app_date - prev_date).to_i - 1
+              absent_days = absence_days_in_range(absences, from, to)
+              effective_idle = [ idle_days - absent_days, 0 ].max
+              effective_idle.times do
+                cumulative = cumulative <= 3 ? [ cumulative - 2, 0 ].max : cumulative - 1
+              end
             end
           end
           ip = app.innings_pitched.to_f
@@ -223,9 +295,17 @@ module Api
 
         # Decay from last appearance to target_date
         if prev_date && prev_date < target_date
-          idle_days = (target_date - prev_date).to_i - 1
-          idle_days.times do
-            cumulative = cumulative <= 3 ? [ cumulative - 2, 0 ].max : cumulative - 1
+          if full_recovery_absence?(absences, prev_date, target_date)
+            cumulative = 0
+          else
+            from = prev_date + 1
+            to = target_date - 1
+            idle_days = (target_date - prev_date).to_i - 1
+            absent_days = absence_days_in_range(absences, from, to)
+            effective_idle = [ idle_days - absent_days, 0 ].max
+            effective_idle.times do
+              cumulative = cumulative <= 3 ? [ cumulative - 2, 0 ].max : cumulative - 1
+            end
           end
         end
 

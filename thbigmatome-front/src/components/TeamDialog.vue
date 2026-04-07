@@ -36,16 +36,6 @@
               ></v-autocomplete>
             </v-col>
             <v-col cols="12">
-              <v-autocomplete
-                v-model="editedTeam.coach_ids"
-                :items="managers"
-                item-title="name"
-                item-value="id"
-                :label="t('teamDialog.form.coaches')"
-                multiple
-              ></v-autocomplete>
-            </v-col>
-            <v-col cols="12">
               <div class="text-body-2 mb-1">{{ t('teamDialog.form.teamType') }}</div>
               <v-radio-group v-model="editedTeam.team_type" inline :disabled="!isNew">
                 <v-radio value="normal" :label="t('teamDialog.form.teamTypeNormal')"></v-radio>
@@ -109,7 +99,6 @@ interface EditedTeam {
   is_active: boolean
   team_type: 'normal' | 'hachinai'
   director_id?: number | null
-  coach_ids?: number[]
 }
 
 const defaultTeam: EditedTeam = {
@@ -118,7 +107,6 @@ const defaultTeam: EditedTeam = {
   is_active: true,
   team_type: 'normal',
   director_id: null,
-  coach_ids: [],
 }
 const editedTeam = ref<EditedTeam>({ ...defaultTeam })
 
@@ -152,7 +140,6 @@ watch(isOpen, (newVal) => {
         is_active: props.team.is_active,
         team_type: props.team.team_type ?? 'normal',
         director_id: props.team.director?.id,
-        coach_ids: props.team.coaches?.map((c) => c.id) ?? [],
       }
     } else {
       // New

@@ -397,7 +397,7 @@
     "form": {
       "name": "名前",
       "shortName": "短縮名",
-      "manager": "監督",
+      "director": "監督",
       "isActive": "稼働中",
       "teamType": "チーム種別",
       "teamTypeNormal": "通常チーム（東方キャラがネイティブ）",

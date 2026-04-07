@@ -28,6 +28,10 @@ class TeamPlayerSerializer < PlayerSerializer
     membership.player_card_id
   end
 
+  attribute :available_cost_types do
+    object.available_cost_types
+  end
+
   attribute :player_card_info do
     pc = membership.player_card
     next nil unless pc

@@ -8,4 +8,5 @@ export interface Player {
   handedness: string | null
   position: string | null
   cost_players: PlayerCost[]
+  available_cost_types?: string[]
 }

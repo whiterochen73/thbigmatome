@@ -20,6 +20,7 @@ module Api
           player_data[:pitcher_only_cost] = player.cost_players.find { |cp| cp.cost_id == @cost_id.to_i }&.pitcher_only_cost
           player_data[:fielder_only_cost] = player.cost_players.find { |cp| cp.cost_id == @cost_id.to_i }&.fielder_only_cost
           player_data[:two_way_cost] = player.cost_players.find { |cp| cp.cost_id == @cost_id.to_i }&.two_way_cost
+          player_data[:available_cost_types] = player.available_cost_types
           player_data
         end
         render json: players_with_cost

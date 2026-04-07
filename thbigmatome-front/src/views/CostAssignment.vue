@@ -24,10 +24,7 @@
               type="number"
               min="1"
               :rules="[rules.positiveInteger]"
-              :disabled="
-                costDef.requiredPlayerTypeId !== null &&
-                !item.player_types.some((pt) => pt.id === costDef.requiredPlayerTypeId)
-              "
+              :disabled="!item.available_cost_types?.includes(costDef.model)"
               style="width: 80px"
               density="compact"
               hide-details="auto"

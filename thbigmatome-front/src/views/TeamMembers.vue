@@ -402,6 +402,7 @@ interface TeamPlayer extends Player {
   player_type_ids: number[]
   player_card_id?: number | null
   player_card_info?: PlayerCardInfo | null
+  available_cost_types?: string[]
 }
 
 interface TeamPlayersSaveResponse {
@@ -707,7 +708,9 @@ const getAvailableCostTypes = (player: Player) => {
 
   const addOption = (type: CostType, cost: number | null | undefined) => {
     if (cost !== null && cost !== undefined) {
-      options.push({ value: type, text: `${t('teamMembers.costTypes.' + type)} (${cost})` })
+      if (!player.available_cost_types || player.available_cost_types.includes(type)) {
+        options.push({ value: type, text: `${t('teamMembers.costTypes.' + type)} (${cost})` })
+      }
     }
   }
 

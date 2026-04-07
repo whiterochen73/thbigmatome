@@ -1,5 +1,5 @@
 class PlayerSerializer < ActiveModel::Serializer
-  attributes :id, :name, :number, :short_name, :handedness, :position
+  attributes :id, :name, :number, :short_name, :handedness, :position, :available_cost_types
 
   has_many :cost_players, serializer: CostPlayerSerializer
 

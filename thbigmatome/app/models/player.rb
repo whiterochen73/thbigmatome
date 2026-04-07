@@ -22,8 +22,8 @@ class Player < ApplicationRecord
     pitcher_cards = loaded_cards.select(&:is_pitcher)
     fielder_cards = loaded_cards.reject(&:is_pitcher)
 
-    # リリーフ契約: is_relief_only=true またはスラッシュ投手(is_dual_wielder=true)の投手カードがある
-    if pitcher_cards.any? { |c| c.is_relief_only || c.is_dual_wielder }
+    # リリーフ契約: 疲労Pに「R」がついていないリリーフ選手 またはスラッシュ投手(is_dual_wielder=true)
+    if pitcher_cards.any? { |c| (!c.is_relief_only && c.relief_stamina.present?) || c.is_dual_wielder }
       types << "relief_only_cost"
     end
 

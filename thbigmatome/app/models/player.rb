@@ -40,4 +40,28 @@ class Player < ApplicationRecord
 
     types
   end
+
+  # バリエーションカード個別のコスト種別判定
+  def available_cost_types_for_card(card)
+    types = [ "normal_cost" ]
+
+    loaded_cards = player_cards.loaded? ? player_cards : player_cards.to_a
+
+    # リリーフ契約: このカード固有の投手特性で判定
+    if card.is_pitcher && ((!card.is_relief_only && card.relief_stamina.present?) || card.is_dual_wielder)
+      types << "relief_only_cost"
+    end
+
+    # 二刀流/投手専念/野手専念: 選手全体で投手・野手カード両方を持つ場合
+    has_pitcher = loaded_cards.any?(&:is_pitcher)
+    has_fielder = loaded_cards.any? { |c| !c.is_pitcher }
+
+    if (has_pitcher && has_fielder) || SPECIAL_PITCHER_FIELDER_PLAYER_IDS.include?(id)
+      types << "two_way_cost"
+      types << "pitcher_only_cost"
+      types << "fielder_only_cost"
+    end
+
+    types
+  end
 end

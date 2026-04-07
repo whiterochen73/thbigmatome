@@ -434,10 +434,11 @@ function createEmptyRow(role: PitcherRole): PitcherRow {
 }
 
 function computeIPFromRow(row: PitcherRow): number | null {
-  if (row.innings_int === null) return null
-  if (row.innings_frac === '1') return row.innings_int + 0.1
-  if (row.innings_frac === '2') return row.innings_int + 0.2
-  return row.innings_int
+  if (row.innings_int === null && row.innings_frac === '') return null
+  const base = row.innings_int ?? 0
+  if (row.innings_frac === '1') return base + 0.1
+  if (row.innings_frac === '2') return base + 0.2
+  return base
 }
 
 function addRow() {

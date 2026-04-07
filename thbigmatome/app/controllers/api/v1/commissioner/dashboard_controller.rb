@@ -98,6 +98,7 @@ class Api::V1::Commissioner::DashboardController < Api::V1::Commissioner::BaseCo
 
       team.team_memberships.each do |tm|
         next unless tm.squad == "second"
+        next if tm.player.nil?
 
         info = calculate_cooldown_info(tm, season.current_date)
         next unless info[:cooldown_until]

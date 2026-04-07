@@ -238,6 +238,7 @@ class Api::V1::GameRecordsController < Api::V1::BaseController
           pitcher_id: pitcher_id,
           pitcher_name: ab.pitcher_name,
           innings_pitched: 0,
+          _outs: 0,
           hits_allowed: 0,
           runs_allowed: 0,
           strikeouts: 0,
@@ -256,6 +257,15 @@ class Api::V1::GameRecordsController < Api::V1::BaseController
       end
 
       pitching_stats[pitcher_id][:runs_allowed] += runs_scored if runs_scored > 0
+
+      outs_gained = [ (ab.outs_after || 0).to_i - (ab.outs_before || 0).to_i, 0 ].max
+      pitching_stats[pitcher_id][:_outs] += outs_gained
+    end
+
+    # Convert accumulated outs to innings_pitched (baseball notation: 1.1 = 1 1/3)
+    pitching_stats.each_value do |stats|
+      total_outs = stats.delete(:_outs) || 0
+      stats[:innings_pitched] = (total_outs / 3) + (total_outs % 3) * 0.1
     end
 
     # Save stats to game_record

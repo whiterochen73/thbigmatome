@@ -216,7 +216,8 @@ module Api
               cumulative = cumulative <= 3 ? [ cumulative - 2, 0 ].max : cumulative - 1
             end
           end
-          cumulative += 1
+          ip = app.innings_pitched.to_f
+          cumulative += ip > 0 ? [ ip.floor, 1 ].max : 1
           prev_date = app.schedule_date.to_date
         end
 

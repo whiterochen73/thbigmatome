@@ -6,6 +6,7 @@ RSpec.describe "Api::V1::CostAssignmentsController", type: :request do
 
     let!(:cost) { create(:cost) }
     let!(:player) { create(:player) }
+    let!(:player_card) { create(:player_card, player: player) }
 
     it "returns 200 with players and cost info" do
       create(:cost_player, cost: cost, player: player, normal_cost: 5, relief_only_cost: 3)
@@ -29,6 +30,18 @@ RSpec.describe "Api::V1::CostAssignmentsController", type: :request do
       json = response.parsed_body
       player_data = json.find { |p| p["id"] == player.id }
       expect(player_data["normal_cost"]).to be_nil
+    end
+
+    it "excludes players with no registered player_cards" do
+      player_without_card = create(:player)
+
+      get "/api/v1/cost_assignments", params: { cost_id: cost.id }
+
+      expect(response).to have_http_status(:ok)
+      json = response.parsed_body
+      ids = json.map { |p| p["id"] }
+      expect(ids).to include(player.id)
+      expect(ids).not_to include(player_without_card.id)
     end
   end
 

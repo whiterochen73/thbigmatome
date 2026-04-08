@@ -3,7 +3,7 @@ module Api
     class CostAssignmentsController < Api::V1::BaseController
       def index
         @cost_id = params[:cost_id].to_i
-        @players = Player.order(:id).preload(:cost_players, player_cards: :player_types)
+        @players = Player.joins(:player_cards).distinct.order(:id).preload(:cost_players, player_cards: :player_types)
 
         rows = []
 

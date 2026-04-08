@@ -69,8 +69,10 @@ class Player < ApplicationRecord
     types
   end
 
-  # ハチナイ二刀流選手判定: ハチナイ6.1カードセット保有のみ
+  # ハチナイ二刀流選手判定: ハチナイ6.1カードセット保有 かつ 投手+野手両方のカードを保有
   def hachinai_two_way?
-    player_cards.joins(:card_set).where(card_sets: { set_type: "hachinai61" }).exists?
+    return false unless player_cards.joins(:card_set).where(card_sets: { set_type: "hachinai61" }).exists?
+    loaded = player_cards.loaded? ? player_cards : player_cards.to_a
+    loaded.any?(&:is_pitcher) && loaded.any? { |c| !c.is_pitcher }
   end
 end

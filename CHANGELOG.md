@@ -5,6 +5,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.0] - 2026-04-08
+
+### Added
+- バリエーション持ち選手の自動判定＋カード別コスト種別（available_cost_types_for_card）実装
+- コスト画面ハイブリッド拡張（カード別コスト登録対応）
+- コスト種別解禁条件実装（リリーフ・二刀流・投手専念・野手専念）
+- コスト登録メニュー解禁＋player_types API整備
+- PM2026バリアント選手50件のvariant設定＋元選手紐づけ
+- オリジナル枠バリエーション選手45件のvariant設定
+
+### Fixed
+- hachinai_two_way?誤判定修正（number<=39条件削除→hachinai61カードセット保有+投手/野手両方保有に変更）
+- コスト一覧からカード未登録選手を除外
+- PM通し番号選手17件のvariant誤付与を修正
+- 投手休養ルール3件修正（負傷中の休養凍結・減衰凍結・中10日全快）
+- relief_only_cost解禁条件修正
+- チームダイアログ コーチ欄削除＋director locale修正
+- バグ2件修正（チームダイアログ不開・累積イニング一律1判定）
+- バグ3件修正（端数入力0補完・innings計算・cooldown null）
+
 ## [0.2.1] - 2026-04-06
 
 ### Fixed

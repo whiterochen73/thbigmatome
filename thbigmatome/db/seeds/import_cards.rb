@@ -76,6 +76,20 @@ CSV.foreach("#{data_dir}/player_cards.csv", headers: true) do |row|
   derived_series = CARD_SOURCE_SERIES[card_source]
   player.update_column(:series, derived_series) if player.series.nil? && derived_series.present?
 
+  # バリエーション処理: variant列があればベースプレイヤーに player_id を付け替える
+  # base_player_name が空の場合は player_id 変更なし（冴月麟など）
+  variant_val = row["variant"].presence
+  base_player_name = row["base_player_name"].presence
+  if variant_val.present? && base_player_name.present?
+    normalized_base = base_player_name.gsub(/[\s\u3000]+/, '')
+    base_player = Player.find_by("REPLACE(REPLACE(name, ' ', ''), '　', '') = ?", normalized_base)
+    if base_player
+      player = base_player
+    else
+      puts "  WARN: base_player_name='#{base_player_name}' not found for #{player_name}, using variant player"
+    end
+  end
+
   card_type = if row["card_type"].present?
                 row["card_type"]
   elsif row["is_pitcher"] == "true"
@@ -96,7 +110,10 @@ CSV.foreach("#{data_dir}/player_cards.csv", headers: true) do |row|
     end
   end
 
-  pc = PlayerCard.find_or_create_by!(card_set_id: card_set.id, player_id: player.id, card_type: card_type) do |c|
+  find_key = { card_set_id: card_set.id, player_id: player.id, card_type: card_type }
+  find_key[:variant] = variant_val if variant_val.present?
+  pc = PlayerCard.find_or_create_by!(**find_key) do |c|
+    c.variant          = variant_val
     c.is_pitcher       = row["is_pitcher"] == "true"
     c.handedness       = handedness_val
     c.is_relief_only   = row["is_relief_only"] == "true"

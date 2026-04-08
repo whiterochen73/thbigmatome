@@ -16,7 +16,9 @@ class Player < ApplicationRecord
   SPECIAL_PITCHER_FIELDER_PLAYER_IDS = [ 3, 20, 29, 33 ].freeze
 
   def available_cost_types
-    types = [ "normal_cost" ]
+    types = []
+    # ハチナイ二刀流選手は「通常」コスト不可
+    types << "normal_cost" unless hachinai_two_way?
 
     loaded_cards = player_cards.loaded? ? player_cards : player_cards.to_a
     pitcher_cards = loaded_cards.select(&:is_pitcher)
@@ -43,7 +45,9 @@ class Player < ApplicationRecord
 
   # バリエーションカード個別のコスト種別判定
   def available_cost_types_for_card(card)
-    types = [ "normal_cost" ]
+    types = []
+    # ハチナイ二刀流選手は「通常」コスト不可
+    types << "normal_cost" unless hachinai_two_way?
 
     loaded_cards = player_cards.loaded? ? player_cards : player_cards.to_a
 
@@ -63,5 +67,10 @@ class Player < ApplicationRecord
     end
 
     types
+  end
+
+  # ハチナイ二刀流選手判定: ハチナイ6.1カードセット保有のみ
+  def hachinai_two_way?
+    player_cards.joins(:card_set).where(card_sets: { set_type: "hachinai61" }).exists?
   end
 end

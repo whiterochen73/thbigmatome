@@ -289,13 +289,7 @@ module Api
             end
           end
           ip = app.innings_pitched.to_f
-          cumulative += if app.no_out_exit
-                         2
-          elsif ip > 0
-                         [ ip.floor, 1 ].max
-          else
-                         1
-          end
+          cumulative += [ ip.floor + (app.no_out_exit ? 1 : 0), 1 ].max
           prev_date = app.schedule_date.to_date
         end
 

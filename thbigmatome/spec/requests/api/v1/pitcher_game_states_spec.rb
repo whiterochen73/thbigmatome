@@ -125,9 +125,18 @@ RSpec.describe "Api::V1::PitcherGameStatesController", type: :request do
         expect(entry["cumulative_innings"]).to eq(0)
       end
 
-      it "0アウト降板（no_out_exit=true）: 累積+2として計算される" do
-        # 0/3イニング登板でno_out_exit=true → 累積+2
+      it "0アウト降板（innings=0, no_out_exit=true）: max(0+1,1)=1" do
+        # max(0+1, 1) = 1
         create_pgs(schedule_date: "2026-03-01", innings_pitched: 0, no_out_exit: true)
+        get_states(date: "2026-03-02", player_ids: [ pitcher.id ])
+
+        entry = response.parsed_body.find { |e| e["player_id"] == pitcher.id }
+        expect(entry["cumulative_innings"]).to eq(1)
+      end
+
+      it "1イニング投げて0アウト降板（innings=1, no_out_exit=true）: max(1+1,1)=2" do
+        # max(1+1, 1) = 2
+        create_pgs(schedule_date: "2026-03-01", innings_pitched: 1, no_out_exit: true)
         get_states(date: "2026-03-02", player_ids: [ pitcher.id ])
 
         entry = response.parsed_body.find { |e| e["player_id"] == pitcher.id }
@@ -135,13 +144,13 @@ RSpec.describe "Api::V1::PitcherGameStatesController", type: :request do
       end
 
       it "0アウト降板後に連日登板: 累積が正しく加算される" do
-        # 03-01: no_out_exit(+2=累積2), 03-02: 通常1イニング(+1=累積3)
+        # 03-01: no_out_exit(max(0+1,1)=1), 03-02: 通常1イニング(max(1+0,1)=1) → 累積2
         create_pgs(schedule_date: "2026-03-01", innings_pitched: 0, no_out_exit: true)
         create_pgs(schedule_date: "2026-03-02")
         get_states(date: "2026-03-03", player_ids: [ pitcher.id ])
 
         entry = response.parsed_body.find { |e| e["player_id"] == pitcher.id }
-        expect(entry["cumulative_innings"]).to eq(3)
+        expect(entry["cumulative_innings"]).to eq(2)
       end
     end
 

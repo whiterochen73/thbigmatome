@@ -289,7 +289,20 @@ module Api
             end
           end
           ip = app.innings_pitched.to_f
-          cumulative += [ ip.floor + (app.no_out_exit ? 1 : 0), 1 ].max
+          my_outs = ip.floor * 3 + ((ip * 10).round % 10)
+          prior_outs = PitcherGameState
+            .where(game_id: app.game_id, team_id: app.team_id)
+            .where("appearance_order < ?", app.appearance_order)
+            .pluck(:innings_pitched)
+            .sum { |s| s.to_f.then { |f| f.floor * 3 + ((f * 10).round % 10) } }
+          involvement = if my_outs == 0
+            1
+          else
+            start_inning = prior_outs / 3 + 1
+            end_inning = (prior_outs + my_outs - 1) / 3 + 1
+            (end_inning - start_inning + 1) + (app.no_out_exit ? 1 : 0)
+          end
+          cumulative += [ involvement, 1 ].max
           prev_date = app.schedule_date.to_date
         end
 

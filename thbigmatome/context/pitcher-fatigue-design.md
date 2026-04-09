@@ -50,6 +50,7 @@ pitcher_game_states (既存)
 | `is_opener` | boolean | false | オープナー本人として登板（真の場合、リリーフルール適用） |
 | `consecutive_short_rest_count` | integer | 0 | 連続中4日先発カウント（DBカラムとして管理） |
 | `pre_injury_days_excluded` | integer | 0 | 負傷離脱で除外した中日数（計算補正用） |
+| `no_out_exit` | boolean | false | 回の頭から投げて0アウトで降板した場合 true。関与イニング数計算に使用 |
 
 ### 2-3. マイグレーション設計（P承認済み）
 
@@ -58,6 +59,7 @@ pitcher_game_states (既存)
 add_column :pitcher_game_states, :is_opener, :boolean, default: false, null: false
 add_column :pitcher_game_states, :consecutive_short_rest_count, :integer, default: 0, null: false
 add_column :pitcher_game_states, :pre_injury_days_excluded, :integer, default: 0, null: false
+add_column :pitcher_game_states, :no_out_exit, :boolean, default: false, null: false
 ```
 
 ### 2-4. テーブルリレーション図
@@ -178,7 +180,21 @@ def calculate_current_cumulative_innings(pitcher_id, team_id, target_date)
         cumulative = cumulative <= 3 ? [cumulative - 2, 0].max : cumulative - 1
       end
     end
-    cumulative += 1  # 1登板 = +1イニング（回跨ぎ含む）
+    # 関与イニング数（通算アウト数ベース）
+    # start_inning = floor(prior_outs / 3) + 1
+    # end_inning   = floor((prior_outs + my_outs - 1) / 3) + 1
+    # 関与イニング数 = (end_inning - start_inning + 1) + (no_out_exit ? 1 : 0)
+    # ※ my_outs=0 の場合は関与イニング数=1
+    prior_outs = app.prior_outs || 0
+    my_outs = app.outs_recorded || 0
+    if my_outs == 0
+      involvement = 1
+    else
+      start_inning = prior_outs / 3 + 1
+      end_inning = (prior_outs + my_outs - 1) / 3 + 1
+      involvement = (end_inning - start_inning + 1) + (app.no_out_exit ? 1 : 0)
+    end
+    cumulative += involvement
     prev_date = app.schedule_date.to_date
   end
 

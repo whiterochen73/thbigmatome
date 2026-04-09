@@ -185,6 +185,45 @@ RSpec.describe PitcherGameState, type: :model do
         )).to eq("normal")
       end
     end
+
+    context "0アウト降板（no_out_exit）と関与イニング数の境界値（cmd_971）" do
+      # P6先発: fp+1 = 7。関与7イニング以下はnormal、8以上はlong_loss
+      it "P6先発が7回完了・敗戦・no_out_exit=false → normal（関与7, 7>7はfalse）" do
+        expect(described_class.calculate_result_category(
+          role: "starter", innings_pitched: 7.0, game_result: "lose", pitchers_in_game: 1,
+          fatigue_p: 6, no_out_exit: false
+        )).to eq("normal")
+      end
+
+      it "P6先発が8回登板→先頭打者出塁→0アウト降板・敗戦・no_out_exit=true → long_loss（関与8, 8>7はtrue）" do
+        expect(described_class.calculate_result_category(
+          role: "starter", innings_pitched: 7.0, game_result: "lose", pitchers_in_game: 2,
+          fatigue_p: 6, no_out_exit: true
+        )).to eq("long_loss")
+      end
+
+      it "P6先発が8回1アウトで降板・敗戦・no_out_exit=false → long_loss（関与7.1, 7.1>7はtrue）" do
+        expect(described_class.calculate_result_category(
+          role: "starter", innings_pitched: 7.1, game_result: "lose", pitchers_in_game: 2,
+          fatigue_p: 6, no_out_exit: false
+        )).to eq("long_loss")
+      end
+
+      # 補正後疲労P（中日数等による実効P）での判定
+      it "補正後P5（素P6・中5日→実効P5）で7回完了・敗戦 → long_loss（関与7, 7>6はtrue）" do
+        expect(described_class.calculate_result_category(
+          role: "starter", innings_pitched: 7.0, game_result: "lose", pitchers_in_game: 1,
+          fatigue_p: 5, no_out_exit: false
+        )).to eq("long_loss")
+      end
+
+      it "補正後P5で6回完了・敗戦 → normal（関与6, 6>6はfalse）" do
+        expect(described_class.calculate_result_category(
+          role: "starter", innings_pitched: 6.0, game_result: "lose", pitchers_in_game: 1,
+          fatigue_p: 5, no_out_exit: false
+        )).to eq("normal")
+      end
+    end
   end
 
   describe "バリデーション: injury_check" do

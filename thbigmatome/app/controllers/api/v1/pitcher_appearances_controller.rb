@@ -75,7 +75,8 @@ class Api::V1::PitcherAppearancesController < Api::V1::BaseController
             game_result: game_result,
             pitchers_in_game: pitchers_count,
             fatigue_p: hash[:fatigue_p_used].to_i,
-            decision: hash[:decision]
+            decision: hash[:decision],
+            no_out_exit: hash[:no_out_exit]
           )
         end
 
@@ -126,7 +127,8 @@ class Api::V1::PitcherAppearancesController < Api::V1::BaseController
         game_result: game_result,
         pitchers_in_game: pitchers_count,
         fatigue_p: appearance_params_hash[:fatigue_p_used].to_i,
-        decision: appearance_params_hash[:decision]
+        decision: appearance_params_hash[:decision],
+        no_out_exit: appearance_params_hash[:no_out_exit]
       )
     end
 

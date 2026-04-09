@@ -19,15 +19,18 @@ class PitcherGameState < ApplicationRecord
   # result_category 自動計算ロジック
   # game_result: "win" / "lose" / "draw" / "no_game"
   # pitchers_in_game: この試合のこのチームの投手総数（新規追加分含む）
-  # fatigue_p: カード記載の先発疲労P（long_loss判定に使用）。0/nil の場合はデフォルト3を適用（ルール§8.3）
+  # fatigue_p: 補正後の実効疲労P（long_loss判定に使用）。0/nil の場合はデフォルト3を適用（ルール§8.3）
+  # no_out_exit: 0アウト降板フラグ。trueの場合、関与イニング = innings_pitched.floor + 1
   DEFAULT_STARTER_FATIGUE_P = 3
 
-  def self.calculate_result_category(role:, innings_pitched:, game_result:, pitchers_in_game:, fatigue_p: 0, decision: nil)
+  def self.calculate_result_category(role:, innings_pitched:, game_result:, pitchers_in_game:, fatigue_p: 0, decision: nil, no_out_exit: false)
     return "no_game" if game_result == "no_game"
     return "normal" unless role == "starter"
 
     has_successor = pitchers_in_game > 1
-    innings = innings_pitched.to_f
+    # 関与イニング数 = max(innings_pitched + (0アウト降板なら+1), 1)
+    # innings_pitched は野球表記（7.1 = 7回1/3）。no_out_exit=true の場合は次のイニングに入ったとみなし+1
+    innings = innings_pitched.to_f + (no_out_exit ? 1 : 0)
     fp = fatigue_p.to_i
     # ルール§8.3: 先発疲労P未記載の投手が先発した場合、先発疲労P=3として扱う
     fp = DEFAULT_STARTER_FATIGUE_P if fp == 0

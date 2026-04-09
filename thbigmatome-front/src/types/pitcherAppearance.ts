@@ -6,6 +6,7 @@ export interface PitcherAppearanceInput {
   pitcher_id: number | null
   role: PitcherRole
   innings_pitched: number | null
+  no_out_exit: boolean
   earned_runs: number
   fatigue_p_used: number
   decision: PitcherDecision

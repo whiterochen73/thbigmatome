@@ -366,6 +366,7 @@ import { useRoute, useRouter } from 'vue-router'
 import axios from '@/plugins/axios'
 import { useSnackbar } from '@/composables/useSnackbar'
 import type { Player } from '@/types/player'
+import type { PlayerCost } from '@/types/playerCost'
 import type { CostList } from '@/types/costList'
 import type { PlayerType } from '@/types/playerType'
 import FilterBar from '@/components/shared/FilterBar.vue'
@@ -426,6 +427,22 @@ const playerTypes = ref<PlayerType[]>([])
 const availablePlayerCards = ref<PlayerCardInfo[]>([])
 const selectedCardSetId = ref<number | null>(null)
 const fetchingCards = ref(false)
+
+// バリエーション対応コスト検索: variant-specific → base の順にフォールバック
+const findCostPlayer = (
+  costPlayers: PlayerCost[],
+  costId: number | null,
+  playerCardId?: number | null,
+): PlayerCost | undefined => {
+  if (!costId) return undefined
+  if (playerCardId != null) {
+    const variant = costPlayers.find(
+      (cp) => cp.cost_id === costId && cp.player_card_id === playerCardId,
+    )
+    if (variant) return variant
+  }
+  return costPlayers.find((cp) => cp.cost_id === costId && cp.player_card_id == null)
+}
 
 const cardSetOptions = computed<CardSetOption[]>(() => {
   const map = new Map<number, CardSetOption>()
@@ -490,8 +507,10 @@ const includedTeamPlayers = computed(() => {
 
 const totalTeamCost = computed(() => {
   return includedTeamPlayers.value.reduce((sum, p) => {
-    const costPlayerForSelectedList = p.cost_players.find(
-      (cp) => cp.cost_id === selectedCostListId.value,
+    const costPlayerForSelectedList = findCostPlayer(
+      p.cost_players,
+      selectedCostListId.value,
+      p.player_card_id,
     )
     const costValue = costPlayerForSelectedList
       ? ((costPlayerForSelectedList as Record<CostType, number | null>)[p.selected_cost_type] ?? 0)
@@ -535,17 +554,21 @@ const filteredTeamPlayers = computed(() => {
 const availablePlayers = computed(() => {
   if (!selectedCostListId.value) return []
   // 選択されたコスト一覧表にいずれかのコストが設定されている選手をフィルタリング
+  // バリエーション対応: base/variant含む全エントリをチェック
   return allPlayers.value.filter((p) => {
-    const costPlayer = p.cost_players.find((cp) => cp.cost_id === selectedCostListId.value)
-    if (!costPlayer) return false
+    const costPlayersForList = p.cost_players.filter(
+      (cp) => cp.cost_id === selectedCostListId.value,
+    )
+    if (costPlayersForList.length === 0) return false
     if (teamPlayers.value.some((tp) => tp.id === p.id)) return false
-    // いずれかのコストタイプが設定されていれば追加候補に含める
-    return (
-      costPlayer.normal_cost !== null ||
-      costPlayer.relief_only_cost !== null ||
-      costPlayer.pitcher_only_cost !== null ||
-      costPlayer.fielder_only_cost !== null ||
-      costPlayer.two_way_cost !== null
+    // いずれかのエントリにコストが設定されていれば追加候補に含める
+    return costPlayersForList.some(
+      (cp) =>
+        cp.normal_cost !== null ||
+        cp.relief_only_cost !== null ||
+        cp.pitcher_only_cost !== null ||
+        cp.fielder_only_cost !== null ||
+        cp.two_way_cost !== null,
     )
   })
 })
@@ -571,7 +594,8 @@ const filteredAvailablePlayers = computed(() => {
 const getPlayerCostLabel = (player: Player): string => {
   if (!selectedCostListId.value) return ''
   if (!player?.cost_players) return ''
-  const costPlayer = player.cost_players.find((cp) => cp.cost_id === selectedCostListId.value)
+  // バリエーション選手: base entryを優先、なければ最初のvariant entryを表示
+  const costPlayer = findCostPlayer(player.cost_players, selectedCostListId.value)
   if (!costPlayer) return t('teamMembers.costDisplayLabels.noData')
 
   const parts: string[] = []
@@ -629,8 +653,10 @@ const fetchTeamPlayers = async () => {
     teamPlayers.value = response.data.map((player) => {
       let initialSelectedCostType: CostType = 'normal_cost' // Default to normal_cost
 
-      const costPlayerForSelectedList = player.cost_players.find(
-        (cp) => cp.cost_id === selectedCostListId.value,
+      const costPlayerForSelectedList = findCostPlayer(
+        player.cost_players,
+        selectedCostListId.value,
+        player.player_card_id,
       )
 
       // Determine the initial selected cost type
@@ -700,8 +726,11 @@ const fetchPlayerTypes = async () => {
 
 const getAvailableCostTypes = (player: Player) => {
   const options: { value: CostType; text: string }[] = []
-  const costPlayerForSelectedList = player.cost_players.find(
-    (cp) => cp.cost_id === selectedCostListId.value,
+  const playerCardId = (player as TeamPlayer).player_card_id
+  const costPlayerForSelectedList = findCostPlayer(
+    player.cost_players,
+    selectedCostListId.value,
+    playerCardId,
   )
 
   if (!costPlayerForSelectedList) return [] // 選択されたコスト一覧表に紐づくコストデータがない場合は空を返す
@@ -724,11 +753,14 @@ const getAvailableCostTypes = (player: Player) => {
 }
 
 const updatePlayerCost = (player: TeamPlayer) => {
-  const costPlayerForSelectedList = player.cost_players.find(
-    (cp) => cp.cost_id === selectedCostListId.value,
+  const costPlayerForSelectedList = findCostPlayer(
+    player.cost_players,
+    selectedCostListId.value,
+    player.player_card_id,
   )
   const costValue = costPlayerForSelectedList
-    ? (costPlayerForSelectedList[player.selected_cost_type] ?? 0)
+    ? ((costPlayerForSelectedList as Record<CostType, number | null>)[player.selected_cost_type] ??
+      0)
     : 0
   player.current_cost = costValue
 }
@@ -774,24 +806,7 @@ const addPlayer = () => {
 const doAddPlayer = () => {
   if (!selectedPlayer.value) return
 
-  const costPlayerForSelectedList = selectedPlayer.value.cost_players.find(
-    (cp) => cp.cost_id === selectedCostListId.value,
-  )
-
-  // 有効なコストタイプを優先順で決定
-  let initialCostType: CostType = 'normal_cost'
-  let initialCost = 0
-
-  if (costPlayerForSelectedList) {
-    const availableOptions = getAvailableCostTypes(selectedPlayer.value)
-    if (availableOptions.length > 0) {
-      initialCostType = availableOptions[0].value
-      initialCost =
-        (costPlayerForSelectedList as Record<CostType, number | null>)[initialCostType] ?? 0
-    }
-  }
-
-  // カードIDの解決: selectedCardSetId + player.position から適切なcard_idを決定
+  // カードIDの解決: selectedCardSetId + player.position から適切なcard_idを先に決定
   let resolvedCardId: number | null = null
   let resolvedCardInfo: PlayerCardInfo | null = null
 
@@ -806,6 +821,27 @@ const doAddPlayer = () => {
   } else if (availablePlayerCards.value.length === 1) {
     resolvedCardId = availablePlayerCards.value[0].id
     resolvedCardInfo = availablePlayerCards.value[0]
+  }
+
+  // カードID確定後にコスト検索（バリエーション対応）
+  let initialCostType: CostType = 'normal_cost'
+  let initialCost = 0
+
+  const costPlayerForSelectedList = findCostPlayer(
+    selectedPlayer.value.cost_players,
+    selectedCostListId.value,
+    resolvedCardId,
+  )
+  if (costPlayerForSelectedList) {
+    const availableOptions = getAvailableCostTypes({
+      ...selectedPlayer.value,
+      player_card_id: resolvedCardId,
+    } as TeamPlayer)
+    if (availableOptions.length > 0) {
+      initialCostType = availableOptions[0].value
+      initialCost =
+        (costPlayerForSelectedList as Record<CostType, number | null>)[initialCostType] ?? 0
+    }
   }
 
   const newPlayer: TeamPlayer = {

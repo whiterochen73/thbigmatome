@@ -61,7 +61,9 @@ class CostValidator
   end
 
   def player_cost(player_card)
-    cost_player = @current_cost ? player_card.player.cost_players.find { |cp| cp.cost_id == @current_cost.id } : nil
+    return 0 unless @current_cost
+    cost_player = player_card.player.cost_players.find { |cp| cp.cost_id == @current_cost.id && cp.player_card_id == player_card.id }
+    cost_player ||= player_card.player.cost_players.find { |cp| cp.cost_id == @current_cost.id && cp.player_card_id.nil? }
     return 0 unless cost_player
 
     if player_card.is_relief_only

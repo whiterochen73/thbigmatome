@@ -143,5 +143,37 @@ RSpec.describe CostValidator, type: :service do
         expect(result[:total_limit]).to eq(200)
       end
     end
+
+    context 'バリエーション持ち選手のコスト参照' do
+      let(:player) { create(:player) }
+      let(:base_card) { create(:player_card, player: player) }
+      let(:variant_card) { create(:player_card, player: player) }
+
+      before do
+        # base entry: normal_cost=2
+        create(:cost_player, cost: cost, player: player, player_card_id: nil, normal_cost: 2)
+        # variant-specific entry: normal_cost=5
+        create(:cost_player, cost: cost, player: player, player_card_id: variant_card.id, normal_cost: 5)
+
+        # variant_card を1軍に登録
+        24.times do
+          pc = create_player_card_with_cost(normal_cost: 4)
+          create(:competition_roster, competition_entry: entry, player_card: pc, squad: :first_squad)
+        end
+        create(:competition_roster, competition_entry: entry, player_card: variant_card, squad: :first_squad)
+      end
+
+      it 'variant-specific コスト(5)を参照する' do
+        result = described_class.new(entry.id).validate
+        # 24人×4 + 1人×5(variant) = 101
+        expect(result[:first_squad_cost]).to eq(101)
+      end
+
+      it 'base entry のコスト(2)を使わない' do
+        result = described_class.new(entry.id).validate
+        # もし base entry(2) を使った場合は 24×4+2=98 になる
+        expect(result[:first_squad_cost]).not_to eq(98)
+      end
+    end
   end
 end

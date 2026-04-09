@@ -107,7 +107,9 @@ class Team < ApplicationRecord
   def calculate_included_team_cost(cost_list_id)
     included_memberships = team_memberships.included_in_team_total.includes(player: :cost_players)
     included_memberships.sum do |tm|
-      cost_player = tm.player.cost_players.find { |cp| cp.cost_id == cost_list_id }
+      card_id = tm.player_card_id
+      cost_player = tm.player.cost_players.find { |cp| cp.cost_id == cost_list_id && cp.player_card_id == card_id }
+      cost_player ||= tm.player.cost_players.find { |cp| cp.cost_id == cost_list_id && cp.player_card_id.nil? }
       cost_player ? (cost_player.send(tm.selected_cost_type) || 0) : 0
     end
   end

@@ -37,6 +37,17 @@ RSpec.describe "Api::V1::TeamsController", type: :request do
       )
     end
 
+    it "returns teams ordered by active status first, then updated_at desc" do
+      inactive_team = create(:team, is_active: false)
+      active_team   = create(:team, is_active: true)
+
+      get "/api/v1/teams", as: :json
+
+      ids = response.parsed_body.map { |t| t["id"] }
+      expect(ids.first).to eq(active_team.id)
+      expect(ids.last).to eq(inactive_team.id)
+    end
+
     it "includes director and coaches" do
       team = create(:team)
       director = create(:manager, name: "監督A", role: :director)
@@ -145,6 +156,15 @@ RSpec.describe "Api::V1::TeamsController", type: :request do
       delete "/api/v1/teams/999999", as: :json
 
       expect(response).to have_http_status(:not_found)
+    end
+
+    it "returns 422 when team has a season" do
+      create(:season, team: team)
+      expect {
+        delete "/api/v1/teams/#{team.id}", as: :json
+      }.not_to change(Team, :count)
+
+      expect(response).to have_http_status(:unprocessable_entity)
     end
   end
 

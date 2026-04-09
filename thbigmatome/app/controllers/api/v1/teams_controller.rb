@@ -9,7 +9,7 @@ module Api
 
       # GET /api/v1/teams
       def index
-        @teams = Team.preload(:director, :coaches).all
+        @teams = Team.preload(:director, :coaches).order(is_active: :desc, updated_at: :desc)
         render json: @teams, each_serializer: TeamSerializer
       end
 
@@ -57,8 +57,11 @@ module Api
 
       # DELETE /api/v1/teams/:id
       def destroy
-        @team.destroy
-        head :no_content
+        if @team.destroy
+          head :no_content
+        else
+          render json: { errors: @team.errors.full_messages }, status: :unprocessable_entity
+        end
       end
 
       private

@@ -124,6 +124,25 @@ RSpec.describe "Api::V1::PitcherGameStatesController", type: :request do
         entry = response.parsed_body.find { |e| e["player_id"] == pitcher.id }
         expect(entry["cumulative_innings"]).to eq(0)
       end
+
+      it "0アウト降板（no_out_exit=true）: 累積+2として計算される" do
+        # 0/3イニング登板でno_out_exit=true → 累積+2
+        create_pgs(schedule_date: "2026-03-01", innings_pitched: 0, no_out_exit: true)
+        get_states(date: "2026-03-02", player_ids: [ pitcher.id ])
+
+        entry = response.parsed_body.find { |e| e["player_id"] == pitcher.id }
+        expect(entry["cumulative_innings"]).to eq(2)
+      end
+
+      it "0アウト降板後に連日登板: 累積が正しく加算される" do
+        # 03-01: no_out_exit(+2=累積2), 03-02: 通常1イニング(+1=累積3)
+        create_pgs(schedule_date: "2026-03-01", innings_pitched: 0, no_out_exit: true)
+        create_pgs(schedule_date: "2026-03-02")
+        get_states(date: "2026-03-03", player_ids: [ pitcher.id ])
+
+        entry = response.parsed_body.find { |e| e["player_id"] == pitcher.id }
+        expect(entry["cumulative_innings"]).to eq(3)
+      end
     end
 
     describe "GET /api/v1/teams/:team_id/pitcher_game_states/fatigue_summary" do

@@ -296,7 +296,8 @@ class Api::V1::PitcherAppearancesController < Api::V1::BaseController
       :consecutive_short_rest_count,
       :pre_injury_days_excluded,
       :cumulative_innings,
-      :appearance_order
+      :appearance_order,
+      :no_out_exit
     )
   end
 
@@ -316,7 +317,8 @@ class Api::V1::PitcherAppearancesController < Api::V1::BaseController
       :is_opener,
       :consecutive_short_rest_count,
       :pre_injury_days_excluded,
-      :cumulative_innings
+      :cumulative_innings,
+      :no_out_exit
     )
   end
 end

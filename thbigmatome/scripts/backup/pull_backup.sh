@@ -22,7 +22,7 @@ if [[ "${1:-}" == "--dry-run" ]]; then
 fi
 
 VPS_HOST="dugout-vps"
-VPS_BACKUP_ROOT="/var/backups/thbigmatome"
+VPS_BACKUP_ROOT="/home/deploy/backups/thbigmatome"
 LOCAL_BACKUP_ROOT="${HOME}/backups/thbigmatome"
 
 mkdir -p "${LOCAL_BACKUP_ROOT}/daily" "${LOCAL_BACKUP_ROOT}/weekly"

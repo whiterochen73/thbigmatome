@@ -10,20 +10,21 @@
 | 実行方式 | VPS上のcronジョブ → `docker compose exec db pg_dump` |
 | 実行タイミング | 毎日 02:00 (JST) |
 | 世代管理 | 日次: 7世代 / 週次 (日曜): 4世代 |
-| バックアップ保存先 | `/var/backups/thbigmatome/` (VPS上) |
+| バックアップ保存先 | `~/backups/thbigmatome/` (VPS上: deployユーザーホーム) |
 | ローカル取得 | rsync経由でWSLに手動pull |
 
 ## ディレクトリ構成
 
 ```
-/var/backups/thbigmatome/
+/home/deploy/backups/thbigmatome/
 ├── daily/
 │   ├── thbigmatome_20260410_020000.dump   # 最新7件保持
 │   └── ...
 ├── weekly/
 │   ├── thbigmatome_weekly_20260406_020000.dump  # 最新4件保持
 │   └── ...
-└── backup.log     # 実行ログ
+├── backup.log     # 実行ログ
+└── cron.log       # cron実行ログ
 ```
 
 ## スクリプト一覧
@@ -37,61 +38,53 @@
 
 ---
 
-## デプロイ手順（P確認後に実施）
+## デプロイ状況（2026-04-10 完了済み）
 
-### 1. VPS上にバックアップディレクトリを作成
-
-```bash
-sudo mkdir -p /var/backups/thbigmatome/daily /var/backups/thbigmatome/weekly
-sudo chown -R thbigmatome:thbigmatome /var/backups/thbigmatome
-```
-
-### 2. スクリプトに実行権限を付与
+### 実施済み内容
 
 ```bash
-chmod +x /home/thbigmatome/projects/thbigmatome/scripts/backup/backup_daily.sh
-chmod +x /home/thbigmatome/projects/thbigmatome/scripts/backup/restore.sh
-chmod +x /home/thbigmatome/projects/thbigmatome/scripts/backup/pull_backup.sh
+# VPS (deploy@dugout.thbig.fun) 上で実施済み:
+# ✅ バックアップディレクトリ作成
+mkdir -p ~/backups/thbigmatome/daily ~/backups/thbigmatome/weekly
+
+# ✅ スクリプト配置（rsync転送済み）
+~/projects/thbigmatome/scripts/backup/backup_daily.sh
+~/projects/thbigmatome/scripts/backup/restore.sh
+~/projects/thbigmatome/scripts/backup/pull_backup.sh
+
+# ✅ cronインストール（deploy ユーザー crontab）
+crontab ~/projects/thbigmatome/scripts/backup/cron.d/backup
+
+# ✅ 手動実行確認: 428K のダンプ生成確認
+# ✅ WSL pull確認: rsync で 428K 取得成功
 ```
 
-### 3. cronジョブをインストール
+### 環境固有パラメータ（確認済み）
 
-```bash
-# VPSのタイムゾーン確認
-timedatectl | grep "Time zone"
+| パラメータ | 値 |
+|-----------|-----|
+| DBコンテナ名 | `projects-db-1` |
+| VPSタイムゾーン | JST (Asia/Tokyo) |
+| デプロイユーザー | `deploy` |
+| バックアップ先 | `/home/deploy/backups/thbigmatome/` |
+| cronスケジュール | 毎日 02:00 JST |
 
-# cron.d にコピー（JST設定済みの場合）
-sudo cp /home/thbigmatome/projects/thbigmatome/scripts/backup/cron.d/backup \
-     /etc/cron.d/thbigmatome-backup
-sudo chmod 644 /etc/cron.d/thbigmatome-backup
+### WSLからのpull設定（設定済み）
 
-# 動作確認（手動実行）
-bash /home/thbigmatome/projects/thbigmatome/scripts/backup/backup_daily.sh
-```
-
-### 4. Dockerコンテナ名の確認・修正
-
-`backup_daily.sh` 内の `DB_CONTAINER` 変数はデプロイ環境で確認すること:
-
-```bash
-docker compose -f /home/thbigmatome/projects/docker-compose.prod.yml ps
-# → "thbigmatome-db-1" 等の実際のコンテナ名を確認して backup_daily.sh に反映
-```
-
-### 5. WSLからのpull設定
-
-`~/.ssh/config` に以下を追加:
+`~/.ssh/config` 追記済み:
 
 ```
 Host dugout-vps
   HostName dugout.thbig.fun
-  User thbigmatome
-  IdentityFile ~/.ssh/id_ed25519_dugout
+  User deploy
+  IdentityFile ~/.ssh/id_ed25519_thbig
+  StrictHostKeyChecking accept-new
 ```
 
-動作確認:
+実行:
 ```bash
-bash scripts/backup/pull_backup.sh --dry-run
+bash scripts/backup/pull_backup.sh          # 実際に取得
+bash scripts/backup/pull_backup.sh --dry-run # 確認のみ
 ```
 
 ---

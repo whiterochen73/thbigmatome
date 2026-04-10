@@ -19,8 +19,8 @@ if [[ -z "${DUMP_FILE}" ]]; then
     echo "使用方法: $0 <バックアップファイル.dump>"
     echo ""
     echo "利用可能なバックアップ:"
-    ls -lht /var/backups/thbigmatome/daily/*.dump 2>/dev/null || echo "  (なし)"
-    ls -lht /var/backups/thbigmatome/weekly/*.dump 2>/dev/null || echo "  (なし)"
+    ls -lht "${HOME}/backups/thbigmatome/daily/"*.dump 2>/dev/null || echo "  (なし)"
+    ls -lht "${HOME}/backups/thbigmatome/weekly/"*.dump 2>/dev/null || echo "  (なし)"
     exit 1
 fi
 
@@ -29,8 +29,8 @@ if [[ ! -f "${DUMP_FILE}" ]]; then
     exit 1
 fi
 
-COMPOSE_FILE="/home/thbigmatome/projects/docker-compose.prod.yml"
-ENV_FILE="/home/thbigmatome/projects/.env.production"
+COMPOSE_FILE="/home/deploy/projects/docker-compose.prod.yml"
+DB_CONTAINER="projects-db-1"
 DB_NAME="thbigmatome_production"
 DB_USER="thbigmatome"
 
@@ -47,24 +47,22 @@ if [[ "${CONFIRM}" != "yes" ]]; then
 fi
 
 # 事前バックアップ
-SAFETY_BACKUP="/var/backups/thbigmatome/pre_restore_$(date '+%Y%m%d_%H%M%S').dump"
+SAFETY_BACKUP="${HOME}/backups/thbigmatome/pre_restore_$(date '+%Y%m%d_%H%M%S').dump"
 echo "事前バックアップ取得: ${SAFETY_BACKUP}"
-docker compose -f "${COMPOSE_FILE}" --env-file "${ENV_FILE}" \
-    exec -T db \
+docker exec "${DB_CONTAINER}" \
     pg_dump -U "${DB_USER}" -Fc "${DB_NAME}" \
     > "${SAFETY_BACKUP}"
 
 echo "Railsコンテナ停止中..."
-docker compose -f "${COMPOSE_FILE}" --env-file "${ENV_FILE}" stop rails parser
+docker compose -f "${COMPOSE_FILE}" stop rails parser
 
 echo "リストア実行中..."
-docker compose -f "${COMPOSE_FILE}" --env-file "${ENV_FILE}" \
-    exec -T db \
+docker exec -i "${DB_CONTAINER}" \
     pg_restore -U "${DB_USER}" -d "${DB_NAME}" --clean --if-exists \
     < "${DUMP_FILE}"
 
 echo "Railsコンテナ起動中..."
-docker compose -f "${COMPOSE_FILE}" --env-file "${ENV_FILE}" start rails parser
+docker compose -f "${COMPOSE_FILE}" start rails parser
 
 echo ""
 echo "=== リストア完了 ==="

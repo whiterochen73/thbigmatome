@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.1] - 2026-04-10
+
+### Added
+- 本番DBバックアップ体制構築（backup_daily.sh・restore.sh・pull_backup.sh）
+- PM2026未登録カード4件を開発DBに登録（西行寺幽々子楼閣・八雲藍WBC2・花山栄美UR・小鳥遊柚UR）
+- PM2026バリエーション4件の親カード紐づけ修正（幽々子楼閣・藍WBC2をtouhou基底プレイヤーに変更）
+
+### Fixed
+- 0アウト降板（no_out_exit）時の累積投球回計算修正（+2固定→max(ip+flag,1)方式）
+- 先発長イニング敗戦ペナルティにno_out_exit関与イニング計算を適用
+- 関与イニング数を通算アウト数ベースで正確に計算するよう修正
+- バリエーション持ち選手のコスト検索をvariant-aware化（FE・BE両対応）
+- チーム一覧アクティブ優先ソート＋destroyの防御的修正
+
 ## [0.3.0] - 2026-04-08
 
 ### Added

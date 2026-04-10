@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_04_07_233608) do
+ActiveRecord::Schema[8.1].define(version: 2026_04_09_123501) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -358,6 +358,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_07_233608) do
     t.string "injury_check"
     t.decimal "innings_pitched", precision: 5, scale: 1
     t.boolean "is_opener", default: false, null: false
+    t.boolean "no_out_exit", default: false, null: false
     t.bigint "pitcher_id", null: false
     t.integer "pre_injury_days_excluded", default: 0, null: false
     t.string "result_category"

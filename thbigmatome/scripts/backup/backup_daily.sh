@@ -15,7 +15,7 @@
 set -euo pipefail
 
 # --- 設定 ---
-BACKUP_ROOT="/var/backups/thbigmatome"
+BACKUP_ROOT="${HOME}/backups/thbigmatome"
 DAILY_DIR="${BACKUP_ROOT}/daily"
 WEEKLY_DIR="${BACKUP_ROOT}/weekly"
 LOG_FILE="${BACKUP_ROOT}/backup.log"
@@ -23,9 +23,7 @@ LOG_FILE="${BACKUP_ROOT}/backup.log"
 DAILY_KEEP=7
 WEEKLY_KEEP=4
 
-COMPOSE_FILE="/home/thbigmatome/projects/docker-compose.prod.yml"
-ENV_FILE="/home/thbigmatome/projects/.env.production"
-DB_CONTAINER="thbigmatome-db-1"   # docker compose ps で確認すること
+DB_CONTAINER="projects-db-1"   # docker compose ps で確認 (2026-04-10 確認済み)
 DB_NAME="thbigmatome_production"
 DB_USER="thbigmatome"
 
@@ -47,8 +45,7 @@ DAILY_FILE="${DAILY_DIR}/thbigmatome_${TIMESTAMP}.dump"
 
 log "pg_dump 開始: ${DAILY_FILE}"
 
-docker compose -f "${COMPOSE_FILE}" --env-file "${ENV_FILE}" \
-    exec -T db \
+docker exec "${DB_CONTAINER}" \
     pg_dump -U "${DB_USER}" -Fc "${DB_NAME}" \
     > "${DAILY_FILE}"
 

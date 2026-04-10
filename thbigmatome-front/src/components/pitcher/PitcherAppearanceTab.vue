@@ -701,7 +701,7 @@ async function fetchPitchersAndStates() {
           decision: (app.decision as PitcherDecision) ?? null,
           is_opener: app.is_opener ?? false,
           is_second_starter: false,
-          no_out_exit: false,
+          no_out_exit: app.no_out_exit ?? false,
           consecutive_short_rest_count: app.consecutive_short_rest_count ?? 0,
           pre_injury_days_excluded: app.pre_injury_days_excluded ?? 0,
           appearance_order: idx,

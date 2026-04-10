@@ -23,6 +23,7 @@ class Api::V1::PitcherAppearancesController < Api::V1::BaseController
         fatigue_p_used: a.fatigue_p_used,
         decision: a.decision,
         is_opener: a.is_opener,
+        no_out_exit: a.no_out_exit,
         consecutive_short_rest_count: a.consecutive_short_rest_count,
         pre_injury_days_excluded: a.pre_injury_days_excluded,
         result_category: a.result_category,

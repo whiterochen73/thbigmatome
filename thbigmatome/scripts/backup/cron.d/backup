@@ -1,0 +1,16 @@
+# /etc/cron.d/thbigmatome-backup
+# thbigmatome 本番DB自動バックアップ
+# デプロイ時に /etc/cron.d/thbigmatome-backup にコピーすること
+#
+# 毎日 02:00 (JST = 17:00 UTC) に実行
+# ※ VPSのタイムゾーンが UTC の場合は 17 0 * * * を使用
+#    JST設定済みの場合は  0 2 * * * を使用
+
+SHELL=/bin/bash
+PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin
+
+# JST (Asia/Tokyo) 設定済みの場合:
+0 2 * * * thbigmatome /home/thbigmatome/projects/thbigmatome/scripts/backup/backup_daily.sh >> /var/log/thbigmatome-backup.log 2>&1
+
+# UTC設定の場合（どちらか一方のみ有効化）:
+# 0 17 * * * thbigmatome /home/thbigmatome/projects/thbigmatome/scripts/backup/backup_daily.sh >> /var/log/thbigmatome-backup.log 2>&1

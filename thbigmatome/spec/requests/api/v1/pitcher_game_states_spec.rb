@@ -143,6 +143,27 @@ RSpec.describe "Api::V1::PitcherGameStatesController", type: :request do
         expect(entry["cumulative_innings"]).to eq(2)
       end
 
+      it "同ゲームに先行投手あり・1イニング投げて0アウト降板: 関与イニング2" do
+        # 先行投手が1イニング投げた後、対象投手が1イニング投げてno_out_exit=true
+        # prior_outs=3, my_outs=3 → start=2, end=2, involvement=(2-2+1)+1=2
+        game = create(:game, competition: competition, home_team: team, visitor_team: create(:team))
+        prior_pitcher = create(:player, :pitcher)
+        create(:pitcher_game_state,
+          pitcher: prior_pitcher, team: team, competition: competition, game: game,
+          role: "reliever", schedule_date: "2026-03-01",
+          innings_pitched: 1.0, appearance_order: 0
+        )
+        create(:pitcher_game_state,
+          pitcher: pitcher, team: team, competition: competition, game: game,
+          role: "reliever", schedule_date: "2026-03-01",
+          innings_pitched: 1.0, no_out_exit: true, appearance_order: 1
+        )
+        get_states(date: "2026-03-02", player_ids: [ pitcher.id ])
+
+        entry = response.parsed_body.find { |e| e["player_id"] == pitcher.id }
+        expect(entry["cumulative_innings"]).to eq(2)
+      end
+
       it "0アウト降板後に連日登板: 累積が正しく加算される" do
         # 03-01: no_out_exit(max(0+1,1)=1), 03-02: 通常1イニング(max(1+0,1)=1) → 累積2
         create_pgs(schedule_date: "2026-03-01", innings_pitched: 0, no_out_exit: true)

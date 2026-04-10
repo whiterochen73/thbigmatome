@@ -742,7 +742,7 @@ async function saveAll() {
     .map((row, idx) => ({
       pitcher_id: row.pitcher_id,
       role: row.role,
-      innings_pitched: row.no_out_exit ? 0 : computeIPFromRow(row),
+      innings_pitched: computeIPFromRow(row),
       no_out_exit: row.no_out_exit,
       earned_runs: row.earned_runs,
       fatigue_p_used: row.fatigue_p_used,

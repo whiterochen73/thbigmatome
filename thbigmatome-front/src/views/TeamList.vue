@@ -33,6 +33,14 @@
           <v-icon v-if="item.is_active"> mdi-check </v-icon>
         </template>
 
+        <template #[`item.last_game_real_date`]="{ item }">
+          {{ item.last_game_real_date ? formatDate(item.last_game_real_date) : '-' }}
+        </template>
+
+        <template #[`item.last_game_date`]="{ item }">
+          {{ item.last_game_date ? formatDate(item.last_game_date) : '-' }}
+        </template>
+
         <template #[`item.manager_name`]="{ item }">
           {{ item.director?.name || '-' }}
         </template>
@@ -113,6 +121,8 @@ const headers = computed(() => [
   { title: t('teamList.headers.teamType'), key: 'team_type', sortable: false },
   { title: t('teamList.headers.managerName'), key: 'manager_name', sortable: false },
   { title: t('teamList.headers.isActive'), key: 'is_active', sortable: false },
+  { title: t('teamList.headers.lastGameRealDate'), key: 'last_game_real_date' },
+  { title: t('teamList.headers.lastGameDate'), key: 'last_game_date' },
   { title: t('teamList.headers.actions'), key: 'actions', sortable: false },
 ])
 
@@ -189,6 +199,15 @@ const navigateToMembers = (teamId: number) => {
 const navigateToSeason = (team: Team) => {
   teamSelectionStore.selectTeam(team.id, team.name)
   router.push(`/teams/${team.id}/season`)
+}
+
+/**
+ * 日付文字列をYYYY/MM/DD形式でフォーマットする
+ */
+function formatDate(dateStr: string): string {
+  if (!dateStr) return '-'
+  const d = new Date(dateStr)
+  return `${d.getFullYear()}/${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')}`
 }
 
 // コンポーネントがマウントされた時にTeam一覧を取得

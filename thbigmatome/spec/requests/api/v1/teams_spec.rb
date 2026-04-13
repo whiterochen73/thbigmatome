@@ -48,6 +48,46 @@ RSpec.describe "Api::V1::TeamsController", type: :request do
       expect(ids.last).to eq(inactive_team.id)
     end
 
+    it "includes last_game_real_date from games table" do
+      team = create(:team)
+      competition = create(:competition)
+      game = create(:game, home_team: team, visitor_team: create(:team), competition: competition,
+                           real_date: Date.new(2026, 3, 10))
+
+      get "/api/v1/teams", as: :json
+
+      json = response.parsed_body.find { |t| t["id"] == team.id }
+      expect(json["last_game_real_date"]).to eq("2026-03-10")
+    end
+
+    it "includes season_current_date from seasons table" do
+      team = create(:team)
+      create(:season, team: team, current_date: Date.new(2026, 4, 1))
+
+      get "/api/v1/teams", as: :json
+
+      json = response.parsed_body.find { |t| t["id"] == team.id }
+      expect(json["season_current_date"]).to eq("2026-04-01")
+    end
+
+    it "returns nil for last_game_real_date when no games" do
+      create(:team)
+
+      get "/api/v1/teams", as: :json
+
+      json = response.parsed_body.first
+      expect(json["last_game_real_date"]).to be_nil
+    end
+
+    it "returns nil for season_current_date when no season" do
+      create(:team)
+
+      get "/api/v1/teams", as: :json
+
+      json = response.parsed_body.first
+      expect(json["season_current_date"]).to be_nil
+    end
+
     it "includes director and coaches" do
       team = create(:team)
       director = create(:manager, name: "監督A", role: :director)

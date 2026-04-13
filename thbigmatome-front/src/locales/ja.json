@@ -327,6 +327,8 @@
       "teamType": "種別",
       "managerName": "監督名",
       "isActive": "稼働中",
+      "lastGameRealDate": "最終試合日",
+      "lastGameDate": "現在ゲーム内日付",
       "actions": "操作"
     },
     "teamTypes": {

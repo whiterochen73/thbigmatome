@@ -9,7 +9,16 @@ module Api
 
       # GET /api/v1/teams
       def index
-        @teams = Team.preload(:director, :coaches).order(is_active: :desc, updated_at: :desc)
+        @teams = Team.preload(:director, :coaches)
+                     .select(
+                       "teams.*",
+                       "(SELECT MAX(g.real_date) FROM games g " \
+                       " WHERE g.home_team_id = teams.id OR g.visitor_team_id = teams.id) AS last_game_real_date",
+                       "(SELECT MAX(gr.game_date) FROM game_records gr " \
+                       " WHERE gr.team_id = teams.id) AS last_game_date",
+                       "(SELECT s.current_date FROM seasons s WHERE s.team_id = teams.id LIMIT 1) AS season_current_date"
+                     )
+                     .order(is_active: :desc, updated_at: :desc)
         render json: @teams, each_serializer: TeamSerializer
       end
 

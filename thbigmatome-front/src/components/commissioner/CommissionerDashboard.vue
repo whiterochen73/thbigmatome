@@ -43,6 +43,18 @@
               <template #[`item.manager_name`]="{ item }">
                 {{ item.director?.name || '-' }}
               </template>
+              <template #[`item.last_game_real_date`]="{ item }">
+                <span v-if="item.last_game_real_date" class="text-caption">
+                  {{ formatDate(item.last_game_real_date) }}
+                </span>
+                <span v-else class="text-caption text-medium-emphasis">-</span>
+              </template>
+              <template #[`item.season_current_date`]="{ item }">
+                <span v-if="item.season_current_date" class="text-caption">
+                  {{ formatDate(item.season_current_date) }}
+                </span>
+                <span v-else class="text-caption text-medium-emphasis">-</span>
+              </template>
               <template #[`item.actions`]="{ item }">
                 <v-tooltip text="シーズンポータル" location="top">
                   <template #activator="{ props }">
@@ -364,6 +376,8 @@ const teamHeaders = [
   { title: '種別', key: 'team_type', sortable: false },
   { title: '監督', key: 'manager_name', sortable: false },
   { title: 'アクティブ', key: 'is_active', sortable: false },
+  { title: '最終試合日', key: 'last_game_real_date' },
+  { title: 'ゲーム内日付', key: 'season_current_date' },
   { title: '操作', key: 'actions', sortable: false },
 ]
 

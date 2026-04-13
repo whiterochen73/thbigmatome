@@ -10,4 +10,7 @@ export interface Team {
   user_id?: number | null
   director?: Manager
   coaches?: Manager[]
+  last_game_real_date?: string | null
+  last_game_date?: string | null
+  season_current_date?: string | null
 }

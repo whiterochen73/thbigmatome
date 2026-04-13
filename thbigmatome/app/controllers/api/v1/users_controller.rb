@@ -23,7 +23,15 @@ module Api
 
       # GET /api/v1/users/me/teams
       def my_teams
-        teams = current_user.teams.order(is_active: :desc, created_at: :asc)
+        # user_id紐づきのチーム
+        owned_teams = current_user.teams
+
+        # Manager.user_id（文字列）で紐付けられたチーム（director/coach所属チーム）
+        manager = Manager.find_by(user_id: current_user.id.to_s)
+        managed_teams = manager ? Team.joins(:team_managers).where(team_managers: { manager_id: manager.id }) : Team.none
+
+        teams = Team.where(id: (owned_teams.pluck(:id) + managed_teams.pluck(:id)).uniq)
+                    .order(is_active: :desc, created_at: :asc)
         render json: teams.as_json(only: [ :id, :name, :is_active, :user_id, :short_name, :team_type ])
       end
 

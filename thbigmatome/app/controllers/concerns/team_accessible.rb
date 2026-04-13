@@ -10,8 +10,14 @@ module TeamAccessible
       render json: { errors: [ "Team not found" ] }, status: :not_found
       return
     end
-    unless current_user.commissioner? || team.user_id == current_user.id
-      render json: { errors: [ "Forbidden" ] }, status: :forbidden
-    end
+    return if current_user.commissioner?
+    return if team.user_id == current_user.id
+
+    # Manager.user_id（文字列）でユーザーとマネージャーを紐付け、
+    # このチームのdirector/coachであればアクセスを許可する
+    manager = Manager.find_by(user_id: current_user.id.to_s)
+    return if manager && team.team_managers.exists?(manager_id: manager.id)
+
+    render json: { errors: [ "Forbidden" ] }, status: :forbidden
   end
 end

@@ -17,8 +17,9 @@ class Player < ApplicationRecord
 
   def available_cost_types
     types = []
+    two_way = hachinai_two_way?
     # ハチナイ二刀流選手は「通常」コスト不可
-    types << "normal_cost" unless hachinai_two_way?
+    types << "normal_cost" unless two_way
 
     loaded_cards = player_cards.loaded? ? player_cards : player_cards.to_a
     pitcher_cards = loaded_cards.select(&:is_pitcher)
@@ -29,13 +30,13 @@ class Player < ApplicationRecord
       types << "relief_only_cost"
     end
 
-    # 二刀流: 投手カードと野手カード両方を持つ
-    if pitcher_cards.any? && fielder_cards.any?
+    # 二刀流: 投手カードと野手カード両方を持つ、またはハチナイ二刀流（片方カードのみでも可）
+    if (pitcher_cards.any? && fielder_cards.any?) || two_way
       types << "two_way_cost"
     end
 
     # 投手専念/野手専念: 二刀流条件 + 特定東方選手
-    if (pitcher_cards.any? && fielder_cards.any?) || SPECIAL_PITCHER_FIELDER_PLAYER_IDS.include?(id)
+    if (pitcher_cards.any? && fielder_cards.any?) || two_way || SPECIAL_PITCHER_FIELDER_PLAYER_IDS.include?(id)
       types << "pitcher_only_cost"
       types << "fielder_only_cost"
     end
@@ -46,8 +47,9 @@ class Player < ApplicationRecord
   # バリエーションカード個別のコスト種別判定
   def available_cost_types_for_card(card)
     types = []
+    two_way = hachinai_two_way?
     # ハチナイ二刀流選手は「通常」コスト不可
-    types << "normal_cost" unless hachinai_two_way?
+    types << "normal_cost" unless two_way
 
     loaded_cards = player_cards.loaded? ? player_cards : player_cards.to_a
 
@@ -56,11 +58,11 @@ class Player < ApplicationRecord
       types << "relief_only_cost"
     end
 
-    # 二刀流/投手専念/野手専念: 選手全体で投手・野手カード両方を持つ場合
+    # 二刀流/投手専念/野手専念: 選手全体で投手・野手カード両方を持つ、またはハチナイ二刀流（片方カードのみでも可）
     has_pitcher = loaded_cards.any?(&:is_pitcher)
     has_fielder = loaded_cards.any? { |c| !c.is_pitcher }
 
-    if (has_pitcher && has_fielder) || SPECIAL_PITCHER_FIELDER_PLAYER_IDS.include?(id)
+    if (has_pitcher && has_fielder) || two_way || SPECIAL_PITCHER_FIELDER_PLAYER_IDS.include?(id)
       types << "two_way_cost"
       types << "pitcher_only_cost"
       types << "fielder_only_cost"
@@ -69,10 +71,16 @@ class Player < ApplicationRecord
     types
   end
 
-  # ハチナイ二刀流選手判定: ハチナイ6.1カードセット保有 かつ 投手+野手両方のカードを保有
+  # ハチナイ二刀流選手判定: ハチナイ6.1カードセット保有 かつ 背番号39以下（片方カードのみでも二刀流扱い）
+  # ハチナイ背番号40以上は投手+野手両方のカードを保有している場合のみ二刀流
+  # このルールはハチナイ固有。他作品チーム（東方等）には適用しない。
   def hachinai_two_way?
     return false unless player_cards.joins(:card_set).where(card_sets: { set_type: "hachinai61" }).exists?
-    loaded = player_cards.loaded? ? player_cards : player_cards.to_a
-    loaded.any?(&:is_pitcher) && loaded.any? { |c| !c.is_pitcher }
+    if number.to_i <= 39
+      true
+    else
+      loaded = player_cards.loaded? ? player_cards : player_cards.to_a
+      loaded.any?(&:is_pitcher) && loaded.any? { |c| !c.is_pitcher }
+    end
   end
 end

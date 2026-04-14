@@ -72,11 +72,11 @@ module Api
         target_date = params[:date]&.to_date || Date.today
 
         # season_rostersベースでtarget_date時点の1軍メンバーを取得（現在のsquadではなく登録履歴で判定）
-        # 登録カードが投手カードかつ野手専念契約でない選手のみ（#5 #6）
+        # is_pitcher=trueの選手（野手カードでも投手能力持ちを含む）かつ野手専念契約でない選手のみ（#5 #6）
         all_pitcher_memberships = @team.team_memberships
           .where.not(selected_cost_type: "fielder_only_cost")
           .joins(:player_card)
-          .where(player_cards: { card_type: "pitcher" })
+          .where(player_cards: { is_pitcher: true })
           .includes(:player)
           .distinct
 

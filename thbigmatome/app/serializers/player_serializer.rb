@@ -8,7 +8,7 @@ class PlayerSerializer < ActiveModel::Serializer
   end
 
   def position
-    if object.player_cards.any?(&:is_pitcher)
+    if object.player_cards.any?(&:can_pitch?)
       "pitcher"
     else
       pc = object.player_cards.first
@@ -17,6 +17,6 @@ class PlayerSerializer < ActiveModel::Serializer
   end
 
   def is_pitcher
-    object.player_cards.any?(&:is_pitcher)
+    object.player_cards.any?(&:can_pitch?)
   end
 end

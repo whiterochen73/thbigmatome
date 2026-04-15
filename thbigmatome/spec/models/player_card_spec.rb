@@ -103,18 +103,25 @@ RSpec.describe PlayerCard, type: :model do
   end
 
   describe "#can_pitch?" do
-    it "returns true for pitcher card" do
-      card = build(:player_card, card_type: "pitcher", is_pitcher: false)
+    it "returns true for pitcher card (card_type='pitcher')" do
+      card = create(:player_card, card_type: "pitcher")
       expect(card.can_pitch?).to be true
     end
 
-    it "returns true for batter card with is_pitcher=true" do
-      card = build(:player_card, card_type: "batter", is_pitcher: true)
+    it "returns true for batter card with pitcher defense position" do
+      card = create(:player_card, card_type: "batter")
+      PlayerCardDefense.create!(player_card: card, position: "P", range_value: 2, error_rank: "A")
       expect(card.can_pitch?).to be true
     end
 
-    it "returns false for batter card with is_pitcher=false" do
-      card = build(:player_card, card_type: "batter", is_pitcher: false)
+    it "returns false for batter card without pitcher defense position" do
+      card = create(:player_card, card_type: "batter")
+      PlayerCardDefense.create!(player_card: card, position: "OF", range_value: 2, error_rank: "A")
+      expect(card.can_pitch?).to be false
+    end
+
+    it "returns false for batter card with no defenses" do
+      card = create(:player_card, card_type: "batter")
       expect(card.can_pitch?).to be false
     end
   end

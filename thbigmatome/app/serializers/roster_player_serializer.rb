@@ -11,7 +11,8 @@ class RosterPlayerSerializer < ActiveModel::Serializer
 
   def position
     pc = object.player.player_cards.first
-    if pc&.can_pitch?
+    is_fielder_only = object.selected_cost_type == "fielder_only_cost"
+    if pc&.can_pitch? && !is_fielder_only
       "pitcher"
     else
       pc&.player_card_defenses&.first&.position&.downcase

@@ -102,6 +102,23 @@ RSpec.describe PlayerCard, type: :model do
     end
   end
 
+  describe "#can_pitch?" do
+    it "returns true for pitcher card" do
+      card = build(:player_card, card_type: "pitcher", is_pitcher: false)
+      expect(card.can_pitch?).to be true
+    end
+
+    it "returns true for batter card with is_pitcher=true" do
+      card = build(:player_card, card_type: "batter", is_pitcher: true)
+      expect(card.can_pitch?).to be true
+    end
+
+    it "returns false for batter card with is_pitcher=false" do
+      card = build(:player_card, card_type: "batter", is_pitcher: false)
+      expect(card.can_pitch?).to be false
+    end
+  end
+
   describe "stat validations" do
     it "validates speed presence and inclusion" do
       player_card = build(:player_card, speed: nil)

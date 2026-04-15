@@ -26,6 +26,11 @@ class PlayerCard < ApplicationRecord
   validates :card_type, presence: true, inclusion: { in: %w[pitcher batter] }
   validates :card_set_id, uniqueness: { scope: [ :player_id, :card_type ] }
 
+  # 投手として使用可能か（card_type='pitcher' または is_pitcher=true）
+  def can_pitch?
+    card_type == "pitcher" || is_pitcher
+  end
+
   validates :speed, presence: true,
             numericality: { only_integer: true },
             inclusion: { in: 1..5 }

@@ -45,7 +45,7 @@ module Api
             number: tm.player.number,
             player_name: tm.player.short_name,
             handedness: pc&.handedness,
-            position: (pc&.card_type == "pitcher" && !is_fielder_only ? "pitcher" : pc&.player_card_defenses&.first&.position&.downcase),
+            position: (pc&.can_pitch? && !is_fielder_only ? "pitcher" : pc&.player_card_defenses&.first&.position&.downcase),
             squad: squad_status,
             player_types: [],
             selected_cost_type: tm.selected_cost_type,

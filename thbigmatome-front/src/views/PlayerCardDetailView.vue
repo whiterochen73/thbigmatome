@@ -97,7 +97,7 @@
                 <div class="info-label">利き腕/打席</div>
                 <div class="info-val">{{ handednessToJa(card.handedness) }}</div>
               </div>
-              <template v-if="card.card_type === 'pitcher'">
+              <template v-if="card.card_type === 'pitcher' || card.is_pitcher">
                 <div class="info-item">
                   <div class="info-label">先発スタミナ</div>
                   <div class="info-val">{{ card.starter_stamina ?? '—' }}</div>
@@ -257,7 +257,9 @@
           <!-- 投球P列 (投手のみ) -->
           <div
             v-if="
-              card.card_type === 'pitcher' && card.pitching_table && card.pitching_table.length > 0
+              (card.card_type === 'pitcher' || card.is_pitcher) &&
+              card.pitching_table &&
+              card.pitching_table.length > 0
             "
             class="section-box mb-2"
           >

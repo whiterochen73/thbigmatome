@@ -114,6 +114,7 @@ export interface PlayerCard {
   card_set_id: number
   player_id: number
   card_type: 'pitcher' | 'batter'
+  is_pitcher?: boolean
   player_name: string
   player_number: string
   card_set_name: string

@@ -212,7 +212,7 @@ class Api::V1::Commissioner::DashboardController < Api::V1::Commissioner::BaseCo
           player = tm.player
           card = tm.player_card
           is_fielder_only = tm.selected_cost_type == "fielder_only_cost"
-          position = if card&.card_type == "pitcher" && !is_fielder_only
+          position = if card&.can_pitch? && !is_fielder_only
             "pitcher"
           else
             card&.player_card_defenses&.first&.position&.downcase

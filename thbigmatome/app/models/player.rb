@@ -62,8 +62,11 @@ class Player < ApplicationRecord
     has_pitcher = loaded_cards.any?(&:is_pitcher)
     has_fielder = loaded_cards.any? { |c| !c.is_pitcher }
 
-    if (has_pitcher && has_fielder) || two_way || SPECIAL_PITCHER_FIELDER_PLAYER_IDS.include?(id)
+    if (has_pitcher && has_fielder) || two_way
       types << "two_way_cost"
+    end
+
+    if (has_pitcher && has_fielder) || two_way || SPECIAL_PITCHER_FIELDER_PLAYER_IDS.include?(id)
       types << "pitcher_only_cost"
       types << "fielder_only_cost"
     end
@@ -76,7 +79,7 @@ class Player < ApplicationRecord
   # このルールはハチナイ固有。他作品チーム（東方等）には適用しない。
   def hachinai_two_way?
     return false unless player_cards.joins(:card_set).where(card_sets: { set_type: "hachinai61" }).exists?
-    if number.to_i <= 39
+    if number.present? && number.to_i <= 39
       true
     else
       loaded = player_cards.loaded? ? player_cards : player_cards.to_a

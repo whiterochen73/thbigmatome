@@ -1,5 +1,5 @@
 class PlayerSerializer < ActiveModel::Serializer
-  attributes :id, :name, :number, :short_name, :handedness, :position, :available_cost_types
+  attributes :id, :name, :number, :short_name, :handedness, :position, :is_pitcher, :available_cost_types
 
   has_many :cost_players, serializer: CostPlayerSerializer
 
@@ -14,5 +14,9 @@ class PlayerSerializer < ActiveModel::Serializer
       pc = object.player_cards.first
       pc&.player_card_defenses&.first&.position&.downcase
     end
+  end
+
+  def is_pitcher
+    object.player_cards.any?(&:is_pitcher)
   end
 end

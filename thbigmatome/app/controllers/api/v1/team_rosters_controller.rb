@@ -53,6 +53,7 @@ module Api
             cooldown_until: cooldown_info[:cooldown_until],
             same_day_exempt: cooldown_info[:same_day_exempt],
             is_outside_world: effective_series.present? && !native_series.include?(effective_series),
+            is_pitcher: (pc&.can_pitch? && !is_fielder_only) || false,
             is_starter_pitcher: (!is_fielder_only && pc&.is_pitcher && pc&.starter_stamina.present? && pc&.starter_stamina >= 4) || false,
             is_relief_only: (!is_fielder_only && pc&.is_pitcher && pc&.is_relief_only) || false,
             **absence_info_for(tm, target_date)

@@ -26,12 +26,28 @@ class PlayerCard < ApplicationRecord
   validates :card_type, presence: true, inclusion: { in: %w[pitcher batter] }
   validates :card_set_id, uniqueness: { scope: [ :player_id, :card_type ] }
 
-  # 投手として使用可能か
-  # 判定条件: card_type='pitcher' OR player_card_defensesに投手(P)ポジションがある
+  # 投手として使用可能か（能力判定）
+  # 判定条件: card_type='pitcher' OR is_pitcher=true OR player_card_defensesに投手(P)ポジションがある
+  # player_card_defensesが正典（P守備があれば確実に投手能力あり）。is_pitcherはフォールバック。
   # ※ selected_cost_type='fielder_only_cost'（野手専念）の場合は呼び出し側で除外すること
   def can_pitch?
-    card_type == "pitcher" || player_card_defenses.any? { |d| d.position&.upcase == "P" }
+    card_type == "pitcher" ||
+      is_pitcher ||
+      player_card_defenses.any? { |d| d.position&.upcase == "P" }
   end
+
+  # DB検索用スコープ: 投手能力を持つカード（can_pitch?のDB版）
+  # player_card_defensesにP守備がある OR is_pitcher=true OR card_type='pitcher'
+  scope :can_pitch, -> {
+    where(card_type: "pitcher")
+      .or(where(is_pitcher: true))
+      .or(
+        where(
+          "EXISTS (SELECT 1 FROM player_card_defenses pcd WHERE pcd.player_card_id = player_cards.id AND pcd.position = ?)",
+          "P"
+        )
+      )
+  }
 
   validates :speed, presence: true,
             numericality: { only_integer: true },

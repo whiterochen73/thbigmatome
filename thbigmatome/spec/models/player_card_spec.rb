@@ -108,20 +108,25 @@ RSpec.describe PlayerCard, type: :model do
       expect(card.can_pitch?).to be true
     end
 
-    it "returns true for batter card with pitcher defense position" do
-      card = create(:player_card, card_type: "batter")
+    it "returns true for batter card with is_pitcher=true (flag fallback)" do
+      card = create(:player_card, card_type: "batter", is_pitcher: true)
+      expect(card.can_pitch?).to be true
+    end
+
+    it "returns true for batter card with pitcher defense position (P守備正典)" do
+      card = create(:player_card, card_type: "batter", is_pitcher: false)
       PlayerCardDefense.create!(player_card: card, position: "P", range_value: 2, error_rank: "A")
       expect(card.can_pitch?).to be true
     end
 
-    it "returns false for batter card without pitcher defense position" do
-      card = create(:player_card, card_type: "batter")
+    it "returns false for batter card without pitcher defense and is_pitcher=false" do
+      card = create(:player_card, card_type: "batter", is_pitcher: false)
       PlayerCardDefense.create!(player_card: card, position: "OF", range_value: 2, error_rank: "A")
       expect(card.can_pitch?).to be false
     end
 
-    it "returns false for batter card with no defenses" do
-      card = create(:player_card, card_type: "batter")
+    it "returns false for batter card with no defenses and is_pitcher=false" do
+      card = create(:player_card, card_type: "batter", is_pitcher: false)
       expect(card.can_pitch?).to be false
     end
   end

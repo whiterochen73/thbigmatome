@@ -12,7 +12,7 @@ module Api
           team_memberships = team_memberships
             .where.not(selected_cost_type: "relief_only_cost")
             .joins(player: :player_cards)
-            .where(player_cards: { is_pitcher: true, is_relief_only: false })
+            .merge(PlayerCard.can_pitch.where(is_relief_only: false))
             .distinct
         end
 

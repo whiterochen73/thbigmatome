@@ -2,6 +2,29 @@
 
 All notable changes to this project will be documented in this file.
 
+## [v0.3.2] - 2026-04-15
+
+### Bug Fixes
+
+#### 川口息吹 投手認識バグ修正（BE/FE）
+- **can_pitch? 導入**: `card_type='batter'` でも `is_pitcher=true` の場合に投手として認識する `can_pitch?` メソッドを `PlayerCard` モデルに追加
+- **投手判定ロジック刷新**: `is_pitcher` フラグへの単一依存を廃止。`player_card_defenses` の `P` ポジション存在チェックを正典とし、フォールバックとして `is_pitcher` フラグも使用する多層判定に変更
+- **can_pitch scope 追加**: DB検索時に `can_pitch?` 相当のフィルタを適用できる ActiveRecord スコープを追加
+- **投手状態タブ修正**: `pitcher_game_states` コントローラーの `is_pitcher: true` ベースDB検索を `PlayerCard.can_pitch` スコープに変更。川口息吹が投手状態タブに表示されるようになった
+- **is_starter_pitcher / is_relief_only 修正**: `team_rosters_controller` 内のこれらフラグの計算も `pc.is_pitcher` から `pc.can_pitch?` に統一
+- **FE 投手判定修正**: `SeasonRosterTab`・`PitcherAppearanceTab` の `position === 'pitcher'` フィルタに `is_pitcher === true` の OR 条件を追加
+- **PlayerCard 型定義**: `PlayerCard` インターフェースに `is_pitcher?: boolean` を追加（optional）
+
+#### その他バグ修正
+- **no_out_exit バグ修正**: 0アウト降板時に `innings_pitched=0` が強制送信されるバグを修正
+- **新人監督チーム登録不可修正**: 新規監督がチームを登録できない不具合を修正
+- **高坂コスト修正**: 高坂選手のコストデータを修正
+- **桜田二刀流コスト修正**: 桜田選手の二刀流コスト設定を修正
+
+### Features
+
+- **チーム一覧機能拡充**: チーム一覧画面に最終試合日・ゲーム内日付・ソート機能を追加
+
 ## [v0.2.0] - 2026-04-04
 
 ### Features

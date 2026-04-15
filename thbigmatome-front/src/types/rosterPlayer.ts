@@ -25,6 +25,7 @@ export interface RosterPlayer {
   cooldown_until?: string
   same_day_exempt?: boolean
   is_outside_world?: boolean
+  is_pitcher?: boolean
   is_starter_pitcher?: boolean
   is_relief_only?: boolean
   is_absent?: boolean

@@ -660,7 +660,10 @@ async function fetchPitchersAndStates() {
     // Build pitcher items
     if (playersRes.status === 'fulfilled') {
       pitcherItems.value = playersRes.value.data
-        .filter((p: { position: string }) => p.position === 'pitcher')
+        .filter(
+          (p: { position: string; is_pitcher?: boolean }) =>
+            p.position === 'pitcher' || p.is_pitcher === true,
+        )
         .map((p: { id: number; name: string }) => {
           const state = preGameStates.value.find((s) => s.player_id === p.id)
           const isInjured = injuredIds.has(p.id)

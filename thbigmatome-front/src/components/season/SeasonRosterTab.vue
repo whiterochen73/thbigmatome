@@ -658,8 +658,12 @@ const outsideWorldFirstSquadCount = computed(() => {
 
 // 投手グルーピング: selected_cost_type='relief_only_cost' → 中継ぎ/クローザー, others → 先発
 const firstSquadGroups = computed(() => {
-  const pitchers = firstSquadPlayers.value.filter((p) => p.position === 'pitcher')
-  const fielders = firstSquadPlayers.value.filter((p) => p.position !== 'pitcher')
+  const pitchers = firstSquadPlayers.value.filter(
+    (p) => p.position === 'pitcher' || p.is_pitcher === true,
+  )
+  const fielders = firstSquadPlayers.value.filter(
+    (p) => p.position !== 'pitcher' && p.is_pitcher !== true,
+  )
   const spPitchers = pitchers.filter((p) => p.selected_cost_type !== 'relief_only_cost')
   const rpPitchers = pitchers.filter((p) => p.selected_cost_type === 'relief_only_cost')
   return [

@@ -100,6 +100,31 @@ RSpec.describe "Api::V1::TeamRosters", type: :request do
         entry = json["roster"].find { |r| r["team_membership_id"] == membership.id }
         expect(entry["cost"]).to eq(20)
       end
+
+      it "falls back to base fielder cost when a hachinai variant row exists but is blank" do
+        hachinai_card_set = create(:card_set, set_type: "hachinai61", series: "hachinai", name: "ハチナイ6.1")
+        pm_card_set = create(:card_set, set_type: "pm2026", series: "original", name: "PM2026")
+        player = create(:player, number: "34", series: "hachinai")
+        create(:player_card, player: player, card_set: hachinai_card_set, card_type: "batter", is_pitcher: false)
+        variant_card = create(:player_card, player: player, card_set: pm_card_set, card_type: "batter", is_pitcher: false)
+        variant_card.player_card_defenses.create!(position: "1B", range_value: 5, error_rank: "C")
+        membership = create(
+          :team_membership,
+          team: team,
+          player: player,
+          player_card: variant_card,
+          squad: "first",
+          selected_cost_type: "fielder_only_cost",
+        )
+        create(:cost_player, cost: cost, player: player, player_card_id: nil, fielder_only_cost: 4, pitcher_only_cost: 1, two_way_cost: 5)
+        create(:cost_player, cost: cost, player: player, player_card_id: variant_card.id)
+
+        get "/api/v1/teams/#{team.id}/roster", as: :json
+
+        expect(response).to have_http_status(:ok)
+        entry = response.parsed_body["roster"].find { |r| r["team_membership_id"] == membership.id }
+        expect(entry["cost"]).to eq(4)
+      end
     end
 
     context "when a player has an active absence" do
@@ -495,6 +520,39 @@ RSpec.describe "Api::V1::TeamRosters", type: :request do
         ])
 
         expect(response).to have_http_status(:ok)
+      end
+
+      it "allows promotion when the 4th outside-world player is a hachinai two-way player with only batter cards" do
+        22.times { add_player_to_team(team: team, cost: cost, squad: "first", cost_value: 4) }
+
+        hachinai_card_set = create(:card_set, set_type: "hachinai61", series: "hachinai", name: "ハチナイ6.1")
+        3.times do |idx|
+          outside_player = create(:player, number: (60 + idx).to_s, series: "hachinai")
+          outside_card = create(:player_card, player: outside_player, card_set: hachinai_card_set, card_type: "batter", is_pitcher: false)
+          outside_card.player_card_defenses.create!(position: "1B", range_value: 5, error_rank: "C")
+          create(:team_membership, team: team, player: outside_player, player_card: outside_card, squad: "first", selected_cost_type: "fielder_only_cost")
+          create(:cost_player, cost: cost, player: outside_player, fielder_only_cost: 4, pitcher_only_cost: 1, two_way_cost: 5)
+        end
+
+        target_player = create(:player, number: "34", series: "hachinai")
+        target_card = create(:player_card, player: target_player, card_set: hachinai_card_set, card_type: "batter", is_pitcher: false)
+        target_card.player_card_defenses.create!(position: "C", range_value: 5, error_rank: "C")
+        target_membership = create(
+          :team_membership,
+          team: team,
+          player: target_player,
+          player_card: target_card,
+          squad: "second",
+          selected_cost_type: "two_way_cost",
+        )
+        create(:cost_player, cost: cost, player: target_player, fielder_only_cost: 6, pitcher_only_cost: 1, two_way_cost: 7)
+
+        post_roster_update(team.id, [
+          { team_membership_id: target_membership.id, squad: "first" }
+        ])
+
+        expect(response).to have_http_status(:ok)
+        expect(target_membership.reload.squad).to eq("first")
       end
 
       # outside world limit test removed: player_player_types table dropped (cmd_511 Phase 2b)

@@ -91,8 +91,8 @@ class Team < ApplicationRecord
     ow_memberships = outside_world_first_squad_memberships
     return true if ow_memberships.size < OUTSIDE_WORLD_LIMIT
 
-    has_pitcher = ow_memberships.any? { |tm| tm.player.player_cards.any? { |pc| pc.card_type == "pitcher" } }
-    has_fielder = ow_memberships.any? { |tm| tm.player.player_cards.any? { |pc| pc.card_type == "batter" } }
+    has_pitcher = ow_memberships.any?(&:pitcher_role?)
+    has_fielder = ow_memberships.any?(&:fielder_role?)
 
     unless has_pitcher && has_fielder
       errors.add(:base, I18n.t("activerecord.errors.models.team.outside_world.balance_required"))
@@ -107,10 +107,7 @@ class Team < ApplicationRecord
   def calculate_included_team_cost(cost_list_id)
     included_memberships = team_memberships.included_in_team_total.includes(player: :cost_players)
     included_memberships.sum do |tm|
-      card_id = tm.player_card_id
-      cost_player = tm.player.cost_players.find { |cp| cp.cost_id == cost_list_id && cp.player_card_id == card_id }
-      cost_player ||= tm.player.cost_players.find { |cp| cp.cost_id == cost_list_id && cp.player_card_id.nil? }
-      cost_player ? (cost_player.send(tm.selected_cost_type) || 0) : 0
+      tm.selected_cost_value(cost_list_id)
     end
   end
 end

@@ -11,12 +11,10 @@ class TeamPlayerSerializer < PlayerSerializer
   end
 
   def current_cost
-    cost_type = membership.selected_cost_type
     cost_list_id = @instance_options[:cost_list_id]&.to_i
-    card_id = membership.player_card_id
-    cost_player_record = object.cost_players.detect { |cp| cp.cost_id == cost_list_id && cp.player_card_id == card_id }
-    cost_player_record ||= object.cost_players.detect { |cp| cp.cost_id == cost_list_id && cp.player_card_id.nil? }
-    cost_player_record&.send(cost_type)
+    return nil unless cost_list_id
+
+    membership.selected_cost_value(cost_list_id)
   end
 
   def excluded_from_team_total

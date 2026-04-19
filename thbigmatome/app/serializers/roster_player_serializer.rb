@@ -10,13 +10,7 @@ class RosterPlayerSerializer < ActiveModel::Serializer
   end
 
   def position
-    pc = object.player.player_cards.first
-    is_fielder_only = object.selected_cost_type == "fielder_only_cost"
-    if pc&.can_pitch? && !is_fielder_only
-      "pitcher"
-    else
-      pc&.player_card_defenses&.first&.position&.downcase
-    end
+    object.roster_position
   end
 
   def player_name
@@ -25,15 +19,7 @@ class RosterPlayerSerializer < ActiveModel::Serializer
 
   def cost
     @current_cost ||= Cost.current_cost
-    return 0 unless @current_cost
-
-    cost_player = object.player.cost_players.find do |cp|
-      cp.cost_id == @current_cost.id && cp.player_card_id == object.player_card_id
-    end
-    cost_player ||= object.player.cost_players.find do |cp|
-      cp.cost_id == @current_cost.id && cp.player_card_id.nil?
-    end
-    cost_player&.send(object.selected_cost_type) || 0
+    object.selected_cost_value(@current_cost)
   end
 
   def selected_cost_type

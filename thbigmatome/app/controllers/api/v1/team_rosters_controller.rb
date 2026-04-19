@@ -37,7 +37,6 @@ module Api
           # 登録カード（player_card）を優先し、未設定の場合はplayer.seriesにフォールバック
           pc = tm.player_card
           effective_series = pc&.card_set&.series.presence || tm.player.series
-          is_fielder_only = tm.selected_cost_type == "fielder_only_cost"
 
           {
             team_membership_id: tm.id,
@@ -45,7 +44,7 @@ module Api
             number: tm.player.number,
             player_name: tm.player.short_name,
             handedness: pc&.handedness,
-            position: (pc&.can_pitch? && !is_fielder_only ? "pitcher" : pc&.player_card_defenses&.first&.position&.downcase),
+            position: tm.roster_position,
             squad: squad_status,
             player_types: [],
             selected_cost_type: tm.selected_cost_type,
@@ -53,9 +52,9 @@ module Api
             cooldown_until: cooldown_info[:cooldown_until],
             same_day_exempt: cooldown_info[:same_day_exempt],
             is_outside_world: effective_series.present? && !native_series.include?(effective_series),
-            is_pitcher: (pc&.can_pitch? && !is_fielder_only) || false,
-            is_starter_pitcher: (pc&.can_pitch? && !is_fielder_only && pc&.starter_stamina.present? && pc&.starter_stamina >= 4) || false,
-            is_relief_only: (pc&.can_pitch? && !is_fielder_only && pc&.is_relief_only) || false,
+            is_pitcher: tm.pitcher_role?,
+            is_starter_pitcher: tm.starter_pitcher_role?,
+            is_relief_only: tm.relief_only_role?,
             **absence_info_for(tm, target_date)
           }
         end
@@ -274,16 +273,7 @@ module Api
       end
 
       def membership_cost(team_membership, cost_list)
-        return 0 unless cost_list
-
-        cost_player = team_membership.player.cost_players.find do |cp|
-          cp.cost_id == cost_list.id && cp.player_card_id == team_membership.player_card_id
-        end
-        cost_player ||= team_membership.player.cost_players.find do |cp|
-          cp.cost_id == cost_list.id && cp.player_card_id.nil?
-        end
-
-        cost_player&.public_send(team_membership.selected_cost_type) || 0
+        team_membership.selected_cost_value(cost_list)
       end
     end
   end

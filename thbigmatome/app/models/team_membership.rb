@@ -15,7 +15,90 @@ class TeamMembership < ApplicationRecord
   scope :included_in_team_total, -> { where(excluded_from_team_total: false) }
   scope :excluded_from_team_total, -> { where(excluded_from_team_total: true) }
 
+  def selected_cost_value(cost_list)
+    cost_list_id = extract_cost_list_id(cost_list)
+    return 0 unless cost_list_id
+
+    preferred_cost_types.each do |cost_type|
+      value = cost_value_for(cost_type, cost_list_id)
+      return value if value.present?
+    end
+
+    0
+  end
+
+  def pitcher_role?
+    return false if selected_cost_type == "fielder_only_cost"
+    return true if player_card&.can_pitch?
+
+    player&.hachinai_two_way? && %w[normal_cost pitcher_only_cost two_way_cost].include?(selected_cost_type)
+  end
+
+  def fielder_role?
+    return false if selected_cost_type == "pitcher_only_cost"
+    return true if player_card.present? && !player_card.can_pitch?
+
+    player&.hachinai_two_way?
+  end
+
+  def starter_pitcher_role?
+    return false unless pitcher_role?
+
+    player_card&.starter_stamina.present? && player_card.starter_stamina >= 4
+  end
+
+  def relief_only_role?
+    return false unless pitcher_role?
+
+    player_card&.is_relief_only || false
+  end
+
+  def roster_position
+    return "pitcher" if pitcher_role?
+
+    player_card&.player_card_defenses&.first&.position&.downcase
+  end
+
   private
+
+  def preferred_cost_types
+    return [ selected_cost_type ] unless player&.hachinai_two_way?
+
+    case selected_cost_type
+    when "fielder_only_cost"
+      %w[fielder_only_cost two_way_cost pitcher_only_cost normal_cost]
+    when "pitcher_only_cost"
+      %w[pitcher_only_cost two_way_cost fielder_only_cost normal_cost]
+    when "two_way_cost"
+      %w[two_way_cost pitcher_only_cost fielder_only_cost normal_cost]
+    when "normal_cost"
+      if player_card&.can_pitch?
+        %w[pitcher_only_cost two_way_cost fielder_only_cost normal_cost]
+      else
+        %w[fielder_only_cost two_way_cost pitcher_only_cost normal_cost]
+      end
+    else
+      [ selected_cost_type ]
+    end
+  end
+
+  def extract_cost_list_id(cost_list)
+    return cost_list.id if cost_list.respond_to?(:id)
+    return cost_list if cost_list.is_a?(Integer)
+
+    nil
+  end
+
+  def cost_value_for(cost_type, cost_list_id)
+    exact = player.cost_players.find do |cp|
+      cp.cost_id == cost_list_id && cp.player_card_id == player_card_id
+    end
+    base = player.cost_players.find do |cp|
+      cp.cost_id == cost_list_id && cp.player_card_id.nil?
+    end
+
+    exact&.public_send(cost_type).presence || base&.public_send(cost_type).presence
+  end
 
   def player_not_in_director_sibling_team
     return unless team

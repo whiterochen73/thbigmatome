@@ -166,8 +166,7 @@ class Api::V1::Commissioner::DashboardController < Api::V1::Commissioner::BaseCo
     first_cost = 0
     if current_cost
       first_cost = first_squad.sum do |tm|
-        cp = tm.player.cost_players.find { |c| c.cost_id == current_cost.id }
-        cp&.send(tm.selected_cost_type) || 0
+        tm.selected_cost_value(current_cost)
       end
     end
 
@@ -211,18 +210,9 @@ class Api::V1::Commissioner::DashboardController < Api::V1::Commissioner::BaseCo
         memberships.each do |tm|
           player = tm.player
           card = tm.player_card
-          is_fielder_only = tm.selected_cost_type == "fielder_only_cost"
-          position = if card&.can_pitch? && !is_fielder_only
-            "pitcher"
-          else
-            card&.player_card_defenses&.first&.position&.downcase
-          end
+          position = tm.roster_position
 
-          cost_value = 0
-          if current_cost
-            cp = player.cost_players.find { |c| c.cost_id == current_cost.id }
-            cost_value = cp&.send(tm.selected_cost_type) || 0
-          end
+          cost_value = current_cost ? tm.selected_cost_value(current_cost) : 0
 
           absence_type = nil
           cooldown_until = nil

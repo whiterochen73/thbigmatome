@@ -91,7 +91,7 @@ const props = withDefaults(defineProps<Props>(), {
 
 const emit = defineEmits(['save'])
 
-const isOpen = defineModel<boolean>({ default: false })
+const isOpen = defineModel<boolean>('isVisible', { default: false })
 
 interface EditedTeam {
   name: string

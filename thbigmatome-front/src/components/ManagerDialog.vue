@@ -75,7 +75,7 @@ const props = defineProps<Props>()
 // Emitsの定義
 const emit = defineEmits(['save'])
 
-const isOpen = defineModel<boolean>({ default: false })
+const isOpen = defineModel<boolean>('isVisible', { default: false })
 
 // 編集中のManagerデータ
 const defaultManager: Manager = {

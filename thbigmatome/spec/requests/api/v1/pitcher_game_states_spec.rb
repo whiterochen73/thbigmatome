@@ -386,6 +386,50 @@ RSpec.describe "Api::V1::PitcherGameStatesController", type: :request do
         entry = response.parsed_body.find { |e| e["player_id"] == pitcher2.id }
         expect(entry["is_injured"]).to be true
       end
+
+      # 境界値回帰防止: effective_end_date は排他的（この日には復帰可能）
+      # start=3/15, duration=5days → effective_end_date=3/20（3/20から復帰可能）
+      it "target_date == effective_end_date（回復日当日）→ is_injured: false" do
+        create(:player_absence,
+          team_membership: team_membership2,
+          season: season,
+          start_date: Date.new(2026, 3, 15),
+          duration: 5,
+          duration_unit: "days"
+        )
+        get_states(date: "2026-03-20", player_ids: [ pitcher2.id ])
+
+        entry = response.parsed_body.find { |e| e["player_id"] == pitcher2.id }
+        expect(entry["is_injured"]).to be false
+      end
+
+      it "target_date == effective_end_date - 1（回復前日）→ is_injured: true" do
+        create(:player_absence,
+          team_membership: team_membership2,
+          season: season,
+          start_date: Date.new(2026, 3, 15),
+          duration: 5,
+          duration_unit: "days"
+        )
+        get_states(date: "2026-03-19", player_ids: [ pitcher2.id ])
+
+        entry = response.parsed_body.find { |e| e["player_id"] == pitcher2.id }
+        expect(entry["is_injured"]).to be true
+      end
+
+      it "target_date > effective_end_date（回復後）→ is_injured: false" do
+        create(:player_absence,
+          team_membership: team_membership2,
+          season: season,
+          start_date: Date.new(2026, 3, 15),
+          duration: 5,
+          duration_unit: "days"
+        )
+        get_states(date: "2026-03-22", player_ids: [ pitcher2.id ])
+
+        entry = response.parsed_body.find { |e| e["player_id"] == pitcher2.id }
+        expect(entry["is_injured"]).to be false
+      end
     end
 
     describe "負傷離脱中の休養日数凍結・累積イニング減衰凍結・中10日全快" do

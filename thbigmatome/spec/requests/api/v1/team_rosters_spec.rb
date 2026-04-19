@@ -79,6 +79,27 @@ RSpec.describe "Api::V1::TeamRosters", type: :request do
         expect(entry["is_absent"]).to be false
         expect(entry["absence_info"]).to be_nil
       end
+
+      it "prefers variant cost for the selected player_card_id over base cost" do
+        player = create(:player)
+        card = create(:player_card, player: player)
+        membership = create(
+          :team_membership,
+          team: team,
+          player: player,
+          player_card: card,
+          squad: "first",
+          selected_cost_type: "normal_cost",
+        )
+        create(:cost_player, cost: cost, player: player, player_card_id: nil, normal_cost: 2)
+        create(:cost_player, cost: cost, player: player, player_card_id: card.id, normal_cost: 20)
+
+        get "/api/v1/teams/#{team.id}/roster", as: :json
+
+        json = response.parsed_body
+        entry = json["roster"].find { |r| r["team_membership_id"] == membership.id }
+        expect(entry["cost"]).to eq(20)
+      end
     end
 
     context "when a player has an active absence" do
@@ -161,6 +182,58 @@ RSpec.describe "Api::V1::TeamRosters", type: :request do
         entry = json["roster"].find { |r| r["player_id"] == player.id }
         expect(entry["is_starter_pitcher"]).to be false
         expect(entry["is_relief_only"]).to be false
+      end
+    end
+
+    context "when validating first squad cost with variant cost players" do
+      let(:target_date) { Date.new(2026, 5, 15) }
+
+      before do
+        season.update!(current_date: target_date)
+      end
+
+      it "uses the selected player_card variant cost for first squad limit checks" do
+        players = []
+        24.times do
+          result = add_player_to_team(team: team, cost: cost, squad: "first", cost_value: 4)
+          create(
+            :season_roster,
+            season: season,
+            team_membership: result[:membership],
+            squad: "first",
+            registered_on: target_date,
+          )
+          players << result
+        end
+
+        variant_player = create(:player)
+        variant_card = create(:player_card, player: variant_player)
+        variant_membership = create(
+          :team_membership,
+          team: team,
+          player: variant_player,
+          player_card: variant_card,
+          squad: "first",
+          selected_cost_type: "normal_cost",
+        )
+        create(
+          :season_roster,
+          season: season,
+          team_membership: variant_membership,
+          squad: "first",
+          registered_on: target_date,
+        )
+        create(:cost_player, cost: cost, player: variant_player, player_card_id: nil, normal_cost: 2)
+        create(:cost_player, cost: cost, player: variant_player, player_card_id: variant_card.id, normal_cost: 20)
+
+        roster_updates = team.team_memberships.map { |tm| { team_membership_id: tm.id, squad: "first" } }
+
+        post "/api/v1/teams/#{team.id}/roster",
+          params: { roster_updates: roster_updates, target_date: target_date.to_s },
+          as: :json
+
+        expect(response).to have_http_status(:unprocessable_content)
+        expect(response.parsed_body["error"]).to include("合計コストが上限")
       end
     end
 

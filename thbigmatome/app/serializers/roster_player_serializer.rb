@@ -27,7 +27,12 @@ class RosterPlayerSerializer < ActiveModel::Serializer
     @current_cost ||= Cost.current_cost
     return 0 unless @current_cost
 
-    cost_player = object.player.cost_players.find { |cp| cp.cost_id == @current_cost.id }
+    cost_player = object.player.cost_players.find do |cp|
+      cp.cost_id == @current_cost.id && cp.player_card_id == object.player_card_id
+    end
+    cost_player ||= object.player.cost_players.find do |cp|
+      cp.cost_id == @current_cost.id && cp.player_card_id.nil?
+    end
     cost_player&.send(object.selected_cost_type) || 0
   end
 

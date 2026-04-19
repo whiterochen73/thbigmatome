@@ -49,7 +49,7 @@ module Api
             squad: squad_status,
             player_types: [],
             selected_cost_type: tm.selected_cost_type,
-            cost: tm.player.cost_players.find { |cp| cp.cost_id == current_cost_list.id }.send(tm.selected_cost_type),
+            cost: membership_cost(tm, current_cost_list),
             cooldown_until: cooldown_info[:cooldown_until],
             same_day_exempt: cooldown_info[:same_day_exempt],
             is_outside_world: effective_series.present? && !native_series.include?(effective_series),
@@ -240,7 +240,7 @@ module Api
       # Rule 4 & 5: Validate 1st team constraints
       def validate_first_squad_constraints(first_squad_memberships, target_date, season, season_start_date, commissioner_mode: false, commissioner_warnings: [])
         player_count = first_squad_memberships.count
-        total_cost = first_squad_memberships.sum { |tm| tm.player.cost_players.find { |pc| pc.cost_id == @current_cost_list.id }.send(tm.selected_cost_type) }
+        total_cost = first_squad_memberships.sum { |tm| membership_cost(tm, @current_cost_list) }
 
         max_players = 29
         minimum_players = Team.first_squad_minimum_players
@@ -271,6 +271,19 @@ module Api
           msg = "1軍に登録されている選手の合計コストが上限（#{max_cost}）を超えています。"
           commissioner_mode ? (commissioner_warnings << msg) : raise(msg)
         end
+      end
+
+      def membership_cost(team_membership, cost_list)
+        return 0 unless cost_list
+
+        cost_player = team_membership.player.cost_players.find do |cp|
+          cp.cost_id == cost_list.id && cp.player_card_id == team_membership.player_card_id
+        end
+        cost_player ||= team_membership.player.cost_players.find do |cp|
+          cp.cost_id == cost_list.id && cp.player_card_id.nil?
+        end
+
+        cost_player&.public_send(team_membership.selected_cost_type) || 0
       end
     end
   end

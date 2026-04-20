@@ -102,17 +102,7 @@ module Api
         current_cost = Cost.current_cost
         return 0 unless current_cost
 
-        cost_player = player_card.player.cost_players.find { |cp| cp.cost_id == current_cost.id && cp.player_card_id == player_card.id }
-        cost_player ||= player_card.player.cost_players.find { |cp| cp.cost_id == current_cost.id && cp.player_card_id.nil? }
-        return 0 unless cost_player
-
-        if player_card.is_relief_only
-          cost_player.relief_only_cost || cost_player.normal_cost || 0
-        elsif player_card.is_pitcher
-          cost_player.pitcher_only_cost || cost_player.normal_cost || 0
-        else
-          cost_player.fielder_only_cost || cost_player.normal_cost || 0
-        end
+        player_card.cost_value(current_cost)
       end
     end
   end

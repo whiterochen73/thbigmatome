@@ -216,5 +216,18 @@ RSpec.describe TeamMembership, type: :model do
       expect(membership.fielder_role?).to be true
       expect(membership.roster_position).to eq('pitcher')
     end
+
+    it 'PM2026 の分離 player でも canonical なハチナイ選手のコストへフォールバックする' do
+      base_player = create(:player, name: 'リン・レイファ', short_name: 'リン', number: 'F34', series: 'hachinai')
+      create(:player_card, player: base_player, card_set: hachinai_card_set, card_type: 'batter', is_pitcher: false)
+      split_player = create(:player, name: 'リン・レイファ (UR)', number: '38', series: 'original')
+      split_card = create(:player_card, player: split_player, card_set: pm_card_set, card_type: 'batter', is_pitcher: false)
+      split_card.player_card_defenses.create!(position: '1B', range_value: 5, error_rank: 'C')
+      membership = create(:team_membership, player: split_player, player_card: split_card, selected_cost_type: 'normal_cost')
+
+      create(:cost_player, cost: cost, player: base_player, player_card_id: nil, fielder_only_cost: 4, pitcher_only_cost: 1, two_way_cost: 5)
+
+      expect(membership.selected_cost_value(cost)).to eq(4)
+    end
   end
 end

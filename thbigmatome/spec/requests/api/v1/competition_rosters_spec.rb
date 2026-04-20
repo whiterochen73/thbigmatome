@@ -124,6 +124,33 @@ RSpec.describe "Api::V1::CompetitionRosters", type: :request do
         expect(response).to have_http_status(:created)
       end
     end
+
+    context "PM2026 の分離 player が canonical ハチナイ選手のコストを使う場合" do
+      let(:hachinai_card_set) { create(:card_set, set_type: "hachinai61", series: "hachinai", name: "ハチナイ6.1") }
+      let(:pm_card_set) { create(:card_set, set_type: "pm2026", series: "original", name: "PM2026") }
+
+      before do
+        24.times do
+          pc = create_player_card_with_cost(normal_cost: 4)
+          create(:competition_roster, competition_entry: entry, player_card: pc, squad: :first_squad)
+        end
+      end
+
+      it "base 側の fielder_only_cost を返して登録できる" do
+        base_player = create(:player, name: "リン・レイファ", short_name: "リン", number: "F34", series: "hachinai")
+        create(:player_card, player: base_player, card_set: hachinai_card_set, card_type: "batter", is_pitcher: false)
+        ur_player = create(:player, name: "リン・レイファ (UR)", number: "38", series: "original")
+        ur_card = create(:player_card, player: ur_player, card_set: pm_card_set, card_type: "batter", is_pitcher: false)
+        create(:cost_player, cost: cost, player: base_player, fielder_only_cost: 4, pitcher_only_cost: 1, two_way_cost: 5)
+
+        post roster_url("/players"),
+          params: { player_card_id: ur_card.id, squad: "first_squad" },
+          as: :json
+
+        expect(response).to have_http_status(:created)
+        expect(response.parsed_body["cost"]).to eq(4)
+      end
+    end
   end
 
   describe "DELETE /api/v1/competitions/:id/roster/players/:player_card_id" do

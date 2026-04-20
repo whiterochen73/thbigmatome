@@ -83,4 +83,8 @@ class PlayerCard < ApplicationRecord
             numericality: { only_integer: true },
             inclusion: { in: -5..5 },
             allow_blank: true
+
+  def cost_value(cost_list)
+    player.cost_value_for_card(self, cost_list)
+  end
 end

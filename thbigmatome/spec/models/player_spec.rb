@@ -70,4 +70,22 @@ RSpec.describe Player, type: :model do
       end
     end
   end
+
+  describe 'PM2026 の分離 player rescue' do
+    let(:hachinai_card_set) { create(:card_set, set_type: "hachinai61", series: "hachinai", name: "ハチナイ6.1") }
+    let(:pm_card_set) { create(:card_set, set_type: "pm2026", series: "original", name: "PM2026") }
+    let!(:base_player) { create(:player, name: "リン・レイファ", short_name: "リン", number: "F34", series: "hachinai") }
+    let!(:ur_player) { create(:player, name: "リン・レイファ (UR)", number: "38", series: "original") }
+
+    before do
+      create(:player_card, player: base_player, card_set: hachinai_card_set, card_type: "batter", is_pitcher: false)
+      create(:player_card, player: ur_player, card_set: pm_card_set, card_type: "batter", is_pitcher: false)
+    end
+
+    it 'PM2026 側でも canonical なハチナイ選手を参照して二刀流扱いにできる' do
+      expect(ur_player.hachinai_two_way?).to be true
+      expect(ur_player.available_cost_types).to include("two_way_cost", "pitcher_only_cost", "fielder_only_cost")
+      expect(ur_player.available_cost_types).not_to include("normal_cost")
+    end
+  end
 end

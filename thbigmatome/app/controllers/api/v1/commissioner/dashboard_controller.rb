@@ -56,13 +56,11 @@ class Api::V1::Commissioner::DashboardController < Api::V1::Commissioner::BaseCo
       first_squad = memberships.select { |tm| tm.squad == "first" }
 
       total = memberships.reject(&:excluded_from_team_total).sum do |tm|
-        cp = tm.player.cost_players.find { |c| c.cost_id == current_cost.id }
-        cp&.send(tm.selected_cost_type) || 0
+        tm.selected_cost_value(current_cost)
       end
 
       first_cost = first_squad.sum do |tm|
-        cp = tm.player.cost_players.find { |c| c.cost_id == current_cost.id }
-        cp&.send(tm.selected_cost_type) || 0
+        tm.selected_cost_value(current_cost)
       end
 
       first_limit = Team.first_squad_cost_limit_for_count(first_squad.count)

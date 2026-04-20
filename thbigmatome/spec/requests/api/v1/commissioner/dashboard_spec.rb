@@ -120,6 +120,26 @@ RSpec.describe "Api::V1::Commissioner::Dashboard", type: :request do
         expect(record["cost_usage_ratio"]).to eq(10 / 200.0)
       end
 
+      it "PM2026 の分離 player でも canonical ハチナイ選手のコストを集計する" do
+        cost = create(:cost, end_date: nil)
+        hachinai_card_set = create(:card_set, set_type: "hachinai61", series: "hachinai", name: "ハチナイ6.1")
+        pm_card_set = create(:card_set, set_type: "pm2026", series: "original", name: "PM2026")
+        team = create(:team, is_active: true, team_type: :normal)
+        base_player = create(:player, name: "リン・レイファ", short_name: "リン", number: "F34", series: "hachinai")
+        create(:player_card, player: base_player, card_set: hachinai_card_set, card_type: "batter", is_pitcher: false)
+        create(:cost_player, cost: cost, player: base_player, fielder_only_cost: 4, pitcher_only_cost: 1, two_way_cost: 5)
+
+        ur_player = create(:player, name: "リン・レイファ (UR)", number: "38", series: "original")
+        ur_card = create(:player_card, player: ur_player, card_set: pm_card_set, card_type: "batter", is_pitcher: false)
+        create(:team_membership, team: team, player: ur_player, player_card: ur_card, squad: "first", selected_cost_type: "normal_cost")
+
+        get "/api/v1/commissioner/dashboard/costs"
+
+        record = JSON.parse(response.body).find { |r| r["team_id"] == team.id }
+        expect(record["total_cost"]).to eq(4)
+        expect(record["first_squad_cost"]).to eq(4)
+      end
+
       it "inactive チームは含まない" do
         cost = create(:cost, end_date: nil)
         team = create(:team, is_active: false, team_type: :normal)

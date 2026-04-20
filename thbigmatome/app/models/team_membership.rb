@@ -90,14 +90,7 @@ class TeamMembership < ApplicationRecord
   end
 
   def cost_value_for(cost_type, cost_list_id)
-    exact = player.cost_players.find do |cp|
-      cp.cost_id == cost_list_id && cp.player_card_id == player_card_id
-    end
-    base = player.cost_players.find do |cp|
-      cp.cost_id == cost_list_id && cp.player_card_id.nil?
-    end
-
-    exact&.public_send(cost_type).presence || base&.public_send(cost_type).presence
+    player.cost_value_for_types([ cost_type ], cost_list_id, exact_player_card_id: player_card_id).presence
   end
 
   def player_not_in_director_sibling_team

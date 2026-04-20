@@ -175,5 +175,30 @@ RSpec.describe CostValidator, type: :service do
         expect(result[:first_squad_cost]).not_to eq(98)
       end
     end
+
+    context 'PM2026 の分離 player が canonical ハチナイ選手のコストを使う場合' do
+      let(:hachinai_card_set) { create(:card_set, set_type: "hachinai61", series: "hachinai", name: "ハチナイ6.1") }
+      let(:pm_card_set) { create(:card_set, set_type: "pm2026", series: "original", name: "PM2026") }
+
+      before do
+        24.times do
+          pc = create_player_card_with_cost(normal_cost: 4)
+          create(:competition_roster, competition_entry: entry, player_card: pc, squad: :first_squad)
+        end
+
+        base_player = create(:player, name: 'リン・レイファ', short_name: 'リン', number: 'F34', series: 'hachinai')
+        create(:player_card, player: base_player, card_set: hachinai_card_set, card_type: 'batter', is_pitcher: false)
+        create(:cost_player, cost: cost, player: base_player, fielder_only_cost: 4, pitcher_only_cost: 1, two_way_cost: 5)
+
+        ur_player = create(:player, name: 'リン・レイファ (UR)', number: '38', series: 'original')
+        ur_card = create(:player_card, player: ur_player, card_set: pm_card_set, card_type: 'batter', is_pitcher: false)
+        create(:competition_roster, competition_entry: entry, player_card: ur_card, squad: :first_squad)
+      end
+
+      it '分離 player でも base 側コストを使って集計する' do
+        result = described_class.new(entry.id).validate
+        expect(result[:first_squad_cost]).to eq(100)
+      end
+    end
   end
 end

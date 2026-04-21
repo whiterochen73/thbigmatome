@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_04_09_123501) do
+ActiveRecord::Schema[8.1].define(version: 2026_04_21_230000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -486,9 +486,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_09_123501) do
     t.integer "steal_start"
     t.text "unique_traits"
     t.datetime "updated_at", null: false
-    t.string "variant"
-    t.index "card_set_id, player_id, card_type, COALESCE(variant, ''::character varying)", name: "index_player_cards_on_card_set_player_card_type_variant", unique: true
     t.index [ "batting_style_id" ], name: "index_player_cards_on_batting_style_id"
+    t.index [ "card_set_id", "player_id", "card_type" ], name: "index_player_cards_on_card_set_player_card_type", unique: true
     t.index [ "card_set_id" ], name: "index_player_cards_on_card_set_id"
     t.index [ "catcher_pitching_style_id" ], name: "index_player_cards_on_catcher_pitching_style_id"
     t.index [ "pinch_pitching_style_id" ], name: "index_player_cards_on_pinch_pitching_style_id"
@@ -583,6 +582,17 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_09_123501) do
     t.datetime "updated_at", null: false
     t.index [ "key_player_id" ], name: "index_seasons_on_key_player_id"
     t.index [ "team_id" ], name: "index_seasons_on_team_id"
+  end
+
+  create_table "shared_sync_logs", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.text "notes"
+    t.string "resource_type", null: false
+    t.string "status", default: "success", null: false
+    t.datetime "synced_at", null: false
+    t.integer "synced_count", default: 0
+    t.datetime "updated_at", null: false
+    t.index [ "resource_type", "synced_at" ], name: "index_shared_sync_logs_on_resource_type_and_synced_at"
   end
 
   create_table "squad_text_settings", force: :cascade do |t|

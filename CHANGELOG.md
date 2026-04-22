@@ -5,6 +5,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.3] - 2026-04-22
+
+### Added
+- Clubhouse同期向け shared players exporter を追加
+- 本番DBダンプから開発DBを復元する `restore_dev.sh` を追加
+- チーム一覧画面に最終試合日・ゲーム内日付・ソート機能を追加
+
+### Changed
+- 投手判定ロジックを `can_pitch?` / `player_card_defenses` / `is_pitcher` ベースで全体統一
+- バリエーション持ち選手のコスト判定を `player_card_id` 優先の variant-aware lookup に整理
+- QC Warning 解消バッチにより投手判定・nil安全化・非対称処理を見直し
+
+### Fixed
+- 川口息吹の投手認識不整合を FE/BE 両面で修正
+- 桜田二刀流コスト、高坂コスト、新人監督チーム登録不可を修正
+- 0アウト降板時の `innings_pitched=0` 強制送信バグを修正
+- PM2026 split-player rescue を追加し、カード欠損時の canonical 選手フォールバックを修正
+- ハチナイ二刀流×カード欠損時の cost/role 判定不整合を修正
+- `build_injured_set` の回復日境界値バグを修正
+- コミッショナー画面の `defineModel` 名不一致を修正し、`v-model` バインドを復旧
+
 ## [0.3.1] - 2026-04-10
 
 ### Added

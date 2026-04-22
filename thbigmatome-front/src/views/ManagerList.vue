@@ -94,7 +94,7 @@
     <ManagerDialog
       v-model:isVisible="dialogVisible"
       :manager="editingManager"
-      @save="fetchManagers"
+      @save="handleManagerSaved"
     />
 
     <TeamDialog
@@ -220,6 +220,11 @@ const deleteManager = async (id: number) => {
 const openDialog = (manager: Manager | null = null) => {
   editingManager.value = manager ? { ...manager } : null // 参照渡しを防ぐためスプレッド構文でコピー
   dialogVisible.value = true
+}
+
+const handleManagerSaved = () => {
+  currentPage.value = 1
+  fetchManagers(1, itemsPerPage.value)
 }
 
 /**

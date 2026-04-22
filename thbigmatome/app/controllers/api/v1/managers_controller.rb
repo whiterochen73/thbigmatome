@@ -6,18 +6,26 @@ module Api
 
       # GET /api/v1/managers
       def index
-        page = (params[:page] || 1).to_i
-        per_page = (params[:per_page] || 25).to_i
+        manager_scope = Manager.includes(teams: :season).order(id: :desc)
+        total_count = manager_scope.count
 
-        # パラメータのバリデーション
-        page = 1 if page < 1
-        per_page = 25 if per_page < 1 || per_page > 100
+        if ActiveModel::Type::Boolean.new.cast(params[:unpaginated])
+          @managers = manager_scope
+          page = 1
+          per_page = total_count.nonzero? || 1
+          total_pages = total_count.zero? ? 0 : 1
+        else
+          page = (params[:page] || 1).to_i
+          per_page = (params[:per_page] || 25).to_i
 
-        offset = (page - 1) * per_page
+          # パラメータのバリデーション
+          page = 1 if page < 1
+          per_page = 25 if per_page < 1 || per_page > 100
 
-        @managers = Manager.all.includes(teams: :season).order(:id).limit(per_page).offset(offset)
-        total_count = Manager.count
-        total_pages = (total_count.to_f / per_page).ceil
+          offset = (page - 1) * per_page
+          @managers = manager_scope.limit(per_page).offset(offset)
+          total_pages = (total_count.to_f / per_page).ceil
+        end
 
         render json: {
           data: @managers.as_json(

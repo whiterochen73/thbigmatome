@@ -27,13 +27,13 @@ RSpec.describe "Api::V1::ManagersController", type: :request do
       expect(meta["total_pages"]).to eq(1)
     end
 
-    it "returns managers ordered by id" do
+    it "returns managers ordered by newest id first" do
       managers = create_list(:manager, 3)
 
       get "/api/v1/managers", as: :json
 
       json = response.parsed_body
-      expect(json["data"].map { |m| m["id"] }).to eq(managers.map(&:id).sort)
+      expect(json["data"].map { |m| m["id"] }).to eq(managers.map(&:id).sort.reverse)
     end
 
     it "paginates results with page and per_page params" do
@@ -68,6 +68,19 @@ RSpec.describe "Api::V1::ManagersController", type: :request do
       json = response.parsed_body
       expect(json["meta"]["current_page"]).to eq(1)
       expect(json["meta"]["per_page"]).to eq(25)
+    end
+
+    it "returns all managers when unpaginated=true" do
+      create_list(:manager, 30)
+
+      get "/api/v1/managers?unpaginated=true", as: :json
+
+      expect(response).to have_http_status(:ok)
+      json = response.parsed_body
+      expect(json["data"].size).to eq(30)
+      expect(json["meta"]["current_page"]).to eq(1)
+      expect(json["meta"]["total_pages"]).to eq(1)
+      expect(json["meta"]["per_page"]).to eq(30)
     end
   end
 

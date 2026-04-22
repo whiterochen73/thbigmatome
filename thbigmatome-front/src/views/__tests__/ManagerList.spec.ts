@@ -240,4 +240,103 @@ describe('ManagerList', () => {
     expect(axios.get.mock.calls.length).toBeGreaterThanOrEqual(2)
     expect(wrapper.text()).toContain('テスト監督')
   })
+
+  it('監督保存後は1ページ目を再取得する', async () => {
+    vi.mocked(axios.get)
+      .mockResolvedValueOnce({
+        data: {
+          data: [],
+          meta: {
+            total_count: 30,
+            current_page: 1,
+            per_page: 25,
+          },
+        },
+      })
+      .mockResolvedValueOnce({
+        data: {
+          data: [],
+          meta: {
+            total_count: 30,
+            current_page: 2,
+            per_page: 25,
+          },
+        },
+      })
+      .mockResolvedValueOnce({
+        data: {
+          data: [
+            {
+              id: 101,
+              name: '最新監督',
+              short_name: '最新',
+              irc_name: 'latest_mgr',
+              user_id: 456,
+              active_director_team_count: 0,
+              teams: [],
+            },
+          ],
+          meta: {
+            total_count: 31,
+            current_page: 1,
+            per_page: 25,
+          },
+        },
+      })
+    ;(axios as unknown as { post?: ReturnType<typeof vi.fn> }).post = vi.fn().mockResolvedValue({
+      data: {
+        data: {
+          id: 101,
+        },
+      },
+    })
+
+    const wrapper = mount(ManagerList, {
+      global: {
+        plugins: [vuetify, i18n, createPinia()],
+        stubs: {
+          TeamDialog: true,
+          ConfirmDialog: true,
+        },
+      },
+    })
+
+    await flushPromises()
+
+    const vm = wrapper.vm as unknown as {
+      onOptionsUpdate: (options: { page: number; itemsPerPage: number }) => void
+    }
+    vm.onOptionsUpdate({ page: 2, itemsPerPage: 25 })
+    await flushPromises()
+
+    const addButton = wrapper.findAllComponents({ name: 'VBtn' }).find((candidate) => {
+      return candidate.text().includes('監督追加')
+    })
+
+    expect(addButton).toBeDefined()
+    await addButton!.trigger('click')
+    await flushPromises()
+
+    const dialogVm = wrapper.findComponent(ManagerDialog).vm as unknown as {
+      editedManager: {
+        name: string
+        short_name: string
+        irc_name: string
+        user_id: number | null
+      }
+      save: () => Promise<void>
+    }
+
+    dialogVm.editedManager.name = '最新監督'
+    dialogVm.editedManager.short_name = '最新'
+    dialogVm.editedManager.irc_name = 'latest_mgr'
+    dialogVm.editedManager.user_id = 456
+
+    await dialogVm.save()
+    await flushPromises()
+
+    expect(axios.get).toHaveBeenLastCalledWith('/managers', {
+      params: { page: 1, per_page: 25 },
+    })
+  })
 })

@@ -75,6 +75,7 @@ import axios from '@/plugins/axios'
 import { useSnackbar } from '@/composables/useSnackbar'
 import { type Team } from '@/types/team'
 import { type Manager } from '@/types/manager'
+import { type PaginatedResponse } from '@/types/pagination'
 
 const { t } = useI18n()
 const { showSnackbar } = useSnackbar()
@@ -122,7 +123,9 @@ const isFormValid = computed(() => !!editedTeam.value.name)
 
 const fetchManagers = async () => {
   try {
-    const response = await axios.get<{ data: Manager[] }>('/managers')
+    const response = await axios.get<PaginatedResponse<Manager>>('/managers', {
+      params: { unpaginated: true },
+    })
     managers.value = response.data.data
   } catch (error) {
     console.error('Error fetching managers:', error)
@@ -146,9 +149,7 @@ watch(isOpen, (newVal) => {
       editedTeam.value = { ...defaultTeam, director_id: props.defaultManagerId ?? null }
     }
 
-    if (managers.value.length === 0) {
-      fetchManagers()
-    }
+    fetchManagers()
   }
 })
 

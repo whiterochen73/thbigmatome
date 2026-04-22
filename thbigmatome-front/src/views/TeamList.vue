@@ -89,7 +89,7 @@
       </v-data-table>
     </DataCard>
 
-    <TeamDialog v-model="dialogVisible" :team="editingTeam" @save="fetchTeams" />
+    <TeamDialog v-model:isVisible="dialogVisible" :team="editingTeam" @save="fetchTeams" />
 
     <ConfirmDialog ref="confirmDialog" />
   </v-container>

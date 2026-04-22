@@ -2,6 +2,12 @@
 
 All notable changes to the THBIG Dugout frontend will be documented in this file.
 
+## [0.3.3] - 2026-04-22
+
+### Bug Fixes
+
+- Fixed: チーム追加ダイアログのキャンセルボタンが機能しない不具合を修正
+
 ## [v0.2.0] - 2026-04-04
 
 ### Features

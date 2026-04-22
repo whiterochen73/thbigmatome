@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## [v0.3.3] - 2026-04-22
+
+### Bug Fixes
+
+- Fixed: 監督追加後に一覧が即反映されない不具合を修正
+- Fixed: チーム追加・編集ダイアログで監督候補が表示されない不具合を修正
+- Fixed: ロスター画面・クールダウン表示で選手名が空欄または "null" になる不具合を修正
+
 ## [v0.3.2] - 2026-04-15
 
 ### Bug Fixes

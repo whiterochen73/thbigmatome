@@ -52,9 +52,10 @@ const getCooldownDisplayText = (player: RosterPlayer) => {
     month: 'long',
     day: 'numeric',
   })
+  const name = player.player_name ?? '(名前未設定)'
   if (player.same_day_exempt) {
-    return `${player.player_name}: ${t('activeRoster.cooldownSameDayExempt', { date: formattedCooldownDate })}`
+    return `${name}: ${t('activeRoster.cooldownSameDayExempt', { date: formattedCooldownDate })}`
   }
-  return `${player.player_name}: ${t('activeRoster.cooldownUntil', { date: formattedCooldownDate })}`
+  return `${name}: ${t('activeRoster.cooldownUntil', { date: formattedCooldownDate })}`
 }
 </script>

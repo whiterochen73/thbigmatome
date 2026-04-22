@@ -42,7 +42,7 @@ module Api
             team_membership_id: tm.id,
             player_id: tm.player.id,
             number: tm.player.number,
-            player_name: tm.player.short_name,
+            player_name: tm.player.short_name.presence || tm.player.name,
             handedness: pc&.handedness,
             position: tm.roster_position,
             squad: squad_status,

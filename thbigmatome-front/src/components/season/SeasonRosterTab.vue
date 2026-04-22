@@ -47,7 +47,7 @@
             {{ t('activeRoster.absenceEndingSoon') }}
           </template>
           <p v-for="player in nearEndAbsencePlayers" :key="player.team_membership_id" class="mb-0">
-            {{ player.player_name }}:
+            {{ player.player_name ?? '(名前未設定)' }}:
             {{ t(`enums.player_absence.absence_type.${player.absence_info!.absence_type}`) }}
             — {{ t('activeRoster.remainingDays', { days: player.absence_info!.remaining_days }) }}
           </p>

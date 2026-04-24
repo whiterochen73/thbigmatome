@@ -1,7 +1,9 @@
 class Api::V1::Internal::ExportsController < Api::V1::InternalBaseController
+  DEFAULT_PER_PAGE = 100
+  MAX_PER_PAGE = 1_000
+
   def players
-    players = Player.all.order(:id)
-    render json: players.map { |p|
+    render_collection(Player.all.order(:id), :players) { |p|
       { id: p.id, name: p.name, short_name: p.short_name,
         number: p.number, series: p.series,
         created_at: p.created_at, updated_at: p.updated_at }
@@ -9,8 +11,7 @@ class Api::V1::Internal::ExportsController < Api::V1::InternalBaseController
   end
 
   def teams
-    teams = Team.all.order(:id)
-    render json: teams.map { |t|
+    render_collection(Team.all.order(:id), :teams) { |t|
       { id: t.id, name: t.name, short_name: t.short_name,
         team_type: t.team_type, is_active: t.is_active,
         created_at: t.created_at, updated_at: t.updated_at }
@@ -18,8 +19,7 @@ class Api::V1::Internal::ExportsController < Api::V1::InternalBaseController
   end
 
   def stadiums
-    stadiums = Stadium.all.order(:id)
-    render json: stadiums.map { |s|
+    render_collection(Stadium.all.order(:id), :stadiums) { |s|
       { id: s.id, name: s.name, code: s.code, indoor: s.indoor,
         up_table_ids: s.up_table_ids,
         created_at: s.created_at, updated_at: s.updated_at }
@@ -27,8 +27,7 @@ class Api::V1::Internal::ExportsController < Api::V1::InternalBaseController
   end
 
   def card_sets
-    card_sets = CardSet.all.order(:id)
-    render json: card_sets.map { |cs|
+    render_collection(CardSet.all.order(:id), :card_sets) { |cs|
       { id: cs.id, name: cs.name, year: cs.year, set_type: cs.set_type,
         series: cs.series, is_outside_world: cs.is_outside_world,
         created_at: cs.created_at, updated_at: cs.updated_at }
@@ -36,8 +35,7 @@ class Api::V1::Internal::ExportsController < Api::V1::InternalBaseController
   end
 
   def player_cards
-    player_cards = PlayerCard.all.order(:id)
-    render json: player_cards.map { |pc|
+    render_collection(PlayerCard.all.order(:id), :player_cards) { |pc|
       { id: pc.id, player_id: pc.player_id, card_set_id: pc.card_set_id,
         card_type: pc.card_type, is_pitcher: pc.is_pitcher,
         is_relief_only: pc.is_relief_only, is_closer: pc.is_closer,
@@ -54,8 +52,7 @@ class Api::V1::Internal::ExportsController < Api::V1::InternalBaseController
   end
 
   def seasons
-    seasons = Season.all.order(:id)
-    render json: seasons.map { |s|
+    render_collection(Season.all.order(:id), :seasons) { |s|
       { id: s.id, name: s.name, team_id: s.team_id,
         current_date: s.current_date, team_type: s.team_type,
         key_player_id: s.key_player_id,
@@ -65,7 +62,10 @@ class Api::V1::Internal::ExportsController < Api::V1::InternalBaseController
 
   def games
     games = Game.all.order(:id)
-    render json: games.map { |g|
+    games = games.where(real_date: params[:from]..) if params[:from].present?
+    games = games.where(real_date: ..params[:to]) if params[:to].present?
+
+    render_collection(games, :games) { |g|
       { id: g.id, home_team_id: g.home_team_id,
         visitor_team_id: g.visitor_team_id, stadium_id: g.stadium_id,
         real_date: g.real_date, home_score: g.home_score,
@@ -85,5 +85,44 @@ class Api::V1::Internal::ExportsController < Api::V1::InternalBaseController
       source: game.source, dh: game.dh,
       created_at: game.created_at, updated_at: game.updated_at
     }
+  end
+
+  private
+
+  def render_collection(scope, resource_key)
+    unless paginated_request?
+      render json: scope.map { |record| yield(record) }
+      return
+    end
+
+    page = normalized_page
+    per_page = normalized_per_page
+    total_count = scope.count
+    records = scope.limit(per_page).offset((page - 1) * per_page)
+
+    render json: {
+      resource_key => records.map { |record| yield(record) },
+      meta: {
+        current_page: page,
+        per_page: per_page,
+        total_count: total_count,
+        total_pages: (total_count.to_f / per_page).ceil
+      }
+    }
+  end
+
+  def paginated_request?
+    params.key?(:page) || params.key?(:per_page)
+  end
+
+  def normalized_page
+    parsed = params[:page].to_i
+    parsed.positive? ? parsed : 1
+  end
+
+  def normalized_per_page
+    parsed = params[:per_page].presence&.to_i || DEFAULT_PER_PAGE
+    parsed = DEFAULT_PER_PAGE unless parsed.positive?
+    [ parsed, MAX_PER_PAGE ].min
   end
 end

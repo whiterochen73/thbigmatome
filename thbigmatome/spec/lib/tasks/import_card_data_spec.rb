@@ -5,7 +5,7 @@ require "csv"
 
 RSpec.describe "import:card_data" do
   before(:all) do
-    Rails.application.load_tasks
+    Rails.application.load_tasks unless Rake::Task.task_defined?("import:card_data")
   end
 
   let(:tmp_dir) { Dir.mktmpdir }

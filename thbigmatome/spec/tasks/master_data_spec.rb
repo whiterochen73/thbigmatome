@@ -3,7 +3,7 @@ require "rake"
 
 RSpec.describe "master_data:sync" do
   before(:all) do
-    Rails.application.load_tasks
+    Rails.application.load_tasks unless Rake::Task.task_defined?("master_data:sync")
   end
 
   before do

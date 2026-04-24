@@ -5,7 +5,7 @@ require "csv"
 
 RSpec.describe "thbigmatome:export_players" do
   before(:all) do
-    Rails.application.load_tasks
+    Rails.application.load_tasks unless Rake::Task.task_defined?("thbigmatome:export_players")
   end
 
   let(:tmp_dir) { Dir.mktmpdir }

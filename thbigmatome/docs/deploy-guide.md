@@ -222,11 +222,19 @@ nano ~/projects/.env.production
 | `DB_PASSWORD` | 推測困難なランダム文字列（例: `openssl rand -hex 32` で生成） |
 | `RAILS_MASTER_KEY` | `~/projects/thbigmatome/config/master.key` の内容 |
 | `INITIAL_PASSWORD` | 初回ログインパスワード（任意） |
+| `INTERNAL_API_KEY` | 内部同期APIキー（`openssl rand -hex 32` などで生成。開発用デフォルト値は禁止） |
 | `APP_HOST` | `dugout.thbig.fun` |
 | `CORS_ALLOWED_ORIGIN` | `https://dugout.thbig.fun` |
 | `VITE_API_BASE_URL` | `https://dugout.thbig.fun/api/v1` |
 
 **注意**: `.env.production` は git にコミットしないこと。
+
+内部APIキー交換手順:
+
+1. `openssl rand -hex 32` で `INTERNAL_API_KEY` を生成します。
+2. Dugout本番 `.env.production` と、Clubhouse等の同期元サービスに同じ値を設定します。
+3. Railsコンテナを再作成します。
+4. `/api/v1/internal/players?page=1&per_page=1` に同期元からアクセスし、200応答と `meta.total_count` を確認します。
 
 ### 4-3. Rails credentials の確認
 

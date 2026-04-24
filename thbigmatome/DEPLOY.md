@@ -40,11 +40,20 @@ nano .env.production
 | `DB_PASSWORD` | PostgreSQL パスワード（`openssl rand -hex 32` で生成） |
 | `RAILS_MASTER_KEY` | `thbigmatome/config/master.key` の内容 |
 | `INITIAL_PASSWORD` | 初回ログインパスワード |
+| `INTERNAL_API_KEY` | Clubhouse等の内部同期APIキー（`openssl rand -hex 32` などで生成、開発用デフォルト値は禁止） |
 | `APP_HOST` | `dugout.thbig.fun` |
 | `CORS_ALLOWED_ORIGIN` | `https://dugout.thbig.fun` |
 | `VITE_API_BASE_URL` | `https://dugout.thbig.fun/api/v1` |
 
 **注意**: `.env.production` は絶対に git にコミットしないこと。
+
+内部APIキー交換手順:
+
+1. `openssl rand -hex 32` で新しい `INTERNAL_API_KEY` を生成する。
+2. Dugout本番の `.env.production` に同じ値を設定する。
+3. Clubhouse等の同期元サービスにも同じ値を設定する。
+4. `docker compose -f docker-compose.prod.yml --env-file .env.production up -d --build rails` でRailsを再作成する。
+5. 同期元から `/api/v1/internal/players?page=1&per_page=1` を呼び、200応答と `meta.total_count` を確認する。
 
 ---
 

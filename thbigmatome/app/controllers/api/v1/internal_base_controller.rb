@@ -1,4 +1,6 @@
 class Api::V1::InternalBaseController < ApplicationController
+  DEVELOPMENT_INTERNAL_API_KEY = "thbig-internal-sync-key".freeze
+
   skip_before_action :set_csrf_token_header
   before_action :authenticate_internal_key!
 
@@ -10,6 +12,11 @@ class Api::V1::InternalBaseController < ApplicationController
 
     if expected.blank?
       render json: { error: "Internal API not configured" }, status: :service_unavailable
+      return
+    end
+
+    if Rails.env.production? && expected == DEVELOPMENT_INTERNAL_API_KEY
+      render json: { error: "Internal API key must be rotated in production" }, status: :service_unavailable
       return
     end
 

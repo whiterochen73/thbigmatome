@@ -169,7 +169,7 @@ const activeAbsences = computed(() => {
   const now = currentSeasonDate.value
   return playerAbsences.value.filter((a) => {
     if (!a.effective_end_date) return true
-    return new Date(a.effective_end_date) >= now
+    return new Date(a.effective_end_date) > now
   })
 })
 
@@ -177,7 +177,7 @@ const pastAbsences = computed(() => {
   const now = currentSeasonDate.value
   return playerAbsences.value.filter((a) => {
     if (!a.effective_end_date) return false
-    return new Date(a.effective_end_date) < now
+    return new Date(a.effective_end_date) <= now
   })
 })
 

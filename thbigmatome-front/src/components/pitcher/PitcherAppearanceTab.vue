@@ -296,7 +296,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
-import axios from 'axios'
+import axios, { type AxiosResponse } from 'axios'
 import PlayerNameLink from '@/components/shared/PlayerNameLink.vue'
 import type {
   PitcherAppearanceInput,
@@ -324,6 +324,18 @@ interface PreGameState {
   cumulative_innings: number
   last_role: string | null
   is_injured: boolean
+}
+
+interface TeamPitcher {
+  id: number
+  name: string
+  position: string | null
+  is_pitcher?: boolean
+}
+
+interface TeamMembership {
+  id: number
+  player_id: number
 }
 
 interface PitcherItem {
@@ -624,14 +636,19 @@ async function fetchPitchersAndStates() {
 
   try {
     const [playersRes, statesRes, savedRes, membershipsRes] = await Promise.allSettled([
-      axios.get(`/teams/${selectedTeamId.value}/team_players`),
-      axios.get(`/teams/${selectedTeamId.value}/pitcher_game_states`, {
+      axios.get<TeamPitcher[]>(`/teams/${selectedTeamId.value}/team_players`),
+      axios.get<PreGameState[]>(`/teams/${selectedTeamId.value}/pitcher_game_states`, {
         params: { date: props.gameDate },
       }),
-      axios.get('/pitcher_appearances', {
+      axios.get<PitcherAppearanceRecord[]>('/pitcher_appearances', {
         params: { team_id: selectedTeamId.value, schedule_date: props.gameDate },
       }),
-      axios.get(`/teams/${selectedTeamId.value}/team_memberships`),
+      axios.get<TeamMembership[]>(`/teams/${selectedTeamId.value}/team_memberships`),
+    ] satisfies [
+      Promise<AxiosResponse<TeamPitcher[]>>,
+      Promise<AxiosResponse<PreGameState[]>>,
+      Promise<AxiosResponse<PitcherAppearanceRecord[]>>,
+      Promise<AxiosResponse<TeamMembership[]>>,
     ])
 
     // Pre-game states
@@ -644,11 +661,8 @@ async function fetchPitchersAndStates() {
     // Build pitcher items
     if (playersRes.status === 'fulfilled') {
       pitcherItems.value = playersRes.value.data
-        .filter(
-          (p: { position: string; is_pitcher?: boolean }) =>
-            p.position === 'pitcher' || p.is_pitcher === true,
-        )
-        .map((p: { id: number; name: string }) => {
+        .filter((p) => p.position === 'pitcher' || p.is_pitcher === true)
+        .map((p) => {
           const state = preGameStates.value.find((s) => s.player_id === p.id)
           const isInjured = state?.is_injured ?? false
           const preGameInfo = buildPreGameInfo(state)
@@ -663,8 +677,7 @@ async function fetchPitchersAndStates() {
     }
 
     // pitcherItems構築後に保存済み登板記録または予告先発をセット
-    const savedAppearances =
-      savedRes.status === 'fulfilled' ? (savedRes.value.data as PitcherAppearanceRecord[]) : []
+    const savedAppearances = savedRes.status === 'fulfilled' ? savedRes.value.data : []
 
     if (savedAppearances.length > 0) {
       // 保存済みデータを復元（投手順序を維持）
@@ -697,10 +710,7 @@ async function fetchPitchersAndStates() {
     } else if (props.announcedStarterId) {
       // 保存済みデータなし → 予告先発を1番手にセット
       // announcedStarterIdはteam_membership_idのため、team_membershipsからplayer_idに変換する
-      const memberships =
-        membershipsRes.status === 'fulfilled'
-          ? (membershipsRes.value.data as { id: number; player_id: number }[])
-          : []
+      const memberships = membershipsRes.status === 'fulfilled' ? membershipsRes.value.data : []
       const membership = memberships.find((m) => m.id === props.announcedStarterId)
       if (membership) {
         pitcherRows.value[0].pitcher_id = membership.player_id

@@ -2,6 +2,7 @@ module Api
   module V1
     class TeamsController < Api::V1::BaseController
       include TeamAccessible
+      include DirectorSiblingCheck
 
       before_action :set_team, only: [ :show, :update, :destroy ]
       before_action :authorize_commissioner!, only: [ :create, :destroy ]
@@ -34,7 +35,7 @@ module Api
         if @team.save
           begin
             update_managers(@team, team_params[:director_id], team_params[:coach_ids])
-          rescue ActiveRecord::RecordInvalid => e
+          rescue ActiveRecord::RecordInvalid, DirectorSiblingCheck::OverlapError => e
             render json: { error: e.message }, status: :unprocessable_entity
             return
           end
@@ -54,7 +55,7 @@ module Api
         if @team.update(team_params.except(:director_id, :coach_ids))
           begin
             update_managers(@team, team_params[:director_id], team_params[:coach_ids])
-          rescue ActiveRecord::RecordInvalid => e
+          rescue ActiveRecord::RecordInvalid, DirectorSiblingCheck::OverlapError => e
             render json: { error: e.message }, status: :unprocessable_entity
             return
           end
@@ -90,18 +91,7 @@ module Api
           old_director_id = team.director_team_manager&.manager_id
 
           if director_id.present? && director_id.to_i != old_director_id
-            new_director_team_ids = TeamManager.where(manager_id: director_id, role: :director)
-                                               .pluck(:team_id)
-            if new_director_team_ids.any?
-              overlapping = TeamMembership.where(
-                team_id: new_director_team_ids,
-                player_id: team.team_memberships.pluck(:player_id)
-              )
-              if overlapping.exists?
-                raise ActiveRecord::RecordInvalid,
-                  "Director変更不可: 新しい監督の他チームと選手が重複しています"
-              end
-            end
+            check_director_sibling_overlap!(team, director_id)
           end
 
           team.director = director_id.present? ? Manager.find_by(id: director_id) : nil

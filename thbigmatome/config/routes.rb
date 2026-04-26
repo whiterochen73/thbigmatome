@@ -130,6 +130,9 @@ Rails.application.routes.draw do
         get "dashboard/cooldowns", to: "dashboard#cooldowns"
         get "dashboard/roster_status", to: "dashboard#roster_status", defaults: { format: :json }
         get "dashboard/roster_status.csv", to: "dashboard#roster_status", defaults: { format: :csv }
+        resources :teams, only: [] do
+          resources :team_managers, only: [ :index, :show, :create, :update, :destroy ]
+        end
       end
 
       # ユーザー管理（commissioner専用）

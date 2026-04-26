@@ -338,6 +338,11 @@ interface TeamMembership {
   player_id: number
 }
 
+interface FetchPitchersOptions {
+  preserveRowsOnPartialFailure?: boolean
+  preserveMessages?: boolean
+}
+
 interface PitcherItem {
   id: number
   label: string
@@ -627,12 +632,14 @@ async function fetchFatigueSummary() {
   }
 }
 
-async function fetchPitchersAndStates() {
+async function fetchPitchersAndStates(options: FetchPitchersOptions = {}) {
+  const previousRows = pitcherRows.value.map((row) => ({ ...row }))
   loadingPitchers.value = true
-  pitcherRows.value = [createEmptyRow('starter')]
-  errors.value = []
-  warnings.value = []
-  savedMessage.value = ''
+  if (!options.preserveMessages) {
+    errors.value = []
+    warnings.value = []
+    savedMessage.value = ''
+  }
 
   try {
     const [playersRes, statesRes, savedRes, membershipsRes] = await Promise.allSettled([
@@ -652,33 +659,50 @@ async function fetchPitchersAndStates() {
     ])
 
     // Pre-game states
+    const stateLoadFailed = statesRes.status === 'rejected'
     if (statesRes.status === 'fulfilled') {
       preGameStates.value = statesRes.value.data
     } else {
       preGameStates.value = []
+      errors.value.push('投手状態の取得に失敗しました。安全のため投手選択を無効化しています。')
     }
 
     // Build pitcher items
     if (playersRes.status === 'fulfilled') {
+      const stateByPlayerId = new Map(preGameStates.value.map((state) => [state.player_id, state]))
       pitcherItems.value = playersRes.value.data
         .filter((p) => p.position === 'pitcher' || p.is_pitcher === true)
         .map((p) => {
-          const state = preGameStates.value.find((s) => s.player_id === p.id)
+          const state = stateByPlayerId.get(p.id)
+          const stateMissing = !state
+          const stateUnavailable = stateLoadFailed || stateMissing
           const isInjured = state?.is_injured ?? false
-          const preGameInfo = buildPreGameInfo(state)
+          const disabled = stateUnavailable || isInjured
+          const preGameInfo = stateUnavailable ? '状態未取得' : buildPreGameInfo(state)
           return {
             id: p.id,
             label: p.name,
-            disabled: isInjured,
-            statusBadge: isInjured ? '🏥' : '🟢',
+            disabled,
+            statusBadge: stateUnavailable ? '⚠️' : isInjured ? '🏥' : '🟢',
             preGameInfo,
           }
         })
+    } else {
+      errors.value.push('投手一覧の取得に失敗しました。')
     }
 
     // pitcherItems構築後に保存済み登板記録または予告先発をセット
-    const savedAppearances = savedRes.status === 'fulfilled' ? savedRes.value.data : []
+    if (savedRes.status === 'rejected') {
+      if (options.preserveRowsOnPartialFailure) {
+        pitcherRows.value = previousRows
+      }
+      warnings.value.push(
+        '保存済み登板記録の再読込に失敗しました。画面上の入力内容を保持しています。',
+      )
+      return
+    }
 
+    const savedAppearances = savedRes.value.data
     if (savedAppearances.length > 0) {
       // 保存済みデータを復元（投手順序を維持）
       pitcherRows.value = savedAppearances.map((app, idx) => {
@@ -710,11 +734,23 @@ async function fetchPitchersAndStates() {
     } else if (props.announcedStarterId) {
       // 保存済みデータなし → 予告先発を1番手にセット
       // announcedStarterIdはteam_membership_idのため、team_membershipsからplayer_idに変換する
-      const memberships = membershipsRes.status === 'fulfilled' ? membershipsRes.value.data : []
+      if (membershipsRes.status === 'rejected') {
+        if (options.preserveRowsOnPartialFailure) {
+          pitcherRows.value = previousRows
+        }
+        warnings.value.push(
+          '予告先発情報の再読込に失敗しました。画面上の入力内容を保持しています。',
+        )
+        return
+      }
+      pitcherRows.value = [createEmptyRow('starter')]
+      const memberships = membershipsRes.value.data
       const membership = memberships.find((m) => m.id === props.announcedStarterId)
       if (membership) {
         pitcherRows.value[0].pitcher_id = membership.player_id
       }
+    } else {
+      pitcherRows.value = [createEmptyRow('starter')]
     }
   } finally {
     loadingPitchers.value = false
@@ -762,7 +798,10 @@ async function saveAll() {
     const res = await axios.post('/pitcher_appearances/bulk_save', payload)
     warnings.value = res.data.warnings ?? []
     savedMessage.value = '登板記録を保存しました'
-    await fetchPitchersAndStates()
+    await fetchPitchersAndStates({
+      preserveRowsOnPartialFailure: true,
+      preserveMessages: true,
+    })
   } catch (err: unknown) {
     const axiosErr = err as { response?: { data?: { errors?: string[]; pitcher_id?: number } } }
     const data = axiosErr.response?.data

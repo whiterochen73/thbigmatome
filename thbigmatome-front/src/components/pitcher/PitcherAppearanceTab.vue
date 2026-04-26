@@ -623,32 +623,16 @@ async function fetchPitchersAndStates() {
   savedMessage.value = ''
 
   try {
-    const [playersRes, statesRes, absencesRes, savedRes, membershipsRes] = await Promise.allSettled(
-      [
-        axios.get(`/teams/${selectedTeamId.value}/team_players`),
-        axios.get(`/teams/${selectedTeamId.value}/pitcher_game_states`, {
-          params: { date: props.gameDate },
-        }),
-        axios.get(`/player_absences?team_id=${selectedTeamId.value}`),
-        axios.get('/pitcher_appearances', {
-          params: { team_id: selectedTeamId.value, schedule_date: props.gameDate },
-        }),
-        axios.get(`/teams/${selectedTeamId.value}/team_memberships`),
-      ],
-    )
-
-    // 負傷中選手ID
-    const injuredIds = new Set<number>()
-    if (absencesRes.status === 'fulfilled') {
-      const today = props.gameDate
-      for (const pa of absencesRes.value.data) {
-        const start = pa.start_date
-        const end = pa.end_date
-        if ((!start || start <= today) && (!end || end >= today)) {
-          injuredIds.add(pa.player_id)
-        }
-      }
-    }
+    const [playersRes, statesRes, savedRes, membershipsRes] = await Promise.allSettled([
+      axios.get(`/teams/${selectedTeamId.value}/team_players`),
+      axios.get(`/teams/${selectedTeamId.value}/pitcher_game_states`, {
+        params: { date: props.gameDate },
+      }),
+      axios.get('/pitcher_appearances', {
+        params: { team_id: selectedTeamId.value, schedule_date: props.gameDate },
+      }),
+      axios.get(`/teams/${selectedTeamId.value}/team_memberships`),
+    ])
 
     // Pre-game states
     if (statesRes.status === 'fulfilled') {
@@ -666,10 +650,8 @@ async function fetchPitchersAndStates() {
         )
         .map((p: { id: number; name: string }) => {
           const state = preGameStates.value.find((s) => s.player_id === p.id)
-          const isInjured = injuredIds.has(p.id)
-          const preGameInfo = buildPreGameInfo(
-            state ? { ...state, is_injured: isInjured } : undefined,
-          )
+          const isInjured = state?.is_injured ?? false
+          const preGameInfo = buildPreGameInfo(state)
           return {
             id: p.id,
             label: p.name,

@@ -16,7 +16,7 @@ module Api
         current_cost_list = Cost.current_cost
 
         # Get the date from params, default to season's current_date if not provided
-        target_date = season.current_date
+        target_date = params[:target_date].present? ? Date.parse(params[:target_date]) : season.current_date
 
         # Fetch all team memberships for the team
         team_memberships = team.team_memberships.preload(:season_rosters, :player_absences, player: [ :cost_players ], player_card: [ :card_set, :player_card_defenses ])
@@ -90,28 +90,38 @@ module Api
         @current_cost_list = Cost.current_cost
 
         # Expects an array of { team_membership_id: id, squad: 'first' | 'second' }
-        roster_updates = params[:roster_updates]
+        roster_updates = Array(params[:roster_updates])
         target_date = Date.parse(params[:target_date]) # Date for which the roster is being set
         season_start_date = season.season_schedules.minimum(:date) # Calculate season start date once
+
+        duplicate_membership_ids = duplicate_roster_update_membership_ids(roster_updates)
+        if duplicate_membership_ids.any?
+          render json: { error: "Duplicate team_membership_id in roster_updates: #{duplicate_membership_ids.join(', ')}" }, status: :unprocessable_content
+          return
+        end
 
         is_commissioner = current_user.commissioner?
         commissioner_warnings = []
 
         ActiveRecord::Base.transaction do
+          roster_state = roster_state_for(team, target_date)
+
           # Phase 1: Apply all squad changes (cooldown check only, no cost validation yet)
           roster_updates.each do |update|
             team_membership = team.team_memberships.find(update[:team_membership_id])
             new_squad = update[:squad]
+            current_squad = roster_state.fetch(team_membership.id, team_membership.squad)
 
-            if team_membership.squad == "first" && new_squad == "second"
-              team_membership.update!(squad: new_squad)
+            if current_squad == "first" && new_squad == "second"
+              team_membership.update!(squad: new_squad) if target_date == season.current_date
               SeasonRoster.create!(
                 season: season,
                 team_membership: team_membership,
                 squad: new_squad,
                 registered_on: target_date
               )
-            elsif team_membership.squad == "second" && new_squad == "first"
+              roster_state[team_membership.id] = new_squad
+            elsif current_squad == "second" && new_squad == "first"
               # Check reconditioning: block promotion for reconditioning players (even commissioners)
               absence = absence_info_for(team_membership, target_date)
               if absence[:is_absent] && absence[:absence_info][:absence_type] == "reconditioning"
@@ -125,25 +135,26 @@ module Api
                 raise "Player #{team_membership.player.name} is on cooldown until #{cooldown_info[:cooldown_until]}"
               end
 
-              team_membership.update!(squad: new_squad)
+              team_membership.update!(squad: new_squad) if target_date == season.current_date
               SeasonRoster.create!(
                 season: season,
                 team_membership: team_membership,
                 squad: new_squad,
                 registered_on: target_date
               )
+              roster_state[team_membership.id] = new_squad
             end
           end
 
           # Phase 2: Validate final state of 1st squad after all changes
-          final_first_squad = team.team_memberships.reload.select { |tm| tm.squad == "first" }
+          final_first_squad = team.team_memberships.reload.select { |tm| roster_state.fetch(tm.id, tm.squad) == "first" }
           validate_first_squad_constraints(final_first_squad, target_date, season, season_start_date,
             commissioner_mode: is_commissioner, commissioner_warnings: commissioner_warnings)
 
           # Phase 3: Validate outside world constraints
           team.reload
           team.errors.clear
-          unless team.validate_outside_world_limit
+          unless team.validate_outside_world_limit(final_first_squad)
             msg = team.errors.full_messages.first
             if is_commissioner
               commissioner_warnings << msg
@@ -152,7 +163,7 @@ module Api
             end
           end
           team.errors.clear
-          unless team.validate_outside_world_balance
+          unless team.validate_outside_world_balance(final_first_squad)
             msg = team.errors.full_messages.first
             if is_commissioner
               commissioner_warnings << msg
@@ -175,14 +186,29 @@ module Api
 
       private
 
+      def duplicate_roster_update_membership_ids(roster_updates)
+        membership_ids = roster_updates.map { |update| update[:team_membership_id].to_s.presence }.compact
+        membership_ids.tally.select { |_id, count| count > 1 }.keys
+      end
+
+      def roster_state_for(team, date)
+        team.team_memberships.each_with_object({}) do |tm, state|
+          state[tm.id] = current_squad_for_membership(tm, date)
+        end
+      end
+
+      def current_squad_for_membership(team_membership, date)
+        latest_roster_entry = team_membership.season_rosters
+                                                .where("registered_on <= ?", date)
+                                                .order(registered_on: :desc, created_at: :desc)
+                                                .first
+        latest_roster_entry ? latest_roster_entry.squad : team_membership.squad
+      end
+
       # Helper to get current squad for a given date
       def get_current_squad_for_date(team, squad_name, date)
         team.team_memberships.map do |tm|
-          latest_roster_entry = tm.season_rosters
-                                  .where("registered_on <= ?", date)
-                                  .order(registered_on: :desc, created_at: :desc)
-                                  .first
-          if latest_roster_entry && latest_roster_entry.squad == squad_name
+          if current_squad_for_membership(tm, date) == squad_name
             tm
           else
             nil

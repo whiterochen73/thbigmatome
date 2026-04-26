@@ -446,6 +446,66 @@ RSpec.describe "Api::V1::TeamRosters", type: :request do
         expect(result[:membership].reload.squad).to eq("first")
       end
 
+      it "rejects duplicate team_membership_id entries in one roster update" do
+        25.times { add_player_to_team(team: team, cost: cost, squad: "first", cost_value: 4) }
+        result = add_player_to_team(team: team, cost: cost, squad: "second", cost_value: 3)
+
+        post_roster_update(team.id, [
+          { team_membership_id: result[:membership].id, squad: "first" },
+          { team_membership_id: result[:membership].id, squad: "second" }
+        ])
+
+        expect(response).to have_http_status(:unprocessable_content)
+        expect(response.parsed_body["error"]).to include("Duplicate team_membership_id")
+      end
+
+      it "does not create roster history when duplicate team_membership_id entries are rejected" do
+        25.times { add_player_to_team(team: team, cost: cost, squad: "first", cost_value: 4) }
+        result = add_player_to_team(team: team, cost: cost, squad: "second", cost_value: 3)
+
+        expect {
+          post_roster_update(team.id, [
+            { team_membership_id: result[:membership].id, squad: "first" },
+            { team_membership_id: result[:membership].id, squad: "second" }
+          ])
+        }.not_to change { result[:membership].season_rosters.count }
+
+        expect(result[:membership].reload.squad).to eq("second")
+      end
+
+      it "does not allow duplicate updates to create a same-day cooldown bypass" do
+        25.times { add_player_to_team(team: team, cost: cost, squad: "first", cost_value: 4) }
+        result = add_player_to_team(team: team, cost: cost, squad: "second", cost_value: 3)
+
+        create(:season_roster,
+          season: season,
+          team_membership: result[:membership],
+          squad: "first",
+          registered_on: Date.new(2026, 5, 1)
+        )
+        create(:season_roster,
+          season: season,
+          team_membership: result[:membership],
+          squad: "second",
+          registered_on: Date.new(2026, 5, 10)
+        )
+
+        post_roster_update(team.id, [
+          { team_membership_id: result[:membership].id, squad: "first" },
+          { team_membership_id: result[:membership].id, squad: "second" }
+        ], date: Date.new(2026, 5, 15))
+
+        expect(response).to have_http_status(:unprocessable_content)
+
+        post_roster_update(team.id, [
+          { team_membership_id: result[:membership].id, squad: "first" }
+        ], date: Date.new(2026, 5, 16))
+
+        expect(response).to have_http_status(:unprocessable_content)
+        expect(response.parsed_body["error"]).to include("cooldown")
+        expect(result[:membership].reload.squad).to eq("second")
+      end
+
       it "rejects promotion for reconditioning player" do
         25.times { add_player_to_team(team: team, cost: cost, squad: "first", cost_value: 4) }
         result = add_player_to_team(team: team, cost: cost, squad: "second", cost_value: 3)
@@ -556,6 +616,65 @@ RSpec.describe "Api::V1::TeamRosters", type: :request do
       end
 
       # outside world limit test removed: player_player_types table dropped (cmd_511 Phase 2b)
+    end
+
+    context "past target_date edits" do
+      it "uses date-as-of squad state when saving a past target_date" do
+        25.times { add_player_to_team(team: team, cost: cost, squad: "first", cost_value: 4) }
+        result = add_player_to_team(team: team, cost: cost, squad: "first", cost_value: 3)
+
+        create(:season_roster,
+          season: season,
+          team_membership: result[:membership],
+          squad: "second",
+          registered_on: Date.new(2026, 5, 1)
+        )
+        create(:season_roster,
+          season: season,
+          team_membership: result[:membership],
+          squad: "first",
+          registered_on: Date.new(2026, 5, 10)
+        )
+
+        expect {
+          post_roster_update(team.id, [
+            { team_membership_id: result[:membership].id, squad: "first" }
+          ], date: Date.new(2026, 5, 5))
+        }.to change { result[:membership].season_rosters.count }.by(1)
+
+        expect(response).to have_http_status(:ok)
+        expect(result[:membership].season_rosters.order(:created_at).last.registered_on).to eq(Date.new(2026, 5, 5))
+      end
+
+      it "returns the saved target_date roster from the same date-as-of source" do
+        25.times { add_player_to_team(team: team, cost: cost, squad: "first", cost_value: 4) }
+        result = add_player_to_team(team: team, cost: cost, squad: "first", cost_value: 3)
+
+        create(:season_roster,
+          season: season,
+          team_membership: result[:membership],
+          squad: "second",
+          registered_on: Date.new(2026, 5, 1)
+        )
+        create(:season_roster,
+          season: season,
+          team_membership: result[:membership],
+          squad: "first",
+          registered_on: Date.new(2026, 5, 10)
+        )
+
+        post_roster_update(team.id, [
+          { team_membership_id: result[:membership].id, squad: "first" }
+        ], date: Date.new(2026, 5, 5))
+
+        get "/api/v1/teams/#{team.id}/roster?target_date=2026-05-05", as: :json
+
+        expect(response).to have_http_status(:ok)
+        response_body = JSON.parse(response.body)
+        expect(response_body).to include("roster")
+        roster_entry = response_body["roster"].find { |entry| entry["team_membership_id"] == result[:membership].id }
+        expect(roster_entry["squad"]).to eq("first")
+      end
     end
 
     # ============================================================

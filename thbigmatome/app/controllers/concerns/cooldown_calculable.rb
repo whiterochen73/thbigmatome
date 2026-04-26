@@ -8,6 +8,7 @@ module CooldownCalculable
   def calculate_cooldown_info(team_membership, current_date)
     last_demotion = team_membership.season_rosters
                       .where(squad: "second")
+                      .where("registered_on <= ?", current_date)
                       .order(registered_on: :desc, created_at: :desc)
                       .first
 

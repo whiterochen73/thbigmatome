@@ -63,10 +63,11 @@ class Team < ApplicationRecord
   end
 
   # 1軍の外の世界枠選手（team_type に応じたネイティブ series 以外が外の世界枠）
-  def outside_world_first_squad_memberships
+  def outside_world_first_squad_memberships(first_squad_memberships = nil)
     native = NATIVE_SERIES[team_type] || NATIVE_SERIES["normal"]
-    memberships = team_memberships.where(squad: "first")
-                                  .includes(:player, { player: :player_cards }, player_card: :card_set)
+    memberships = first_squad_memberships ||
+      team_memberships.where(squad: "first")
+                      .includes(:player, { player: :player_cards }, player_card: :card_set)
     memberships.select do |tm|
       effective_series = tm.player_card&.card_set&.series.presence || tm.player.series
       effective_series.present? && !native.include?(effective_series)
@@ -74,8 +75,8 @@ class Team < ApplicationRecord
   end
 
   # 外の世界枠: 最大4人チェック
-  def validate_outside_world_limit
-    ow_memberships = outside_world_first_squad_memberships
+  def validate_outside_world_limit(first_squad_memberships = nil)
+    ow_memberships = outside_world_first_squad_memberships(first_squad_memberships)
     if ow_memberships.size > OUTSIDE_WORLD_LIMIT
       errors.add(:base, I18n.t("activerecord.errors.models.team.outside_world.limit_exceeded",
         count: ow_memberships.size, limit: OUTSIDE_WORLD_LIMIT))
@@ -87,8 +88,8 @@ class Team < ApplicationRecord
 
   # 外の世界枠: 4人のとき投手/野手混在必須チェック
   # player_cards.card_type で判定。pitcherカードがあれば投手扱い
-  def validate_outside_world_balance
-    ow_memberships = outside_world_first_squad_memberships
+  def validate_outside_world_balance(first_squad_memberships = nil)
+    ow_memberships = outside_world_first_squad_memberships(first_squad_memberships)
     return true if ow_memberships.size < OUTSIDE_WORLD_LIMIT
 
     has_pitcher = ow_memberships.any?(&:pitcher_role?)

@@ -43,6 +43,19 @@ RSpec.describe "Api::V1::CostAssignmentsController", type: :request do
       expect(ids).to include(player.id)
       expect(ids).not_to include(player_without_card.id)
     end
+
+    it "returns variant cost rows by player_card_id" do
+      variant_card = create(:player_card, player: player, card_type: "pitcher", variant: "湘南")
+      create(:cost_player, cost: cost, player: player, normal_cost: 2, player_card: variant_card)
+
+      get "/api/v1/cost_assignments", params: { cost_id: cost.id }
+
+      expect(response).to have_http_status(:ok)
+      json = response.parsed_body
+      variant_data = json.find { |p| p["player_card_id"] == variant_card.id }
+      expect(variant_data["variant"]).to eq("湘南")
+      expect(variant_data["normal_cost"]).to eq(2)
+    end
   end
 
   describe "POST /api/v1/cost_assignments" do

@@ -1,4 +1,5 @@
 require "csv"
+require Rails.root.join("lib/cost_player_seed_resolver").to_s
 
 # db/seeds/production_costs.rb
 # コストマスタ + コストプレイヤー seedデータ
@@ -30,24 +31,14 @@ else
       next
     end
 
-    # 全角/半角スペース差異を吸収した正規化マッチ
     raw_name = row["player_name"]
-    normalized_name = raw_name.gsub(/[\s\u3000]+/, '')
-    player = Player.find_by("REPLACE(REPLACE(name, ' ', ''), '　', '') = ?", normalized_name)
-    unless player
+    cp = CostPlayerSeedResolver.assign!(cost, row)
+    unless cp
       puts "  WARN: player '#{raw_name}' not found — skipped"
       skipped += 1
       next
     end
 
-    cp = CostPlayer.find_or_initialize_by(cost: cost, player: player)
-    cp.normal_cost       = row["normal_cost"].presence&.to_i
-    cp.relief_only_cost  = row["relief_only_cost"].presence&.to_i
-    cp.pitcher_only_cost = row["pitcher_only_cost"].presence&.to_i
-    cp.fielder_only_cost = row["fielder_only_cost"].presence&.to_i
-    cp.two_way_cost      = row["two_way_cost"].presence&.to_i
-    cp.cost_exempt       = row["cost_exempt"] == "true"
-    cp.save!
     imported += 1
   end
   puts "  #{imported} cost_players seeded, #{skipped} skipped."

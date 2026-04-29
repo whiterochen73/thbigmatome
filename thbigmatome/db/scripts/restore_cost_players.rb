@@ -6,16 +6,24 @@
 # 実行方法:
 #   docker compose exec rails rails runner db/scripts/restore_cost_players.rb
 
+require Rails.root.join("lib/cost_player_seed_resolver").to_s
+
 puts "=== restore_cost_players.rb 開始 ==="
 
 results = { ok: 0, skip: 0, created_players: 0, errors: [] }
 
-def upsert_cp(cost, player, attrs, label, results)
+def upsert_cp(cost, player, attrs, label, results, raw_name: nil)
+  if raw_name
+    resolution = CostPlayerSeedResolver.resolve(raw_name)
+    player = resolution.player || player
+    player_card = resolution.player_card
+  end
+
   if player.nil?
     results[:errors] << "Player not found: #{label}"
     return
   end
-  cp = CostPlayer.find_or_initialize_by(cost: cost, player: player)
+  cp = CostPlayer.find_or_initialize_by(cost: cost, player: player, player_card: player_card)
   is_new = cp.new_record?
   attrs.each { |k, v| cp.send(:"#{k}=", v) }
   if is_new || cp.changed?
@@ -41,9 +49,10 @@ def find_or_create_player(name, number, is_pitcher, results)
     return player
   end
   player = Player.new(
-    name: name, number: number, is_pitcher: is_pitcher,
-    is_relief_only: false, speed: 1, bunt: 1,
-    steal_start: 1, steal_end: 1, injury_rate: 6
+    name: name,
+    number: number,
+    short_name: name,
+    series: is_pitcher ? "pm2026_pitcher" : "pm2026_fielder"
   )
   if player.save
     puts "  [CREATE Player] #{name} (#{number}): id=#{player.id}"
@@ -356,7 +365,6 @@ tamayomi_data = [
   [ "川口 息吹",   { normal_cost: 3  } ],
   [ "岡田 怜",     { normal_cost: 8  } ],
   [ "大村 白菊",   { normal_cost: 1  } ],
-  [ "川口 芳乃",   { normal_cost: 1  } ],
   [ "川原 光",     { normal_cost: 10 } ],
   [ "渡邊 詩織",   { normal_cost: 2  } ],
   [ "斉藤 小町",   { normal_cost: 3, relief_only_cost: 2 } ],
@@ -445,7 +453,7 @@ pm_existing = [
 
 pm_existing.each do |name, attrs|
   p = find_player_by_name(name)
-  upsert_cp(cost, p, attrs, "#{name}(PM既存)", results)
+  upsert_cp(cost, p, attrs, "#{name}(PM既存)", results, raw_name: name)
 end
 
 # 冴月麟: 投手カード

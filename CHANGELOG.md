@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.0] - 2026-05-11
+
+### Added
+- export エンドポイントのページネーション対応（大量データ取得時の安定性向上）
+- 内部 API 認証強化（本番環境でデフォルト鍵を拒否、不正鍵で 401 を返却）
+- FE Vue spec batch1 — 登録関連コンポーネント 5 件に新規テストを追加
+
+### Changed
+- 投手登板入力タブの怪我判定をバックエンド `state.is_injured` を SSoT として直接参照する形に統一
+- 初瀬 麻里安（湘南）のような variant 名選手のコスト seed 解決を共通 resolver 化
+- ロスター履歴 API の `target_date` 一貫性を save / show 双方で揃え、cooldown 判定も current_date 以前の demotion のみ参照
+
+### Fixed
+- 怪我回復後に登板履歴が入力できないバグを修正
+- シーズン中欠場の境界判定 off-by-one（復帰当日が active 側に残る）を修正
+- PitcherAppearanceTab で states 取得失敗時に投手行を空にせず保持し、「状態未取得」表示 + disabled に変更
+- ロスター更新リクエストでの `team_membership_id` 重複を 422 で明示拒否
+- コミッショナー監督が兄弟チームで同一選手を重複登録できる不整合を共通チェックで解消
+
 ## [0.3.3] - 2026-04-22
 
 ### Added

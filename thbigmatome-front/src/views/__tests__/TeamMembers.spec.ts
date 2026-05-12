@@ -468,4 +468,86 @@ describe('TeamMembers.vue', () => {
 
     expect(wrapper.text()).toContain('カードver.')
   })
+
+  it('同一カードセットのvariant複数枚を別選択肢として表示する', async () => {
+    const player = makeTeamPlayer({
+      id: 99,
+      name: '初瀬麻里安',
+      short_name: '初瀬',
+      number: '1',
+      position: 'outfielder',
+      cost_players: [
+        {
+          id: 1,
+          cost_id: 100,
+          player_id: 99,
+          player_card_id: 101,
+          normal_cost: 10,
+          relief_only_cost: null,
+          pitcher_only_cost: null,
+          fielder_only_cost: null,
+          two_way_cost: null,
+        },
+      ],
+    })
+
+    vi.mocked(axios.get).mockImplementation((url: string) => {
+      if (url === '/player_cards') {
+        return Promise.resolve({
+          data: {
+            player_cards: [
+              {
+                id: 101,
+                card_type: 'batter',
+                card_set_name: 'PM2026',
+                card_set_id: 3,
+                variant: '湘南',
+              },
+              {
+                id: 102,
+                card_type: 'batter',
+                card_set_name: 'PM2026',
+                card_set_id: 3,
+                variant: '町田',
+              },
+              {
+                id: 103,
+                card_type: 'batter',
+                card_set_name: 'PM2026',
+                card_set_id: 3,
+                variant: 'UR',
+              },
+            ],
+          },
+        })
+      }
+      if (url.includes('/teams/') && url.endsWith('/team_players'))
+        return Promise.resolve({ data: [] })
+      if (url === '/team_registration_players') return Promise.resolve({ data: [player] })
+      if (url === '/player-types') return Promise.resolve({ data: [] })
+      if (url === '/costs')
+        return Promise.resolve({
+          data: [{ id: 100, name: 'コスト表1', start_date: '2020-01-01', end_date: null }],
+        })
+      return Promise.resolve({ data: {} })
+    })
+
+    const router = createTestRouter()
+    router.push('/teams/1/members')
+    await router.isReady()
+
+    const wrapper = mount(TeamMembers, {
+      global: {
+        plugins: [vuetify, i18n, router],
+        stubs: { TeamNavigation: TeamNavigationStub },
+      },
+    })
+    await flushPromises()
+    ;(wrapper.vm as unknown as { selectedPlayer: typeof player | null }).selectedPlayer = player
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('PM2026 / 湘南')
+    expect(wrapper.text()).toContain('PM2026 / 町田')
+    expect(wrapper.text()).toContain('PM2026 / UR')
+  })
 })

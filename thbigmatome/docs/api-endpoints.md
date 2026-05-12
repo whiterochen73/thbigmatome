@@ -969,6 +969,59 @@
 
 ---
 
+## 内部サービス間API (Internal Exports)
+
+`Api::V1::InternalBaseController` で `X-Internal-Api-Key` ヘッダーまたは `internal_api_key` query param を検証する。`INTERNAL_API_KEY` 未設定時は 503、本番で開発用デフォルト値 `thbig-internal-sync-key` を使っている場合も 503。
+
+### GET /api/v1/internal/players
+
+- **Controller**: `Api::V1::Internal::ExportsController#players`
+- **Query Params**: `page`, `per_page`
+- **Response**: 未指定時は配列。`page` / `per_page` 指定時は `{ players: [...], meta: { current_page, per_page, total_count, total_pages } }`
+
+### GET /api/v1/internal/teams
+
+- **Controller**: `Api::V1::Internal::ExportsController#teams`
+- **Query Params**: `page`, `per_page`
+- **Response**: 未指定時は配列。ページング時は `teams` + `meta`
+
+### GET /api/v1/internal/stadiums
+
+- **Controller**: `Api::V1::Internal::ExportsController#stadiums`
+- **Query Params**: `page`, `per_page`
+- **Response**: 未指定時は配列。ページング時は `stadiums` + `meta`
+
+### GET /api/v1/internal/card_sets
+
+- **Controller**: `Api::V1::Internal::ExportsController#card_sets`
+- **Query Params**: `page`, `per_page`
+- **Response**: 未指定時は配列。ページング時は `card_sets` + `meta`
+
+### GET /api/v1/internal/player_cards
+
+- **Controller**: `Api::V1::Internal::ExportsController#player_cards`
+- **Query Params**: `page`, `per_page`
+- **Response**: 未指定時は配列。ページング時は `player_cards` + `meta`
+
+### GET /api/v1/internal/seasons
+
+- **Controller**: `Api::V1::Internal::ExportsController#seasons`
+- **Query Params**: `page`, `per_page`
+- **Response**: 未指定時は配列。ページング時は `seasons` + `meta`
+
+### GET /api/v1/internal/games
+
+- **Controller**: `Api::V1::Internal::ExportsController#games`
+- **Query Params**: `from` (date), `to` (date), `page`, `per_page`
+- **Response**: 未指定時は配列。ページング時は `games` + `meta`
+
+### GET /api/v1/internal/games/:id
+
+- **Controller**: `Api::V1::Internal::ExportsController#game_show`
+- **Response**: 単一 game の内部同期用 JSON
+
+---
+
 ## コミッショナーダッシュボード (Commissioner Dashboard)
 
 以下のエンドポイントはすべて Commissioner ロール必須。

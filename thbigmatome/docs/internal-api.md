@@ -17,6 +17,9 @@
 - `GET /api/v1/internal/player_cards`
 - `GET /api/v1/internal/seasons`
 - `GET /api/v1/internal/games`
+- `GET /api/v1/internal/games/:id`
+
+`games` は `from` / `to` query param で `real_date` 範囲フィルタができる。
 
 `page` / `per_page` を指定しない場合は、従来互換の配列レスポンスを返す。
 

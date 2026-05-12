@@ -1,6 +1,8 @@
 # 本番DB バックアップ運用設計書
 
-> ⚠️ 本番デプロイは **P確認後に実施**すること（現在: 未デプロイ）
+最終更新日: 2026-05-12
+
+> ⚠️ 本番リストアは **P確認後に実施**すること。
 
 ## 概要
 
@@ -10,7 +12,7 @@
 | 実行方式 | VPS上のcronジョブ → `docker compose exec db pg_dump` |
 | 実行タイミング | 毎日 02:00 (JST) |
 | 世代管理 | 日次: 7世代 / 週次 (日曜): 4世代 |
-| バックアップ保存先 | `~/backups/thbigmatome/` (VPS上: deployユーザーホーム) |
+| バックアップ保存先 | `/home/deploy/backups/thbigmatome/` (VPS上: deployユーザーホーム) |
 | ローカル取得 | rsync経由でWSLに手動pull |
 
 ## ディレクトリ構成
@@ -95,11 +97,11 @@ bash scripts/backup/pull_backup.sh --dry-run # 確認のみ
 
 ```bash
 # バックアップ一覧
-ls -lh /var/backups/thbigmatome/daily/
-ls -lh /var/backups/thbigmatome/weekly/
+ls -lh /home/deploy/backups/thbigmatome/daily/
+ls -lh /home/deploy/backups/thbigmatome/weekly/
 
 # ログ確認
-tail -50 /var/backups/thbigmatome/backup.log
+tail -50 /home/deploy/backups/thbigmatome/backup.log
 
 # ファイルの整合性確認（pg_restore --list）
 docker compose -f ~/projects/docker-compose.prod.yml \
@@ -131,11 +133,11 @@ ls -lh ~/backups/thbigmatome/daily/
 ```bash
 # VPS上で実行
 # 利用可能なバックアップを確認
-ls -lht /var/backups/thbigmatome/daily/
+ls -lht /home/deploy/backups/thbigmatome/daily/
 
 # リストアスクリプト実行（対話式）
-bash /home/thbigmatome/projects/thbigmatome/scripts/backup/restore.sh \
-     /var/backups/thbigmatome/daily/thbigmatome_YYYYMMDD_HHMMSS.dump
+bash /home/deploy/projects/thbigmatome/scripts/backup/restore.sh \
+     /home/deploy/backups/thbigmatome/daily/thbigmatome_YYYYMMDD_HHMMSS.dump
 ```
 
 スクリプトが自動的に以下を行う:

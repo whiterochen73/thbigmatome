@@ -1,10 +1,10 @@
 # DB スキーマ仕様書
 
-最終更新日: 2026-04-01
+最終更新日: 2026-05-12
 
 ## 参照ソースファイル
 
-- `db/schema.rb` (schema version: 2026_03_28_143743)
+- `db/schema.rb` (schema version: 2026_04_21_230000)
 - `config/game_rules.yaml` — ゲームルール正本（DB制約とビジネスルールの照合に使用）
 
 ---
@@ -52,6 +52,7 @@
 | season_rosters | シーズンロスター（公示履歴） |
 | season_schedules | チームシーズンの試合スケジュール（結果含む） |
 | seasons | チームのシーズン管理 |
+| shared_sync_logs | 内部同期・共有データ連携の実行ログ |
 | squad_text_settings | チームのスカッドテキスト生成設定 |
 | stadiums | 球場マスタ |
 | team_managers | チームと監督・コーチの紐付け |
@@ -1052,6 +1053,25 @@
 ### season_schedules.starting_lineup / scoreboard
 
 ラインナップ・スコアボードのJSONデータ（構造はアプリ実装依存）。
+
+---
+
+### shared_sync_logs
+
+内部同期・共有データ連携の実行ログ。`SharedSyncLog` モデルで利用する。
+
+| カラム名 | 型 | NULL | デフォルト | 説明 |
+|---------|-----|------|-----------|------|
+| id | bigint | NO | (auto) | 主キー |
+| resource_type | string | NO | — | 同期対象リソース種別 |
+| status | string | NO | success | 実行結果 (`success` / `failed` / `dry_run`) |
+| synced_at | datetime | NO | — | 同期実行日時 |
+| synced_count | integer | YES | 0 | 同期件数 |
+| notes | text | YES | — | 補足・エラー詳細 |
+| created_at | datetime | NO | — | 作成日時 |
+| updated_at | datetime | NO | — | 更新日時 |
+
+**インデックス**: `resource_type, synced_at`
 
 ---
 

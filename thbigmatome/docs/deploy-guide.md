@@ -564,5 +564,5 @@ context/thbig-irc-cards/split/{カードセット名}/trimmed/*.png
 | 項目 | 優先度 | 説明 |
 |------|--------|------|
 | ドメイン設定 | 低 | `config.hosts` の有効化（production.rb の TODO コメント参照） |
-| バックアップ | 中 | PostgreSQL の定期 `pg_dump` + 外部ストレージ保存 |
+| バックアップ | 対応済み | `scripts/backup/backup_daily.sh` + cron で日次/週次 dump を運用。詳細は `docs/backup_operations.md` |
 | カード画像 S3 移行 | 低 | ActiveStorage を S3 に移行してディスク依存を排除 |

@@ -1,6 +1,6 @@
 # モデル仕様書
 
-最終更新日: 2026-04-01
+最終更新日: 2026-05-12
 
 ## 参照ソースファイル
 
@@ -51,6 +51,7 @@
 | Season | seasons | チームシーズン管理 |
 | SeasonRoster | season_rosters | シーズンロスター（公示履歴） |
 | SeasonSchedule | season_schedules | シーズン試合スケジュール |
+| SharedSyncLog | shared_sync_logs | 内部同期・共有データ連携の実行ログ |
 | SquadTextSetting | squad_text_settings | スカッドテキスト生成設定 |
 | Stadium | stadiums | 球場マスタ |
 | Team | teams | チームマスタ |
@@ -769,6 +770,28 @@ class SeasonSchedule < ApplicationRecord
 **インスタンスメソッド**:
 - `calculated_game_number` — 明示的なgame_numberがなければ該当日までの試合数から算出
 - `game_result_hash` — 試合結果を `{ opponent_short_name:, score:, result: }` で返す
+
+---
+
+### SharedSyncLog
+
+```ruby
+class SharedSyncLog < ApplicationRecord
+  VALID_STATUSES = %w[success failed dry_run].freeze
+```
+
+内部同期・共有データ連携の実行ログ。
+
+**バリデーション**:
+- `resource_type`: presence
+- `status`: inclusion in %w[success failed dry_run]
+- `synced_at`: presence
+
+**スコープ**:
+- `recent` — `synced_at DESC`
+
+**クラスメソッド**:
+- `last_sync_for(resource_type)` — 指定リソースの直近成功ログを返す
 
 ---
 

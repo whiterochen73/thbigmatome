@@ -1,6 +1,6 @@
 # シリアライザ仕様
 
-最終更新日: 2026-04-01
+最終更新日: 2026-05-12
 
 ## 参照ソースファイル
 
@@ -643,6 +643,10 @@
 | `is_active` | 有効フラグ |
 | `has_season` | シーズン作成済みフラグ（computed） |
 | `user_id` | オーナーユーザーID |
+| `team_type` | チーム種別 |
+| `last_game_real_date` | 直近試合の実日付（select済みの場合のみ） |
+| `last_game_date` | 直近試合日（select済みの場合のみ） |
+| `season_current_date` | 現在のシーズン日付（select済みの場合のみ） |
 
 **ネスト関係**:
 - `has_one :director` — 監督（TeamManagerSerializer経由）
@@ -650,6 +654,7 @@
 
 **computed属性の計算ロジック**:
 - `has_season`: `object.season.present?` — 関連するSeasonが存在すればtrue
+- `last_game_real_date` / `last_game_date` / `season_current_date`: relation 側で select されている場合のみ値を返し、未選択なら `nil`
 
 ---
 

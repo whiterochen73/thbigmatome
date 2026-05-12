@@ -2,11 +2,15 @@ require 'rails_helper'
 
 RSpec.describe PlayerCardSerializer, type: :serializer do
   let(:player) { create(:player) }
-  let(:player_card) { create(:player_card, player: player) }
+  let(:player_card) { create(:player_card, player: player, variant: "湘南") }
 
   subject(:serialized) do
     serializer = described_class.new(player_card)
     JSON.parse(serializer.to_json)
+  end
+
+  it "includes variant" do
+    expect(serialized["variant"]).to eq("湘南")
   end
 
   describe "#image_url" do

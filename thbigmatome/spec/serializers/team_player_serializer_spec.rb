@@ -7,7 +7,7 @@ RSpec.describe TeamPlayerSerializer, type: :serializer do
   let(:pm_card_set) { create(:card_set, set_type: "pm2026", series: "original", name: "PM2026") }
   let(:player) { create(:player, number: "34", series: "hachinai") }
   let!(:base_card) { create(:player_card, player: player, card_set: hachinai_card_set, card_type: "batter", is_pitcher: false) }
-  let!(:variant_card) { create(:player_card, player: player, card_set: pm_card_set, card_type: "batter", is_pitcher: false) }
+  let!(:variant_card) { create(:player_card, player: player, card_set: pm_card_set, card_type: "batter", is_pitcher: false, variant: "湘南") }
 
   subject(:serialized) do
     serializer = described_class.new(player, team: team, cost_list_id: cost.id)
@@ -23,5 +23,9 @@ RSpec.describe TeamPlayerSerializer, type: :serializer do
 
   it "variant rowが空でもcurrent_costはbase rowへフォールバックする" do
     expect(serialized["current_cost"]).to eq(4)
+  end
+
+  it "includes variant in player_card_info" do
+    expect(serialized["player_card_info"]).to include("variant" => "湘南")
   end
 end

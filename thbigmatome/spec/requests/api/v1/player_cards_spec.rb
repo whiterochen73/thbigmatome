@@ -17,8 +17,8 @@ RSpec.describe "Api::V1::PlayerCards", type: :request do
       expect(json["meta"]).to include("total", "page", "per_page")
     end
 
-    it "includes player_name, player_number, card_set_name, card_type" do
-      card = create(:player_card)
+    it "includes player_name, player_number, card_set_name, card_type, variant" do
+      card = create(:player_card, variant: "湘南")
 
       get "/api/v1/player_cards"
 
@@ -27,6 +27,7 @@ RSpec.describe "Api::V1::PlayerCards", type: :request do
       expect(json["player_number"]).to eq(card.player.number)
       expect(json["card_set_name"]).to eq(card.card_set.name)
       expect(json["card_type"]).to eq(card.card_type)
+      expect(json["variant"]).to eq("湘南")
     end
 
     it "includes cost from the player's latest cost_player record" do

@@ -6,7 +6,8 @@ class PlayerCardSerializer < ActiveModel::Serializer
              :batting_style_id,
              :pitching_style_id, :pinch_pitching_style_id, :catcher_pitching_style_id, :pitching_style_description,
              :special_defense_c, :special_throwing_c,
-             :batting_table, :pitching_table
+             :batting_table, :pitching_table,
+             :variant
 
   attribute :player_name do
     object.player.name

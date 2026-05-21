@@ -33,7 +33,7 @@ class SharedPlayersExporter
   ].freeze
 
   def self.default_output_dir
-    Rails.root.parent.join("thbig-clubhouse", "db", "import", "shared_players")
+    Pathname.new(ENV.fetch("CLUBHOUSE_EXPORT_PATH", Rails.root.join("tmp", "clubhouse_export").to_s))
   end
 
   attr_reader :output_dir

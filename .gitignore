@@ -23,7 +23,12 @@
 /tmp/
 
 # Blog drafts and temporary reference materials
-/docs/blog/
+/docs/blog/*
+# WRITING_RULES.md is a living rules doc (not a draft) — keep it tracked.
+# NOTE: do not simplify the two lines above back to a single `/docs/blog/` rule;
+# git prunes recursion into directory-excluded paths, which silently disables
+# the negation below.
+!/docs/blog/WRITING_RULES.md
 /docs/tmp/
 
 # Coverage

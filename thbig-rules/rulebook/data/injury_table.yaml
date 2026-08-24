@@ -1,0 +1,116 @@
+# けが表（怪我判定表）
+# 出典: wiki/injury_table.md（http://thbigbaseball.wiki.fc2.com/wiki/けが表）
+# 取得日: 2026-02-20
+#
+# 使い方:
+#   1. けがレベル（injury_level: 1〜6）を確認
+#   2. 1d20をロール
+#   3. テーブルから休場日数を取得
+#
+# 特殊記号:
+#   no_injury: 怪我なし（処理終了）
+#   reroll:    けがレベルを-1して振り直し（再帰処理）
+#   game_out:  その試合のみ出場不可（試合前判定の場合は代打制限あり）
+#   数値:      休場日数
+
+metadata:
+  source: "wiki/injury_table.md"
+  description: "負傷した選手の休場日数を決定するための参照表"
+  dice: "1d20"
+  axis_row: "ダイス目（1〜20）"
+  axis_col: "けがレベル（1=最重傷, 6=最軽傷）"
+
+# 判定テーブル
+# キー: dice_range（ダイス出目の範囲）
+# 値: level_1〜level_6 の結果
+table:
+  - dice_range: [1, 1]
+    level_6: no_injury
+    level_5: no_injury
+    level_4: no_injury
+    level_3: no_injury
+    level_2: no_injury
+    level_1: no_injury
+
+  - dice_range: [2, 4]
+    level_6: no_injury
+    level_5: game_out   # 0日 = その試合のみ出場不可
+    level_4: 1          # 休場日数
+    level_3: 3
+    level_2: 5
+    level_1: 8
+
+  - dice_range: [5, 7]
+    level_6: no_injury
+    level_5: 1
+    level_4: 2
+    level_3: 6
+    level_2: 10
+    level_1: 16
+
+  - dice_range: [8, 10]
+    level_6: game_out
+    level_5: 2
+    level_4: 4
+    level_3: 9
+    level_2: 15
+    level_1: 24
+
+  - dice_range: [11, 13]
+    level_6: game_out
+    level_5: 3
+    level_4: 6
+    level_3: 12
+    level_2: 20
+    level_1: 32
+
+  - dice_range: [14, 16]
+    level_6: game_out
+    level_5: 4
+    level_4: 8
+    level_3: 15
+    level_2: 25
+    level_1: 40
+
+  - dice_range: [17, 19]
+    level_6: game_out
+    level_5: 5
+    level_4: 10
+    level_3: 18
+    level_2: 30
+    level_1: 48
+
+  - dice_range: [20, 20]
+    level_6: reroll     # けがレベル-1して振り直し
+    level_5: reroll
+    level_4: reroll
+    level_3: reroll
+    level_2: reroll
+    level_1: 60
+
+# 付帯ルール
+rules:
+  injury_timing:
+    in_game:
+      description: "試合中に負傷した場合"
+      rest_start: "翌試合から休場日数カウント開始"
+    pre_game:
+      description: "試合前判定で負傷した場合"
+      rest_start: "その試合から休場日数カウント開始"
+
+  pitcher_fatigue_penalty:
+    description: "休養日の先発投手はけが日数分だけ疲労回復が遅れる"
+    exception: "次の登板予定日まで10日以上経過した場合は適用しない"
+
+  game_out_note:
+    description: "game_out（出目0）はその試合のみ出場不可フラグ。試合前判定では代打制限あり"
+
+  special_injury_levels:
+    level_0:
+      description: "けがレベル0: けが表の参照不要（怪我なし扱い）"
+    level_7:
+      description: "けがレベル7: 怪我チェック判定免除"
+
+  reroll_recursion:
+    description: "rerollが出た場合、けがレベルを-1して同じテーブルで再判定（再帰）"
+    note: "けがレベル1でreroll → 休場60日で確定（level_1のみ上限あり）"

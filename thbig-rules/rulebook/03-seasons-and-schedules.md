@@ -69,6 +69,20 @@
 | interleague_game_day | インターリーグ（交流戦）試合日 |
 | rest_day | 休養日 |
 | travel_day | 移動日 |
+| reserve_day | 予備日（未使用） |
+| interleague_reserve_day | 交流戦予備日（未使用） |
+
+**予備日は「枠」ではなく、日程にあらかじめ置かれた日である。** シーズン編成の時点で `reserve_day` /
+`interleague_reserve_day` としてスケジュールに座っており、使用（順延の吸収）とは、その日の
+`date_type` を `game_day` / `interleague_game_day` へ**書き換える**操作を指す。行を追加・削除する
+操作ではない（→4.5 天候チェック）。
+
+**予備日の残数 = まだ書き換えられていない `reserve_day` / `interleague_reserve_day` の行数。**
+別途の残数カウンタは持たない。日程表から `date_type in ["reserve_day", "interleague_reserve_day"]`
+の行を数えれば残数になる。
+
+> 出典: 実運用（雨天中止時に予備日から試合日を捻出し、条件を満たすと運営が代替試合日を指示する）。
+> 裁定: `context/thbig-bench-rule-adjudications.md`（multi-agent-shogun リポジトリ）AMB-11 節（Operator 裁定 2026-09-12）
 
 ### 試合番号の計算
 
@@ -84,6 +98,10 @@ def calculated_game_number(schedule_entry):
         and s.date < schedule_entry.date
     ) + 1
 ```
+
+`reserve_day` / `interleague_reserve_day` はこの集合に含まれないため、未使用の予備日は試合番号に
+数えられない。使用（`date_type` の書き換え）後は `game_day` / `interleague_game_day` になるため、
+このロジックを変更しなくても自動的に数えられるようになる。
 
 ### 試合結果の判定
 
@@ -323,6 +341,16 @@ def effective_end_date(absence):
 | リリーフ | 試合数の1/3を超える登板回数 |
 
 **例外**: 開幕投手は規定到達前でも有効
+
+**有効条件の判定タイミングと未達時の扱い**: 有効条件は**各試合前**に判定する。規定投球回を一時的に
+下回った場合、**その試合で効果（怪我判定の無効化）が働かないだけ**であり、**特例選手の指定そのもの
+は失効しない**。基準を再び満たせば、次の試合では効果が戻る。つまり有効条件は指定の存続条件ではなく、
+試合ごとに評価される**ゲート**である。§3.7 概要表の「条件喪失時の扱い: 無効化（別選手への再指定不可）」
+は、この一時的な未達を指すものではない。明文の失効条件（不可抗力・自主的な降格による失効）を持つのは
+3.7.1 の野手特例のほうであり、投手特例には同じ失効条件は掛からない。
+
+> 出典: 実運用（規定投球回の一時未達は「その試合の効果が休止する」だけで指定は継続する）。
+> 裁定: `context/thbig-bench-rule-adjudications.md`（multi-agent-shogun リポジトリ）AMB-14 節（Operator 裁定 2026-09-12）
 
 **効果**: 怪我判定を無効化（下記を除く）
 

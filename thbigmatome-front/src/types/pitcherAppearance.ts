@@ -27,8 +27,3 @@ export interface PitcherAppearanceRecord extends PitcherAppearanceInput {
   is_opener: boolean
   appearance_order: number
 }
-
-export interface PitcherAppearanceResponse {
-  pitcher_appearance: PitcherAppearanceRecord
-  warnings: string[]
-}

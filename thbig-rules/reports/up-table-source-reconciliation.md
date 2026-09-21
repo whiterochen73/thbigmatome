@@ -1,0 +1,42 @@
+# UP表の資料間突合表
+
+対象: `rulebook/06-up-table.md`、`rulebook/05-at-bat-resolution.md §5.6 / §5.7`、`wiki/highlight_table.md`、`wiki/error_check_table.md`、`wiki/range_check_table.md`、`thbig-irc-parser/src/thbig_irc_parser/up_table.py`。
+
+この文書は資料が何を記載しているかの並記だけを行う。正誤の裁定、優先順位付け、実装変更は行わない。
+
+## 構造化の採用元
+
+`data/up_table.yaml` は `wiki/highlight_table.md` の表を採用元として全400セルを転記した。`rulebook/06-up-table.md` は同表を詳細化した資料として併記対象にした。`data/range_check_table.yaml` は `wiki/range_check_table.md` の内野・外野各6レンジ×1d20を転記した。
+
+## 食い違い
+
+| ID | 範囲 | 資料ごとの記載 | 備考（裁定なし） |
+|---|---|---|---|
+| R-01 | 1005〜1020 / 1011 | `rulebook/05` §5.7.1: 1005〜1010は死球、1011〜は特徴・暴投・捕逸・その他。`rulebook/06` §6.3.2 と `wiki/highlight_table.md`: 1005〜1020は死球、特徴確認は1101〜。`up_table.py`: 1005〜1020を死球、1101〜を特徴確認。 | §5.7.1 の1011は、1101との桁入れ替えにも見えるが、この表では断定しない。 |
+| R-02 | 1901〜1910 | `rulebook/06` §6.3.5 と `wiki/highlight_table.md`: 1901〜1910は捕手レンジ確認。`up_table.py`: 1901〜1902だけを捕手レンジ確認とし、1903〜1906を球場確認、1907〜1910をWP+振り逃げ／一塁ライナー／2塁ベース直撃／G3fに割り当てる。 | `highlight_table.md` を確認しても、1901〜1910は捕手レンジ確認という記載であり、この相違は解消しない。 |
+| R-03 | 1903〜1910 | `rulebook/06` §6.3.5 と `wiki/highlight_table.md`: この8セルはR-02の捕手レンジ確認に含まれる。`up_table.py`: 1903〜1910へ別個の8結果を置く。一方で同実装は1911〜1918にも同種の結果を置く。 | R-02をセル単位に展開した記録。Python実装の追加マッピングを明示するため分離した。 |
+| R-04 | 1911〜1914の球場区分・方向 | `wiki/highlight_table.md` 冒頭: 1911〜1912=球場設定1112（センター方向の広さ）、1913〜1914=1314（両翼方向の広さ）。同ファイルの詳細表: 1911〜1912=ライト方向/F9a、1913〜1914=センター方向/F8a。`rulebook/06` §6.2: 本文表は1112→ライト、1314→センターで、注記は1112/1314を球場の排他属性ではなく下2桁ラベルと説明する。`up_table.py`: `stadium_setting` 引数を受け取るが、1911〜1914の返値で引数を参照しない。 | Wiki内の方向説明、rulebook本文・注記、実装の引数利用状況を併記した。 |
+| R-05 | 1602〜1608（走者なし） | `wiki/highlight_table.md` の現行表: 走者なしは投手エラーチェック。`rulebook/06` §6.3.4の表: 同じく投手エラーチェック。だが同節の注意書き: Wikiの1602〜1608行は走者なしでもWPと誤記していた、と記す。`up_table.py`: 走者なしは投手エラーチェック。 | rulebookの注意書きが引用するWiki内容と、現在のwikiファイルの行が一致しない。表の三者間に結果差はない。 |
+| R-06 | 1919 | `rulebook/06` §6.3.5 と `wiki/highlight_table.md`: 強烈な投ゴロG1a、投手は負傷し怪我チェックを受ける。`up_table.py`: detailsは「投手負傷退場」とする。 | 原典側は怪我チェックを記すが、この範囲の退場を明記しない。 |
+| R-07 | 2013〜2017 | `rulebook/06` §6.3.6 と `wiki/highlight_table.md`: 2013〜2015は手への死球で打者が怪我チェック、2016〜2017は頭部死球で投手が危険球退場・打者が怪我チェック。`up_table.py`: 2013〜2015のdetailsは「打者負傷退場」、2016〜2017も「打者負傷退場」とする。 | 原典側が明記する退場対象と、実装detailsの表現を併記した。 |
+| R-08 | 1915 / 1820 | `rulebook/06` §6.3.5・§6.3.4 と `wiki/highlight_table.md`: 1塁走者とアウト数により振り逃げではなく三振になる条件を記す。`up_table.py`: 両コードで `gsm_result_code='K'` を常に返す一方、detailsには条件を記す。 | 条件付き結果に対する固定のGSM結果コードを記録した。下流がdetailsをどう解釈するかは本調査の対象外。 |
+
+## レンジチェックの接続確認
+
+`rulebook/05-at-bat-resolution.md §5.6` は、守備位置コードでレンジチェックを起動し、結果を§5.4の通常処理へ合流させ、UP表へは遷移しないとする。`wiki/range_check_table.md` も、レンジ結果は打撃結果表で処理し、エラーチェックはUP表からのみ発生するとする。対象の `up_table.py` には内野・外野のレンジ×d20マトリクスは実装されておらず、UPコード1901〜1910の捕手レンジの説明だけを持つ。
+
+## 頻度分類
+
+打席あたり頻度は `コードセル数 / 400 × 5%` で計算する。走者状況・守備値・追加d20の条件付き分岐の確率は含めない。表内の各entryには個別のコード空間シェアと打席あたり頻度を記した。
+
+| 分類 | UPの大分類（セル数） | 件数 |
+|---|---|---:|
+| 打席あたり1%以上 | エラーチェック（180、2.25%）、特徴確認（100、1.25%） | 2 |
+| 打席あたり1%前後 | 走者関連イベント（60、0.75%） | 1 |
+| 低頻度だが影響大 | 雨天（4、0.05%）。ノーゲーム／雨天コールドに関わるため頻度で除外しない。 | 1 |
+| それ以下 | 死球（16、0.20%）、特殊プレー（20、0.25%）、野手負傷・追加判定（20、0.25%） | 3 |
+
+## 作業ログ
+
+- RED — `ruby -e 'require "yaml"; paths=%w[thbig-rules/rulebook/data/range_check_table.yaml thbig-rules/rulebook/data/up_table.yaml]; paths.each { |path| YAML.load_file(path) }; abort "Test Basis: cmd_1699 / subtask_1699b; data files exist and parse"'`。exit 1。失敗: `Errno::ENOENT`（`range_check_table.yaml` が未作成）。
+- Test Basis: cmd_1699 / subtask_1699b（range表・UP表の構造化、UP 400コード空間の被覆、資料間突合）。

@@ -1,0 +1,126 @@
+# レンジチェック表
+# 出典: wiki/range_check_table.md（https://thbigbaseball.wiki.fc2.com/wiki/レンジチェック表）
+# 取得日: 2026-02-20
+#
+# 使い方:
+#   1. 打撃結果の守備位置から infield / outfield を選ぶ
+#   2. 対象野手のレンジ値（range_value: 0〜5）を確認する
+#   3. 1d20 をロールし、dice_range に一致する result を取得する
+#   4. result を打撃結果表で処理する。ここからエラーチェックには遷移しない
+#
+# 結果記号: 2H=二塁打, 3H=三塁打, H=単打, IH=内野安打,
+#           Ga=アドバンスゴロ, Gf=フォースゴロ, GD=ダブルプレイゴロ,
+#           LD=ライナー, Fa=犠牲フライ, F=通常フライ
+
+metadata:
+  source: "wiki/range_check_table.md"
+  source_url: "https://thbigbaseball.wiki.fc2.com/wiki/レンジチェック表"
+  retrieved_at: "2026-02-20"
+  description: "守備範囲判定でレンジ値と1d20からプレー種別を決定する表"
+  dice: "1d20"
+  axis_row: "プレー種別"
+  axis_col: "レンジ値（0〜5）"
+  result_handling: "結果を打撃結果表で処理する。レンジチェック結果から直接エラーチェックへは遷移しない"
+
+# キー: range_value は守備範囲、dice_range は1d20の両端を含む範囲。
+table:
+  infield:
+    - range_value: 5
+      outcomes:
+        - { dice_range: [1, 2], result: H }
+        - { dice_range: [3, 4], result: IH }
+        - { dice_range: [5, 8], result: Ga }
+        - { dice_range: [9, 12], result: Gf }
+        - { dice_range: [13, 16], result: GD }
+        - { dice_range: [17, 20], result: LD }
+    - range_value: 4
+      outcomes:
+        - { dice_range: [1, 3], result: H }
+        - { dice_range: [4, 7], result: IH }
+        - { dice_range: [8, 10], result: Ga }
+        - { dice_range: [11, 13], result: Gf }
+        - { dice_range: [14, 17], result: GD }
+        - { dice_range: [18, 20], result: LD }
+    - range_value: 3
+      outcomes:
+        - { dice_range: [1, 5], result: H }
+        - { dice_range: [6, 10], result: IH }
+        - { dice_range: [11, 13], result: Ga }
+        - { dice_range: [14, 15], result: Gf }
+        - { dice_range: [16, 18], result: GD }
+        - { dice_range: [19, 20], result: LD }
+    - range_value: 2
+      outcomes:
+        - { dice_range: [1, 1], result: 2H }
+        - { dice_range: [2, 6], result: H }
+        - { dice_range: [7, 13], result: IH }
+        - { dice_range: [14, 15], result: Ga }
+        - { dice_range: [16, 16], result: Gf }
+        - { dice_range: [17, 18], result: GD }
+        - { dice_range: [19, 20], result: LD }
+    - range_value: 1
+      outcomes:
+        - { dice_range: [1, 2], result: 2H }
+        - { dice_range: [3, 8], result: H }
+        - { dice_range: [9, 16], result: IH }
+        - { dice_range: [17, 17], result: Ga }
+        - { dice_range: [18, 18], result: Gf }
+        - { dice_range: [19, 19], result: GD }
+        - { dice_range: [20, 20], result: LD }
+    - range_value: 0
+      outcomes:
+        - { dice_range: [1, 3], result: 2H }
+        - { dice_range: [4, 10], result: H }
+        - { dice_range: [11, 20], result: IH }
+
+  outfield:
+    - range_value: 5
+      outcomes:
+        - { dice_range: [1, 2], result: 2H }
+        - { dice_range: [3, 4], result: H }
+        - { dice_range: [5, 12], result: Fa }
+        - { dice_range: [13, 20], result: F }
+    - range_value: 4
+      outcomes:
+        - { dice_range: [1, 3], result: 2H }
+        - { dice_range: [4, 7], result: H }
+        - { dice_range: [8, 13], result: Fa }
+        - { dice_range: [14, 20], result: F }
+    - range_value: 3
+      outcomes:
+        - { dice_range: [1, 5], result: 2H }
+        - { dice_range: [6, 10], result: H }
+        - { dice_range: [11, 15], result: Fa }
+        - { dice_range: [16, 20], result: F }
+    - range_value: 2
+      outcomes:
+        - { dice_range: [1, 1], result: 3H }
+        - { dice_range: [2, 6], result: 2H }
+        - { dice_range: [7, 13], result: H }
+        - { dice_range: [14, 16], result: Fa }
+        - { dice_range: [17, 20], result: F }
+    - range_value: 1
+      outcomes:
+        - { dice_range: [1, 2], result: 3H }
+        - { dice_range: [3, 8], result: 2H }
+        - { dice_range: [9, 16], result: H }
+        - { dice_range: [17, 18], result: Fa }
+        - { dice_range: [19, 20], result: F }
+    - range_value: 0
+      outcomes:
+        - { dice_range: [1, 3], result: 3H }
+        - { dice_range: [4, 10], result: 2H }
+        - { dice_range: [11, 20], result: H }
+
+rules:
+  infield_missed_ball_follow_up:
+    P: CF
+    1B: RF
+    2B: CF
+    3B: LF
+    SS: CF
+  unavailable_results:
+    infield_range_0: [Ga, Gf, GD, LD]
+    outfield_range_0: [Fa, F]
+  exclusions:
+    - "バント時はこの表を使わない"

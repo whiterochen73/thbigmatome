@@ -1,0 +1,432 @@
+# UP表（好プレー珍プレー表）
+# 出典: wiki/highlight_table.md（https://thbigbaseball.wiki.fc2.com/wiki/好プレー珍プレー表）
+# 取得日: 2026-02-20
+#
+# 使い方:
+#   1. UP が出た打席で、1つ目と2つ目の d20 をロールする
+#   2. first_d20 / second_d20 の座標に一致する entry を選ぶ
+#   3. outcome と条件分岐を処理する
+#
+# code_range は表示用の4桁コード範囲である。実際の被覆は dice_coordinates
+# （01〜20 × 01〜20）で定義するため、0121 のような非生成コードは含まない。
+
+metadata:
+  source: "wiki/highlight_table.md"
+  source_url: "https://thbigbaseball.wiki.fc2.com/wiki/好プレー珍プレー表"
+  supporting_rulebook: "rulebook/06-up-table.md"
+  retrieved_at: "2026-02-20"
+  description: "UP時の2d20コードから特殊イベントを決定する表"
+  dice: "2d20（順序あり）"
+  axis_row: "1つ目のd20（01〜20、コードの前2桁）"
+  axis_col: "2つ目のd20（01〜20、コードの後2桁）"
+  code_space:
+    total_cells: 400
+    source_derived_cells: 400
+    source_unspecified_cells: 0
+    coverage: "400/400 = 100%; 原典に記載なしのコードはない"
+  frequency_basis: "UPは打席あたり5%（打撃表の出目20）。plate_appearance_share = code_space_share × 5%"
+
+# code_count は400コード空間内のセル数。条件付き結果では共有はコード到達時の値であり、
+# 走者状況・守備値・追加d20の確率分布は織り込まない。
+table:
+  - code_range: ["0101", "0204"]
+    dice_coordinates: [{ first_d20: [1, 1], second_d20: [1, 20] }, { first_d20: [2, 2], second_d20: [1, 4] }]
+    category: error_check
+    fielder: P
+    outcome: "投手エラーチェック"
+    code_count: 24
+    code_space_share: "24/400 = 6%"
+    plate_appearance_share: "0.30%"
+  - code_range: ["0205", "0220"]
+    dice_coordinates: [{ first_d20: [2, 2], second_d20: [5, 20] }]
+    category: error_check
+    fielder: C
+    outcome: "捕手エラーチェック"
+    code_count: 16
+    code_space_share: "16/400 = 4%"
+    plate_appearance_share: "0.20%"
+  - code_range: ["0301", "0320"]
+    dice_coordinates: [{ first_d20: [3, 3], second_d20: [1, 20] }]
+    category: error_check
+    fielder: 1B
+    outcome: "一塁手エラーチェック"
+    code_count: 20
+    code_space_share: "20/400 = 5%"
+    plate_appearance_share: "0.25%"
+  - code_range: ["0401", "0504"]
+    dice_coordinates: [{ first_d20: [4, 4], second_d20: [1, 20] }, { first_d20: [5, 5], second_d20: [1, 4] }]
+    category: error_check
+    fielder: 2B
+    outcome: "二塁手エラーチェック"
+    code_count: 24
+    code_space_share: "24/400 = 6%"
+    plate_appearance_share: "0.30%"
+  - code_range: ["0505", "0620"]
+    dice_coordinates: [{ first_d20: [5, 5], second_d20: [5, 20] }, { first_d20: [6, 6], second_d20: [1, 20] }]
+    category: error_check
+    fielder: 3B
+    outcome: "三塁手エラーチェック"
+    code_count: 36
+    code_space_share: "36/400 = 9%"
+    plate_appearance_share: "0.45%"
+  - code_range: ["0701", "0816"]
+    dice_coordinates: [{ first_d20: [7, 7], second_d20: [1, 20] }, { first_d20: [8, 8], second_d20: [1, 16] }]
+    category: error_check
+    fielder: SS
+    outcome: "遊撃手エラーチェック"
+    code_count: 36
+    code_space_share: "36/400 = 9%"
+    plate_appearance_share: "0.45%"
+  - code_range: ["0817", "0904"]
+    dice_coordinates: [{ first_d20: [8, 8], second_d20: [17, 20] }, { first_d20: [9, 9], second_d20: [1, 4] }]
+    category: error_check
+    fielder: LF
+    outcome: "左翼手エラーチェック"
+    code_count: 8
+    code_space_share: "8/400 = 2%"
+    plate_appearance_share: "0.10%"
+  - code_range: ["0905", "0912"]
+    dice_coordinates: [{ first_d20: [9, 9], second_d20: [5, 12] }]
+    category: error_check
+    fielder: CF
+    outcome: "中堅手エラーチェック"
+    code_count: 8
+    code_space_share: "8/400 = 2%"
+    plate_appearance_share: "0.10%"
+  - code_range: ["0913", "0920"]
+    dice_coordinates: [{ first_d20: [9, 9], second_d20: [13, 20] }]
+    category: error_check
+    fielder: RF
+    outcome: "右翼手エラーチェック"
+    code_count: 8
+    code_space_share: "8/400 = 2%"
+    plate_appearance_share: "0.10%"
+
+  - code_range: ["1001", "1002"]
+    dice_coordinates: [{ first_d20: [10, 10], second_d20: [1, 2] }]
+    category: rain
+    outcome: "雨が降り出す。屋外球場なら5回未満はノーゲーム、試合成立後は雨天コールド"
+    code_count: 2
+    code_space_share: "2/400 = 0.5%"
+    plate_appearance_share: "0.025%"
+  - code_range: ["1003", "1004"]
+    dice_coordinates: [{ first_d20: [10, 10], second_d20: [3, 4] }]
+    category: rain
+    outcome: "雨が降り出す。屋外球場で試合成立済みなら雨天コールド"
+    code_count: 2
+    code_space_share: "2/400 = 0.5%"
+    plate_appearance_share: "0.025%"
+  - code_range: ["1005", "1020"]
+    dice_coordinates: [{ first_d20: [10, 10], second_d20: [5, 20] }]
+    category: hit_by_pitch
+    outcome: "死球（打者に投球が当たる）"
+    code_count: 16
+    code_space_share: "16/400 = 4%"
+    plate_appearance_share: "0.20%"
+
+  - code_range: ["1101", "1310"]
+    dice_coordinates: [{ first_d20: [11, 12], second_d20: [1, 20] }, { first_d20: [13, 13], second_d20: [1, 10] }]
+    category: trait_pitcher
+    outcome: "投手の特殊特性が発動する"
+    code_count: 50
+    code_space_share: "50/400 = 12.5%"
+    plate_appearance_share: "0.625%"
+  - code_range: ["1311", "1520"]
+    dice_coordinates: [{ first_d20: [13, 13], second_d20: [11, 20] }, { first_d20: [14, 15], second_d20: [1, 20] }]
+    category: trait_batter
+    outcome: "打者の特殊特性が発動する"
+    code_count: 50
+    code_space_share: "50/400 = 12.5%"
+    plate_appearance_share: "0.625%"
+
+  - code_range: ["1601", "1601"]
+    dice_coordinates: [{ first_d20: [16, 16], second_d20: [1, 1] }]
+    category: runner_dependent
+    outcomes: { with_runner: "ワイルドピッチ（走者2進塁）", without_runner: "投手エラーチェック" }
+    code_count: 1
+    code_space_share: "1/400 = 0.25%"
+    plate_appearance_share: "0.0125%"
+  - code_range: ["1602", "1608"]
+    dice_coordinates: [{ first_d20: [16, 16], second_d20: [2, 8] }]
+    category: runner_dependent
+    outcomes: { with_runner: "ワイルドピッチ（走者1進塁）", without_runner: "投手エラーチェック" }
+    code_count: 7
+    code_space_share: "7/400 = 1.75%"
+    plate_appearance_share: "0.0875%"
+  - code_range: ["1609", "1613"]
+    dice_coordinates: [{ first_d20: [16, 16], second_d20: [9, 13] }]
+    category: runner_dependent
+    outcomes: { with_runner: "ワイルドピッチ（走者1進塁）", without_runner: "捕手エラーチェック" }
+    code_count: 5
+    code_space_share: "5/400 = 1.25%"
+    plate_appearance_share: "0.0625%"
+  - code_range: ["1614", "1619"]
+    dice_coordinates: [{ first_d20: [16, 16], second_d20: [14, 19] }]
+    category: runner_dependent
+    outcomes: { with_runner: "ワイルドピッチ（走者1進塁）", without_runner: "一塁手エラーチェック" }
+    code_count: 6
+    code_space_share: "6/400 = 1.5%"
+    plate_appearance_share: "0.075%"
+  - code_range: ["1620", "1620"]
+    dice_coordinates: [{ first_d20: [16, 16], second_d20: [20, 20] }]
+    category: runner_dependent
+    outcomes: { with_runner: "ワイルドピッチ（走者1進塁）", without_runner: "二塁手エラーチェック" }
+    code_count: 1
+    code_space_share: "1/400 = 0.25%"
+    plate_appearance_share: "0.0125%"
+  - code_range: ["1701", "1706"]
+    dice_coordinates: [{ first_d20: [17, 17], second_d20: [1, 6] }]
+    category: runner_dependent
+    outcomes: { with_runner: "ワイルドピッチ（走者1進塁）", without_runner: "二塁手エラーチェック" }
+    code_count: 6
+    code_space_share: "6/400 = 1.5%"
+    plate_appearance_share: "0.075%"
+  - code_range: ["1707", "1718"]
+    dice_coordinates: [{ first_d20: [17, 17], second_d20: [7, 18] }]
+    category: runner_dependent
+    outcomes: { with_runner: "ワイルドピッチ（走者1進塁）", without_runner: "三塁手エラーチェック" }
+    code_count: 12
+    code_space_share: "12/400 = 3%"
+    plate_appearance_share: "0.15%"
+  - code_range: ["1719", "1720"]
+    dice_coordinates: [{ first_d20: [17, 17], second_d20: [19, 20] }]
+    category: runner_dependent
+    outcomes: { with_runner: "ワイルドピッチ（走者1進塁）", without_runner: "遊撃手エラーチェック" }
+    code_count: 2
+    code_space_share: "2/400 = 0.5%"
+    plate_appearance_share: "0.025%"
+  - code_range: ["1801", "1805"]
+    dice_coordinates: [{ first_d20: [18, 18], second_d20: [1, 5] }]
+    category: runner_dependent
+    outcomes: { with_runner: "ボーク（走者1進塁）", without_runner: "遊撃手エラーチェック" }
+    code_count: 5
+    code_space_share: "5/400 = 1.25%"
+    plate_appearance_share: "0.0625%"
+  - code_range: ["1806", "1808"]
+    dice_coordinates: [{ first_d20: [18, 18], second_d20: [6, 8] }]
+    category: runner_dependent
+    outcomes: { with_runner: "盗塁刺（先頭走者アウト）", without_runner: "遊撃手エラーチェック" }
+    code_count: 3
+    code_space_share: "3/400 = 0.75%"
+    plate_appearance_share: "0.0375%"
+  - code_range: ["1809", "1810"]
+    dice_coordinates: [{ first_d20: [18, 18], second_d20: [9, 10] }]
+    category: runner_dependent
+    outcomes: { with_runner: "パスボール（走者1進塁）", without_runner: "遊撃手エラーチェック" }
+    code_count: 2
+    code_space_share: "2/400 = 0.5%"
+    plate_appearance_share: "0.025%"
+  - code_range: ["1811", "1813"]
+    dice_coordinates: [{ first_d20: [18, 18], second_d20: [11, 13] }]
+    category: runner_dependent
+    outcomes: { with_runner: "パスボール（走者1進塁）", without_runner: "左翼手エラーチェック" }
+    code_count: 3
+    code_space_share: "3/400 = 0.75%"
+    plate_appearance_share: "0.0375%"
+  - code_range: ["1814", "1816"]
+    dice_coordinates: [{ first_d20: [18, 18], second_d20: [14, 16] }]
+    category: runner_dependent
+    outcomes: { with_runner: "パスボール（走者1進塁）", without_runner: "中堅手エラーチェック" }
+    code_count: 3
+    code_space_share: "3/400 = 0.75%"
+    plate_appearance_share: "0.0375%"
+  - code_range: ["1817", "1819"]
+    dice_coordinates: [{ first_d20: [18, 18], second_d20: [17, 19] }]
+    category: runner_dependent
+    outcomes: { with_runner: "パスボール（走者1進塁）", without_runner: "右翼手エラーチェック" }
+    code_count: 3
+    code_space_share: "3/400 = 0.75%"
+    plate_appearance_share: "0.0375%"
+  - code_range: ["1820", "1820"]
+    dice_coordinates: [{ first_d20: [18, 18], second_d20: [20, 20] }]
+    category: dropped_third_strike
+    outcome: "振り逃げ（打者1塁へ。1塁走者かつ2死以外は三振アウト）"
+    code_count: 1
+    code_space_share: "1/400 = 0.25%"
+    plate_appearance_share: "0.0125%"
+
+  - code_range: ["1901", "1910"]
+    dice_coordinates: [{ first_d20: [19, 19], second_d20: [1, 10] }]
+    category: catcher_range_check
+    outcome: "捕手レンジ確認。レンジ0〜1=ホームラン、レンジ2=打者は1で振り直し、レンジ3以上=レンジチェックでアウトならキャッチャーフライ、それ以外はファールで投球から振り直し"
+    code_count: 10
+    code_space_share: "10/400 = 2.5%"
+    plate_appearance_share: "0.125%"
+  - code_range: ["1911", "1912"]
+    dice_coordinates: [{ first_d20: [19, 19], second_d20: [11, 12] }]
+    category: ballpark_check
+    direction: "ライト方向"
+    outcome: "F9aならライトフライ（3塁走者生還、2塁走者3塁へ）、それ以外はホームラン"
+    code_count: 2
+    code_space_share: "2/400 = 0.5%"
+    plate_appearance_share: "0.025%"
+  - code_range: ["1913", "1914"]
+    dice_coordinates: [{ first_d20: [19, 19], second_d20: [13, 14] }]
+    category: ballpark_check
+    direction: "センター方向"
+    outcome: "F8aならセンターフライ（3塁走者生還、2塁走者3塁へ）、それ以外はホームラン"
+    code_count: 2
+    code_space_share: "2/400 = 0.5%"
+    plate_appearance_share: "0.025%"
+  - code_range: ["1915", "1915"]
+    dice_coordinates: [{ first_d20: [19, 19], second_d20: [15, 15] }]
+    category: wild_pitch_dropped_third_strike
+    outcome: "ワイルドピッチ（走者2進塁）と振り逃げ（打者1進塁）。ただし2死以外で1塁走者ありなら三振のみ"
+    code_count: 1
+    code_space_share: "1/400 = 0.25%"
+    plate_appearance_share: "0.0125%"
+  - code_range: ["1916", "1916"]
+    dice_coordinates: [{ first_d20: [19, 19], second_d20: [16, 16] }]
+    category: special_play
+    outcome: "ファーストライナー。打者アウト、全走者が飛び出してアウト"
+    code_count: 1
+    code_space_share: "1/400 = 0.25%"
+    plate_appearance_share: "0.0125%"
+  - code_range: ["1917", "1917"]
+    dice_coordinates: [{ first_d20: [19, 19], second_d20: [17, 17] }]
+    category: special_play
+    outcome: "打球が2塁ベース直撃しG4f。1塁走者なし+打者走力4以上、または内野前進守備ならIH4"
+    code_count: 1
+    code_space_share: "1/400 = 0.25%"
+    plate_appearance_share: "0.0125%"
+  - code_range: ["1918", "1918"]
+    dice_coordinates: [{ first_d20: [19, 19], second_d20: [18, 18] }]
+    category: special_play
+    outcome: "G3f。一塁手レンジ3以下なら2H9"
+    code_count: 1
+    code_space_share: "1/400 = 0.25%"
+    plate_appearance_share: "0.0125%"
+  - code_range: ["1919", "1919"]
+    dice_coordinates: [{ first_d20: [19, 19], second_d20: [19, 19] }]
+    category: injury
+    fielder: P
+    outcome: "強烈なピッチャーゴロG1a。投手は負傷し怪我チェックを受ける"
+    code_count: 1
+    code_space_share: "1/400 = 0.25%"
+    plate_appearance_share: "0.0125%"
+  - code_range: ["1920", "1920"]
+    dice_coordinates: [{ first_d20: [19, 19], second_d20: [20, 20] }]
+    category: injury
+    fielder: C
+    outcome: "捕手がベンチに激突。打者アウト、走者そのまま。捕手は怪我チェックを受ける"
+    code_count: 1
+    code_space_share: "1/400 = 0.25%"
+    plate_appearance_share: "0.0125%"
+
+  - code_range: ["2001", "2001"]
+    dice_coordinates: [{ first_d20: [20, 20], second_d20: [1, 1] }]
+    category: injury
+    fielder: 1B
+    outcome: "ファースト強襲の内野安打IH3。一塁手は怪我チェックを受ける"
+    code_count: 1
+    code_space_share: "1/400 = 0.25%"
+    plate_appearance_share: "0.0125%"
+  - code_range: ["2002", "2002"]
+    dice_coordinates: [{ first_d20: [20, 20], second_d20: [2, 2] }]
+    category: injury
+    fielder: 2B
+    outcome: "セカンドゴロG4f。二塁手は捕球の際に体を捻り怪我チェックを受ける"
+    code_count: 1
+    code_space_share: "1/400 = 0.25%"
+    plate_appearance_share: "0.0125%"
+  - code_range: ["2003", "2003"]
+    dice_coordinates: [{ first_d20: [20, 20], second_d20: [3, 3] }]
+    category: injury
+    fielder: 3B
+    outcome: "サード強襲の内野安打IH5。三塁手は怪我チェックを受ける"
+    code_count: 1
+    code_space_share: "1/400 = 0.25%"
+    plate_appearance_share: "0.0125%"
+  - code_range: ["2004", "2004"]
+    dice_coordinates: [{ first_d20: [20, 20], second_d20: [4, 4] }]
+    category: injury
+    fielder: SS
+    outcome: "ショートゴロG6f。遊撃手は捕球の際に体を捻り怪我チェックを受ける"
+    code_count: 1
+    code_space_share: "1/400 = 0.25%"
+    plate_appearance_share: "0.0125%"
+  - code_range: ["2005", "2005"]
+    dice_coordinates: [{ first_d20: [20, 20], second_d20: [5, 5] }]
+    category: injury
+    fielder: LF
+    outcome: "レフトがフライを追ってフェンスに激突。打者アウト、全走者1進塁。左翼手は怪我チェックを受ける"
+    code_count: 1
+    code_space_share: "1/400 = 0.25%"
+    plate_appearance_share: "0.0125%"
+  - code_range: ["2006", "2006"]
+    dice_coordinates: [{ first_d20: [20, 20], second_d20: [6, 6] }]
+    category: injury
+    fielder: CF
+    outcome: "センターがフライを追ってフェンスに激突。打者アウト、全走者1進塁。中堅手は怪我チェックを受ける"
+    code_count: 1
+    code_space_share: "1/400 = 0.25%"
+    plate_appearance_share: "0.0125%"
+  - code_range: ["2007", "2007"]
+    dice_coordinates: [{ first_d20: [20, 20], second_d20: [7, 7] }]
+    category: injury
+    fielder: RF
+    outcome: "ライトがフライを追ってフェンスに激突。打者アウト、全走者1進塁。右翼手は怪我チェックを受ける"
+    code_count: 1
+    code_space_share: "1/400 = 0.25%"
+    plate_appearance_share: "0.0125%"
+  - code_range: ["2008", "2011"]
+    dice_coordinates: [{ first_d20: [20, 20], second_d20: [8, 11] }]
+    category: injury
+    outcome: "ファーストゴロG3f。アウトになった走者は滑り込み時に怪我チェックを受ける"
+    code_count: 4
+    code_space_share: "4/400 = 1%"
+    plate_appearance_share: "0.05%"
+  - code_range: ["2012", "2012"]
+    dice_coordinates: [{ first_d20: [20, 20], second_d20: [12, 12] }]
+    category: injury
+    fielder: batter
+    outcome: "自打球。打者は怪我チェックを受ける"
+    code_count: 1
+    code_space_share: "1/400 = 0.25%"
+    plate_appearance_share: "0.0125%"
+  - code_range: ["2013", "2015"]
+    dice_coordinates: [{ first_d20: [20, 20], second_d20: [13, 15] }]
+    category: hit_by_pitch_injury
+    fielder: batter
+    outcome: "手への死球。打者は怪我チェックを受ける"
+    code_count: 3
+    code_space_share: "3/400 = 0.75%"
+    plate_appearance_share: "0.0375%"
+  - code_range: ["2016", "2017"]
+    dice_coordinates: [{ first_d20: [20, 20], second_d20: [16, 17] }]
+    category: hit_by_pitch_injury
+    fielder: batter
+    outcome: "頭部死球。投手は危険球退場、打者は怪我チェックを受ける"
+    code_count: 2
+    code_space_share: "2/400 = 0.5%"
+    plate_appearance_share: "0.025%"
+  - code_range: ["2018", "2018"]
+    dice_coordinates: [{ first_d20: [20, 20], second_d20: [18, 18] }]
+    category: extra_d20
+    outcome: "追加d20をロールする"
+    extra_d20_outcomes:
+      - { dice_range: [1, 15], outcome: "守備妨害（打者アウト）", conditional_share_of_code: "15/20 = 75%", plate_appearance_share: "0.009375%" }
+      - { dice_range: [16, 20], outcome: "打撃妨害（打者出塁）", conditional_share_of_code: "5/20 = 25%", plate_appearance_share: "0.003125%" }
+    code_count: 1
+    code_space_share: "1/400 = 0.25%"
+    plate_appearance_share: "0.0125%"
+  - code_range: ["2019", "2019"]
+    dice_coordinates: [{ first_d20: [20, 20], second_d20: [19, 19] }]
+    category: extra_d20
+    outcome: "追加d20をロールする"
+    extra_d20_outcomes:
+      - { dice_range: [1, 10], outcome: "三振（打者は抗議して退場）", conditional_share_of_code: "10/20 = 50%", plate_appearance_share: "0.00625%" }
+      - { dice_range: [11, 20], outcome: "頭部をかすめる死球（詳細未確認）", conditional_share_of_code: "10/20 = 50%", plate_appearance_share: "0.00625%" }
+    code_count: 1
+    code_space_share: "1/400 = 0.25%"
+    plate_appearance_share: "0.0125%"
+  - code_range: ["2020", "2020"]
+    dice_coordinates: [{ first_d20: [20, 20], second_d20: [20, 20] }]
+    category: extra_d20
+    outcome: "追加d20をロールする"
+    extra_d20_outcomes:
+      - { dice_range: [1, 10], outcome: "先頭走者が隠し球でアウト（走者なしなら三振）", conditional_share_of_code: "10/20 = 50%", plate_appearance_share: "0.00625%" }
+      - { dice_range: [11, 20], outcome: "ランニングホームラン", conditional_share_of_code: "10/20 = 50%", plate_appearance_share: "0.00625%" }
+    code_count: 1
+    code_space_share: "1/400 = 0.25%"
+    plate_appearance_share: "0.0125%"

@@ -40,10 +40,10 @@ cp .env.example .env.local
 # .env.local の VITE_API_BASE_URL を編集（デフォルト: http://localhost:3000/api/v1）
 
 # 依存関係インストール
-npm install
+yarn install
 
 # 開発サーバー起動（http://localhost:5173）
-npm run dev
+yarn dev
 ```
 
 **注意:** `.env.local` は `.gitignore` 対象。リポジトリにコミットされません。
@@ -52,19 +52,19 @@ npm run dev
 
 ```bash
 # ユニットテスト
-npm run test
+yarn test
 # または
-npx vitest run
+yarn vitest run
 ```
 
 ## ビルド
 
 ```bash
 # 本番ビルド（dist/ に出力）
-npm run build
+yarn build
 
 # TypeScriptチェック（本番ビルド前に実行推奨）
-npx vue-tsc --noEmit
+yarn vue-tsc --noEmit
 ```
 
 ## デプロイ

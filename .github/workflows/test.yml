@@ -54,6 +54,11 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      # config/initializers/vips_block_untrusted.rb が起動時に Vips.block_untrusted を呼ぶため libvips (>= 8.13) が必要
+      - name: Install libvips
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends libvips-dev
+        working-directory: .
+
       - name: Set up Ruby
         uses: ruby/setup-ruby@v1
         with:

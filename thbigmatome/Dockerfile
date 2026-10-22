@@ -7,9 +7,11 @@
 
 # For a containerized dev environment, see Dev Containers: https://guides.rubyonrails.org/getting_started_with_devcontainer.html
 
-# Make sure RUBY_VERSION matches the Ruby version in .ruby-version
-ARG RUBY_VERSION=3.4.4
-FROM docker.io/library/ruby:$RUBY_VERSION-slim AS base
+# Ruby 3.4 系の最新 patch を追う。patch 固定のタグは次の版が出ると更新が止まり、
+# 中の OS 部品も古いまま残る（3.4.4-slim は 2025-07 で止まっていた）。
+# Debian は bookworm に固定し、apt で入れる部品名が変わらないようにする。
+ARG RUBY_VERSION=3.4
+FROM docker.io/library/ruby:$RUBY_VERSION-slim-bookworm AS base
 
 # Rails app lives here
 WORKDIR /rails

@@ -197,132 +197,21 @@ module Api
         result
       end
 
-      # [from_date, to_date] (両端含む) 内の離脱日数合計を返す
-      # end_date は排他的（復帰可能日）
       def absence_days_in_range(absences, from_date, to_date)
-        return 0 if absences.empty? || from_date > to_date
-        absences.sum do |pa|
-          i_start = [ pa[:start_date], from_date ].max
-          i_end_excl = pa[:end_date] ? pa[:end_date] : to_date + 1
-          i_end_clamped = [ i_end_excl, to_date + 1 ].min
-          days = (i_end_clamped - i_start).to_i
-          days > 0 ? days : 0
-        end
+        PitcherRestStatus.absence_days_in_range(absences, from_date, to_date)
       end
 
-      # after_date より後に開始し、target_date 以前に終了する、
-      # 10日を超える（> 10日）の離脱があるか（中10日全快判定）
       def full_recovery_absence?(absences, after_date, target_date)
-        absences.any? do |pa|
-          pa[:start_date] > after_date &&
-            pa[:end_date] &&
-            pa[:end_date] <= target_date &&
-            (pa[:end_date] - pa[:start_date]).to_i > 10
-        end
+        PitcherRestStatus.full_recovery_absence?(absences, after_date, target_date)
       end
 
-      # projected_status: 今日登板した場合の疲労ステータス予測
-      # 戻り値: "full" / "reduced_N" / "injury_check" / "unavailable" / "injured"
-      def calculate_projected_status(last_role, rest_days, last_result_category, cumulative_innings, is_injured, consecutive_short_rest_count)
-        return "injured" if is_injured
-        return "full" if last_role.nil?
-
-        if last_role == "starter"
-          return "full" if rest_days.nil?
-          return "unavailable" if rest_days <= 2
-
-          cat = last_result_category || "normal"
-          case cat
-          when "ko", "no_game"
-            rest_days == 3 ? "reduced_3" : "full"
-          when "long_loss"
-            case rest_days
-            when 3 then "injury_check"
-            when 4 then "reduced_4"
-            when 5 then "reduced_2"
-            when 6 then "reduced_1"
-            else "full"
-            end
-          else # normal
-            case rest_days
-            when 3 then "injury_check"
-            when 4
-              consecutive_short_rest_count >= 1 ? "injury_check" : "reduced_3"
-            when 5 then "reduced_1"
-            else "full"
-            end
-          end
-        else # reliever / opener
-          case cumulative_innings
-          when 0 then "full"
-          when 1 then "reduced_0"
-          when 2 then "reduced_0"
-          else "injury_check"
-          end
-        end
+      # 判定表は PitcherRestStatus に集約（先発の試合前疲労P計算と共有）
+      def calculate_projected_status(*args)
+        PitcherRestStatus.calculate_projected_status(*args)
       end
 
       def compute_cumulative_innings(pitcher_id, target_date, absences = [])
-        appearances = PitcherGameState
-          .where(pitcher_id: pitcher_id, team_id: @team.id, role: %w[reliever opener])
-          .where("schedule_date < ?", target_date.to_s)
-          .order(schedule_date: :asc)
-
-        cumulative = 0
-        prev_date = nil
-
-        appearances.each do |app|
-          if prev_date
-            app_date = app.schedule_date.to_date
-            if full_recovery_absence?(absences, prev_date, app_date)
-              # 中10日以上の離脱 → 全快（累積リセット）
-              cumulative = 0
-            else
-              from = prev_date + 1
-              to = app_date - 1
-              idle_days = (app_date - prev_date).to_i - 1
-              absent_days = absence_days_in_range(absences, from, to)
-              effective_idle = [ idle_days - absent_days, 0 ].max
-              effective_idle.times do
-                cumulative = cumulative <= 3 ? [ cumulative - 2, 0 ].max : cumulative - 1
-              end
-            end
-          end
-          ip = app.innings_pitched.to_f
-          my_outs = ip.floor * 3 + ((ip * 10).round % 10)
-          prior_outs = PitcherGameState
-            .where(game_id: app.game_id, team_id: app.team_id)
-            .where("appearance_order < ?", app.appearance_order)
-            .pluck(:innings_pitched)
-            .sum { |s| s.to_f.then { |f| f.floor * 3 + ((f * 10).round % 10) } }
-          involvement = if my_outs == 0
-            1
-          else
-            start_inning = prior_outs / 3 + 1
-            end_inning = (prior_outs + my_outs - 1) / 3 + 1
-            (end_inning - start_inning + 1) + (app.no_out_exit ? 1 : 0)
-          end
-          cumulative += [ involvement, 1 ].max
-          prev_date = app.schedule_date.to_date
-        end
-
-        # Decay from last appearance to target_date
-        if prev_date && prev_date < target_date
-          if full_recovery_absence?(absences, prev_date, target_date)
-            cumulative = 0
-          else
-            from = prev_date + 1
-            to = target_date - 1
-            idle_days = (target_date - prev_date).to_i - 1
-            absent_days = absence_days_in_range(absences, from, to)
-            effective_idle = [ idle_days - absent_days, 0 ].max
-            effective_idle.times do
-              cumulative = cumulative <= 3 ? [ cumulative - 2, 0 ].max : cumulative - 1
-            end
-          end
-        end
-
-        [ cumulative, 0 ].max
+        PitcherRestStatus.cumulative_innings(@team.id, pitcher_id, target_date, absences)
       end
     end
   end

@@ -312,4 +312,101 @@ describe('PitcherAppearanceTab', () => {
 
     expect(wrapper.vm.pitcherRows[0].pitcher_id).toBe(10)
   })
+
+  // cmd_1775 E7: 結果区分チップはサーバの値を表示し、サーバと同じ条件に揃える
+  describe('結果区分チップ（computeResultCategory）', () => {
+    const idleState: PreGameStateMock = {
+      player_id: 10,
+      rest_days: null,
+      cumulative_innings: 0,
+      last_role: null,
+      is_injured: false,
+    }
+
+    async function mountWith(gameResult: 'win' | 'lose' | 'draw', saved: unknown[] = []) {
+      mockPitcherRequests({ state: idleState, savedAppearances: saved })
+      const wrapper = mount(PitcherAppearanceTab, {
+        props: { ...defaultProps, gameResult },
+        global: { plugins: [vuetify] },
+      })
+      await flushPromises()
+      return wrapper
+    }
+
+    function savedStarter(resultCategory: string | null) {
+      return {
+        id: 1,
+        pitcher_id: 10,
+        role: 'starter',
+        innings_pitched: 9.0,
+        earned_runs: 0,
+        fatigue_p_used: 0,
+        decision: null,
+        is_opener: false,
+        no_out_exit: false,
+        consecutive_short_rest_count: 0,
+        pre_injury_days_excluded: 0,
+        result_category: resultCategory,
+      }
+    }
+
+    it('保存済みの先発はサーバの result_category を表示する（画面の fatigue_p_used=0 に引きずられない）', async () => {
+      const wrapper = await mountWith('lose', [savedStarter('long_loss')])
+      expect(wrapper.vm.computeResultCategory(0)).toBe('long_loss')
+    })
+
+    it('保存済みで result_category が null（判定保留）なら判定保留と表示する', async () => {
+      const wrapper = await mountWith('lose', [savedStarter(null)])
+      expect(wrapper.vm.computeResultCategory(0)).toBeNull()
+      expect(wrapper.text()).toContain('判定保留')
+    })
+
+    it('未保存の先発が負け試合で5回投げた場合は、疲労Pが要るので保存後に確定と表示する', async () => {
+      const wrapper = await mountWith('lose')
+      const row = wrapper.vm.pitcherRows[0]
+      row.pitcher_id = 10
+      row.innings_int = 5
+      row.innings_frac = ''
+      await flushPromises()
+      expect(wrapper.vm.computeResultCategory(0)).toBe('pending')
+    })
+
+    it('未保存の先発が勝ち・引き分けなら9回でも normal', async () => {
+      for (const gameResult of ['win', 'draw'] as const) {
+        const wrapper = await mountWith(gameResult)
+        const row = wrapper.vm.pitcherRows[0]
+        row.pitcher_id = 10
+        row.innings_int = 9
+        row.innings_frac = ''
+        await flushPromises()
+        expect(wrapper.vm.computeResultCategory(0)).toBe('normal')
+      }
+    })
+
+    it('KO: 負け・decision=L・後続あり・4回0アウト降板でも ko（+1 しない）。勝ちなら normal', async () => {
+      const wrapper = await mountWith('lose')
+      wrapper.vm.addRow()
+      const row = wrapper.vm.pitcherRows[0]
+      row.pitcher_id = 10
+      row.innings_int = 4
+      row.innings_frac = ''
+      row.no_out_exit = true
+      row.decision = 'L'
+      await flushPromises()
+      expect(wrapper.vm.computeResultCategory(0)).toBe('ko')
+
+      row.decision = null // 敗戦投手でなければ KO ではない（サーバと同じ）
+      expect(wrapper.vm.computeResultCategory(0)).not.toBe('ko')
+
+      const winWrapper = await mountWith('win')
+      winWrapper.vm.addRow()
+      const winRow = winWrapper.vm.pitcherRows[0]
+      winRow.pitcher_id = 10
+      winRow.innings_int = 4
+      winRow.innings_frac = ''
+      winRow.decision = 'L'
+      await flushPromises()
+      expect(winWrapper.vm.computeResultCategory(0)).toBe('normal')
+    })
+  })
 })

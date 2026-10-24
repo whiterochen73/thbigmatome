@@ -502,16 +502,28 @@ function getPitcherPreGameInfo(pitcherId: number | null): string {
   return buildPreGameInfo(state)
 }
 
+// 保存済みの登板記録の result_category（サーバが試合概要の得点・カード・試合前のスタミナ補正から求めた値）。
+// 長イニング敗戦は疲労P（カード + 試合前補正）が要るため、画面では計算せずサーバの値を表示する。
+const savedResultCategories = ref<Record<number, string | null>>({})
+
 function computeResultCategory(idx: number): string | null {
   const row = pitcherRows.value[idx]
   if (props.gameResult === 'no_game') return 'no_game'
   if (row.role !== 'starter') return 'normal'
+  // 保存済みの先発はサーバの値を表示する（null は判定保留）
+  if (row.pitcher_id && row.pitcher_id in savedResultCategories.value) {
+    return savedResultCategories.value[row.pitcher_id]
+  }
+  // 未保存: サーバと同じ条件で判定できる範囲だけ表示する。
+  // KO は実際に投げたイニングで判定（0アウト降板の +1 は掛けない）。負け試合かつ decision=L が必要。
   const innings = computeIPFromRow(row) ?? 0
   const hasSuccessor = pitcherRows.value.length > 1
-  const fatigueP = row.fatigue_p_used ?? 0
-  if (innings > 0 && innings < 5 && hasSuccessor) return 'ko'
-  if (props.gameResult === 'lose' && fatigueP > 0 && innings > fatigueP + 1) return 'long_loss'
-  return 'normal'
+  if (innings > 0 && innings < 5 && hasSuccessor && props.gameResult === 'lose' && row.decision === 'L') {
+    return 'ko'
+  }
+  if (props.gameResult !== 'lose') return 'normal'
+  // 負け試合で関与イニング 2 以上は、疲労P（カード + 試合前補正）次第で長イニング敗戦になりうる → 保存後に確定
+  return innings > 1 ? 'pending' : 'normal'
 }
 
 function getDecisionChipOptions(idx: number) {
@@ -551,8 +563,9 @@ function resultCategoryLabel(cat: string | null): string {
     ko: 'KO',
     no_game: 'ノーゲーム',
     long_loss: '長イニング敗戦',
+    pending: '保存後に確定',
   }
-  return cat ? (map[cat] ?? cat) : '—'
+  return cat ? (map[cat] ?? cat) : '判定保留'
 }
 
 function resultCategoryColor(cat: string | null): string {
@@ -561,6 +574,7 @@ function resultCategoryColor(cat: string | null): string {
     no_game: 'grey',
     long_loss: 'warning',
     normal: 'success',
+    pending: 'default',
   }
   return cat ? (map[cat] ?? 'default') : 'default'
 }
@@ -703,6 +717,9 @@ async function fetchPitchersAndStates(options: FetchPitchersOptions = {}) {
     }
 
     const savedAppearances = savedRes.value.data
+    savedResultCategories.value = Object.fromEntries(
+      savedAppearances.map((app) => [app.pitcher_id, app.result_category ?? null]),
+    )
     if (savedAppearances.length > 0) {
       // 保存済みデータを復元（投手順序を維持）
       pitcherRows.value = savedAppearances.map((app, idx) => {

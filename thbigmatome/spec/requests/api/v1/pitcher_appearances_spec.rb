@@ -1,6 +1,6 @@
 require "rails_helper"
 
-RSpec.describe "Api::V1::PitcherAppearancesController", type: :request do
+RSpec.describe "Api::V1::PitcherAppearancesController", type: :request, pitcher_fatigue: true do
   describe "POST /api/v1/pitcher_appearances" do
     include_context "authenticated user"
 
@@ -181,39 +181,111 @@ RSpec.describe "Api::V1::PitcherAppearancesController", type: :request do
         expect(json["pitcher_appearance"]["result_category"]).to eq("no_game")
       end
 
-      it "先発で疲労P > 0 かつ innings > fatigue_p + 1 かつ敗戦の場合 long_loss になる" do
-        params = valid_params.deep_merge(pitcher_appearance: {
-          role: "starter",
-          innings_pitched: 8.0,
-          fatigue_p_used: 5,
-          decision: nil,
-          game_result: "lose",
-          result_category: nil
-        })
+      # E1: 疲労P は画面の fatigue_p_used ではなく、チームの登録カード + 試合前のスタミナ補正からサーバが求める。
+      # 旧テストは「画面が fatigue_p_used=5 を送る」「0 なら既定3」を前提にしていたが、裁定 2026-10-25 で廃止した。
+      it "E1: 画面が fatigue_p_used=0 を送っても、カード疲労P 7 の先発が負け試合で 8.0回 → normal、8.1回 → long_loss" do
+        create(:team_membership, team: team, player: pitcher,
+                                 player_card: create(:player_card, player: pitcher, card_type: "pitcher", starter_stamina: 7))
+        [ [ 8.0, "normal" ], [ 8.1, "long_loss" ] ].each do |innings, expected|
+          PitcherGameState.where(game_id: game.id).delete_all
+          params = valid_params.deep_merge(pitcher_appearance: {
+            role: "starter", innings_pitched: innings, fatigue_p_used: 0, decision: nil, game_result: "lose"
+          })
+          post "/api/v1/pitcher_appearances", params: params, as: :json
+
+          expect(response).to have_http_status(:created)
+          json = response.parsed_body["pitcher_appearance"]
+          expect(json["result_category"]).to eq(expected)
+          expect(json["fatigue_p_used"]).to eq(7) # サーバが求めた値を保存する
+        end
+      end
+
+      it "E1: カードに先発疲労P の記載が無い先発だけ既定3（4.0回 → normal、4.1回 → long_loss）" do
+        create(:team_membership, team: team, player: pitcher,
+                                 player_card: create(:player_card, player: pitcher, card_type: "pitcher", starter_stamina: nil))
+        [ [ 4.0, "normal" ], [ 4.1, "long_loss" ] ].each do |innings, expected|
+          PitcherGameState.where(game_id: game.id).delete_all
+          params = valid_params.deep_merge(pitcher_appearance: { role: "starter", innings_pitched: innings, fatigue_p_used: 0, game_result: "lose" })
+          post "/api/v1/pitcher_appearances", params: params, as: :json
+          expect(response.parsed_body["pitcher_appearance"]["result_category"]).to eq(expected)
+        end
+      end
+
+      it "E1: チームの登録にカードが無い投手は既定3にせず判定保留（result_category nil + warning）" do
+        params = valid_params.deep_merge(pitcher_appearance: { role: "starter", innings_pitched: 8.0, fatigue_p_used: 0, game_result: "lose" })
         post "/api/v1/pitcher_appearances", params: params, as: :json
 
         expect(response).to have_http_status(:created)
         json = response.parsed_body
-        expect(json["pitcher_appearance"]["result_category"]).to eq("long_loss")
+        expect(json["pitcher_appearance"]["result_category"]).to be_nil
+        expect(json["pitcher_appearance"]["fatigue_p_used"]).to be_nil
+        expect(json["warnings"].join).to include("判定保留")
       end
 
-      it "疲労P == 0（未設定）の場合 デフォルト3を適用して long_loss になる（ルール§8.3, #7修正）" do
-        params = valid_params.deep_merge(pitcher_appearance: {
-          role: "starter",
-          innings_pitched: 8.0,
-          fatigue_p_used: 0,
-          decision: nil,
-          game_result: "lose",
-          result_category: nil
-        })
-        post "/api/v1/pitcher_appearances", params: params, as: :json
-
-        expect(response).to have_http_status(:created)
-        json = response.parsed_body
-        # デフォルト疲労P=3が適用され、8.0 > 3+1=4 → long_loss
-        expect(json["pitcher_appearance"]["result_category"]).to eq("long_loss")
+      it "E1: 前回登板から中4日(-3)で P7→4 の先発は 5.1回・負け → long_loss、5.0回 → normal" do
+        create(:team_membership, team: team, player: pitcher,
+                                 player_card: create(:player_card, player: pitcher, card_type: "pitcher", starter_stamina: 7))
+        create(:pitcher_game_state, team: team, pitcher: pitcher, schedule_date: "2026-03-15", role: "starter",
+                                    innings_pitched: 6.0, result_category: "normal", competition: competition)
+        [ [ 5.0, "normal" ], [ 5.1, "long_loss" ] ].each do |innings, expected|
+          PitcherGameState.where(game_id: game.id).delete_all
+          params = valid_params.deep_merge(pitcher_appearance: { role: "starter", innings_pitched: innings, fatigue_p_used: 0, game_result: "lose" })
+          post "/api/v1/pitcher_appearances", params: params, as: :json
+          json = response.parsed_body["pitcher_appearance"]
+          expect([ json["result_category"], json["fatigue_p_used"] ]).to eq([ expected, 4 ])
+        end
       end
 
+      context "E4相当(裁定4): 勝敗は試合概要の得点から決める（画面の game_result に頼らない）" do
+        let(:season) { create(:season, team: team) }
+
+        before do
+          create(:team_membership, team: team, player: pitcher,
+                                   player_card: create(:player_card, player: pitcher, card_type: "pitcher", starter_stamina: 7))
+        end
+
+        def post_nine_innings(game_result)
+          params = valid_params.deep_merge(pitcher_appearance: { role: "starter", innings_pitched: 9.0, fatigue_p_used: 0, game_result: game_result })
+          post "/api/v1/pitcher_appearances", params: params, as: :json
+          response.parsed_body["pitcher_appearance"]["result_category"]
+        end
+
+        it "得点が負けなら、画面が win を送っても long_loss（9回 > 7+1）" do
+          create_schedule(season, "2026-03-20", score: 1, opponent_score: 2)
+          expect(post_nine_innings("win")).to eq("long_loss")
+        end
+
+        it "得点が勝ちなら、画面が lose を送っても normal" do
+          create_schedule(season, "2026-03-20", score: 3, opponent_score: 2)
+          expect(post_nine_innings("lose")).to eq("normal")
+        end
+
+        it "同点・得点未入力は負けではない（画面が lose を送っても normal）" do
+          schedule = create_schedule(season, "2026-03-20", score: 2, opponent_score: 2)
+          expect(post_nine_innings("lose")).to eq("normal")
+          PitcherGameState.where(game_id: game.id).delete_all
+          schedule.update_columns(score: nil, opponent_score: nil)
+          expect(post_nine_innings("lose")).to eq("normal")
+        end
+      end
+    end
+
+    context "E2: 試合の得点が後から変わると先発の result_category が作り直される" do
+      it "PUT /api/v1/game/:id で負け→勝ちに直すと long_loss が normal になる" do
+        season = create(:season, team: team)
+        schedule = create_schedule(season, "2026-03-20", score: 1, opponent_score: 4)
+        create(:team_membership, team: team, player: pitcher,
+                                 player_card: create(:player_card, player: pitcher, card_type: "pitcher", starter_stamina: 7))
+        state = create_start(team: team, pitcher: pitcher, date: "2026-03-20", innings: 9.0, category: "long_loss", game: game)
+
+        put "/api/v1/game/#{schedule.id}", params: { score: 5, opponent_score: 4 }, as: :json
+
+        expect(response).to have_http_status(:ok)
+        expect(state.reload.result_category).to eq("normal")
+      end
+    end
+
+    context "result_category 自動計算（続き）" do
       it "先発で通常パターンの場合 normal になる" do
         params = valid_params.deep_merge(pitcher_appearance: {
           role: "starter",
@@ -360,6 +432,53 @@ RSpec.describe "Api::V1::PitcherAppearancesController", type: :request do
           ]
         }
       }
+    end
+
+    context "bulk_save: result_category は試合概要の得点とカードからサーバが決める（E1・裁定4・関与イニング）" do
+      let(:season) { create(:season, team: team) }
+
+      def bulk_with(appearances)
+        { pitcher_appearances_bulk: { team_id: team.id, competition_id: competition.id, game_id: game.id,
+                                      schedule_date: "2026-03-20", game_result: "win", appearances: appearances } }
+      end
+
+      def ap(pitcher, role, innings, **extra)
+        { pitcher_id: pitcher.id, role: role, innings_pitched: innings, earned_runs: 0, fatigue_p_used: 0,
+          is_opener: false, consecutive_short_rest_count: 0, pre_injury_days_excluded: 0 }.merge(extra)
+      end
+
+      it "画面が game_result=win を送っても、試合概要が負けなら先発(疲労P7)の 8.1回は long_loss、fatigue_p_used に 7 を保存" do
+        create(:team_membership, team: team, player: pitcher1,
+                                 player_card: create(:player_card, player: pitcher1, card_type: "pitcher", starter_stamina: 7))
+        create_schedule(season, "2026-03-20", score: 0, opponent_score: 1)
+        post "/api/v1/pitcher_appearances/bulk_save", params: bulk_with([ ap(pitcher1, "starter", 8.1), ap(pitcher2, "reliever", 0.2) ]), as: :json
+
+        expect(response).to have_http_status(:ok)
+        state = PitcherGameState.find_by(game: game, pitcher: pitcher1)
+        expect(state).to have_attributes(result_category: "long_loss", fatigue_p_used: 7)
+      end
+
+      it "前の投手が1回1/3を投げた後に入った先発扱い(role=starter)の投手が 6.2回 → 関与7（疲労P6 は normal、疲労P5 は long_loss）" do
+        create_schedule(season, "2026-03-20", score: 0, opponent_score: 1)
+        { 6 => "normal", 5 => "long_loss" }.each do |stamina, expected|
+          second = create(:player, :pitcher)
+          create(:team_membership, team: team, player: second,
+                                   player_card: create(:player_card, player: second, card_type: "pitcher", starter_stamina: stamina))
+          PitcherGameState.where(game_id: game.id).delete_all
+          post "/api/v1/pitcher_appearances/bulk_save",
+               params: bulk_with([ ap(pitcher2, "opener", 1.1), ap(second, "starter", 6.2) ]), as: :json
+          expect(PitcherGameState.find_by(game: game, pitcher: second).result_category).to eq(expected)
+        end
+      end
+
+      it "カードを特定できない先発は result_category nil + 判定保留の warning（既定3 にしない）" do
+        create_schedule(season, "2026-03-20", score: 0, opponent_score: 1)
+        post "/api/v1/pitcher_appearances/bulk_save", params: bulk_with([ ap(pitcher1, "starter", 8.0) ]), as: :json
+
+        expect(response).to have_http_status(:ok)
+        expect(PitcherGameState.find_by(game: game, pitcher: pitcher1).result_category).to be_nil
+        expect(response.parsed_body["warnings"].join).to include("判定保留")
+      end
     end
 
     context "正常系: 複数投手を一括保存" do

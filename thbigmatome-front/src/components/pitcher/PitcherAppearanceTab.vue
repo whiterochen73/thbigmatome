@@ -516,9 +516,10 @@ function computeResultCategory(idx: number): string | null {
   }
   // 未保存: サーバと同じ条件で判定できる範囲だけ表示する。
   // KO は実際に投げたイニングで判定（0アウト降板の +1 は掛けない）。負け試合かつ decision=L が必要。
+  // 0.0 回でも 0アウト降板（no_out_exit）なら「登板した」ので KO の対象（AMB-20 追補）。5.0 回以上は KO にならない。
   const innings = computeIPFromRow(row) ?? 0
   const hasSuccessor = pitcherRows.value.length > 1
-  if (innings > 0 && innings < 5 && hasSuccessor && props.gameResult === 'lose' && row.decision === 'L') {
+  if ((innings > 0 || row.no_out_exit) && innings < 5 && hasSuccessor && props.gameResult === 'lose' && row.decision === 'L') {
     return 'ko'
   }
   if (props.gameResult !== 'lose') return 'normal'

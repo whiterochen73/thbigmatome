@@ -73,4 +73,24 @@ RSpec.describe "pitcher_game_states:recalculate_result_category", :pitcher_fatig
     expect(out).to include("card_not_identified")
     expect(out).to include("# skipped_unscored(得点未入力): 1")
   end
+
+  it "AMB-20追補: 0.0回・no_out_exit・L・後続あり・負けの過去記録は ko のまま残る（ko → normal にならない）" do
+    ko_team, ko_season = create_team_with_season
+    starter, = create_card_pitcher(team: ko_team, starter_stamina: 6)
+    reliever, = create_card_pitcher(team: ko_team, starter_stamina: nil, relief_stamina: 3)
+    create_schedule(ko_season, "2026-06-19", score: 2, opponent_score: 9)
+    game = create(:game)
+    ko_state = create_start(team: ko_team, pitcher: starter, date: "2026-06-19", innings: 0.0, category: "ko",
+                            decision: "L", no_out_exit: true, game: game, appearance_order: 0)
+    create_start(team: ko_team, pitcher: reliever, date: "2026-06-19", innings: 9.0, category: "normal",
+                 role: "reliever", game: game, appearance_order: 1)
+
+    dry = run_task("APPLY" => nil)
+    csv_lines = dry.lines.reject { |l| l.start_with?("#") }.join
+    changed_for_ko = CSV.parse(csv_lines, headers: true).select { |r| r["pitcher_id"] == starter.id.to_s }
+    expect(changed_for_ko).to be_empty
+
+    run_task("APPLY" => "1")
+    expect(ko_state.reload.result_category).to eq("ko")
+  end
 end

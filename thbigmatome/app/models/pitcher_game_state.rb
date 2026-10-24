@@ -17,29 +17,34 @@ class PitcherGameState < ApplicationRecord
   validates :pre_injury_days_excluded, numericality: { greater_than_or_equal_to: 0 }
 
   # result_category 自動計算ロジック
-  # game_result: "win" / "lose" / "draw" / "no_game"
+  # game_result: "win" / "lose" / "draw" / "no_game"（試合概要の得点から求めた値。PitcherGameResult 参照）
   # pitchers_in_game: この試合のこのチームの投手総数（新規追加分含む）
-  # fatigue_p: 補正後の実効疲労P（long_loss判定に使用）。0/nil の場合はデフォルト3を適用（ルール§8.3）
-  # no_out_exit: 0アウト降板フラグ。trueの場合、関与イニング = innings_pitched.floor + 1
+  # fatigue_p: 試合前のスタミナ補正をかけた先発の疲労P（PitcherStarterFatigue が求める）。
+  #   0 は「補正の結果 0」を意味する正当な値。カード未記載の既定 3 は呼び出し側（PitcherStarterFatigue）が
+  #   カード値として 3 を入れる。nil は「疲労P を特定できない」で、判定に疲労P が要る場合は nil（判定保留）を返す。
+  # prior_outs: 同じ試合で自分より前に投げた同チーム投手の通算アウト数（関与イニングの算出に使う）
+  # no_out_exit: 0アウト降板フラグ。trueの場合、関与イニングに +1（長イニング敗戦のみ。KO には掛けない）
   DEFAULT_STARTER_FATIGUE_P = 3
 
-  def self.calculate_result_category(role:, innings_pitched:, game_result:, pitchers_in_game:, fatigue_p: 0, decision: nil, no_out_exit: false)
+  # 戻り値: "normal" / "ko" / "long_loss" / "no_game" / nil（判定保留: 疲労P が必要なのに fatigue_p が nil）
+  def self.calculate_result_category(role:, innings_pitched:, game_result:, pitchers_in_game:, fatigue_p: nil, decision: nil, no_out_exit: false, prior_outs: 0)
     return "no_game" if game_result == "no_game"
     return "normal" unless role == "starter"
 
     has_successor = pitchers_in_game > 1
-    # 関与イニング数 = max(innings_pitched + (0アウト降板なら+1), 1)
-    # innings_pitched は野球表記（7.1 = 7回1/3）。no_out_exit=true の場合は次のイニングに入ったとみなし+1
-    innings = innings_pitched.to_f + (no_out_exit ? 1 : 0)
-    fp = fatigue_p.to_i
-    # ルール§8.3: 先発疲労P未記載の投手が先発した場合、先発疲労P=3として扱う
-    fp = DEFAULT_STARTER_FATIGUE_P if fp == 0
-    if innings > 0 && innings < 5 && has_successor && game_result == "lose" && decision == "L"
-      "ko"
-    elsif game_result == "lose" && innings > fp + 1
-      "long_loss"
-    else
-      "normal"
+    # KO は実際に投げたイニングで判定する（§8.2.4 の +1 は長イニング敗戦と累積イニングの適用範囲。E11）
+    pitched = innings_pitched.to_f
+    if pitched > 0 && pitched < 5 && has_successor && game_result == "lose" && decision == "L"
+      return "ko"
     end
+    return "normal" unless game_result == "lose"
+
+    # 長イニング敗戦: 関与イニング（§8.2.4）> 補正後の疲労P + 1
+    involved = PitcherInnings.involvement(innings_pitched, prior_outs: prior_outs, no_out_exit: no_out_exit)
+    # 疲労P は 0 以上なので、関与 1 以下なら疲労P が分からなくても normal と決まる
+    return "normal" if involved <= 1
+    return nil if fatigue_p.nil?
+
+    involved > fatigue_p.to_i + 1 ? "long_loss" : "normal"
   end
 end

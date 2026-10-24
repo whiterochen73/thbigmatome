@@ -41,8 +41,9 @@ class Api::V1::PitcherAppearancesController < Api::V1::BaseController
   def bulk_save
     bulk = params[:pitcher_appearances_bulk]
     appearances_list = bulk[:appearances] || []
-    game_result = bulk[:game_result]
     team_id = bulk[:team_id]
+    # 勝敗は試合概要の得点から決める。画面が送る game_result は、試合概要が無い時の代替と no_game の指定にだけ使う
+    game_result, schedule_ambiguous = resolve_game_result(team_id, bulk[:schedule_date], bulk[:game_result])
 
     game = find_or_create_game_for_bulk
     return if game.nil?
@@ -51,6 +52,7 @@ class Api::V1::PitcherAppearancesController < Api::V1::BaseController
     all_results = []
     all_warnings = []
     pitchers_count = appearances_list.count { |a| a[:pitcher_id].present? }
+    running_outs = 0
 
     ActiveRecord::Base.transaction do
       # リクエストに含まれない既存レコードを削除（UIで行を消した投手のDBレコードを掃除）
@@ -69,15 +71,15 @@ class Api::V1::PitcherAppearancesController < Api::V1::BaseController
         hash[:competition_id] ||= game.competition_id
         hash[:appearance_order] = idx
 
+        prior_outs = running_outs
+        running_outs += PitcherInnings.outs_from_innings(hash[:innings_pitched])
+
         if hash[:result_category].blank?
-          hash[:result_category] = PitcherGameState.calculate_result_category(
-            role: hash[:role],
-            innings_pitched: hash[:innings_pitched].to_f,
-            game_result: game_result,
-            pitchers_in_game: pitchers_count,
-            fatigue_p: hash[:fatigue_p_used].to_i,
-            decision: hash[:decision],
-            no_out_exit: hash[:no_out_exit]
+          assign_result_category(
+            hash,
+            team_id: team_id, schedule_date: bulk[:schedule_date], game_result: game_result,
+            schedule_ambiguous: schedule_ambiguous, pitchers_in_game: pitchers_count,
+            prior_outs: prior_outs, warnings: all_warnings
           )
         end
 
@@ -114,27 +116,26 @@ class Api::V1::PitcherAppearancesController < Api::V1::BaseController
     # competition_idがparams未指定の場合、gameから補完
     appearance_params_hash[:competition_id] ||= game.competition_id
 
-    # result_category の自動計算
+    # result_category の自動計算（勝敗は試合概要の得点から決める）
+    game_result, schedule_ambiguous = resolve_game_result(
+      appearance_params_hash[:team_id], appearance_params_hash[:schedule_date],
+      params.dig(:pitcher_appearance, :game_result)
+    )
+    create_warnings = []
     if appearance_params_hash[:result_category].blank?
       game_appearances = PitcherGameState.where(game_id: game.id, team_id: appearance_params_hash[:team_id])
       pitchers_count = game_appearances.count + 1  # 自分を含む
-      role = appearance_params_hash[:role]
-      innings = appearance_params_hash[:innings_pitched].to_f
-
-      game_result = params.dig(:pitcher_appearance, :game_result)
-      appearance_params_hash[:result_category] = PitcherGameState.calculate_result_category(
-        role: role,
-        innings_pitched: innings,
-        game_result: game_result,
-        pitchers_in_game: pitchers_count,
-        fatigue_p: appearance_params_hash[:fatigue_p_used].to_i,
-        decision: appearance_params_hash[:decision],
-        no_out_exit: appearance_params_hash[:no_out_exit]
+      # appearance_order は単発登録では受け取らないため、前の投手のアウト数は 0（先発として最初に投げる想定）
+      assign_result_category(
+        appearance_params_hash,
+        team_id: appearance_params_hash[:team_id], schedule_date: appearance_params_hash[:schedule_date],
+        game_result: game_result, schedule_ambiguous: schedule_ambiguous,
+        pitchers_in_game: pitchers_count, prior_outs: 0, warnings: create_warnings
       )
     end
 
     state = PitcherGameState.new(appearance_params_hash)
-    warnings = validate_decision(state, game_result)
+    warnings = create_warnings + validate_decision(state, game_result)
 
     if state.save
       render json: { pitcher_appearance: state.as_json, warnings: warnings }, status: :created
@@ -144,6 +145,45 @@ class Api::V1::PitcherAppearancesController < Api::V1::BaseController
   end
 
   private
+
+  # 勝敗を試合概要（season_schedules の score / opponent_score）から決める。
+  # 戻り値: [game_result, schedule_ambiguous]
+  # - 画面の指定が no_game ならそのまま（得点では表せないため）
+  # - 試合概要が一意に見つかれば、画面の値は無視して得点から決める（未入力・同点は draw = 負けではない）
+  # - 試合概要が見つからない時だけ、画面の値を代替に使う（無ければ draw）
+  # - 試合概要が複数あって決められない時は game_result を nil にして判定保留にする
+  def resolve_game_result(team_id, schedule_date, hint)
+    return [ "no_game", false ] if hint.to_s == "no_game"
+
+    outcome = PitcherGameResult.for(team_id: team_id, schedule_date: schedule_date)
+    return [ outcome.result, false ] if outcome.found
+    return [ nil, true ] if outcome.note == :ambiguous
+
+    [ hint.presence || "draw", false ]
+  end
+
+  # attrs に result_category と（先発の）fatigue_p_used を書き込む。判定保留は result_category = nil + 警告。
+  def assign_result_category(attrs, team_id:, schedule_date:, game_result:, schedule_ambiguous:, pitchers_in_game:, prior_outs:, warnings:)
+    if schedule_ambiguous
+      attrs[:result_category] = nil
+      attrs[:fatigue_p_used] = nil if attrs[:role] == "starter"
+      warnings << "投手ID #{attrs[:pitcher_id]}: 判定保留 - 同じ日付の試合概要が複数あり、勝敗を決められない（result_category 未設定）"
+      return
+    end
+
+    result = PitcherResultCategory.call(
+      team_id: team_id, pitcher_id: attrs[:pitcher_id], schedule_date: schedule_date,
+      role: attrs[:role], innings_pitched: attrs[:innings_pitched].to_f, no_out_exit: attrs[:no_out_exit],
+      decision: attrs[:decision], pitchers_in_game: pitchers_in_game, prior_outs: prior_outs,
+      game_result: game_result
+    )
+    attrs[:result_category] = result.category
+    # 先発の fatigue_p_used はサーバが求めた値（試合前のスタミナ補正後）で上書きする。特定できなければ nil
+    attrs[:fatigue_p_used] = result.fatigue_p if attrs[:role] == "starter" && game_result != "no_game"
+    return unless result.pending?
+
+    warnings << "投手ID #{attrs[:pitcher_id]}: 判定保留 - #{PitcherResultCategory.pending_message(result.pending_reason)}（result_category 未設定）"
+  end
 
   def find_or_create_game_for_bulk
     bulk = params[:pitcher_appearances_bulk]

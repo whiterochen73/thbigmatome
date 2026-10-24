@@ -23,7 +23,8 @@ class PitcherGameState < ApplicationRecord
   #   0 は「補正の結果 0」を意味する正当な値。カード未記載の既定 3 は呼び出し側（PitcherStarterFatigue）が
   #   カード値として 3 を入れる。nil は「疲労P を特定できない」で、判定に疲労P が要る場合は nil（判定保留）を返す。
   # prior_outs: 同じ試合で自分より前に投げた同チーム投手の通算アウト数（関与イニングの算出に使う）
-  # no_out_exit: 0アウト降板フラグ。trueの場合、関与イニングに +1（長イニング敗戦のみ。KO には掛けない）
+  # no_out_exit: 0アウト降板フラグ。trueの場合、関与イニングに +1（長イニング敗戦のみ。KO には掛けない）。
+  #   ただし投球回 0.0 でも true なら「登板した」ものとして KO の対象にする
   DEFAULT_STARTER_FATIGUE_P = 3
 
   # 戻り値: "normal" / "ko" / "long_loss" / "no_game" / nil（判定保留: 疲労P が必要なのに fatigue_p が nil）
@@ -33,8 +34,10 @@ class PitcherGameState < ApplicationRecord
 
     has_successor = pitchers_in_game > 1
     # KO は実際に投げたイニングで判定する（§8.2.4 の +1 は長イニング敗戦と累積イニングの適用範囲。E11）
+    # 0.0 回でも no_out_exit（1つもアウトを取れず降板）なら「登板した」ので KO の対象（AMB-20 追補・Operator 裁定 2026-10-25）。
+    # 5.0 回以上（6 イニング目に上がった 0アウト降板を含む）は < 5 を満たさず KO にならない。
     pitched = innings_pitched.to_f
-    if pitched > 0 && pitched < 5 && has_successor && game_result == "lose" && decision == "L"
+    if (pitched > 0 || no_out_exit) && pitched < 5 && has_successor && game_result == "lose" && decision == "L"
       return "ko"
     end
     return "normal" unless game_result == "lose"

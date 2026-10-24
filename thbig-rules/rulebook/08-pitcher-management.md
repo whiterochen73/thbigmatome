@@ -172,6 +172,10 @@ result_category判定順序（Dugout: PitcherGameState#calculate_result_category
 >
 > 詳細・裁定根拠: `context/thbig-bench-rule-adjudications.md`（multi-agent-shogun リポジトリ）
 > AMB-20 節（Operator裁定 2026-10-25）
+>
+> **AMB-20 追補（2026-10-25・Operator裁定）**: 1つもアウトを取れずに降板した先発（投球回 0.0・0アウト降板）も KO。
+> 疑似コードの `innings_pitched > 0` は「登板した」の意味で読む。+1 を掛けない原則は変わらない。
+> 境界: 4.0回＋0アウト降板 → KO、4.2回 → KO、0.0回＋0アウト降板 → KO。6イニング目のマウンドに上がっていた（投球回 5.0）なら、0アウト降板でも KO は付かない（5.0 < 5 を満たさない）。
 
 > **⚠️ 訂正（2026-10-25・Operator裁定）— 長イニング敗戦の閾値に使う疲労Pは、試合前の補正後の値**
 > 上記の `pitcher.stamina` は、カード記載の疲労Pとも、休養による補正後の疲労Pとも読めた。
@@ -420,6 +424,9 @@ IF accumulated_innings >= 4 AND days_since_last_pitch == 0:  # 前日登板
 | 中4日 | −3 |
 | 中5日 | −1 |
 | 中6日以上 | カード記載疲労P |
+
+> **⚠️ 訂正（2026-10-25・Operator裁定・AMB-18 追補）— 「直近リリーフ登板の累積イニング」の読み方**
+> 「直近リリーフ登板の累積イニング」は、その直近リリーフ登板の分を加算した直後（減衰前）の値で読む。
 
 ---
 

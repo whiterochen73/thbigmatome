@@ -123,6 +123,41 @@ RSpec.describe PitcherGameState, type: :model do
       it "E11: 4回を投げ切り5回の頭に入って0アウト降板（no_out_exit）・負け・L・後続あり → ko（+1 しない）" do
         expect(category(innings_pitched: 4.0, game_result: "lose", pitchers_in_game: 2, decision: "L", no_out_exit: true)).to eq("ko")
       end
+
+      # AMB-20 追補（Operator 裁定 2026-10-25）: 1つもアウトを取れず降板した先発（0.0回・no_out_exit）も KO。
+      # innings_pitched > 0 は「登板した」の意味で読む。
+      it "AMB-20追補: 0.0回・no_out_exit・負け・L・後続あり → ko" do
+        expect(category(innings_pitched: 0.0, game_result: "lose", pitchers_in_game: 4, decision: "L", no_out_exit: true)).to eq("ko")
+      end
+
+      it "AMB-20追補: 0.0回・no_out_exit でも勝ち試合なら normal" do
+        expect(category(innings_pitched: 0.0, game_result: "win", pitchers_in_game: 2, decision: nil, no_out_exit: true)).to eq("normal")
+      end
+
+      it "AMB-20追補: 0.0回・no_out_exit・負け でも敗戦投手でない（decision なし）なら normal" do
+        expect(category(innings_pitched: 0.0, game_result: "lose", pitchers_in_game: 2, decision: nil, no_out_exit: true, fatigue_p: 6)).to eq("normal")
+      end
+
+      it "AMB-20追補: 0.0回・no_out_exit・負け・L でも後続投手なしなら normal" do
+        expect(category(innings_pitched: 0.0, game_result: "lose", pitchers_in_game: 1, decision: "L", no_out_exit: true, fatigue_p: 6)).to eq("normal")
+      end
+
+      it "AMB-20追補: 0.0回で no_out_exit でない記録は ko にならない（登板していない扱い）" do
+        expect(category(innings_pitched: 0.0, game_result: "lose", pitchers_in_game: 2, decision: "L", no_out_exit: false, fatigue_p: 6)).to eq("normal")
+      end
+
+      # Operator 念押し 2026-10-25: 6イニング目のマウンドに上がっていたら（投球回 5.0）0アウト降板でも KO は付かない
+      it "AMB-20追補の境界: 5.0回・no_out_exit・負け・L・後続あり → ko ではない（normal。疲労P6なら関与6 <= 7）" do
+        expect(category(innings_pitched: 5.0, game_result: "lose", pitchers_in_game: 2, decision: "L", no_out_exit: true, fatigue_p: 6)).to eq("normal")
+      end
+
+      it "AMB-20追補の境界: 4.2回・no_out_exit・負け・L・後続あり → ko" do
+        expect(category(innings_pitched: 4.2, game_result: "lose", pitchers_in_game: 2, decision: "L", no_out_exit: true)).to eq("ko")
+      end
+
+      it "AMB-20追補: 0アウト降板の +1 は KO に掛けない（4.0回 + 5回頭0アウト降板 は ko のまま）" do
+        expect(category(innings_pitched: 4.0, game_result: "lose", pitchers_in_game: 3, decision: "L", no_out_exit: true)).to eq("ko")
+      end
     end
 
     describe "長イニング敗戦: 関与イニング > 補正後の疲労P + 1（Operator 例 2026-10-25）" do

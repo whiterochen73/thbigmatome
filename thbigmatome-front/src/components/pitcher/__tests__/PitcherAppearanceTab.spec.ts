@@ -408,5 +408,45 @@ describe('PitcherAppearanceTab', () => {
       await flushPromises()
       expect(winWrapper.vm.computeResultCategory(0)).toBe('normal')
     })
+
+    // AMB-20 追補（Operator 裁定 2026-10-25）: 1つもアウトを取れず降板した先発（0.0回・0アウト降板）も KO
+    it('KO: 0.0回・0アウト降板（no_out_exit）・負け・decision=L・後続あり → ko。勝ち・L なし・no_out_exit なしは ko にならない', async () => {
+      const wrapper = await mountWith('lose')
+      wrapper.vm.addRow()
+      const row = wrapper.vm.pitcherRows[0]
+      row.pitcher_id = 10
+      row.innings_int = 0
+      row.innings_frac = ''
+      row.no_out_exit = true
+      row.decision = 'L'
+      await flushPromises()
+      expect(wrapper.vm.computeResultCategory(0)).toBe('ko')
+
+      row.decision = null
+      expect(wrapper.vm.computeResultCategory(0)).toBe('normal')
+
+      row.decision = 'L'
+      row.no_out_exit = false // 0.0回で 0アウト降板でない記録は登板したとみなさない
+      expect(wrapper.vm.computeResultCategory(0)).not.toBe('ko')
+
+      // 境界: 6イニング目のマウンドに上がっていた（5.0回）なら 0アウト降板でも KO は付かない。4.2回は ko
+      row.no_out_exit = true
+      row.innings_int = 5
+      expect(wrapper.vm.computeResultCategory(0)).not.toBe('ko')
+      row.innings_int = 4
+      row.innings_frac = '2'
+      expect(wrapper.vm.computeResultCategory(0)).toBe('ko')
+
+      const winWrapper = await mountWith('win')
+      winWrapper.vm.addRow()
+      const winRow = winWrapper.vm.pitcherRows[0]
+      winRow.pitcher_id = 10
+      winRow.innings_int = 0
+      winRow.innings_frac = ''
+      winRow.no_out_exit = true
+      winRow.decision = 'L'
+      await flushPromises()
+      expect(winWrapper.vm.computeResultCategory(0)).toBe('normal')
+    })
   })
 })

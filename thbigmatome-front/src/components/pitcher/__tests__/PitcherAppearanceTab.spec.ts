@@ -706,4 +706,174 @@ describe('PitcherAppearanceTab', () => {
       })
     })
   })
+
+  // cmd_1775 第3段 E9・E10: 投手状態一覧に「先発なら」「リリーフなら」を並べる（AMB-19 追補: 疲労P0 と最初から疲労状態は別）
+  describe('投手状態一覧（先発なら / リリーフなら）', () => {
+    const summaryRows = [
+      {
+        player_id: 10,
+        player_name: '幽々子',
+        last_role: 'reliever',
+        rest_days: null,
+        cumulative_innings: 4,
+        last_result_category: null,
+        is_injured: false,
+        is_unavailable: true,
+        projected_status: 'fatigued_start_check',
+        as_starter: { status: 'unavailable', notes: [] },
+        as_reliever: {
+          status: 'fatigued_start_check',
+          notes: ['opener_injury_check', 'previous_day_one_inning_only'],
+        },
+        as_starter_omitted_reason: null,
+        as_reliever_omitted_reason: null,
+      },
+      {
+        player_id: 11,
+        player_name: '紫',
+        last_role: 'starter',
+        rest_days: 3,
+        cumulative_innings: null,
+        last_result_category: 'normal',
+        is_injured: false,
+        is_unavailable: false,
+        projected_status: 'injury_check',
+        as_starter: null,
+        as_reliever: { status: 'reduced_0', notes: [] },
+        as_starter_omitted_reason: 'relief_only_contract',
+        as_reliever_omitted_reason: null,
+      },
+      {
+        player_id: 12,
+        player_name: '妖夢',
+        last_role: 'reliever',
+        rest_days: null,
+        cumulative_innings: 1,
+        last_result_category: null,
+        is_injured: false,
+        is_unavailable: false,
+        projected_status: 'reduced_0',
+        as_starter: { status: 'unavailable', notes: [] },
+        as_reliever: { status: 'reduced_0', notes: ['opener_injury_check'] },
+        as_starter_omitted_reason: null,
+        as_reliever_omitted_reason: null,
+      },
+    ]
+
+    async function mountWithSummary() {
+      mockPitcherRequests({ state: null })
+      const base = vi.mocked(axios.get).getMockImplementation()!
+      vi.mocked(axios.get).mockImplementation((url: string) =>
+        url === '/teams/1/pitcher_game_states/fatigue_summary'
+          ? Promise.resolve({ data: summaryRows })
+          : base(url),
+      )
+      const wrapper = mount(PitcherAppearanceTab, {
+        props: defaultProps,
+        global: { plugins: [vuetify] },
+      })
+      await flushPromises()
+      return wrapper
+    }
+
+    it('列見出しに「先発なら」「リリーフなら」が出る', async () => {
+      const wrapper = await mountWithSummary()
+      const headers = wrapper.findAll('th').map((th) => th.text())
+      expect(headers).toContain('先発なら')
+      expect(headers).toContain('リリーフなら')
+    })
+
+    it('投手ごとに 2 つの状態を並べる（紫: 先発なら 省略 / リリーフなら P0）', async () => {
+      const wrapper = await mountWithSummary()
+      expect(wrapper.find('[data-testid="as-starter-11"]').text()).toBe('—')
+      expect(wrapper.find('[data-testid="as-reliever-11"]').text()).toContain('⚡ P0')
+    })
+
+    it('累積4以上の前日登板は、最初から疲労状態 + 負傷CK と 1 イニング限定の注意書きを出す', async () => {
+      const wrapper = await mountWithSummary()
+      const cell = wrapper.find('[data-testid="as-reliever-10"]')
+      expect(cell.text()).toContain('最初から疲労')
+      expect(cell.text()).toContain('負傷CK')
+      expect(cell.text()).toContain('前日の負傷チェックに合格していれば1イニング限定で登板可')
+    })
+
+    it('疲労P0（妖夢）と最初から疲労状態（幽々子）を区別して表示する', async () => {
+      const wrapper = await mountWithSummary()
+      expect(wrapper.find('[data-testid="as-reliever-12"]').text()).toContain('⚡ P0')
+      expect(wrapper.find('[data-testid="as-reliever-12"]').text()).not.toContain('最初から疲労')
+      expect(wrapper.find('[data-testid="as-reliever-10"]').text()).not.toContain('⚡ P0')
+    })
+
+    it('前回リリーフで中2日以内の先発不可が出る', async () => {
+      const wrapper = await mountWithSummary()
+      expect(wrapper.find('[data-testid="as-starter-12"]').text()).toContain('🚫 不可')
+    })
+  })
+
+  // cmd_1775 第3段 E12: ノーゲームを試合結果で選べる
+  describe('ノーゲーム', () => {
+    it('gameResult が no_game なら試合結果に「ノーゲーム」と出し、結果区分チップは全員ノーゲーム', async () => {
+      mockPitcherRequests({ state: null })
+      const wrapper = mount(PitcherAppearanceTab, {
+        props: { ...defaultProps, gameResult: 'no_game' as const },
+        global: { plugins: [vuetify] },
+      })
+      await flushPromises()
+      expect(wrapper.text()).toContain('試合結果:')
+      expect(wrapper.text()).toContain('ノーゲーム')
+      expect(wrapper.vm.computeResultCategory(0)).toBe('no_game')
+    })
+
+    it('ノーゲームの保存は game_result: no_game を送る', async () => {
+      mockPitcherRequests({ state: null })
+      vi.mocked(axios.post).mockResolvedValueOnce({ data: { warnings: [] } })
+      const wrapper = mount(PitcherAppearanceTab, {
+        props: { ...defaultProps, gameResult: 'no_game' as const },
+        global: { plugins: [vuetify] },
+      })
+      await flushPromises()
+      wrapper.vm.pitcherRows[0].pitcher_id = 10
+      await wrapper.vm.saveAll()
+      const payload = vi.mocked(axios.post).mock.calls[0][1] as {
+        pitcher_appearances_bulk: { game_result: string }
+      }
+      expect(payload.pitcher_appearances_bulk.game_result).toBe('no_game')
+    })
+
+    it('ノーゲームでは W / L / S の責任投手チップを選べない', async () => {
+      mockPitcherRequests({ state: null })
+      const wrapper = mount(PitcherAppearanceTab, {
+        props: { ...defaultProps, gameResult: 'no_game' as const },
+        global: { plugins: [vuetify] },
+      })
+      await flushPromises()
+      const options = wrapper.vm.getDecisionChipOptions(0)
+      const disabled = Object.fromEntries(
+        options.map((o: { label: string; disabled: boolean }) => [o.label, o.disabled]),
+      )
+      expect(disabled.W).toBe(true)
+      expect(disabled.L).toBe(true)
+      expect(disabled.S).toBe(true)
+    })
+
+    it('保存済みの結果区分だけを再取得できる（得点・ノーゲームの保存で作り直された区分を反映する。入力中の行は消さない）', async () => {
+      mockPitcherRequests({ state: null })
+      const wrapper = mount(PitcherAppearanceTab, {
+        props: defaultProps,
+        global: { plugins: [vuetify] },
+      })
+      await flushPromises()
+      wrapper.vm.pitcherRows[0].pitcher_id = 10
+      wrapper.vm.pitcherRows[0].innings_int = 6
+      const base = vi.mocked(axios.get).getMockImplementation()!
+      vi.mocked(axios.get).mockImplementation((url: string) =>
+        url === '/pitcher_appearances'
+          ? Promise.resolve({ data: [{ pitcher_id: 10, result_category: 'no_game' }] })
+          : base(url),
+      )
+      await wrapper.vm.refreshSavedResultCategories()
+      expect(wrapper.vm.savedResultCategories).toEqual({ 10: 'no_game' })
+      expect(wrapper.vm.pitcherRows[0].innings_int).toBe(6)
+    })
+  })
 })

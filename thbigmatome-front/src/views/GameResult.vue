@@ -122,6 +122,16 @@
                   hide-details
                 />
               </v-col>
+              <v-col cols="12" sm="4" md="6">
+                <v-checkbox
+                  v-model="gameData.no_game"
+                  data-testid="no-game-checkbox"
+                  :label="t('gameResult.noGame')"
+                  :hint="t('gameResult.noGameHint')"
+                  persistent-hint
+                  density="compact"
+                />
+              </v-col>
             </v-row>
           </v-card-text>
         </v-card>
@@ -132,6 +142,7 @@
           <v-card-text>
             <PitcherAppearanceTab
               v-if="gameData.team_id"
+              ref="pitcherTabRef"
               :team-id="Number(teamId)"
               :game-date="gameData.game_date"
               :game-result="pitcherGameResult"
@@ -202,6 +213,7 @@ const defaultGameData: GameData = {
   opponent_team_name: '',
   score: null,
   opponent_score: null,
+  no_game: false,
   starting_lineup: null,
 }
 
@@ -211,6 +223,7 @@ const seasonPortalRoute = computed(() => ({
 }))
 
 const gameData = ref<GameData>(defaultGameData)
+const pitcherTabRef = ref<InstanceType<typeof PitcherAppearanceTab> | null>(null)
 const allTeams = ref<Team[]>([])
 
 const homeAwayItems = [
@@ -223,7 +236,9 @@ const dhItems = [
   { name: t('gameResult.dhSystem.disabled'), value: false },
 ]
 
-const pitcherGameResult = computed<'win' | 'lose' | 'draw'>(() => {
+// ノーゲームは得点では表せないので、試合概要の no_game を先に見る（投手の休養は KO・ノーゲームの表を使う）
+const pitcherGameResult = computed<'win' | 'lose' | 'draw' | 'no_game'>(() => {
+  if (gameData.value.no_game) return 'no_game'
   const myScore = gameData.value.score
   const oppScore = gameData.value.opponent_score
   if (myScore === null || oppScore === null) return 'draw'
@@ -276,6 +291,8 @@ const showSnackbar = (text: string, color: string = 'success', timeout: number =
 const saveGame = async () => {
   try {
     const response = await axios.put(`/game/${scheduleId}`, gameData.value)
+    // 得点・ノーゲームの保存でサーバが登板記録の区分を作り直す。登板記録タブを開いていれば保存済みの区分を取り直す
+    await pitcherTabRef.value?.refreshSavedResultCategories?.()
     // 得点は保存できたが、投手の判定（result_category）の作り直しだけ失敗した時は警告で知らせる
     const warnings: string[] = response?.data?.warnings ?? []
     if (warnings.length > 0) {

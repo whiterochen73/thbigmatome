@@ -824,6 +824,7 @@
 | designated_hitter_enabled | boolean | YES | — | DH制フラグ |
 | score | integer | YES | — | 自チームスコア |
 | opponent_score | integer | YES | — | 対戦チームスコア |
+| no_game | boolean | NO | false | ノーゲーム（試合が成立しなかった）。投手の休養は KO・ノーゲームの表で計算する |
 | announced_starter_id | bigint | YES | — | team_memberships FK（先発予告投手） |
 | winning_pitcher_id | bigint | YES | — | players FK（勝利投手） |
 | losing_pitcher_id | bigint | YES | — | players FK（敗戦投手） |

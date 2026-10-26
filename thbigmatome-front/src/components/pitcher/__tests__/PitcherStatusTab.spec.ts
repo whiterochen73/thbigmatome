@@ -37,6 +37,10 @@ const mockPitchers = [
     is_injured: false,
     is_unavailable: false,
     projected_status: 'full',
+    as_starter: { status: 'full', notes: [] },
+    as_reliever: { status: 'full', notes: [] },
+    as_starter_omitted_reason: null,
+    as_reliever_omitted_reason: null,
   },
   {
     player_id: 2,
@@ -47,6 +51,10 @@ const mockPitchers = [
     is_injured: false,
     is_unavailable: false,
     projected_status: 'injury_check',
+    as_starter: { status: 'injury_check', notes: [] },
+    as_reliever: { status: 'reduced_0', notes: [] },
+    as_starter_omitted_reason: null,
+    as_reliever_omitted_reason: null,
   },
   {
     player_id: 3,
@@ -56,7 +64,11 @@ const mockPitchers = [
     cumulative_innings: 2,
     is_injured: false,
     is_unavailable: false,
-    projected_status: 'reduced_0',
+    projected_status: 'fatigued_start',
+    as_starter: { status: 'unavailable', notes: [] },
+    as_reliever: { status: 'fatigued_start', notes: ['opener_injury_check'] },
+    as_starter_omitted_reason: null,
+    as_reliever_omitted_reason: null,
   },
   {
     player_id: 4,
@@ -67,6 +79,10 @@ const mockPitchers = [
     is_injured: true,
     is_unavailable: false,
     projected_status: 'injured',
+    as_starter: { status: 'injured', notes: [] },
+    as_reliever: { status: 'injured', notes: [] },
+    as_starter_omitted_reason: null,
+    as_reliever_omitted_reason: null,
   },
 ]
 
@@ -125,10 +141,63 @@ describe('PitcherStatusTab', () => {
   it('ステータスバッジが正しく表示されること', async () => {
     const wrapper = mountComponent()
     await flushPromises()
-    expect(wrapper.text()).toContain('✅全快')
-    expect(wrapper.text()).toContain('⚠️負傷CK要')
-    expect(wrapper.text()).toContain('⚡P減少')
-    expect(wrapper.text()).toContain('🏥負傷中')
+    expect(wrapper.text()).toContain('✅ 全快')
+    expect(wrapper.text()).toContain('⚠️ 負傷CK')
+    expect(wrapper.text()).toContain('⚡ P0')
+    expect(wrapper.text()).toContain('🏥 負傷中')
+  })
+
+  // cmd_1775 第3段 E10: 投手ごとに「先発なら」「リリーフなら」の 2 つを並べて出す
+  it('「先発なら」「リリーフなら」の列見出しが先発・リリーフ両方の表に出る', async () => {
+    const wrapper = mountComponent()
+    await flushPromises()
+    for (const table of wrapper.findAll('table')) {
+      expect(table.text()).toContain('先発なら')
+      expect(table.text()).toContain('リリーフなら')
+    }
+  })
+
+  it('投手ごとに 2 つの状態を出す（魔理沙: 先発なら 負傷CK / リリーフなら P0）', async () => {
+    const wrapper = mountComponent()
+    await flushPromises()
+    expect(wrapper.find('[data-testid="as-starter-2"]').text()).toContain('⚠️ 負傷CK')
+    expect(wrapper.find('[data-testid="as-reliever-2"]').text()).toContain('⚡ P0')
+  })
+
+  it('最初から疲労状態は疲労P0 と別のバッジで出る（チルノ: 累積2）', async () => {
+    const wrapper = mountComponent()
+    await flushPromises()
+    const cell = wrapper.find('[data-testid="as-reliever-3"]')
+    expect(cell.text()).toContain('🔥 最初から疲労')
+    expect(cell.text()).not.toContain('⚡ P0')
+    expect(cell.text()).toContain('オープナーなら')
+  })
+
+  it('前回リリーフの中1日は「先発なら」が不可', async () => {
+    const wrapper = mountComponent()
+    await flushPromises()
+    expect(wrapper.find('[data-testid="as-starter-3"]').text()).toContain('🚫 不可')
+  })
+
+  it('省略された「先発なら」「リリーフなら」は「—」だけでバッジを出さない', async () => {
+    vi.mocked(axios.get).mockResolvedValue({
+      data: [
+        {
+          ...mockPitchers[0],
+          as_starter: null,
+          as_starter_omitted_reason: 'relief_only_contract',
+          as_reliever: null,
+          as_reliever_omitted_reason: 'no_relief_stamina',
+        },
+      ],
+    })
+    const wrapper = mountComponent()
+    await flushPromises()
+    expect(wrapper.find('[data-testid="as-starter-1"]').text()).toBe('—')
+    expect(wrapper.find('[data-testid="as-reliever-1"]').text()).toBe('—')
+    expect(
+      wrapper.find('[data-testid="as-starter-1"]').findComponent({ name: 'VChip' }).exists(),
+    ).toBe(false)
   })
 
   it('先発投手の累積IPは"-"が表示されること', async () => {

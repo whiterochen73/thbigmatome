@@ -47,6 +47,12 @@ class TeamMembership < ApplicationRecord
     player_card&.starter_stamina.present? && player_card.starter_stamina >= 4
   end
 
+  # 救援専任契約（selected_cost_type = relief_only_cost）。カードの is_relief_only とは別に、チームでの契約がリリーフ専門であること。
+  # 先発もできる契約（normal_cost / pitcher_only_cost / two_way_cost）に変わると false に戻る。
+  def relief_only_contract?
+    selected_cost_type == "relief_only_cost"
+  end
+
   def relief_only_role?
     return false unless pitcher_role?
 

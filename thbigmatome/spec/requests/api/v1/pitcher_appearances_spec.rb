@@ -481,6 +481,67 @@ RSpec.describe "Api::V1::PitcherAppearancesController", type: :request, pitcher_
       end
     end
 
+    # Test Basis: cmd_1775 第3段 E12 / rulebook §8.3.1 KO・ノーゲーム表 / 台帳 D-11（ノーゲームは疲労を計算し、成績は算入しない）
+    context "bulk_save: ノーゲーム" do
+      let(:season) { create(:season, team: team) }
+      let!(:card_pitcher) do
+        create(:team_membership, team: team, player: pitcher1,
+                                 player_card: create(:player_card, player: pitcher1, card_type: "pitcher", starter_stamina: 7))
+      end
+
+      def bulk_with(appearances, date: "2026-03-20", game_result: "win", game_id: game.id)
+        { pitcher_appearances_bulk: { team_id: team.id, competition_id: competition.id, game_id: game_id,
+                                      schedule_date: date, game_result: game_result, appearances: appearances } }
+      end
+
+      def ap(pitcher, role, innings, **extra)
+        { pitcher_id: pitcher.id, role: role, innings_pitched: innings, earned_runs: 0, fatigue_p_used: 0,
+          is_opener: false, pre_injury_days_excluded: 0 }.merge(extra)
+      end
+
+      it "試合概要がノーゲームなら、画面の game_result が win でも先発は no_game で保存される（疲労P は持たない）" do
+        create_schedule(season, "2026-03-20", score: 5, opponent_score: 1).update_columns(no_game: true)
+        post "/api/v1/pitcher_appearances/bulk_save", params: bulk_with([ ap(pitcher1, "starter", 6.0), ap(pitcher2, "reliever", 1.0) ]), as: :json
+        expect(response).to have_http_status(:ok)
+        expect(PitcherGameState.find_by(game: game, pitcher: pitcher1)).to have_attributes(result_category: "no_game", fatigue_p_used: nil)
+        expect(response.parsed_body["warnings"].join).not_to include("判定保留")
+      end
+
+      it "画面が game_result=no_game を送った場合も no_game（試合概要が無い時の代替・従来の経路）" do
+        post "/api/v1/pitcher_appearances/bulk_save", params: bulk_with([ ap(pitcher1, "starter", 6.0) ], game_result: "no_game"), as: :json
+        expect(PitcherGameState.find_by(game: game, pitcher: pitcher1).result_category).to eq("no_game")
+      end
+
+      it "ノーゲームの試合が負け相当（得点 0-1・9回）でも long_loss / KO にならない" do
+        create_schedule(season, "2026-03-20", score: 0, opponent_score: 1).update_columns(no_game: true)
+        post "/api/v1/pitcher_appearances/bulk_save",
+             params: bulk_with([ ap(pitcher1, "starter", 3.0, decision: "L"), ap(pitcher2, "reliever", 6.0) ]), as: :json
+        expect(PitcherGameState.find_by(game: game, pitcher: pitcher1).result_category).to eq("no_game")
+      end
+
+      it "ノーゲームの先発の次の先発は、KO・ノーゲーム表で補正される（中3日で P-3 → fatigue_p_used 4。通常なら P0）" do
+        create_schedule(season, "2026-03-20", score: 0, opponent_score: 1).update_columns(no_game: true)
+        post "/api/v1/pitcher_appearances/bulk_save", params: bulk_with([ ap(pitcher1, "starter", 3.0) ]), as: :json
+        expect(PitcherGameState.find_by(game: game, pitcher: pitcher1).result_category).to eq("no_game")
+
+        next_game = create(:game, competition: competition, home_team: team, visitor_team: create(:team), home_schedule_date: "2026-03-24")
+        create_schedule(season, "2026-03-24", score: 3, opponent_score: 1)
+        post "/api/v1/pitcher_appearances/bulk_save",
+             params: bulk_with([ ap(pitcher1, "starter", 6.0) ], date: "2026-03-24", game_id: next_game.id), as: :json
+        expect(PitcherGameState.find_by(game: next_game, pitcher: pitcher1).fatigue_p_used).to eq(4)
+      end
+
+      it "ノーゲームの先発の次の先発（中4日）は、KO・ノーゲーム表ではカード値（補正なし）" do
+        create_schedule(season, "2026-03-20", score: 0, opponent_score: 1).update_columns(no_game: true)
+        post "/api/v1/pitcher_appearances/bulk_save", params: bulk_with([ ap(pitcher1, "starter", 3.0) ]), as: :json
+        next_game = create(:game, competition: competition, home_team: team, visitor_team: create(:team), home_schedule_date: "2026-03-25")
+        create_schedule(season, "2026-03-25", score: 3, opponent_score: 1)
+        post "/api/v1/pitcher_appearances/bulk_save",
+             params: bulk_with([ ap(pitcher1, "starter", 6.0) ], date: "2026-03-25", game_id: next_game.id), as: :json
+        expect(PitcherGameState.find_by(game: next_game, pitcher: pitcher1).fatigue_p_used).to eq(7)
+      end
+    end
+
     # Test Basis: cmd_1775 第2段 E3（rulebook §8.5.1 条件2・§8.7.1 手順3）/ E4（AMB-04 出場停止と負傷は別枠）
     context "bulk_save: 連続中4日カウント consecutive_short_rest_count はサーバが書く（E3）" do
       let(:season) { create(:season, team: team) }

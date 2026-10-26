@@ -266,7 +266,8 @@
             <th>区分</th>
             <th>中日数 / 累積IP</th>
             <th>負傷</th>
-            <th>登板時ステータス</th>
+            <th>先発なら</th>
+            <th>リリーフなら</th>
           </tr>
         </thead>
         <tbody>
@@ -282,9 +283,16 @@
             <td>{{ fatigueDetail(row) }}</td>
             <td>{{ row.is_injured ? '🏥' : '' }}</td>
             <td>
-              <v-chip :color="projectedStatusColor(row.projected_status)" size="x-small">
-                {{ projectedStatusLabel(row.projected_status) }}
-              </v-chip>
+              <PitcherRoleStateCell
+                :state="row.as_starter"
+                :test-id="`as-starter-${row.player_id}`"
+              />
+            </td>
+            <td>
+              <PitcherRoleStateCell
+                :state="row.as_reliever"
+                :test-id="`as-reliever-${row.player_id}`"
+              />
             </td>
           </tr>
         </tbody>
@@ -298,6 +306,8 @@
 import { ref, computed, onMounted } from 'vue'
 import axios, { type AxiosResponse } from 'axios'
 import PlayerNameLink from '@/components/shared/PlayerNameLink.vue'
+import PitcherRoleStateCell from './PitcherRoleStateCell.vue'
+import type { PitcherRoleOmittedReason, PitcherRoleState } from './pitcherRoleState'
 import type {
   PitcherAppearanceInput,
   PitcherAppearanceRecord,
@@ -367,7 +377,13 @@ interface FatigueSummaryRow {
   last_result_category: string | null
   is_injured: boolean
   is_unavailable: boolean
+  // 前回と同じ役割で続ける場合の状態（旧来の値）。役割別の状態は as_starter / as_reliever
   projected_status: string
+  // 投手ごとの「先発なら」「リリーフなら」。省略する投手は null（理由は *_omitted_reason）
+  as_starter?: PitcherRoleState | null
+  as_reliever?: PitcherRoleState | null
+  as_starter_omitted_reason?: PitcherRoleOmittedReason
+  as_reliever_omitted_reason?: PitcherRoleOmittedReason
 }
 
 // ─────────────────────────────────────────
@@ -393,12 +409,22 @@ const dragSrcIdx = ref<number | null>(null)
 const selectedTeamId = computed(() => props.teamId)
 
 const gameResultLabel = computed(() => {
-  const map: Record<string, string> = { win: '勝利 ○', lose: '敗戦 ●', draw: '引き分け △' }
+  const map: Record<string, string> = {
+    win: '勝利 ○',
+    lose: '敗戦 ●',
+    draw: '引き分け △',
+    no_game: 'ノーゲーム',
+  }
   return map[props.gameResult] ?? props.gameResult
 })
 
 const gameResultColor = computed(() => {
-  const map: Record<string, string> = { win: 'success', lose: 'error', draw: 'grey' }
+  const map: Record<string, string> = {
+    win: 'success',
+    lose: 'error',
+    draw: 'grey',
+    no_game: 'grey',
+  }
   return map[props.gameResult] ?? 'default'
 })
 
@@ -642,25 +668,6 @@ function fatigueDetail(row: FatigueSummaryRow): string {
   return '—'
 }
 
-function projectedStatusLabel(status: string): string {
-  if (status === 'full') return '✅ 全快'
-  if (status === 'injury_check') return '⚠️ 負傷CK'
-  if (status === 'unavailable') return '🚫 不可'
-  if (status === 'injured') return '🏥 負傷中'
-  if (status.startsWith('reduced_')) {
-    const n = status.replace('reduced_', '')
-    return n === '0' ? '⚡ P0' : `⚡ P-${n}`
-  }
-  return status
-}
-
-function projectedStatusColor(status: string): string {
-  if (status === 'full') return 'success'
-  if (status === 'injury_check') return 'warning'
-  if (status === 'unavailable' || status === 'injured') return 'error'
-  return 'info'
-}
-
 // ─────────────────────────────────────────
 // Data fetching
 // ─────────────────────────────────────────
@@ -678,6 +685,22 @@ async function fetchFatigueSummary() {
   } finally {
     loadingFatigue.value = false
   }
+}
+
+// 保存済みの登板記録の結果区分だけを取り直す。得点・ノーゲームの保存でサーバが区分を作り直した後に呼ぶ
+// （入力中の行は触らない）。取得に失敗しても今の表示を残す。
+async function refreshSavedResultCategories() {
+  try {
+    const res = await axios.get<PitcherAppearanceRecord[]>('/pitcher_appearances', {
+      params: { team_id: selectedTeamId.value, schedule_date: props.gameDate },
+    })
+    savedResultCategories.value = Object.fromEntries(
+      res.data.map((app) => [app.pitcher_id, app.result_category ?? null]),
+    )
+  } catch {
+    // 再取得に失敗しても入力中の内容と今の表示は残す
+  }
+  await fetchFatigueSummary()
 }
 
 async function fetchPitchersAndStates(options: FetchPitchersOptions = {}) {
@@ -880,6 +903,8 @@ onMounted(() => {
   fetchPitchersAndStates()
   fetchFatigueSummary()
 })
+
+defineExpose({ refreshSavedResultCategories })
 </script>
 
 <style scoped>

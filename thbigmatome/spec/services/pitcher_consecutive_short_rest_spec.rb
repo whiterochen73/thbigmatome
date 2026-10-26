@@ -65,6 +65,36 @@ RSpec.describe PitcherConsecutiveShortRest, :pitcher_fatigue do
     end
   end
 
+  # Test Basis: AMB-04 追補 3（2026-10-26 Operator 確定）。実日数差で中10日リセットが成立する時は、
+  #   連続中4日のカウントも 0 に戻る（控除後がちょうど中4日でも +1 しない）。リセットは他の判定より先に見る。
+  describe "中10日リセット（AMB-04 追補 3）" do
+    def injury(days:, start: "2026-06-02")
+      create(:player_absence, team_membership: membership, season: season, absence_type: :injury,
+                              start_date: Date.parse(start), duration: days, duration_unit: "days")
+    end
+
+    before { create_start(team: team, pitcher: pitcher, date: "2026-06-01", innings: 6.0, consecutive_short_rest_count: 1) }
+
+    it "実日数中10日 - 負傷6日 = 控除後ちょうど中4日でも +1 しない（0）" do
+      injury(days: 6)
+      expect(count_for("2026-06-12")).to eq(0) # 実日数: 6/1 → 6/12 = 中10日
+    end
+
+    it "実日数中9日 - 負傷5日 = 控除後中4日は、リセット不成立なので +1（境界の手前）" do
+      injury(days: 5)
+      expect(count_for("2026-06-11")).to eq(2) # 実日数中9日。前回値 1 + 1
+    end
+
+    it "実日数中11日 - 負傷7日 = 控除後中4日も 0（リセットの内側）" do
+      injury(days: 7)
+      expect(count_for("2026-06-13")).to eq(0)
+    end
+
+    it "負傷が無く実日数が中4日なら従来どおり +1（リセットの影響を受けない）" do
+      expect(count_for("2026-06-06")).to eq(2)
+    end
+  end
+
   describe "離脱の控除（E4: 控除は負傷のみ。出場停止・再調整は控除しない）" do
     before { create_start(team: team, pitcher: pitcher, date: "2026-06-01", innings: 6.0, consecutive_short_rest_count: 0) }
 

@@ -337,14 +337,15 @@
 
 - **Controller**: `Api::V1::GameController#show`
 - **Path Params**: `:id` (SeasonSchedule ID)
-- **Response**: `{ team_id, team_name, season_id, game_date, game_number, announced_starter_id, stadium, home_away, designated_hitter_enabled, score, opponent_score, opponent_team_id, opponent_team, winning_pitcher_id, losing_pitcher_id, save_pitcher_id, scoreboard, starting_lineup, opponent_starting_lineup, game_result }`
+- **Response**: `{ team_id, team_name, season_id, game_date, game_number, announced_starter_id, stadium, home_away, designated_hitter_enabled, score, opponent_score, no_game, opponent_team_id, opponent_team, winning_pitcher_id, losing_pitcher_id, save_pitcher_id, scoreboard, starting_lineup, opponent_starting_lineup, game_result }`
 
 ### PATCH/PUT /api/v1/game/:id
 
 - **Controller**: `Api::V1::GameController#update`
 - **Path Params**: `:id` (SeasonSchedule ID)
-- **Body Params**: `announced_starter_id, stadium, home_away, designated_hitter_enabled, score, opponent_score, opponent_team_id, winning_pitcher_id, losing_pitcher_id, save_pitcher_id, scoreboard: { home: [], away: [] }, starting_lineup: [{ player_id, position, order }], opponent_starting_lineup: [...]`
+- **Body Params**: `announced_starter_id, stadium, home_away, designated_hitter_enabled, score, opponent_score, no_game, opponent_team_id, winning_pitcher_id, losing_pitcher_id, save_pitcher_id, scoreboard: { home: [], away: [] }, starting_lineup: [{ player_id, position, order }], opponent_starting_lineup: [...]`
 - **Response**: SeasonSchedule JSON
+- **no_game**: ノーゲーム（試合が成立しなかった）。得点では表せないので試合概要に持つ。true の日は登板記録の `result_category` が全員 `no_game` になり、先発の次回の休養は KO・ノーゲームの表（rulebook 08 §8.3.1）で計算される。得点・`no_game` のどちらかが変わった保存で、その日の先発の判定と、区分が変わった投手の後続の先発が作り直される（`PitcherResultCategoryRebuilder`）
 
 ---
 
@@ -968,7 +969,13 @@
 
 - **Controller**: `Api::V1::PitcherGameStatesController#fatigue_summary`
 - **Query Params**: `date` (YYYY-MM-DD, default: 今日)
-- **Response**: チーム全投手のシーズン疲労サマリー（累積投球回・平均登板間隔等）
+- **Response**: チーム1軍投手の登板時の状態。投手ごとに `last_role` / `rest_days`（先発明けのみ）/ `cumulative_innings`（リリーフ明けのみ）/ `is_injured` / `is_unavailable`（先発としては登板不可 = 中2日以内。前回の役割に依らない）と、次の 4 つを返す
+  - `projected_status`: 前回と同じ役割で続ける場合の状態（旧来の値）
+  - `as_starter` / `as_reliever`: 「先発なら」「リリーフなら」の登板時の状態 `{ status, notes: [] }`。省略する投手は `null`（理由は `as_starter_omitted_reason` / `as_reliever_omitted_reason`）
+  - `status`: `full` / `reduced_N`（疲労P -N。`reduced_0` は疲労P 0）/ `injury_check` / `unavailable` / `injured` に加え、`fatigued_start`（登板の最初から疲労状態。疲労P 0 とは別）/ `fatigued_start_check`（最初から疲労状態 + 登板後の負傷チェック。累積3I 以上）/ `no_rule`（先発→リリーフの表に載っていない短い中日数。規定が無いので推測しない）
+  - `notes`: `opener_injury_check`（オープナーなら累積1I 以上で負傷チェック・リリーフなら側のみ）/ `previous_day_one_inning_only`（累積4I 以上で前日登板: 前日の負傷チェックに合格していれば1イニング限定で登板可。合否は記録しない）
+  - 省略の理由: `as_starter_omitted_reason` は `relief_only_card`（カードがリリーフ専門）/ `relief_only_contract`（救援専任契約 = `team_memberships.selected_cost_type = relief_only_cost`。先発もできる契約に変えると出る）、`as_reliever_omitted_reason` は `no_relief_stamina`（リリーフ向けの疲労Pをカードに持たない先発）
+  - ルール: rulebook 08 §8.3.1〜§8.3.4・§8.4.3・§8.7.2、台帳 AMB-18 追補 / AMB-19 追補 / AMB-21
 
 ---
 

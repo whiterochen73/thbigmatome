@@ -270,6 +270,8 @@
     "savePitcher": "セーブ投手",
     "score": "得点",
     "opponentScore": "失点",
+    "noGame": "ノーゲーム",
+    "noGameHint": "試合が成立しなかった場合に選ぶ。投手の休養は KO・ノーゲームの表で計算され、勝敗投手は付けられない",
     "team": "チーム",
     "total": "合計",
     "addInning": "回追加",

@@ -72,6 +72,14 @@ RSpec.describe "pitcher_game_states:recalculate_result_category", :pitcher_fatig
     expect(first_state.reload.consecutive_short_rest_count).to eq(0)
   end
 
+  # Test Basis: AMB-23。rake の埋め直しも間にリリーフが入る連続を 0 にする
+  it "AMB-23: 6/1 先発 → 6/3 リリーフ → 6/6 先発 は APPLY=1 で 0（6/1 から中4日でも切れる）" do
+    create_start(team: team, pitcher: pitcher, date: "2026-06-03", innings: 1.0, role: "reliever")
+    second_state.update!(consecutive_short_rest_count: 1)
+    run_task("APPLY" => "1")
+    expect(second_state.reload.consecutive_short_rest_count).to eq(0)
+  end
+
   it "APPLY=1 の時だけ DB を書く。日付順の連鎖で、作り直した前登板の区分(normal)が次の補正(中4日 -3 → 4)に効く" do
     out = run_task("APPLY" => "1")
     expect(out).to include("APPLY (DB updated)")

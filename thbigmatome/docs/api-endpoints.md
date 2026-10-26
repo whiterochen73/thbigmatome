@@ -952,7 +952,7 @@
   ```
   ※ `result_category` は省略可（自動計算）
   ※ `schedule_date` は必須。無い・日付として読めない場合は 422（`errors` に schedule_date を示すメッセージ）。`bulk_save` も保存する登板がある時は同じ
-  ※ `consecutive_short_rest_count` はサーバが決める（先発: 直前の先発との中日数が中4日なら前回値+1、それ以外は 0。リリーフは 0）。送っても使わない
+  ※ `consecutive_short_rest_count` はサーバが決める（先発: 直前の登板（役割を問わない）が先発で、そこからの中日数が中4日以下なら前回値+1、それ以外は 0（間にリリーフ・オープナーが入れば 0・AMB-23）。リリーフは 0）。送っても使わない
   ※ 第二先発（オープナーの次の2番手）は `role: "starter"` で送る。KO・長イニング敗戦の判定と次回の休養表は先発として扱う
 - **Response**: `{ pitcher_appearance: {...}, warnings: [...] }` 201
 

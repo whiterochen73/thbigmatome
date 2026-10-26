@@ -172,7 +172,7 @@ class Api::V1::PitcherAppearancesController < Api::V1::BaseController
   end
 
   # 連続中4日カウントはサーバが決める（E3）。画面が送ってきた値は使わない（常に 0 を送って上書きしていた）。
-  # 先発は直前の先発との中日数から求め、先発以外は 0。attrs は symbol キーの Hash。
+  # 先発は直前の登板（役割を問わない）が先発で中4日以下なら前回値+1、それ以外は 0（AMB-23）。先発以外は 0。attrs は symbol キーの Hash。
   def assign_consecutive_short_rest_count(attrs)
     attrs[:consecutive_short_rest_count] =
       if attrs[:role].to_s == "starter"

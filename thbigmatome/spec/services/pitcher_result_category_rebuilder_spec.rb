@@ -300,6 +300,38 @@ RSpec.describe PitcherResultCategoryRebuilder, :pitcher_fatigue do
       expect(r.rows.find { |row| row.state_id == s2.id }.new_consecutive_short_rest_count).to eq(0)
     end
 
+    # Test Basis: AMB-23。間にリリーフ・オープナーが入る投手の埋め直し（rake も同じ rebuild_all を通る）
+    it "先発 → リリーフ → 先発 は、先発 6/1 からの中日数が中4日でも 0 に埋め直す（旧実装が書いた 1 も直す）" do
+      s1 = create_start(team: team, pitcher: pitcher, date: "2026-06-01", innings: 6.0)
+      create_start(team: team, pitcher: pitcher, date: "2026-06-03", innings: 1.0, role: "reliever")
+      s2 = create_start(team: team, pitcher: pitcher, date: "2026-06-06", innings: 6.0, consecutive_short_rest_count: 1)
+      rebuild.rebuild_all
+      expect(s2.reload.consecutive_short_rest_count).to eq(0)
+      expect(s1.reload.consecutive_short_rest_count).to eq(0)
+    end
+
+    it "先発 → (中4日) 先発 → (中4日) 先発 → オープナー → (中4日) 先発 は 0, 1, 2, 0（試運転も同じ値）" do
+      s1 = create_start(team: team, pitcher: pitcher, date: "2026-06-01", innings: 6.0)
+      s2 = create_start(team: team, pitcher: pitcher, date: "2026-06-06", innings: 6.0)
+      s3 = create_start(team: team, pitcher: pitcher, date: "2026-06-11", innings: 6.0)
+      create_start(team: team, pitcher: pitcher, date: "2026-06-13", innings: 1.0, role: "opener")
+      s4 = create_start(team: team, pitcher: pitcher, date: "2026-06-17", innings: 6.0)
+      dry = described_class.new(apply: false)
+      dry.rebuild_all
+      rows = dry.rows.index_by(&:state_id)
+      expect([ s1, s2, s3, s4 ].map { |s| rows[s.id].new_consecutive_short_rest_count }).to eq([ 0, 1, 2, 0 ])
+      rebuild.rebuild_all
+      expect([ s1, s2, s3, s4 ].map { |s| s.reload.consecutive_short_rest_count }).to eq([ 0, 1, 2, 0 ])
+    end
+
+    it "第二先発の 2 番手（role=starter）は連続を切らない（先発 → 2 番手 → 先発 で 0, 1, 2）" do
+      s1 = create_start(team: team, pitcher: pitcher, date: "2026-06-01", innings: 6.0)
+      s2 = create_start(team: team, pitcher: pitcher, date: "2026-06-06", innings: 5.0, appearance_order: 1)
+      s3 = create_start(team: team, pitcher: pitcher, date: "2026-06-11", innings: 6.0)
+      rebuild.rebuild_all
+      expect([ s1, s2, s3 ].map { |s| s.reload.consecutive_short_rest_count }).to eq([ 0, 1, 2 ])
+    end
+
     it "リリーフ登板は対象外のまま（先発のみ）" do
       relief = create_start(team: team, pitcher: pitcher, date: "2026-06-06", innings: 1.0, role: "reliever", consecutive_short_rest_count: 2)
       create_start(team: team, pitcher: pitcher, date: "2026-06-01", innings: 6.0)

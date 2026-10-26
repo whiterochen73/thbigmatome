@@ -94,12 +94,30 @@ RSpec.describe PitcherRestStatus do
       expect(status("long_loss", 4, 1)).to eq("injury_check")
     end
 
-    it "連続カウントは中4日だけに効く（KO 中3日・中5日、長イニング中3日・中5日は変わらない）" do
-      expect(status("ko", 3, 1)).to eq("reduced_3")
+    it "連続カウントは中3日・中4日だけに効く（KO 中5日、長イニング中5日・中6日は変わらない）" do
       expect(status("ko", 5, 1)).to eq("full")
       expect(status("long_loss", 3, 1)).to eq("injury_check")
       expect(status("long_loss", 5, 1)).to eq("reduced_2")
       expect(status("long_loss", 6, 1)).to eq("reduced_1")
+    end
+
+    # Test Basis: AMB-23 追記（Operator 2026-10-26）「連続する３回の先発登板で、その間隔が両方とも中４日以下」→ 3 回目で条件 2
+    it "KO・ノーゲーム 中3日: 1回目（カウント 0）は reduced_3（負傷チェックなし）、前の間隔も中4日以下（>=1）なら injury_check" do
+      %w[ko no_game].each do |category|
+        expect(status(category, 3, 0)).to eq("reduced_3")
+        expect(status(category, 3, 1)).to eq("injury_check")
+        expect(status(category, 3, 2)).to eq("injury_check")
+      end
+    end
+
+    it "通常・長イニング敗戦 中3日は、カウントによらず条件 1 で injury_check のまま" do
+      %w[normal long_loss].each { |category| [ 0, 1 ].each { |c| expect(status(category, 3, c)).to eq("injury_check") } }
+    end
+
+    it "前の間隔が中5日以上なら（カウント 0）、中4日の 3 回目でも発動しない（先発 → 中5日 → 先発 → 中4日 → 先発）" do
+      expect(status("normal", 4, 0)).to eq("reduced_3")
+      expect(status("ko", 4, 0)).to eq("full")
+      expect(status("long_loss", 4, 0)).to eq("reduced_4")
     end
 
     it "通常 中4日の既存分岐は変わらない（0 → reduced_3、>=1 → injury_check）" do

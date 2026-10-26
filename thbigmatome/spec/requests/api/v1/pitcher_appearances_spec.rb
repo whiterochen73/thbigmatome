@@ -597,10 +597,10 @@ RSpec.describe "Api::V1::PitcherAppearancesController", type: :request, pitcher_
         expect(saved_count).to eq(0)
       end
 
-      it "中3日（3/16 → 3/20）も 0" do
+      it "中3日（3/16 → 3/20）も中4日以下として前回値 +1（AMB-23）" do
         create_start(team: team, pitcher: pitcher1, date: "2026-03-16", innings: 6.0, consecutive_short_rest_count: 1)
         save_start
-        expect(saved_count).to eq(0)
+        expect(saved_count).to eq(2)
       end
 
       it "同じ登板記録を保存し直しても増えない（冪等: 1 のまま）" do
@@ -630,6 +630,27 @@ RSpec.describe "Api::V1::PitcherAppearancesController", type: :request, pitcher_
         post "/api/v1/pitcher_appearances/bulk_save",
              params: bulk_with([ ap(pitcher1, "starter", 6.0), ap(pitcher2, "reliever", 2.0, consecutive_short_rest_count: 2) ]), as: :json
         expect(saved_count(pitcher2)).to eq(0)
+      end
+
+      # Test Basis: AMB-23（連続は起点以降がすべて先発登板の時だけ）
+      it "先発 3/10 → リリーフ 3/15 → 先発 3/20（先発 3/10 からは中9日、リリーフ 3/15 からは中4日）は 0" do
+        create_start(team: team, pitcher: pitcher1, date: "2026-03-10", innings: 6.0, consecutive_short_rest_count: 1)
+        create_start(team: team, pitcher: pitcher1, date: "2026-03-15", innings: 1.0, role: "reliever")
+        save_start
+        expect(saved_count).to eq(0)
+      end
+
+      it "先発 3/15（中4日）→ 先発 3/20 の間にリリーフ 3/17 が入ると 0（先発 3/15 から中4日でも切れる）" do
+        create_start(team: team, pitcher: pitcher1, date: "2026-03-15", innings: 6.0, consecutive_short_rest_count: 1)
+        create_start(team: team, pitcher: pitcher1, date: "2026-03-17", innings: 1.0, role: "reliever")
+        save_start
+        expect(saved_count).to eq(0)
+      end
+
+      it "オープナー 3/15 → 先発 3/20 も 0" do
+        create_start(team: team, pitcher: pitcher1, date: "2026-03-15", innings: 1.0, role: "opener", consecutive_short_rest_count: 0)
+        save_start
+        expect(saved_count).to eq(0)
       end
 
       it "単発登録 POST /pitcher_appearances でも同じ規則で書く（中4日 → +1）" do

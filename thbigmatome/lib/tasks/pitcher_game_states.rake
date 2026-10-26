@@ -3,8 +3,8 @@ require "csv"
 namespace :pitcher_game_states do
   desc <<~DESC
     先発の result_category と fatigue_p_used を、試合概要の得点とカード（試合前のスタミナ補正込み）から作り直す。
-    連続中4日カウント（consecutive_short_rest_count）も同じ走査で埋め直す（直前の先発との中日数が中4日なら前回値+1、
-    それ以外は 0。中日数から引く離脱は負傷のみ）。カウントは得点・カードに依らないので、区分を作り直せない行でも書く。
+    連続中4日カウント（consecutive_short_rest_count）も同じ走査で埋め直す（直前の登板が先発で、そこからの中日数が中4日以下なら前回値+1、
+    それ以外は 0。間にリリーフ・オープナーが入れば 0（AMB-23）。中日数から引く離脱は負傷のみ）。カウントは得点・カードに依らないので、区分を作り直せない行でも書く。
     既定は試運転（DB を書かない）。APPLY=1 の時だけ書く。
       bundle exec rake pitcher_game_states:recalculate_result_category              # 試運転（CSV を標準出力）
       APPLY=1 bundle exec rake pitcher_game_states:recalculate_result_category      # 実際に書く

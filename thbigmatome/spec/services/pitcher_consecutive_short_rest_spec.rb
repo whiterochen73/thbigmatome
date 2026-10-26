@@ -32,9 +32,9 @@ RSpec.describe PitcherConsecutiveShortRest, :pitcher_fatigue do
       expect(count_for("2026-06-07")).to eq(0) # 中5日
     end
 
-    it "中3日も 0（中4日ちょうどだけが +1）" do
+    it "中3日も +1（中4日以下が連続に数えられる。AMB-23）" do
       create_start(team: team, pitcher: pitcher, date: "2026-06-01", innings: 6.0, consecutive_short_rest_count: 1)
-      expect(count_for("2026-06-05")).to eq(0) # 中3日
+      expect(count_for("2026-06-05")).to eq(2) # 中3日
     end
 
     it "前の登板がリリーフだけなら、先発の連続は始まらない（0）" do
@@ -42,10 +42,10 @@ RSpec.describe PitcherConsecutiveShortRest, :pitcher_fatigue do
       expect(count_for("2026-06-06")).to eq(0)
     end
 
-    it "直前の先発は、間にリリーフ登板があっても先発同士で数える（先発 6/1 → リリーフ 6/4 → 先発 6/6 は中4日）" do
+    it "先発 6/1 → リリーフ 6/4 → 先発 6/6: 直前の登板がリリーフなので 0（先発 6/1 からは中4日でも飛ばして数えない）" do
       create_start(team: team, pitcher: pitcher, date: "2026-06-01", innings: 6.0, consecutive_short_rest_count: 0)
       create_start(team: team, pitcher: pitcher, date: "2026-06-04", innings: 1.0, role: "reliever")
-      expect(count_for("2026-06-06")).to eq(1)
+      expect(count_for("2026-06-06")).to eq(0)
     end
 
     it "別チームの登板は数えない" do
@@ -62,6 +62,126 @@ RSpec.describe PitcherConsecutiveShortRest, :pitcher_fatigue do
     it "count_overrides があれば保存済みの前回値より優先する（試運転の連鎖用）" do
       prev = create_start(team: team, pitcher: pitcher, date: "2026-06-01", innings: 6.0, consecutive_short_rest_count: 0)
       expect(count_for("2026-06-06", overrides: { prev.id => 3 })).to eq(4)
+    end
+  end
+
+  # Test Basis: AMB-23（2026-10-26 Operator 確定）。連続は「起点の登板以降がすべて先発登板」の時だけ。
+  #   間にリリーフ・オープナー登板が入れば 0。第二先発の 2 番手（role=starter で保存）は先発扱いで切らない（rulebook §8.4.2）。
+  describe "連続中4日は直前の登板（役割を問わない）で数える（AMB-23）" do
+    it "先発 → (中4日) 先発 → (中4日) 先発 で 0, 1, 2 と数える（保存時の連鎖）" do
+      s1 = create_start(team: team, pitcher: pitcher, date: "2026-06-01", innings: 6.0, consecutive_short_rest_count: count_for("2026-06-01"))
+      expect(s1.consecutive_short_rest_count).to eq(0)
+      s2 = create_start(team: team, pitcher: pitcher, date: "2026-06-06", innings: 6.0, consecutive_short_rest_count: count_for("2026-06-06"))
+      expect(s2.consecutive_short_rest_count).to eq(1)
+      expect(count_for("2026-06-11")).to eq(2)
+    end
+
+    # Test Basis: Operator 2026-10-26「連続する３回の先発登板で、その間隔が両方とも中４日以下」（AMB-23 追記）
+    {
+      "先発 → (中3日) 先発 → (中4日) 先発" => [ "2026-06-01", "2026-06-05", "2026-06-10" ],
+      "先発 → (中4日) 先発 → (中3日) 先発" => [ "2026-06-01", "2026-06-06", "2026-06-10" ],
+      "先発 → (中3日) 先発 → (中3日) 先発" => [ "2026-06-01", "2026-06-05", "2026-06-09" ],
+      "先発 → (中4日) 先発 → (中4日) 先発" => [ "2026-06-01", "2026-06-06", "2026-06-11" ]
+    }.each do |label, dates|
+      it "#{label} は 0, 1, 2（3 回目はカウント 1 以上の先発 = 条件 2 の形）" do
+        counts = dates.map do |d|
+          c = count_for(d)
+          create_start(team: team, pitcher: pitcher, date: d, innings: 6.0, consecutive_short_rest_count: c)
+          c
+        end
+        expect(counts).to eq([ 0, 1, 2 ])
+      end
+    end
+
+    it "先発 → (中5日) 先発 → (中4日) 先発 は 0, 0, 1（間隔の片方が中5日なら、3 回目の前の先発のカウントは 0）" do
+      counts = %w[2026-06-01 2026-06-07 2026-06-12].map do |d|
+        c = count_for(d)
+        create_start(team: team, pitcher: pitcher, date: d, innings: 6.0, consecutive_short_rest_count: c)
+        c
+      end
+      expect(counts).to eq([ 0, 0, 1 ])
+    end
+
+    it "先発 → (中4日) 先発 → (中5日) 先発 は 0, 1, 0（中5日で切れる）" do
+      counts = %w[2026-06-01 2026-06-06 2026-06-12].map do |d|
+        c = count_for(d)
+        create_start(team: team, pitcher: pitcher, date: d, innings: 6.0, consecutive_short_rest_count: c)
+        c
+      end
+      expect(counts).to eq([ 0, 1, 0 ])
+    end
+
+    it "中2日以内（先発不可の間隔。通常は現れない）は、中4日以下として数える（literal）" do
+      create_start(team: team, pitcher: pitcher, date: "2026-06-01", innings: 6.0, consecutive_short_rest_count: 0)
+      expect(count_for("2026-06-03")).to eq(1) # 中1日
+    end
+
+    it "先発 6/1 → リリーフ 6/4 → 先発 6/9: リリーフから中4日でも、先発ではないので 0" do
+      create_start(team: team, pitcher: pitcher, date: "2026-06-01", innings: 6.0, consecutive_short_rest_count: 1)
+      create_start(team: team, pitcher: pitcher, date: "2026-06-04", innings: 1.0, role: "reliever")
+      expect(count_for("2026-06-09")).to eq(0)
+    end
+
+    it "先発 6/1 → (中4日) リリーフ 6/6 → (中4日) 先発 6/11 も 0" do
+      create_start(team: team, pitcher: pitcher, date: "2026-06-01", innings: 6.0, consecutive_short_rest_count: 1)
+      create_start(team: team, pitcher: pitcher, date: "2026-06-06", innings: 1.0, role: "reliever")
+      expect(count_for("2026-06-11")).to eq(0)
+    end
+
+    it "先発 → オープナー → 先発 は 0（オープナー登板はリリーフ扱い。§8.4.2）" do
+      create_start(team: team, pitcher: pitcher, date: "2026-06-01", innings: 6.0, consecutive_short_rest_count: 1)
+      create_start(team: team, pitcher: pitcher, date: "2026-06-06", innings: 1.0, role: "opener")
+      expect(count_for("2026-06-11")).to eq(0)
+    end
+
+    it "前の登板がオープナーだけなら、先発の連続は始まらない（0）" do
+      create_start(team: team, pitcher: pitcher, date: "2026-06-01", innings: 1.0, role: "opener", consecutive_short_rest_count: 0)
+      expect(count_for("2026-06-06")).to eq(0)
+    end
+
+    it "先発 → (中4日) 第二先発の 2 番手（role=starter）→ (中4日) 先発: 2 番手は先発扱いなので連続が切れない（0, 1, 2）" do
+      create_start(team: team, pitcher: pitcher, date: "2026-06-01", innings: 6.0, consecutive_short_rest_count: 0)
+      second = create_start(team: team, pitcher: pitcher, date: "2026-06-06", innings: 5.0, role: "starter",
+                            appearance_order: 1, consecutive_short_rest_count: count_for("2026-06-06"))
+      expect(second.consecutive_short_rest_count).to eq(1)
+      expect(count_for("2026-06-11")).to eq(2)
+    end
+
+    it "先発 → (中4日) 先発 → リリーフ 6/8 → (中4日) 先発 6/13 で 0（途中までの連続は切れる）" do
+      create_start(team: team, pitcher: pitcher, date: "2026-06-01", innings: 6.0, consecutive_short_rest_count: 0)
+      create_start(team: team, pitcher: pitcher, date: "2026-06-06", innings: 6.0, consecutive_short_rest_count: 1)
+      create_start(team: team, pitcher: pitcher, date: "2026-06-08", innings: 1.0, role: "reliever")
+      expect(count_for("2026-06-13")).to eq(0)
+    end
+
+    it "直前が先発なら、その前にリリーフがあっても前回値 +1（前の連続は直前の先発の保存値が持っている）" do
+      create_start(team: team, pitcher: pitcher, date: "2026-06-01", innings: 1.0, role: "reliever")
+      create_start(team: team, pitcher: pitcher, date: "2026-06-03", innings: 6.0, consecutive_short_rest_count: 0)
+      expect(count_for("2026-06-08")).to eq(1)
+    end
+
+    it "同じ日に登板が 2 件ある時は id の新しい方を直前の登板とする（決定性）" do
+      create_start(team: team, pitcher: pitcher, date: "2026-06-06", innings: 6.0, consecutive_short_rest_count: 1)
+      create_start(team: team, pitcher: pitcher, date: "2026-06-06", innings: 1.0, role: "reliever")
+      expect(count_for("2026-06-11")).to eq(0)
+    end
+
+    it "リセット（実日数中10日以上）なら直前が先発でも 0（AMB-04 追補 3 と両立）" do
+      create_start(team: team, pitcher: pitcher, date: "2026-06-01", innings: 6.0, consecutive_short_rest_count: 1)
+      expect(count_for("2026-06-12")).to eq(0)
+    end
+
+    it "別チームのリリーフ登板は直前の登板に数えない（同チーム・対象日より前だけ）" do
+      other_team = create(:team)
+      create_start(team: team, pitcher: pitcher, date: "2026-06-01", innings: 6.0, consecutive_short_rest_count: 0)
+      create_start(team: other_team, pitcher: pitcher, date: "2026-06-04", innings: 1.0, role: "reliever")
+      expect(count_for("2026-06-06")).to eq(1)
+    end
+
+    it "count_overrides は直前の先発にだけ効く（直前がリリーフなら上書き値があっても 0）" do
+      create_start(team: team, pitcher: pitcher, date: "2026-06-01", innings: 6.0)
+      relief = create_start(team: team, pitcher: pitcher, date: "2026-06-04", innings: 1.0, role: "reliever")
+      expect(count_for("2026-06-09", overrides: { relief.id => 3 })).to eq(0)
     end
   end
 

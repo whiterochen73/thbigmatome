@@ -247,6 +247,39 @@ RSpec.describe "Api::V1::PitcherGameStatesController", type: :request do
           expect(entry["projected_status"]).to eq("injury_check")
         end
 
+        # Test Basis: AMB-23 追記。連続 3 回の先発・間隔がどちらも中4日以下 → 3 回目で負傷チェック（条件 2）
+        it "AMB-23: 先発 → (中3日) 先発 → (中4日) 先発 で 3 回目は injury_check（保存時に決まるカウントで判定）" do
+          [ "2026-03-01", "2026-03-05" ].each do |d|
+            create_starter_pgs(schedule_date: d, consecutive: PitcherConsecutiveShortRest.call(team_id: team.id, pitcher_id: pitcher_first.id, schedule_date: d))
+          end
+          expect(PitcherGameState.order(:schedule_date).pluck(:consecutive_short_rest_count)).to eq([ 0, 1 ])
+          get_fatigue_summary(date: "2026-03-10") # 3/5 から中4日
+          entry = response.parsed_body.find { |e| e["player_id"] == pitcher_first.id }
+          expect(entry["projected_status"]).to eq("injury_check")
+        end
+
+        it "AMB-23: 先発 → (中4日) 先発 → (中3日) 先発 も 3 回目は injury_check（KO の前回でも）" do
+          [ "2026-03-01", "2026-03-06" ].each do |d|
+            create_starter_pgs(schedule_date: d, result_category: "ko",
+                               consecutive: PitcherConsecutiveShortRest.call(team_id: team.id, pitcher_id: pitcher_first.id, schedule_date: d))
+          end
+          get_fatigue_summary(date: "2026-03-10") # 3/6 から中3日
+          entry = response.parsed_body.find { |e| e["player_id"] == pitcher_first.id }
+          expect(entry["projected_status"]).to eq("injury_check")
+        end
+
+        it "AMB-23: 先発 → (中5日) 先発 → (中4日) 先発 では発動しない（reduced_3）" do
+          [ "2026-03-01", "2026-03-06" ].each_with_index do |d, i|
+            # 3/1 → 3/7 を中5日にするため 2 件目は 3/7 に置く
+            d = "2026-03-07" if i == 1
+            create_starter_pgs(schedule_date: d, consecutive: PitcherConsecutiveShortRest.call(team_id: team.id, pitcher_id: pitcher_first.id, schedule_date: d))
+          end
+          expect(PitcherGameState.order(:schedule_date).pluck(:consecutive_short_rest_count)).to eq([ 0, 0 ])
+          get_fatigue_summary(date: "2026-03-12") # 3/7 から中4日
+          entry = response.parsed_body.find { |e| e["player_id"] == pitcher_first.id }
+          expect(entry["projected_status"]).to eq("reduced_3")
+        end
+
         it "通常/中5日 → reduced_1" do
           create_starter_pgs(schedule_date: "2026-03-04")
           get_fatigue_summary(date: "2026-03-10") # 中5日

@@ -105,7 +105,8 @@ module PitcherRestStatus
       case cat
       when "ko", "no_game"
         case rest_days
-        when 3 then "reduced_3"
+        # 連続 3 回の先発で間隔がどちらも中4日以下なら 3 回目で負傷チェック（AMB-23。中3日も含む）
+        when 3 then consecutive_short_rest_count >= 1 ? "injury_check" : "reduced_3"
         when 4 then consecutive_short_rest_count >= 1 ? "injury_check" : "full" # 2回連続の中4日で負傷チェック（§8.3.1）
         else "full"
         end

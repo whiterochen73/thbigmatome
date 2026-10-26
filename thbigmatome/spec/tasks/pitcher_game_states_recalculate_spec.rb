@@ -46,9 +46,30 @@ RSpec.describe "pitcher_game_states:recalculate_result_category", :pitcher_fatig
     expect(out).to include("# changed(区分が変わる): 1")
     csv_lines = out.lines.reject { |l| l.start_with?("#") }.join
     rows = CSV.parse(csv_lines, headers: true)
-    expect(rows.size).to eq(1)
-    expect(rows.first.to_h).to include("date" => "2026-06-01", "old_category" => "long_loss", "new_category" => "normal",
-                                       "new_fatigue_p" => "7", "game_result" => "lose")
+    # 区分が変わる 6/1 の行 + 連続中4日カウントだけが変わる 6/6 の行（6/1 → 6/6 は中4日）
+    expect(rows.size).to eq(2)
+    expect(rows.find { |r| r["date"] == "2026-06-01" }.to_h)
+      .to include("old_category" => "long_loss", "new_category" => "normal", "new_fatigue_p" => "7", "game_result" => "lose",
+                  "old_consecutive_short_rest_count" => "0", "new_consecutive_short_rest_count" => "0")
+  end
+
+  # Test Basis: cmd_1775 第2段 E3（過去分を同じ規則で埋め直す。カウントの変化も CSV に出す）
+  it "E3: 連続中4日カウントが変わる行を CSV に出す（区分は変わらない行も、old/new 列つき）。試運転では書かない" do
+    out = run_task("APPLY" => nil)
+    csv_lines = out.lines.reject { |l| l.start_with?("#") }.join
+    rows = CSV.parse(csv_lines, headers: true)
+    expect(rows.headers).to include("old_consecutive_short_rest_count", "new_consecutive_short_rest_count")
+    count_row = rows.find { |r| r["date"] == "2026-06-06" }
+    expect(count_row.to_h).to include("old_category" => "normal", "new_category" => "normal",
+                                      "old_consecutive_short_rest_count" => "0", "new_consecutive_short_rest_count" => "1")
+    expect(out).to include("# consecutive_short_rest_count が変わる: 1")
+    expect(second_state.reload.consecutive_short_rest_count).to eq(0)
+  end
+
+  it "E3: APPLY=1 で連続中4日カウントを書く（6/6 は 6/1 から中4日 → 1）" do
+    run_task("APPLY" => "1")
+    expect(second_state.reload.consecutive_short_rest_count).to eq(1)
+    expect(first_state.reload.consecutive_short_rest_count).to eq(0)
   end
 
   it "APPLY=1 の時だけ DB を書く。日付順の連鎖で、作り直した前登板の区分(normal)が次の補正(中4日 -3 → 4)に効く" do

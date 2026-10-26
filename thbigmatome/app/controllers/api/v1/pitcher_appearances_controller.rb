@@ -42,6 +42,11 @@ class Api::V1::PitcherAppearancesController < Api::V1::BaseController
     bulk = params[:pitcher_appearances_bulk]
     appearances_list = bulk[:appearances] || []
     team_id = bulk[:team_id]
+    # 保存する登板がある時、または試合を日付で探す時（game_id なし）に、試合日が無い・読めないと
+    # 後続の日付計算が 500 になる。その前に 422 で返す
+    nothing_to_save = appearances_list.none? { |a| a[:pitcher_id].present? }
+    return unless (nothing_to_save && bulk[:game_id].present?) || valid_schedule_date?(bulk[:schedule_date])
+
     # 勝敗は試合概要の得点から決める。画面が送る game_result は、試合概要が無い時の代替と no_game の指定にだけ使う
     game_result, schedule_ambiguous = resolve_game_result(team_id, bulk[:schedule_date], bulk[:game_result])
 
@@ -73,6 +78,7 @@ class Api::V1::PitcherAppearancesController < Api::V1::BaseController
 
         prior_outs = running_outs
         running_outs += PitcherInnings.outs_from_innings(hash[:innings_pitched])
+        assign_consecutive_short_rest_count(hash)
 
         if hash[:result_category].blank?
           assign_result_category(
@@ -108,6 +114,8 @@ class Api::V1::PitcherAppearancesController < Api::V1::BaseController
 
   # POST /api/v1/pitcher_appearances
   def create
+    return unless valid_schedule_date?(params.dig(:pitcher_appearance, :schedule_date))
+
     game = find_or_create_game
     return if game.nil?
 
@@ -115,6 +123,7 @@ class Api::V1::PitcherAppearancesController < Api::V1::BaseController
     appearance_params_hash[:game_id] = game.id
     # competition_idがparams未指定の場合、gameから補完
     appearance_params_hash[:competition_id] ||= game.competition_id
+    assign_consecutive_short_rest_count(appearance_params_hash)
 
     # result_category の自動計算（勝敗は試合概要の得点から決める）
     game_result, schedule_ambiguous = resolve_game_result(
@@ -145,6 +154,35 @@ class Api::V1::PitcherAppearancesController < Api::V1::BaseController
   end
 
   private
+
+  # 試合日（schedule_date）が指定され、日付として読めることを確かめる。だめなら 422 を返して false。
+  # 試合日は休養日数・連続中4日・疲労P の計算に必須で、無いまま進むと後続の Date.parse が 500 になる。
+  def valid_schedule_date?(raw)
+    if raw.blank?
+      render json: { errors: [ "schedule_date（試合日。YYYY-MM-DD 形式）が必要です" ] }, status: :unprocessable_content
+      return false
+    end
+
+    Date.parse(raw.to_s)
+    true
+  rescue ArgumentError, TypeError
+    render json: { errors: [ "schedule_date を日付として読めません: #{raw}（YYYY-MM-DD 形式で指定してください）" ] },
+           status: :unprocessable_content
+    false
+  end
+
+  # 連続中4日カウントはサーバが決める（E3）。画面が送ってきた値は使わない（常に 0 を送って上書きしていた）。
+  # 先発は直前の先発との中日数から求め、先発以外は 0。attrs は symbol キーの Hash。
+  def assign_consecutive_short_rest_count(attrs)
+    attrs[:consecutive_short_rest_count] =
+      if attrs[:role].to_s == "starter"
+        PitcherConsecutiveShortRest.call(
+          team_id: attrs[:team_id], pitcher_id: attrs[:pitcher_id], schedule_date: attrs[:schedule_date]
+        )
+      else
+        0
+      end
+  end
 
   # 勝敗を試合概要（season_schedules の score / opponent_score）から決める。
   # 戻り値: [game_result, schedule_ambiguous]

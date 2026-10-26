@@ -157,7 +157,7 @@
       </v-window-item>
     </v-window>
 
-    <v-snackbar v-model="snackbar" :color="snackbarColor" :timeout="3000">
+    <v-snackbar v-model="snackbar" :color="snackbarColor" :timeout="snackbarTimeout">
       {{ snackbarText }}
     </v-snackbar>
   </v-container>
@@ -183,6 +183,7 @@ const activeTab = ref((route.query.tab as string) || 'overview')
 const snackbar = ref(false)
 const snackbarText = ref('')
 const snackbarColor = ref('success')
+const snackbarTimeout = ref(3000)
 
 const teamId = route.params.teamId
 const scheduleId = route.params.scheduleId
@@ -265,16 +266,23 @@ const fetchAllTeams = async () => {
   }
 }
 
-const showSnackbar = (text: string, color: string = 'success') => {
+const showSnackbar = (text: string, color: string = 'success', timeout: number = 3000) => {
   snackbarText.value = text
   snackbarColor.value = color
+  snackbarTimeout.value = timeout
   snackbar.value = true
 }
 
 const saveGame = async () => {
   try {
-    await axios.put(`/game/${scheduleId}`, gameData.value)
-    showSnackbar(t('gameResult.saveSuccess'))
+    const response = await axios.put(`/game/${scheduleId}`, gameData.value)
+    // 得点は保存できたが、投手の判定（result_category）の作り直しだけ失敗した時は警告で知らせる
+    const warnings: string[] = response?.data?.warnings ?? []
+    if (warnings.length > 0) {
+      showSnackbar(t('gameResult.pitcherRebuildFailed'), 'warning', 10000)
+    } else {
+      showSnackbar(t('gameResult.saveSuccess'))
+    }
   } catch (error) {
     console.error('Failed to save game data:', error)
     showSnackbar(t('gameResult.saveFailed'), 'error')

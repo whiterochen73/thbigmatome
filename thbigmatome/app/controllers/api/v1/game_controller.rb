@@ -50,7 +50,12 @@ class Api::V1::GameController < Api::V1::BaseController
 
     update_params = game_params
     if season_schedule.update(update_params)
-      render json: season_schedule, status: :ok
+      # 得点は保存済み。投手の判定の作り直しだけが失敗した時は、警告で知らせる（画面が「後で作り直しが必要」と出す）
+      warnings = []
+      if season_schedule.pitcher_rebuild_error
+        warnings << "得点は保存しましたが、投手の判定の作り直しに失敗しました。後で作り直しが必要です（登板記録の区分が古いままです）"
+      end
+      render json: season_schedule.as_json.merge("warnings" => warnings), status: :ok
     else
       render json: { errors: season_schedule.errors.full_messages }, status: :unprocessable_content
     end

@@ -27,6 +27,9 @@ module PitcherRestStatus
   # 先発の登板可否の下限。中2日以内は登板不可。
   MAX_UNAVAILABLE_REST_DAYS = 2
 
+  # 中10日リセット（疲労P をカード値へ・累積イニング 0）の実日数差。離脱期間は関与しない（AMB-04 追補）。
+  RESET_REST_DAYS = 10
+
   # 先発の試合前疲労P（補正後）を返す。登板不可の中日数では nil。
   def starter_fatigue_p(card_fatigue_p, result_category, rest_days)
     return nil if rest_days <= MAX_UNAVAILABLE_REST_DAYS
@@ -64,15 +67,28 @@ module PitcherRestStatus
     end
   end
 
-  # after_date より後に開始し、target_date 以前に終了する、
-  # 10日を超える（> 10日）の離脱があるか（中10日全快判定）
-  def full_recovery_absence?(absences, after_date, target_date)
-    absences.any? do |pa|
-      pa[:start_date] > after_date &&
-        pa[:end_date] &&
-        pa[:end_date] <= target_date &&
-        (pa[:end_date] - pa[:start_date]).to_i > 10
+  # 実日数の中日数 (target - last) - 1。離脱を差し引かない。
+  def raw_rest_days(last_date, target_date)
+    (target_date - last_date).to_i - 1
+  end
+
+  # 中10日リセットの判定（AMB-04 追補 / rulebook §8.6 訂正 2026-09-13）。
+  # 離脱の有無・長短にかかわらず、実日数差が中10日以上ならリセットする。
+  # 離脱を差し引いた中日数（登板可否・累積イニングの減衰に使う）とは別の量なので、同じ変数で持ち回らない。
+  def rest_reset?(last_date, target_date)
+    raw_rest_days(last_date, target_date) >= RESET_REST_DAYS
+  end
+
+  # 中日数の控除・減衰凍結に使う離脱（負傷のみ）。出場停止・再調整は含めない（AMB-04「出場停止と負傷は別枠」2026-09-12）。
+  # 出場可否の表示（build_injured_set）はここを通さない。全種別の離脱を見る。
+  # 戻り値: { team_membership_id => [{start_date:, end_date:}, ...] }（離脱が無い id は [] で引ける）
+  #   end_date は復帰可能日（排他的）。nil は無期限離脱。
+  def injury_absences(team_membership_ids)
+    result = Hash.new { |_hash, _key| [] }
+    PlayerAbsence.injury.where(team_membership_id: team_membership_ids).each do |pa|
+      result[pa.team_membership_id] += [ { start_date: pa.start_date.to_date, end_date: pa.effective_end_date&.to_date } ]
     end
+    result
   end
 
   # projected_status: 今日登板した場合の疲労ステータス予測
@@ -88,11 +104,16 @@ module PitcherRestStatus
       cat = last_result_category || "normal"
       case cat
       when "ko", "no_game"
-        rest_days == 3 ? "reduced_3" : "full"
+        case rest_days
+        when 3 then "reduced_3"
+        when 4 then consecutive_short_rest_count >= 1 ? "injury_check" : "full" # 2回連続の中4日で負傷チェック（§8.3.1）
+        else "full"
+        end
       when "long_loss"
         case rest_days
         when 3 then "injury_check"
-        when 4 then "reduced_4"
+        when 4 then consecutive_short_rest_count >= 1 ? "injury_check" : "reduced_4" # 同上
+
         when 5 then "reduced_2"
         when 6 then "reduced_1"
         else "full"
@@ -116,7 +137,8 @@ module PitcherRestStatus
     end
   end
 
-  # 指定日時点のリリーフ/オープナーの累積イニング（減衰込み）。離脱中は減衰凍結、中10日超の離脱で全快。
+  # 指定日時点のリリーフ/オープナーの累積イニング（減衰込み）。離脱中は減衰凍結（absences は負傷のみを渡す）。
+  # 実日数差が中10日以上ならリセット（離脱の有無は関与しない）。
   # PitcherGameStatesController（休養表示）と PitcherStarterFatigue（リリーフ→先発の補正）で共有する。
   def cumulative_innings(team_id, pitcher_id, target_date, absences = [])
     appearances = PitcherGameState
@@ -130,8 +152,8 @@ module PitcherRestStatus
     appearances.each do |app|
       if prev_date
         app_date = app.schedule_date.to_date
-        if full_recovery_absence?(absences, prev_date, app_date)
-          # 中10日以上の離脱 → 全快（累積リセット）
+        if rest_reset?(prev_date, app_date)
+          # 実日数中10日以上 → 全快（累積リセット）
           cumulative = 0
         else
           from = prev_date + 1
@@ -156,7 +178,7 @@ module PitcherRestStatus
 
     # Decay from last appearance to target_date
     if prev_date && prev_date < target_date
-      if full_recovery_absence?(absences, prev_date, target_date)
+      if rest_reset?(prev_date, target_date)
         cumulative = 0
       else
         from = prev_date + 1

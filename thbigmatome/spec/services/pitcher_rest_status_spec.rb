@@ -71,4 +71,68 @@ RSpec.describe PitcherRestStatus do
       end
     end
   end
+
+  # Test Basis: rulebook §8.3.1（KO・ノーゲーム中4日 / 長イニング敗戦中4日は「2回連続で発動」）/ §8.5.1 条件2 / cmd_1775 第2段 E8
+  describe "calculate_projected_status: 中4日の「2回連続で負傷チェック」（E8）" do
+    def status(category, rest, consecutive)
+      described_class.calculate_projected_status("starter", rest, category, 0, false, consecutive)
+    end
+
+    it "KO 中4日: 1回目（連続カウント 0）は full、2回連続（>=1）は injury_check" do
+      expect(status("ko", 4, 0)).to eq("full")
+      expect(status("ko", 4, 1)).to eq("injury_check")
+      expect(status("ko", 4, 2)).to eq("injury_check")
+    end
+
+    it "ノーゲーム 中4日も KO と同じ" do
+      expect(status("no_game", 4, 0)).to eq("full")
+      expect(status("no_game", 4, 1)).to eq("injury_check")
+    end
+
+    it "長イニング敗戦 中4日: 1回目は reduced_4（P-4・負傷チェックなし）、2回連続は injury_check" do
+      expect(status("long_loss", 4, 0)).to eq("reduced_4")
+      expect(status("long_loss", 4, 1)).to eq("injury_check")
+    end
+
+    it "連続カウントは中4日だけに効く（KO 中3日・中5日、長イニング中3日・中5日は変わらない）" do
+      expect(status("ko", 3, 1)).to eq("reduced_3")
+      expect(status("ko", 5, 1)).to eq("full")
+      expect(status("long_loss", 3, 1)).to eq("injury_check")
+      expect(status("long_loss", 5, 1)).to eq("reduced_2")
+      expect(status("long_loss", 6, 1)).to eq("reduced_1")
+    end
+
+    it "通常 中4日の既存分岐は変わらない（0 → reduced_3、>=1 → injury_check）" do
+      expect(status("normal", 4, 0)).to eq("reduced_3")
+      expect(status("normal", 4, 1)).to eq("injury_check")
+    end
+  end
+
+  # Test Basis: AMB-04 追補（2026-09-13）リセットは差し引かない実日数差 (next - last) - 1 >= 10 / cmd_1775 第2段 E5
+  describe ".rest_reset?（中10日リセットの境）" do
+    it "実日数中9日はリセットしない、中10日でリセットする" do
+      expect(described_class.rest_reset?(Date.new(2026, 6, 1), Date.new(2026, 6, 11))).to be(false) # 中9日
+      expect(described_class.rest_reset?(Date.new(2026, 6, 1), Date.new(2026, 6, 12))).to be(true)  # 中10日
+    end
+  end
+
+  # Test Basis: AMB-04「出場停止と負傷は別枠」（2026-09-12）/ cmd_1775 第2段 E4
+  describe ".injury_absences（中日数の控除・減衰凍結に使う離脱は負傷のみ）" do
+    let(:team) { create(:team) }
+    let(:season) { create(:season, team: team) }
+    let(:membership) { create(:team_membership, team: team) }
+
+    it "injury だけを返し、suspension / reconditioning は含めない" do
+      %i[injury suspension reconditioning].each_with_index do |type, i|
+        create(:player_absence, team_membership: membership, season: season, absence_type: type,
+                                start_date: Date.new(2026, 6, 1 + i), duration: 2, duration_unit: "days")
+      end
+      result = described_class.injury_absences([ membership.id ])
+      expect(result[membership.id].map { |a| a[:start_date] }).to eq([ Date.new(2026, 6, 1) ])
+    end
+
+    it "離脱が無い登録は空配列（キーなしでも空で引ける）" do
+      expect(described_class.injury_absences([ membership.id ])[membership.id]).to eq([])
+    end
+  end
 end

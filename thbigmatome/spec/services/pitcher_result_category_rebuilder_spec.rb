@@ -181,4 +181,70 @@ RSpec.describe PitcherResultCategoryRebuilder, :pitcher_fatigue do
       expect(s2.reload.result_category).to eq("normal")
     end
   end
+
+  # Test Basis: cmd_1775 第2段 E3（過去分の連続中4日カウントを同じ規則で埋め直す）/ E4
+  describe "連続中4日カウントの作り直し（E3）" do
+    def starts(dates)
+      dates.map { |d| create_start(team: team, pitcher: pitcher, date: d, innings: 6.0, consecutive_short_rest_count: 0) }
+    end
+
+    it "日付順に 0 → 1 → 2 → 0 を書く（中4日 / 中4日 / 中8日）。試合概要が無くて区分を作り直せない行でも、カウントは埋める" do
+      s1, s2, s3, s4 = starts(%w[2026-06-01 2026-06-06 2026-06-11 2026-06-20])
+      r = rebuild
+      r.rebuild_all
+      expect([ s1, s2, s3, s4 ].map { |s| s.reload.consecutive_short_rest_count }).to eq([ 0, 1, 2, 0 ])
+      expect(r.rows.map(&:status).uniq).to eq([ :skipped_no_schedule ])
+    end
+
+    it "試運転(apply: false)は DB を書かず、作り直した前回値を次のカウントに使う（連鎖: 0 → 1 → 2）" do
+      s1, s2, s3 = starts(%w[2026-06-01 2026-06-06 2026-06-11])
+      dry = described_class.new(apply: false)
+      dry.rebuild_all
+      rows = dry.rows.index_by(&:state_id)
+      expect([ rows[s1.id], rows[s2.id], rows[s3.id] ].map(&:new_consecutive_short_rest_count)).to eq([ 0, 1, 2 ])
+      expect([ rows[s1.id], rows[s2.id], rows[s3.id] ].map(&:old_consecutive_short_rest_count)).to eq([ 0, 0, 0 ])
+      expect([ s2, s3 ].map { |s| s.reload.consecutive_short_rest_count }).to eq([ 0, 0 ])
+    end
+
+    it "保存済みの誤った値（本番は全件 0 のほか、古い値が残る行）も規則どおりに直す" do
+      s1, s2 = starts(%w[2026-06-01 2026-06-08]) # 中6日
+      s2.update!(consecutive_short_rest_count: 3)
+      rebuild.rebuild_all
+      expect(s2.reload.consecutive_short_rest_count).to eq(0)
+      expect(s1.reload.consecutive_short_rest_count).to eq(0)
+    end
+
+    it "出場停止を挟んだ中日数は控除しない（中5日 → 0）/ 負傷は控除する（中4日 → +1）" do
+      membership = TeamMembership.find_by(team_id: team.id, player_id: pitcher.id)
+      s1, s2, s3 = starts(%w[2026-06-01 2026-06-07 2026-06-17])
+      create(:player_absence, team_membership: membership, season: season, absence_type: :suspension,
+                              start_date: Date.new(2026, 6, 2), duration: 1, duration_unit: "days")
+      create(:player_absence, team_membership: membership, season: season, absence_type: :injury,
+                              start_date: Date.new(2026, 6, 8), duration: 5, duration_unit: "days")
+      rebuild.rebuild_all
+      # 6/1 → 6/7: 実日数中5日、出場停止 1 日は引かない → 0
+      expect(s2.reload.consecutive_short_rest_count).to eq(0)
+      # 6/7 → 6/17: 実日数中9日 - 負傷 5 日 = 中4日 → 前回 0 + 1
+      expect(s3.reload.consecutive_short_rest_count).to eq(1)
+      expect(s1.reload.consecutive_short_rest_count).to eq(0)
+    end
+
+    it "リリーフ登板は対象外のまま（先発のみ）" do
+      relief = create_start(team: team, pitcher: pitcher, date: "2026-06-06", innings: 1.0, role: "reliever", consecutive_short_rest_count: 2)
+      create_start(team: team, pitcher: pitcher, date: "2026-06-01", innings: 6.0)
+      rebuild.rebuild_all
+      expect(relief.reload.consecutive_short_rest_count).to eq(2)
+    end
+
+    it "得点（区分の作り直し）とカウントは独立: 区分が unchanged でもカウントは書く" do
+      create_schedule(season, "2026-06-01", score: 3, opponent_score: 1)
+      create_schedule(season, "2026-06-06", score: 3, opponent_score: 1)
+      starts(%w[2026-06-01 2026-06-06])
+      r = rebuild
+      r.rebuild_all
+      second = r.rows.find { |row| row.schedule_date == "2026-06-06" }
+      expect(second.new_consecutive_short_rest_count).to eq(1)
+      expect(PitcherGameState.find(second.state_id).consecutive_short_rest_count).to eq(1)
+    end
+  end
 end

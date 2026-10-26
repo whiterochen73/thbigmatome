@@ -449,4 +449,261 @@ describe('PitcherAppearanceTab', () => {
       expect(winWrapper.vm.computeResultCategory(0)).toBe('normal')
     })
   })
+
+  // cmd_1775 第2段 E3・E6・E7
+  describe('第二先発・連続中4日カウント・結果区分チップの関与イニング', () => {
+    const thirdPitcher = { id: 12, name: '妖夢', position: 'pitcher', is_pitcher: true }
+    const idleState = (id: number): PreGameStateMock => ({
+      player_id: id,
+      rest_days: null,
+      cumulative_innings: 0,
+      last_role: null,
+      is_injured: false,
+    })
+
+    function saved(
+      pitcherId: number,
+      role: string,
+      innings: number,
+      extra: Record<string, unknown> = {},
+    ) {
+      return {
+        id: pitcherId,
+        pitcher_id: pitcherId,
+        role,
+        innings_pitched: innings,
+        earned_runs: 0,
+        fatigue_p_used: 0,
+        decision: null,
+        is_opener: false,
+        no_out_exit: false,
+        consecutive_short_rest_count: 2,
+        pre_injury_days_excluded: 0,
+        result_category: null,
+        ...extra,
+      }
+    }
+
+    async function mountRows(
+      savedAppearances: unknown[],
+      gameResult: 'win' | 'lose' | 'draw' = 'lose',
+    ) {
+      vi.mocked(axios.get).mockImplementation((url: string) => {
+        if (url === '/teams/1/team_players') {
+          return Promise.resolve({ data: [basePitcher, otherPitcher, thirdPitcher] })
+        }
+        if (url === '/teams/1/pitcher_game_states') {
+          return Promise.resolve({ data: [10, 11, 12].map(idleState) })
+        }
+        if (url === '/pitcher_appearances') return Promise.resolve({ data: savedAppearances })
+        if (url === '/teams/1/team_memberships') return Promise.resolve({ data: [] })
+        if (url === '/teams/1/pitcher_game_states/fatigue_summary')
+          return Promise.resolve({ data: [] })
+        return Promise.reject(new Error(`Unexpected GET ${url}`))
+      })
+      const wrapper = mount(PitcherAppearanceTab, {
+        props: { ...defaultProps, gameResult },
+        global: { plugins: [vuetify] },
+      })
+      await flushPromises()
+      return wrapper
+    }
+
+    function postedAppearances() {
+      const call = vi.mocked(axios.post).mock.calls[0]
+      expect(call[0]).toBe('/pitcher_appearances/bulk_save')
+      const payload = call[1] as {
+        pitcher_appearances_bulk: { appearances: Array<Record<string, unknown>> }
+      }
+      return payload.pitcher_appearances_bulk.appearances
+    }
+
+    describe('E6: 第二先発（2番手）は role=starter で保存し、開き直しても復元する', () => {
+      it('2番手で第二先発を選ぶと role=starter で送る（1番手はオープナー、3番手はリリーフのまま）', async () => {
+        const wrapper = await mountRows([])
+        vi.mocked(axios.post).mockResolvedValueOnce({ data: { warnings: [] } })
+        const rows = wrapper.vm.pitcherRows
+        rows[0].role = 'opener'
+        rows[0].pitcher_id = 10
+        rows[0].innings_int = 1
+        wrapper.vm.addRow()
+        wrapper.vm.addRow()
+        rows[1].pitcher_id = 11
+        rows[1].is_second_starter = true
+        rows[1].innings_int = 6
+        rows[2].pitcher_id = 12
+        rows[2].innings_int = 2
+
+        await wrapper.vm.saveAll()
+
+        expect(postedAppearances().map((a) => [a.pitcher_id, a.role])).toEqual([
+          [10, 'opener'],
+          [11, 'starter'],
+          [12, 'reliever'],
+        ])
+      })
+
+      it('2番手がリリーフのままなら role=reliever で送る', async () => {
+        const wrapper = await mountRows([])
+        vi.mocked(axios.post).mockResolvedValueOnce({ data: { warnings: [] } })
+        const rows = wrapper.vm.pitcherRows
+        rows[0].pitcher_id = 10
+        wrapper.vm.addRow()
+        rows[1].pitcher_id = 11
+
+        await wrapper.vm.saveAll()
+
+        expect(postedAppearances().map((a) => a.role)).toEqual(['starter', 'reliever'])
+      })
+
+      it('3番手以降に第二先発フラグが残っていても先発にしない（選択欄が出るのは2番手だけ）', async () => {
+        const wrapper = await mountRows([])
+        vi.mocked(axios.post).mockResolvedValueOnce({ data: { warnings: [] } })
+        const rows = wrapper.vm.pitcherRows
+        rows[0].pitcher_id = 10
+        wrapper.vm.addRow()
+        wrapper.vm.addRow()
+        rows[1].pitcher_id = 11
+        rows[2].pitcher_id = 12
+        rows[2].is_second_starter = true
+
+        await wrapper.vm.saveAll()
+
+        expect(postedAppearances().map((a) => a.role)).toEqual(['starter', 'reliever', 'reliever'])
+      })
+
+      it('保存済みで2番手が role=starter なら、開き直した時に第二先発として復元し、保存し直しても starter のまま', async () => {
+        const wrapper = await mountRows([
+          saved(10, 'opener', 1.0),
+          saved(11, 'starter', 6.0),
+          saved(12, 'reliever', 2.0),
+        ])
+        const rows = wrapper.vm.pitcherRows
+        expect(rows.map((r) => r.is_second_starter)).toEqual([false, true, false])
+        expect(rows[0].role).toBe('opener')
+
+        vi.mocked(axios.post).mockResolvedValueOnce({ data: { warnings: [] } })
+        await wrapper.vm.saveAll()
+        expect(postedAppearances().map((a) => a.role)).toEqual(['opener', 'starter', 'reliever'])
+      })
+
+      it('保存済みで2番手が reliever なら第二先発にならない', async () => {
+        const wrapper = await mountRows([saved(10, 'starter', 6.0), saved(11, 'reliever', 3.0)])
+        expect(wrapper.vm.pitcherRows.map((r) => r.is_second_starter)).toEqual([false, false])
+      })
+
+      it('第二先発は先発として扱うので S（セーブ）・H（ホールド）は選べない', async () => {
+        const wrapper = await mountRows(
+          [saved(10, 'opener', 1.0), saved(11, 'starter', 6.0)],
+          'win',
+        )
+        const options = wrapper.vm.getDecisionChipOptions(1)
+        expect(options.find((o) => o.label === 'S')?.disabled).toBe(true)
+        expect(options.find((o) => o.label === 'H')?.disabled).toBe(true)
+        const reliefOptions = wrapper.vm.getDecisionChipOptions(0)
+        expect(reliefOptions.find((o) => o.label === 'H')?.disabled).toBe(false)
+      })
+
+      it('結果区分チップ: 未保存の第二先発（負け・L・後続あり・3.0回）は先発として KO と表示する', async () => {
+        const wrapper = await mountRows([])
+        const rows = wrapper.vm.pitcherRows
+        rows[0].role = 'opener'
+        rows[0].pitcher_id = 10
+        rows[0].innings_int = 1
+        wrapper.vm.addRow()
+        wrapper.vm.addRow()
+        rows[1].pitcher_id = 11
+        rows[1].is_second_starter = true
+        rows[1].innings_int = 3
+        rows[1].decision = 'L'
+        rows[2].pitcher_id = 12
+        await flushPromises()
+        expect(wrapper.vm.computeResultCategory(1)).toBe('ko')
+        rows[1].is_second_starter = false
+        expect(wrapper.vm.computeResultCategory(1)).toBe('normal')
+      })
+    })
+
+    describe('E3: 連続中4日カウントは画面から送らない（サーバが決める）', () => {
+      it('保存済みの値（2）が復元されていても、送信内容に consecutive_short_rest_count を含めない', async () => {
+        const wrapper = await mountRows([saved(10, 'starter', 6.0), saved(11, 'reliever', 2.0)])
+        vi.mocked(axios.post).mockResolvedValueOnce({ data: { warnings: [] } })
+        await wrapper.vm.saveAll()
+        for (const a of postedAppearances()) {
+          expect(a).not.toHaveProperty('consecutive_short_rest_count')
+        }
+      })
+
+      it('新規行でも送らない', async () => {
+        const wrapper = await mountRows([])
+        vi.mocked(axios.post).mockResolvedValueOnce({ data: { warnings: [] } })
+        wrapper.vm.pitcherRows[0].pitcher_id = 10
+        await wrapper.vm.saveAll()
+        expect(postedAppearances()[0]).not.toHaveProperty('consecutive_short_rest_count')
+      })
+    })
+
+    describe('E7: 結果区分チップの関与イニング（サーバの PitcherInnings.involvement と揃える）', () => {
+      function setStarter(
+        wrapper: Awaited<ReturnType<typeof mountRows>>,
+        int: number,
+        frac: '' | '1' | '2',
+        noOut = false,
+      ) {
+        const row = wrapper.vm.pitcherRows[0]
+        row.pitcher_id = 10
+        row.innings_int = int
+        row.innings_frac = frac
+        row.no_out_exit = noOut
+        return row
+      }
+
+      it('負け試合の先発 1.0回: 関与1 → normal / 0アウト降板あり（関与2）→ 保存後に確定（疲労P0 なら long_loss になりうる）', async () => {
+        const wrapper = await mountRows([])
+        const row = setStarter(wrapper, 1, '')
+        expect(wrapper.vm.computeResultCategory(0)).toBe('normal')
+        row.no_out_exit = true
+        expect(wrapper.vm.computeResultCategory(0)).toBe('pending')
+      })
+
+      it('0.0回 + 0アウト降板（関与1）で後続なし・L なし → normal', async () => {
+        const wrapper = await mountRows([])
+        setStarter(wrapper, 0, '', true)
+        expect(wrapper.vm.computeResultCategory(0)).toBe('normal')
+      })
+
+      it('先発 1.1回（4アウト）は 2 つの回に跨るので関与2 → 保存後に確定', async () => {
+        const wrapper = await mountRows([])
+        setStarter(wrapper, 1, '1')
+        expect(wrapper.vm.computeResultCategory(0)).toBe('pending')
+      })
+
+      it('第二先発: 前の投手が 1回1/3（4アウト）の後に入って 1.0回は 2 つの回に跨り関与2 → 保存後に確定。前の投手が 1.0回（3アウト）なら関与1 → normal', async () => {
+        const wrapper = await mountRows([])
+        const rows = wrapper.vm.pitcherRows
+        rows[0].role = 'opener'
+        rows[0].pitcher_id = 10
+        rows[0].innings_int = 1
+        rows[0].innings_frac = '1'
+        wrapper.vm.addRow()
+        rows[1].pitcher_id = 11
+        rows[1].is_second_starter = true
+        rows[1].innings_int = 1
+        rows[1].innings_frac = ''
+        // prior 4 アウト → 入った回 2、4+3-1=6 → 終了回 3 → 関与 2
+        expect(wrapper.vm.computeResultCategory(1)).toBe('pending')
+        // 前の投手が 3 アウト(1.0回)なら prior 3 → 入った回 2、終了回 floor((3+3-1)/3)+1 = 2 → 関与 1
+        rows[0].innings_frac = ''
+        expect(wrapper.vm.computeResultCategory(1)).toBe('normal')
+      })
+
+      it('勝ち・引き分けは関与イニングに関わらず normal', async () => {
+        for (const result of ['win', 'draw'] as const) {
+          const wrapper = await mountRows([], result)
+          setStarter(wrapper, 9, '', true)
+          expect(wrapper.vm.computeResultCategory(0)).toBe('normal')
+        }
+      })
+    })
+  })
 })

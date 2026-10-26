@@ -169,7 +169,7 @@
 - **Controller**: `Api::V1::TeamSeasonsController#update_season_schedule`
 - **Path Params**: `:id` (SeasonSchedule ID)
 - **Body Params**: `season_schedule: { date_type }`
-- **Response**: SeasonSchedule JSON
+- **Response**: SeasonSchedule JSON + `warnings: string[]`。得点（score / opponent_score）を保存すると、その試合の先発の result_category を作り直す。作り直しが想定外のエラーで失敗しても得点は保存され（200）、`warnings` に「判定の作り直しに失敗した・後で作り直しが必要」を入れる（ログにも残る。rake `pitcher_game_states:recalculate_result_category` で作り直せる）
 
 ---
 
@@ -949,6 +949,9 @@
   }
   ```
   ※ `result_category` は省略可（自動計算）
+  ※ `schedule_date` は必須。無い・日付として読めない場合は 422（`errors` に schedule_date を示すメッセージ）。`bulk_save` も保存する登板がある時は同じ
+  ※ `consecutive_short_rest_count` はサーバが決める（先発: 直前の先発との中日数が中4日なら前回値+1、それ以外は 0。リリーフは 0）。送っても使わない
+  ※ 第二先発（オープナーの次の2番手）は `role: "starter"` で送る。KO・長イニング敗戦の判定と次回の休養表は先発として扱う
 - **Response**: `{ pitcher_appearance: {...}, warnings: [...] }` 201
 
 ---

@@ -288,6 +288,87 @@ RSpec.describe "Api::V1::PitcherGameStatesController", type: :request do
           entry = response.parsed_body.find { |e| e["player_id"] == pitcher_first.id }
           expect(entry["projected_status"]).to eq("full")
         end
+
+        # Test Basis: rulebook §8.3.1（KO・ノーゲーム中4日 / 長イニング敗戦中4日は「2回連続で発動」）/ cmd_1775 第2段 E8
+        it "E8: KO/中4日(2回連続) → injury_check、1回目は full" do
+          create_starter_pgs(schedule_date: "2026-03-05", result_category: "ko", consecutive: 1)
+          get_fatigue_summary(date: "2026-03-10")
+          entry = response.parsed_body.find { |e| e["player_id"] == pitcher_first.id }
+          expect(entry["projected_status"]).to eq("injury_check")
+        end
+
+        it "E8: ノーゲーム/中4日(2回連続) → injury_check" do
+          create_starter_pgs(schedule_date: "2026-03-05", result_category: "no_game", consecutive: 1)
+          get_fatigue_summary(date: "2026-03-10")
+          entry = response.parsed_body.find { |e| e["player_id"] == pitcher_first.id }
+          expect(entry["projected_status"]).to eq("injury_check")
+        end
+
+        it "E8: 長イニング敗戦/中4日(1回目・連続でない) → reduced_4、2回連続 → injury_check" do
+          create_starter_pgs(schedule_date: "2026-03-05", result_category: "long_loss", consecutive: 0)
+          get_fatigue_summary(date: "2026-03-10")
+          entry = response.parsed_body.find { |e| e["player_id"] == pitcher_first.id }
+          expect(entry["projected_status"]).to eq("reduced_4")
+
+          PitcherGameState.where(pitcher_id: pitcher_first.id).update_all(consecutive_short_rest_count: 1)
+          get_fatigue_summary(date: "2026-03-10")
+          entry = response.parsed_body.find { |e| e["player_id"] == pitcher_first.id }
+          expect(entry["projected_status"]).to eq("injury_check")
+        end
+
+        context "離脱を挟む先発（E4・E5）" do
+          let(:season_first) { create(:season, team: team) }
+
+          def add_absence(type, start:, days:)
+            create(:player_absence, team_membership: tm_first, season: season_first, absence_type: type,
+                                    start_date: Date.parse(start), duration: days, duration_unit: "days")
+          end
+
+          def first_entry
+            response.parsed_body.find { |e| e["player_id"] == pitcher_first.id }
+          end
+
+          it "E4: 出場停止を挟んでも中日数から引かない（実日数中4日 → reduced_3。引けば中1日で unavailable になる）" do
+            create_starter_pgs(schedule_date: "2026-03-05")
+            add_absence(:suspension, start: "2026-03-06", days: 3)
+            get_fatigue_summary(date: "2026-03-10")
+            expect(first_entry["rest_days"]).to eq(4)
+            expect(first_entry["projected_status"]).to eq("reduced_3")
+            expect(first_entry["is_unavailable"]).to be false
+          end
+
+          it "E4: 負傷を挟めば中日数から引く（実日数中4日 - 負傷3日 = 中1日 → unavailable）" do
+            create_starter_pgs(schedule_date: "2026-03-05")
+            add_absence(:injury, start: "2026-03-06", days: 3)
+            get_fatigue_summary(date: "2026-03-10")
+            expect(first_entry["rest_days"]).to eq(1)
+            expect(first_entry["projected_status"]).to eq("unavailable")
+          end
+
+          it "E5: 実日数中9日 + 負傷 7 日（控除後 2 日）はリセットせず unavailable" do
+            create_starter_pgs(schedule_date: "2026-03-01")
+            add_absence(:injury, start: "2026-03-02", days: 7)
+            get_fatigue_summary(date: "2026-03-11") # 実日数 9
+            expect(first_entry["rest_days"]).to eq(2)
+            expect(first_entry["projected_status"]).to eq("unavailable")
+          end
+
+          it "E5: 実日数中10日 + 負傷 7 日（控除後 3 日）はリセット成立で full（控除後の中3日 injury_check にならない）" do
+            create_starter_pgs(schedule_date: "2026-03-01")
+            add_absence(:injury, start: "2026-03-02", days: 7)
+            get_fatigue_summary(date: "2026-03-12") # 実日数 10
+            expect(first_entry["projected_status"]).to eq("full")
+            expect(first_entry["is_unavailable"]).to be false
+          end
+
+          it "E5（AMB-04 追補2）: リセット成立かつ控除後 0 日（負傷 10 日・実日数中10日）でも unavailable にしない = 登板可・full" do
+            create_starter_pgs(schedule_date: "2026-03-01")
+            add_absence(:injury, start: "2026-03-02", days: 10)
+            get_fatigue_summary(date: "2026-03-12")
+            expect(first_entry["is_unavailable"]).to be false
+            expect(first_entry["projected_status"]).to eq("full")
+          end
+        end
       end
 
       context "リリーフ投手 (projected_status 計算)" do
@@ -445,9 +526,9 @@ RSpec.describe "Api::V1::PitcherGameStatesController", type: :request do
         )
       end
 
-      def create_absence3(start_date:, duration:, duration_unit: "days")
+      def create_absence3(start_date:, duration:, duration_unit: "days", absence_type: :injury)
         create(:player_absence,
-          team_membership: tm3, season: season3,
+          team_membership: tm3, season: season3, absence_type: absence_type,
           start_date: start_date, duration: duration, duration_unit: duration_unit
         )
       end
@@ -504,43 +585,127 @@ RSpec.describe "Api::V1::PitcherGameStatesController", type: :request do
         end
       end
 
-      describe "中10日全快（PlayerAbsence > 10日で累積リセット・先発は rest_days nil）" do
-        it "リリーフ: 10日超の離脱後は累積イニングが 0 にリセットされる" do
-          # 3/1 登板(累積1)、3/2 から 14日離脱(end=3/16)、target 3/17
-          create_pgs3(schedule_date: "2026-03-01")
-          create_absence3(start_date: "2026-03-02", duration: 14)
+      # Test Basis: AMB-04 追補（2026-09-13）リセットは差し引かない実日数差 (next - last) - 1 >= 10。離脱の有無・長短は関与しない / cmd_1775 第2段 E5
+      describe "中10日リセット（実日数差。離脱は関与しない）" do
+        it "リリーフ: 実日数中10日で累積イニングが 0 にリセットされる（離脱 7 日では減衰凍結だけなら 1 残る）" do
+          # 3/1〜3/5 連日登板（累積5）、3/6 から 7 日離脱（〜3/12）。
+          # 3/16 は 3/5 から実日数中10日 → リセットで 0。リセットが無ければ 離脱控除後の中3日 で 5→4→3→1 = 1
+          5.times { |i| create_pgs3(schedule_date: "2026-03-0#{i + 1}") }
+          create_absence3(start_date: "2026-03-06", duration: 7)
 
-          get_states3(date: "2026-03-17")
+          get_states3(date: "2026-03-16")
           entry = response.parsed_body.find { |e| e["player_id"] == pitcher3.id }
           expect(entry["cumulative_innings"]).to eq(0)
         end
 
-        it "先発: 10日超の離脱後は rest_days が nil（全快）になる" do
-          # 3/1 登板(先発)、3/2 から 14日離脱(end=3/16)、target 3/17
+        it "リリーフ: 実日数中9日ではリセットしない（離脱控除後の中2日だけ減衰 5→4→3）" do
+          5.times { |i| create_pgs3(schedule_date: "2026-03-0#{i + 1}") }
+          create_absence3(start_date: "2026-03-06", duration: 7)
+
+          get_states3(date: "2026-03-15")
+          entry = response.parsed_body.find { |e| e["player_id"] == pitcher3.id }
+          expect(entry["cumulative_innings"]).to eq(3)
+        end
+
+        it "リリーフ: 離脱が無くても実日数中10日以上なら累積は 0（減衰の結果と一致する）" do
+          create_pgs3(schedule_date: "2026-03-01")
+          get_states3(date: "2026-03-20")
+          entry = response.parsed_body.find { |e| e["player_id"] == pitcher3.id }
+          expect(entry["cumulative_innings"]).to eq(0)
+        end
+
+        it "先発: 実日数中10日以上のとき、離脱を差し引かない実日数を rest_days として返す（離脱 14 日・実日数中15日）" do
           create_pgs3(schedule_date: "2026-03-01", role: "starter")
           create_absence3(start_date: "2026-03-02", duration: 14)
 
           get_states3(date: "2026-03-17")
           entry = response.parsed_body.find { |e| e["player_id"] == pitcher3.id }
-          expect(entry["rest_days"]).to be_nil
+          expect(entry["rest_days"]).to eq(15)
         end
 
-        it "ちょうど 10日の離脱は全快扱いにならない（> 10日のみ全快）" do
-          # 3/1 登板、3/2 から 10日離脱(end=3/12)、target 3/13
-          # (3/12 - 3/2 = 10日、> 10 ではないので全快にならない)
+        it "先発: 離脱がちょうど 10 日で実日数中10日 → リセット成立で実日数 10 を返す（控除後 0 日にしない）" do
           create_pgs3(schedule_date: "2026-03-01", role: "starter")
           create_absence3(start_date: "2026-03-02", duration: 10)
 
-          get_states3(date: "2026-03-13")
+          get_states3(date: "2026-03-12")
           entry = response.parsed_body.find { |e| e["player_id"] == pitcher3.id }
-          # rest_days は nil にならず離脱除外計算: raw=11, 離脱=10 → rest_days=1
-          expect(entry["rest_days"]).to eq(1)
+          expect(entry["rest_days"]).to eq(10)
+        end
+
+        it "先発: 実日数中9日では離脱 10 日を差し引く（控除後 -1 → 0 以下。リセットしない）" do
+          create_pgs3(schedule_date: "2026-03-01", role: "starter")
+          create_absence3(start_date: "2026-03-02", duration: 10)
+
+          get_states3(date: "2026-03-11")
+          entry = response.parsed_body.find { |e| e["player_id"] == pitcher3.id }
+          expect(entry["rest_days"]).to be <= 0
+        end
+
+        it "先発: 10日未満の離脱でも実日数中10日ならリセット（離脱 3 日）" do
+          create_pgs3(schedule_date: "2026-03-01", role: "starter")
+          create_absence3(start_date: "2026-03-03", duration: 3)
+
+          get_states3(date: "2026-03-12")
+          entry = response.parsed_body.find { |e| e["player_id"] == pitcher3.id }
+          expect(entry["rest_days"]).to eq(10)
         end
 
         it "離脱中（未終了）は全快判定しない（is_injured: true のまま）" do
           create_pgs3(schedule_date: "2026-03-01")
           # 14日離脱、まだ終わっていない (target が離脱中)
           create_absence3(start_date: "2026-03-02", duration: 14)
+
+          get_states3(date: "2026-03-10")
+          entry = response.parsed_body.find { |e| e["player_id"] == pitcher3.id }
+          expect(entry["is_injured"]).to be true
+        end
+      end
+
+      # Test Basis: AMB-04「出場停止と負傷は別枠」（2026-09-12 Operator 確定）。中日数控除・減衰凍結は負傷のみ / cmd_1775 第2段 E4
+      describe "出場停止・再調整は中日数の控除にも減衰凍結にも使わない" do
+        it "先発の rest_days: 出場停止 3 日は引かない（実日数中5日のまま。負傷なら 2）" do
+          create_pgs3(schedule_date: "2026-03-01", role: "starter")
+          create_absence3(start_date: "2026-03-02", duration: 3, absence_type: :suspension)
+
+          get_states3(date: "2026-03-07")
+          entry = response.parsed_body.find { |e| e["player_id"] == pitcher3.id }
+          expect(entry["rest_days"]).to eq(5)
+        end
+
+        it "先発の rest_days: 再調整も引かない" do
+          create_pgs3(schedule_date: "2026-03-01", role: "starter")
+          create_absence3(start_date: "2026-03-02", duration: 3, absence_type: :reconditioning)
+
+          get_states3(date: "2026-03-07")
+          entry = response.parsed_body.find { |e| e["player_id"] == pitcher3.id }
+          expect(entry["rest_days"]).to eq(5)
+        end
+
+        it "負傷と出場停止が重なっても引くのは負傷分だけ（実日数中6日 - 負傷2日 = 4）" do
+          create_pgs3(schedule_date: "2026-03-01", role: "starter")
+          create_absence3(start_date: "2026-03-02", duration: 2)
+          create_absence3(start_date: "2026-03-03", duration: 3, absence_type: :suspension)
+
+          get_states3(date: "2026-03-08")
+          entry = response.parsed_body.find { |e| e["player_id"] == pitcher3.id }
+          expect(entry["rest_days"]).to eq(4)
+        end
+
+        it "リリーフの累積イニング: 出場停止中も通常どおり減衰する（凍結しない）" do
+          # 3/1〜3/3 連日登板（累積3）、3/4〜3/7 出場停止、target 3/9。凍結しなければ 5 日分減衰して 0（負傷なら凍結して 1）
+          create_pgs3(schedule_date: "2026-03-01")
+          create_pgs3(schedule_date: "2026-03-02")
+          create_pgs3(schedule_date: "2026-03-03")
+          create_absence3(start_date: "2026-03-04", duration: 4, absence_type: :suspension)
+
+          get_states3(date: "2026-03-09")
+          entry = response.parsed_body.find { |e| e["player_id"] == pitcher3.id }
+          expect(entry["cumulative_innings"]).to eq(0)
+        end
+
+        it "出場可否の表示は今のまま: 出場停止中も is_injured: true（表示の範囲外）" do
+          create_pgs3(schedule_date: "2026-03-01")
+          create_absence3(start_date: "2026-03-02", duration: 14, absence_type: :suspension)
 
           get_states3(date: "2026-03-10")
           entry = response.parsed_body.find { |e| e["player_id"] == pitcher3.id }

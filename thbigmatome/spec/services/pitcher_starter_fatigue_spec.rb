@@ -133,6 +133,68 @@ RSpec.describe PitcherStarterFatigue, :pitcher_fatigue do
     end
   end
 
+  # Test Basis: cmd_1775 第2段 E4（AMB-04「出場停止と負傷は別枠」2026-09-12）/ E5（AMB-04 追補・追補2）
+  describe "離脱の種別と中10日の境（E4・E5）" do
+    let!(:pitcher_and_membership) { create_card_pitcher(team: team, starter_stamina: 7) }
+    let(:pitcher) { pitcher_and_membership[0] }
+    let(:membership) { pitcher_and_membership[1] }
+
+    def absence(type, start:, days:)
+      create(:player_absence, team_membership: membership, season: season, absence_type: type,
+                              start_date: Date.parse(start), duration: days, duration_unit: "days")
+    end
+
+    before { create_start(team: team, pitcher: pitcher, date: "2026-06-01", innings: 6.0) }
+
+    it "E4: 負傷は中日数から引く（実日数中6日 - 負傷2日 = 中4日 → -3 → 4）" do
+      absence(:injury, start: "2026-06-02", days: 2)
+      expect(fatigue(pitcher, "2026-06-08").fatigue_p).to eq(4)
+    end
+
+    it "E4: 出場停止は引かない（同じ日付で中6日のままカード値 7）" do
+      absence(:suspension, start: "2026-06-02", days: 2)
+      expect(fatigue(pitcher, "2026-06-08").fatigue_p).to eq(7)
+    end
+
+    it "E4: 再調整も引かない" do
+      absence(:reconditioning, start: "2026-06-02", days: 2)
+      expect(fatigue(pitcher, "2026-06-08").fatigue_p).to eq(7)
+    end
+
+    it "E4: 出場停止で実日数中3日が中1日に短くならない（引かないので中3日 P0。負傷なら判定保留になる日数）" do
+      absence(:suspension, start: "2026-06-02", days: 2)
+      expect(fatigue(pitcher, "2026-06-05").fatigue_p).to eq(0)
+    end
+
+    it "E5: 実日数中9日は離脱を引いた中日数で補正する（負傷6日 → 中3日 P0）" do
+      absence(:injury, start: "2026-06-02", days: 6)
+      expect(fatigue(pitcher, "2026-06-11").fatigue_p).to eq(0) # 実日数 9 日 - 6 = 中3日
+    end
+
+    it "E5: 実日数中10日ちょうどでリセット（離脱の種別・長さを問わずカード値）" do
+      absence(:injury, start: "2026-06-02", days: 6)
+      expect(fatigue(pitcher, "2026-06-12").fatigue_p).to eq(7) # 実日数 10 日 → リセット
+    end
+
+    it "E5: 離脱が 10 日未満でも、実日数中10日ならリセットする（旧: 10日超の離脱が条件だった）" do
+      absence(:injury, start: "2026-06-03", days: 3)
+      expect(fatigue(pitcher, "2026-06-12").fatigue_p).to eq(7)
+    end
+
+    it "E5: 離脱が10日ちょうどで控除後 0 日でも、実日数中10日ならリセット成立（AMB-04 追補2。登板可・カード値）" do
+      absence(:injury, start: "2026-06-02", days: 10)
+      res = fatigue(pitcher, "2026-06-12")
+      expect(res.pending).to be_nil
+      expect(res.fatigue_p).to eq(7)
+    end
+
+    it "E5: 実日数中9日で離脱 10日は控除後 0 日 → 登板不可（リセット不成立）" do
+      absence(:injury, start: "2026-06-02", days: 10)
+      res = fatigue(pitcher, "2026-06-11")
+      expect(res.pending).to eq(:rest_too_short)
+    end
+  end
+
   describe "前回がリリーフ/オープナー（§8.3.4。Operator 裁定追加 2026-10-25）" do
     it "通常選手は通常の先発の表（P6・中4日 -3 → 3）" do
       pitcher, = create_card_pitcher(team: team, starter_stamina: 6)

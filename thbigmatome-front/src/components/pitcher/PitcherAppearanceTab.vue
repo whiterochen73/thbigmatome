@@ -442,7 +442,6 @@ function createEmptyRow(role: PitcherRole): PitcherRow {
     is_opener: false,
     is_second_starter: false,
     no_out_exit: false,
-    consecutive_short_rest_count: 0,
     pre_injury_days_excluded: 0,
     appearance_order: 0,
     innings_int: null,
@@ -506,33 +505,67 @@ function getPitcherPreGameInfo(pitcherId: number | null): string {
 // 長イニング敗戦は疲労P（カード + 試合前補正）が要るため、画面では計算せずサーバの値を表示する。
 const savedResultCategories = ref<Record<number, string | null>>({})
 
+// 行 idx の投手の扱い。2番手で「第二先発」を選んだ行は先発として扱う（rulebook §8.4.2）。
+// 保存する role もこれを使い、サーバ側の KO・長イニング敗戦の判定と次回の休養表が先発のものになる（E6）。
+function effectiveRole(idx: number): PitcherRole {
+  const row = pitcherRows.value[idx]
+  return idx === 1 && row.is_second_starter ? 'starter' : row.role
+}
+
+// 野球表記の投球回（7.1 = 7回1/3）→ アウト数（サーバ PitcherInnings.outs_from_innings と同じ）
+function outsFromInnings(ip: number | null): number {
+  const v = ip ?? 0
+  return Math.floor(v) * 3 + (Math.round(v * 10) % 10)
+}
+
+// 関与イニング数（サーバ PitcherInnings.involvement と同じ・§8.2.4）。
+// 同じ試合で自分より前に投げた投手のアウト数から、入った回を求める。0アウト降板は +1。
+function involvementOf(idx: number): number {
+  const priorOuts = pitcherRows.value
+    .slice(0, idx)
+    .filter((r) => !!r.pitcher_id)
+    .reduce((sum, r) => sum + outsFromInnings(computeIPFromRow(r)), 0)
+  const row = pitcherRows.value[idx]
+  const myOuts = outsFromInnings(computeIPFromRow(row))
+  if (myOuts === 0) return 1
+  const startInning = Math.floor(priorOuts / 3) + 1
+  const endInning = Math.floor((priorOuts + myOuts - 1) / 3) + 1
+  return endInning - startInning + 1 + (row.no_out_exit ? 1 : 0)
+}
+
 function computeResultCategory(idx: number): string | null {
   const row = pitcherRows.value[idx]
   if (props.gameResult === 'no_game') return 'no_game'
-  if (row.role !== 'starter') return 'normal'
+  if (effectiveRole(idx) !== 'starter') return 'normal'
   // 保存済みの先発はサーバの値を表示する（null は判定保留）
   if (row.pitcher_id && row.pitcher_id in savedResultCategories.value) {
     return savedResultCategories.value[row.pitcher_id]
   }
   // 未保存: サーバと同じ条件で判定できる範囲だけ表示する。
   // KO は実際に投げたイニングで判定（0アウト降板の +1 は掛けない）。負け試合かつ decision=L が必要。
-  // 0.0 回でも 0アウト降板（no_out_exit）なら「登板した」ので KO の対象（AMB-20 追補）。5.0 回以上は KO にならない。
+  // 0.0 回でも no_out_exit（1つもアウトを取れず降板）なら「登板した」ので KO の対象（AMB-20 追補）。5.0 回以上は KO にならない。
   const innings = computeIPFromRow(row) ?? 0
   const hasSuccessor = pitcherRows.value.length > 1
-  if ((innings > 0 || row.no_out_exit) && innings < 5 && hasSuccessor && props.gameResult === 'lose' && row.decision === 'L') {
+  if (
+    (innings > 0 || row.no_out_exit) &&
+    innings < 5 &&
+    hasSuccessor &&
+    props.gameResult === 'lose' &&
+    row.decision === 'L'
+  ) {
     return 'ko'
   }
   if (props.gameResult !== 'lose') return 'normal'
-  // 負け試合で関与イニング 2 以上は、疲労P（カード + 試合前補正）次第で長イニング敗戦になりうる → 保存後に確定
-  return innings > 1 ? 'pending' : 'normal'
+  // 負け試合で関与イニング（§8.4.2 の第二先発は前の投手のアウト数から入った回を求める。0アウト降板は +1）が 2 以上は、
+  // 疲労P（カード + 試合前補正）次第で長イニング敗戦になりうる → 保存後に確定。1 以下は疲労P に依らず normal（サーバと同じ）
+  return involvementOf(idx) > 1 ? 'pending' : 'normal'
 }
 
 function getDecisionChipOptions(idx: number) {
   const hasW = pitcherRows.value.some((r, i) => i !== idx && r.decision === 'W')
   const hasL = pitcherRows.value.some((r, i) => i !== idx && r.decision === 'L')
   const hasS = pitcherRows.value.some((r, i) => i !== idx && r.decision === 'S')
-  const row = pitcherRows.value[idx]
-  const isStarter = row.role === 'starter'
+  const isStarter = effectiveRole(idx) === 'starter'
   const isLastPitcher = idx === pitcherRows.value.length - 1
   const result = props.gameResult
   return [
@@ -740,9 +773,9 @@ async function fetchPitchersAndStates(options: FetchPitchersOptions = {}) {
           fatigue_p_used: app.fatigue_p_used ?? 0,
           decision: (app.decision as PitcherDecision) ?? null,
           is_opener: app.is_opener ?? false,
-          is_second_starter: false,
+          // 2番手に先発(role=starter)で保存された行は第二先発として復元する（E6）
+          is_second_starter: idx === 1 && app.role === 'starter',
           no_out_exit: app.no_out_exit ?? false,
-          consecutive_short_rest_count: app.consecutive_short_rest_count ?? 0,
           pre_injury_days_excluded: app.pre_injury_days_excluded ?? 0,
           appearance_order: idx,
           innings_int,
@@ -786,18 +819,20 @@ async function saveAll() {
   warnings.value = []
   savedMessage.value = ''
 
+  // role は effectiveRole（第二先発は先発）で送る。
+  // consecutive_short_rest_count は送らない（サーバが直前の先発との中日数から決める。画面の 0 で上書きしない・E3）。
   const appearances = pitcherRows.value
-    .filter((row) => !!row.pitcher_id)
-    .map((row, idx) => ({
+    .map((row, rowIdx) => ({ row, role: effectiveRole(rowIdx) }))
+    .filter(({ row }) => !!row.pitcher_id)
+    .map(({ row, role }, idx) => ({
       pitcher_id: row.pitcher_id,
-      role: row.role,
+      role,
       innings_pitched: computeIPFromRow(row),
       no_out_exit: row.no_out_exit,
       earned_runs: row.earned_runs,
       fatigue_p_used: row.fatigue_p_used,
       decision: row.decision,
       is_opener: row.is_opener,
-      consecutive_short_rest_count: row.consecutive_short_rest_count,
       pre_injury_days_excluded: row.pre_injury_days_excluded,
       appearance_order: idx,
     }))

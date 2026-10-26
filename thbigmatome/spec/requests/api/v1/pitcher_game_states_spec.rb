@@ -816,6 +816,45 @@ RSpec.describe "Api::V1::PitcherGameStatesController", type: :request do
           end
         end
 
+        # Test Basis: cmd_1778 / Operator 2026-10-27「疲労P欄はカード記載の疲労Pを入れる」。
+        #   カードの表記は thbig-rules/sources/card-structure.md §3（表示用の組み立ては画面側）。ここは DB の値をそのまま返す
+        describe "カードの疲労P（starter_stamina / relief_stamina / is_relief_only）を返す" do
+          def card_values(player)
+            e = entry_for(player, "2026-03-10")
+            e.slice("starter_stamina", "relief_stamina", "is_relief_only")
+          end
+
+          it "スラッシュ選手（6/1）: 両方の数値を返し、is_relief_only は false" do
+            player, = make_pitcher(starter_stamina: 6, relief_stamina: 1)
+            expect(card_values(player)).to eq({ "starter_stamina" => 6, "relief_stamina" => 1, "is_relief_only" => false })
+          end
+
+          it "リリーフ専任（1R）: relief_stamina と is_relief_only = true、starter_stamina は null" do
+            player, = make_pitcher(starter_stamina: nil, relief_stamina: 1, is_relief_only: true)
+            expect(card_values(player)).to eq({ "starter_stamina" => nil, "relief_stamina" => 1, "is_relief_only" => true })
+          end
+
+          it "先発のみ（6）: relief_stamina は null" do
+            player, = make_pitcher(starter_stamina: 6, relief_stamina: nil)
+            expect(card_values(player)).to eq({ "starter_stamina" => 6, "relief_stamina" => nil, "is_relief_only" => false })
+          end
+
+          it "is_relief_only が DB で NULL のカードは false で返す（真偽値の三値を画面へ流さない）" do
+            player, = make_pitcher(starter_stamina: 6, relief_stamina: nil)
+            PlayerCard.where(player_id: player.id).update_all(is_relief_only: nil)
+            expect(card_values(player)["is_relief_only"]).to be false
+          end
+
+          it "既存のキーは変わらない（projected_status / as_starter / as_reliever / as_opener / cumulative_innings / rest_days を残す）" do
+            player, = make_pitcher(starter_stamina: 6, relief_stamina: 1)
+            e = entry_for(player, "2026-03-10")
+            expect(e.keys).to include("player_id", "player_name", "last_role", "rest_days", "cumulative_innings",
+                                      "last_result_category", "is_injured", "is_unavailable", "projected_status",
+                                      "as_starter", "as_reliever", "as_opener", "as_starter_omitted_reason",
+                                      "as_reliever_omitted_reason", "as_opener_omitted_reason", "opener_capable_source")
+          end
+        end
+
         # Test Basis: 台帳 D-11 再確認（2026-10-26 Operator）「ノーゲームは負傷と登板の疲労計算だけはする」。
         #   ノーゲームの日の登板は、休養日数・累積イニング・先発→リリーフの表のいずれからも外れない（勝敗・成績だけが対象外）
         describe "ノーゲームの日の登板も疲労・累積の計算に入る（D-11）" do

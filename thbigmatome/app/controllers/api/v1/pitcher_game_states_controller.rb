@@ -169,7 +169,11 @@ module Api
             as_reliever_omitted_reason: reliever_omitted,
             as_opener_omitted_reason: as_opener ? nil : "no_opener_ability",
             # as_opener の出し分けの根拠。fallback_all_relievers = オープナー可のデータ未取込（リリーフで投げられる投手全員）/ card_ability = カードの記載どおり
-            opener_capable_source: opener_capable_source
+            opener_capable_source: opener_capable_source,
+            # カード記載の疲労P（画面の「カード疲労P」列。6/1・1R・6 の組み立ては画面側）。試合前補正を掛けた計算値とは別物
+            starter_stamina: card&.starter_stamina,
+            relief_stamina: card&.relief_stamina,
+            is_relief_only: card&.is_relief_only || false
           }
         end
 

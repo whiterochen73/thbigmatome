@@ -978,6 +978,7 @@
   - `notes`（`as_reliever`）: `previous_day_one_inning_only`（累積4以上で前日登板: 前日の負傷チェックに合格していれば1イニング限定で登板可。合否は記録しない。`as_opener` にも同条件で付く）
   - `notes`（`as_opener`、負傷チェックの理由。§8.4.3）: `opener_check_consecutive`（中2日以内の連続オープナー登板 = 前回の登板が `opener` で、離脱を差し引いた中日数が 2 以下）/ `opener_check_previous_day`（前日登板 = 離脱を差し引かない実日数が 0）/ `opener_check_cumulative`（累積1以上で登板。休養日数の上限を掛けた後の累積で判定）
   - 省略の理由: `as_starter_omitted_reason` は `relief_only_card`（カードがリリーフ専門）/ `relief_only_contract`（救援専任契約 = `team_memberships.selected_cost_type = relief_only_cost`。先発もできる契約に変えると出る）、`as_reliever_omitted_reason` は `no_relief_stamina`（リリーフ向けの疲労Pをカードに持たない先発）、`as_opener_omitted_reason` は `no_opener_ability`（「オープナー可」アビリティを持たない）
+  - `starter_stamina` / `relief_stamina` / `is_relief_only`: カードに記載の疲労P（`player_cards` の値そのまま。`is_relief_only` は NULL を `false` で返す）。画面の「カード疲労P」列が「6/1」「1R」「6」の表記に組み立てる（thbig-rules `sources/card-structure.md` §3）。試合前補正を掛けた計算値ではない
   - ルール: rulebook 08 §8.3.1〜§8.3.4・§8.4.3・§8.7.2、台帳 AMB-18 追補 / AMB-19 追補 / AMB-21 / AMB-22
 
 ---

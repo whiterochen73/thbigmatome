@@ -29,8 +29,7 @@
               <th style="width: 32px"></th>
               <th>選手名</th>
               <th class="text-center">中日数</th>
-              <th class="text-center">累積</th>
-              <th class="text-center">疲労P</th>
+              <th class="text-center">カード疲労P</th>
               <th class="text-center">先発なら</th>
               <th class="text-center">リリーフなら</th>
               <th
@@ -63,8 +62,9 @@
                 />
               </td>
               <td class="text-center">{{ pitcher.rest_days != null ? pitcher.rest_days : '-' }}</td>
-              <td class="text-center text-grey">-</td>
-              <td class="text-center">{{ starterFatiguePLabel(pitcher) }}</td>
+              <td class="text-center" :data-testid="`card-fatigue-p-${pitcher.player_id}`">
+                {{ cardFatiguePLabel(pitcher) }}
+              </td>
               <td class="text-center">
                 <PitcherRoleStateCell
                   :state="pitcher.as_starter"
@@ -85,7 +85,7 @@
               </td>
             </tr>
             <tr v-if="orderedStarters.length === 0">
-              <td colspan="8" class="text-center text-grey text-caption py-2">先発投手なし</td>
+              <td colspan="7" class="text-center text-grey text-caption py-2">先発投手なし</td>
             </tr>
           </tbody>
         </v-table>
@@ -108,9 +108,8 @@
             <tr>
               <th style="width: 32px"></th>
               <th>選手名</th>
-              <th class="text-center">中日数</th>
               <th class="text-center">累積</th>
-              <th class="text-center">疲労P</th>
+              <th class="text-center">カード疲労P</th>
               <th class="text-center">先発なら</th>
               <th class="text-center">リリーフなら</th>
               <th
@@ -142,11 +141,12 @@
                   card-type="pitcher"
                 />
               </td>
-              <td class="text-center">{{ pitcher.rest_days != null ? pitcher.rest_days : '-' }}</td>
               <td class="text-center">
                 {{ pitcher.cumulative_innings != null ? pitcher.cumulative_innings : '-' }}
               </td>
-              <td class="text-center text-grey">-</td>
+              <td class="text-center" :data-testid="`card-fatigue-p-${pitcher.player_id}`">
+                {{ cardFatiguePLabel(pitcher) }}
+              </td>
               <td class="text-center">
                 <PitcherRoleStateCell
                   :state="pitcher.as_starter"
@@ -167,7 +167,7 @@
               </td>
             </tr>
             <tr v-if="orderedRelievers.length === 0">
-              <td colspan="8" class="text-center text-grey text-caption py-2">リリーフ投手なし</td>
+              <td colspan="7" class="text-center text-grey text-caption py-2">リリーフ投手なし</td>
             </tr>
           </tbody>
         </v-table>
@@ -181,14 +181,15 @@ import { ref, computed, onMounted, watch } from 'vue'
 import axios from 'axios'
 import PlayerNameLink from '@/components/shared/PlayerNameLink.vue'
 import PitcherRoleStateCell from './PitcherRoleStateCell.vue'
-import { openerHeaderTitle } from './pitcherRoleState'
+import { cardFatiguePLabel, openerHeaderTitle } from './pitcherRoleState'
 import type {
+  CardFatigueP,
   OpenerCapableSource,
   PitcherRoleOmittedReason,
   PitcherRoleState,
 } from './pitcherRoleState'
 
-interface PitcherStatus {
+interface PitcherStatus extends CardFatigueP {
   player_id: number
   player_name: string
   last_role: string | null
@@ -319,15 +320,6 @@ watch(
   () => [props.teamId, props.scheduleDate],
   () => fetchPitcherStatuses(),
 )
-
-function starterFatiguePLabel(pitcher: PitcherStatus): string {
-  const s = pitcher.projected_status
-  if (s.startsWith('reduced_')) {
-    const n = s.replace('reduced_', '')
-    return `-${n}P`
-  }
-  return '-'
-}
 
 // Drag & Drop
 function onDragStart(idx: number, section: 'starters' | 'relievers') {

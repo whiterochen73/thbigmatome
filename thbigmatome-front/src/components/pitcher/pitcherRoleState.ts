@@ -64,3 +64,24 @@ export function openerHeaderTitle(
     ? OPENER_FALLBACK_NOTICE
     : undefined
 }
+
+// カードに記載された疲労P（starter_stamina / relief_stamina / is_relief_only）。試合前補正を掛けた計算値ではない。
+export interface CardFatigueP {
+  starter_stamina?: number | null
+  relief_stamina?: number | null
+  is_relief_only?: boolean | null
+}
+
+// カードの表記に合わせた疲労Pの文字列（thbig-rules/sources/card-structure.md §3）
+//   リリーフ専任（R 付き）: 「1R」 / 先発・リリーフ両用: 「6/1」 / 先発のみ: 「6」 / リリーフ値のみ（R なし）: 「2」
+// 先発の疲労P は 4〜9 が先発の記載。3 以下が starter_stamina に入っていてもカードの記載は単独のリリーフ値なので、先発側には出さない。
+export function cardFatiguePLabel(card: CardFatigueP): string {
+  const starter =
+    card.starter_stamina != null && card.starter_stamina >= 4 ? card.starter_stamina : null
+  const relief = card.relief_stamina ?? null
+  if (card.is_relief_only) return relief != null ? `${relief}R` : 'R'
+  if (starter != null && relief != null) return `${starter}/${relief}`
+  if (starter != null) return `${starter}`
+  if (relief != null) return `${relief}`
+  return '-'
+}

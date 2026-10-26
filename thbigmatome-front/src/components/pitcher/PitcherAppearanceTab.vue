@@ -264,10 +264,13 @@
           <tr>
             <th>投手名</th>
             <th>区分</th>
-            <th>中日数 / 累積IP</th>
+            <th>中日数 / 累積</th>
             <th>負傷</th>
             <th>先発なら</th>
             <th>リリーフなら</th>
+            <th data-testid="opener-column-header" :title="openerHeaderTitle(fatigueSummary)">
+              オープナーなら
+            </th>
           </tr>
         </thead>
         <tbody>
@@ -294,6 +297,12 @@
                 :test-id="`as-reliever-${row.player_id}`"
               />
             </td>
+            <td>
+              <PitcherRoleStateCell
+                :state="row.as_opener"
+                :test-id="`as-opener-${row.player_id}`"
+              />
+            </td>
           </tr>
         </tbody>
       </v-table>
@@ -307,7 +316,12 @@ import { ref, computed, onMounted } from 'vue'
 import axios, { type AxiosResponse } from 'axios'
 import PlayerNameLink from '@/components/shared/PlayerNameLink.vue'
 import PitcherRoleStateCell from './PitcherRoleStateCell.vue'
-import type { PitcherRoleOmittedReason, PitcherRoleState } from './pitcherRoleState'
+import { openerHeaderTitle } from './pitcherRoleState'
+import type {
+  OpenerCapableSource,
+  PitcherRoleOmittedReason,
+  PitcherRoleState,
+} from './pitcherRoleState'
 import type {
   PitcherAppearanceInput,
   PitcherAppearanceRecord,
@@ -379,11 +393,16 @@ interface FatigueSummaryRow {
   is_unavailable: boolean
   // 前回と同じ役割で続ける場合の状態（旧来の値）。役割別の状態は as_starter / as_reliever
   projected_status: string
-  // 投手ごとの「先発なら」「リリーフなら」。省略する投手は null（理由は *_omitted_reason）
+  // 投手ごとの「先発なら」「リリーフなら」「オープナーなら」。省略する投手は null（理由は *_omitted_reason）
   as_starter?: PitcherRoleState | null
   as_reliever?: PitcherRoleState | null
+  // 「オープナー可」アビリティを持つ投手だけ値がある（持たない投手は null）
+  as_opener?: PitcherRoleState | null
   as_starter_omitted_reason?: PitcherRoleOmittedReason
   as_reliever_omitted_reason?: PitcherRoleOmittedReason
+  as_opener_omitted_reason?: PitcherRoleOmittedReason
+  // as_opener の出し分けの根拠（fallback_all_relievers = データ未取込のためリリーフ可能な投手全員）
+  opener_capable_source?: OpenerCapableSource
 }
 
 // ─────────────────────────────────────────

@@ -39,8 +39,10 @@ const mockPitchers = [
     projected_status: 'full',
     as_starter: { status: 'full', notes: [] },
     as_reliever: { status: 'full', notes: [] },
+    as_opener: null,
     as_starter_omitted_reason: null,
     as_reliever_omitted_reason: null,
+    as_opener_omitted_reason: 'no_opener_ability',
   },
   {
     player_id: 2,
@@ -53,8 +55,10 @@ const mockPitchers = [
     projected_status: 'injury_check',
     as_starter: { status: 'injury_check', notes: [] },
     as_reliever: { status: 'reduced_0', notes: [] },
+    as_opener: null,
     as_starter_omitted_reason: null,
     as_reliever_omitted_reason: null,
+    as_opener_omitted_reason: 'no_opener_ability',
   },
   {
     player_id: 3,
@@ -66,9 +70,15 @@ const mockPitchers = [
     is_unavailable: false,
     projected_status: 'fatigued_start',
     as_starter: { status: 'unavailable', notes: [] },
-    as_reliever: { status: 'fatigued_start', notes: ['opener_injury_check'] },
+    as_reliever: { status: 'fatigued_start', notes: [] },
+    // オープナー可（アビリティあり）の投手だけ「オープナーなら」を持つ
+    as_opener: {
+      status: 'fatigued_start',
+      notes: ['opener_check_consecutive', 'opener_check_cumulative'],
+    },
     as_starter_omitted_reason: null,
     as_reliever_omitted_reason: null,
+    as_opener_omitted_reason: null,
   },
   {
     player_id: 4,
@@ -81,8 +91,10 @@ const mockPitchers = [
     projected_status: 'injured',
     as_starter: { status: 'injured', notes: [] },
     as_reliever: { status: 'injured', notes: [] },
+    as_opener: null,
     as_starter_omitted_reason: null,
     as_reliever_omitted_reason: null,
+    as_opener_omitted_reason: 'no_opener_ability',
   },
 ]
 
@@ -170,7 +182,89 @@ describe('PitcherStatusTab', () => {
     const cell = wrapper.find('[data-testid="as-reliever-3"]')
     expect(cell.text()).toContain('🔥 最初から疲労')
     expect(cell.text()).not.toContain('⚡ P0')
-    expect(cell.text()).toContain('オープナーなら')
+    // オープナーの負傷チェックの理由は「リリーフなら」ではなく「オープナーなら」列に出る
+    expect(cell.text()).not.toContain('オープナー')
+    expect(cell.text()).not.toContain('負傷チェック')
+  })
+
+  // Operator 2026-10-27: 「リリーフなら」の隣に「オープナーなら」列を 1 つ増やす（先発・リリーフ両方の表）
+  it('「オープナーなら」列見出しが先発・リリーフ両方の表に 1 つずつ、「リリーフなら」の次に出る', async () => {
+    const wrapper = mountComponent()
+    await flushPromises()
+    const tables = wrapper.findAll('table')
+    expect(tables).toHaveLength(2)
+    for (const table of tables) {
+      const headers = table.findAll('th').map((th) => th.text())
+      expect(headers.filter((h) => h === 'オープナーなら')).toHaveLength(1)
+      expect(headers.indexOf('オープナーなら')).toBe(headers.indexOf('リリーフなら') + 1)
+    }
+  })
+
+  it('オープナー可の投手（チルノ）には状態と負傷チェックの理由を出す', async () => {
+    const wrapper = mountComponent()
+    await flushPromises()
+    const cell = wrapper.find('[data-testid="as-opener-3"]')
+    expect(cell.text()).toContain('🔥 最初から疲労')
+    expect(cell.text()).toContain('中2日以内の連続オープナー登板のため負傷チェック')
+    expect(cell.text()).toContain('累積1以上のため負傷チェック')
+  })
+
+  it('オープナー可でない投手は「—」だけでバッジを出さない', async () => {
+    const wrapper = mountComponent()
+    await flushPromises()
+    for (const id of [1, 2, 4]) {
+      const cell = wrapper.find(`[data-testid="as-opener-${id}"]`)
+      expect(cell.text()).toBe('—')
+      expect(cell.findComponent({ name: 'VChip' }).exists()).toBe(false)
+    }
+  })
+
+  // Operator 2026-10-27: オープナー可のデータが未取込の間は、リリーフ可能な投手すべてに出す。その旨を見出しのツールチップで伝える
+  describe('「オープナーなら」列: フォールバック中の注記', () => {
+    const withSource = (source: string | undefined) =>
+      mockPitchers.map((p) => ({ ...p, opener_capable_source: source }))
+    const NOTICE = 'オープナー可のデータ未取込のため、リリーフ可能な投手すべてに表示'
+
+    it('フォールバック中（fallback_all_relievers）は、見出しのツールチップで未取込を伝える（先発・リリーフ両方の表）', async () => {
+      vi.mocked(axios.get).mockResolvedValue({ data: withSource('fallback_all_relievers') })
+      const wrapper = mountComponent()
+      await flushPromises()
+      const heads = wrapper.findAll('[data-testid="opener-column-header"]')
+      expect(heads).toHaveLength(2)
+      for (const head of heads) {
+        expect(head.attributes('title')).toBe(NOTICE)
+        expect(head.text()).toBe('オープナーなら')
+      }
+    })
+
+    it('カードの記載どおり（card_ability）に切り替わったらツールチップを出さない', async () => {
+      vi.mocked(axios.get).mockResolvedValue({ data: withSource('card_ability') })
+      const wrapper = mountComponent()
+      await flushPromises()
+      for (const head of wrapper.findAll('[data-testid="opener-column-header"]')) {
+        expect(head.attributes('title')).toBeUndefined()
+      }
+    })
+
+    it('opener_capable_source が無い応答（旧 API）でもツールチップを出さない', async () => {
+      vi.mocked(axios.get).mockResolvedValue({ data: withSource(undefined) })
+      const wrapper = mountComponent()
+      await flushPromises()
+      for (const head of wrapper.findAll('[data-testid="opener-column-header"]')) {
+        expect(head.attributes('title')).toBeUndefined()
+      }
+    })
+  })
+
+  // Operator 2026-10-27: 累積イニングは単位を付けない。列見出しは「累積」（「累積IP」ではない）
+  it('累積の列見出しは「累積」で、「IP」の単位を付けない（先発・リリーフ両方の表）', async () => {
+    const wrapper = mountComponent()
+    await flushPromises()
+    for (const table of wrapper.findAll('table')) {
+      const headers = table.findAll('th').map((th) => th.text())
+      expect(headers).toContain('累積')
+      expect(table.text()).not.toContain('IP')
+    }
   })
 
   it('前回リリーフの中1日は「先発なら」が不可', async () => {
@@ -195,15 +289,16 @@ describe('PitcherStatusTab', () => {
     await flushPromises()
     expect(wrapper.find('[data-testid="as-starter-1"]').text()).toBe('—')
     expect(wrapper.find('[data-testid="as-reliever-1"]').text()).toBe('—')
+    expect(wrapper.find('[data-testid="as-opener-1"]').text()).toBe('—')
     expect(
       wrapper.find('[data-testid="as-starter-1"]').findComponent({ name: 'VChip' }).exists(),
     ).toBe(false)
   })
 
-  it('先発投手の累積IPは"-"が表示されること', async () => {
+  it('先発投手の累積は"-"が表示されること', async () => {
     const wrapper = mountComponent()
     await flushPromises()
-    // starters table: 累積IP列は"-"
+    // starters table: 累積列は"-"
     const starterSection = wrapper.findAll('v-table, table').at(0)
     expect(starterSection?.text()).toContain('-')
   })

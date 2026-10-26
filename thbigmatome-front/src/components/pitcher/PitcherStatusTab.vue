@@ -29,10 +29,17 @@
               <th style="width: 32px"></th>
               <th>選手名</th>
               <th class="text-center">中日数</th>
-              <th class="text-center">累積IP</th>
+              <th class="text-center">累積</th>
               <th class="text-center">疲労P</th>
               <th class="text-center">先発なら</th>
               <th class="text-center">リリーフなら</th>
+              <th
+                class="text-center"
+                data-testid="opener-column-header"
+                :title="openerHeaderTitle(pitchers)"
+              >
+                オープナーなら
+              </th>
             </tr>
           </thead>
           <tbody>
@@ -70,9 +77,15 @@
                   :test-id="`as-reliever-${pitcher.player_id}`"
                 />
               </td>
+              <td class="text-center">
+                <PitcherRoleStateCell
+                  :state="pitcher.as_opener"
+                  :test-id="`as-opener-${pitcher.player_id}`"
+                />
+              </td>
             </tr>
             <tr v-if="orderedStarters.length === 0">
-              <td colspan="7" class="text-center text-grey text-caption py-2">先発投手なし</td>
+              <td colspan="8" class="text-center text-grey text-caption py-2">先発投手なし</td>
             </tr>
           </tbody>
         </v-table>
@@ -96,10 +109,17 @@
               <th style="width: 32px"></th>
               <th>選手名</th>
               <th class="text-center">中日数</th>
-              <th class="text-center">累積IP</th>
+              <th class="text-center">累積</th>
               <th class="text-center">疲労P</th>
               <th class="text-center">先発なら</th>
               <th class="text-center">リリーフなら</th>
+              <th
+                class="text-center"
+                data-testid="opener-column-header"
+                :title="openerHeaderTitle(pitchers)"
+              >
+                オープナーなら
+              </th>
             </tr>
           </thead>
           <tbody>
@@ -139,9 +159,15 @@
                   :test-id="`as-reliever-${pitcher.player_id}`"
                 />
               </td>
+              <td class="text-center">
+                <PitcherRoleStateCell
+                  :state="pitcher.as_opener"
+                  :test-id="`as-opener-${pitcher.player_id}`"
+                />
+              </td>
             </tr>
             <tr v-if="orderedRelievers.length === 0">
-              <td colspan="7" class="text-center text-grey text-caption py-2">リリーフ投手なし</td>
+              <td colspan="8" class="text-center text-grey text-caption py-2">リリーフ投手なし</td>
             </tr>
           </tbody>
         </v-table>
@@ -155,7 +181,12 @@ import { ref, computed, onMounted, watch } from 'vue'
 import axios from 'axios'
 import PlayerNameLink from '@/components/shared/PlayerNameLink.vue'
 import PitcherRoleStateCell from './PitcherRoleStateCell.vue'
-import type { PitcherRoleOmittedReason, PitcherRoleState } from './pitcherRoleState'
+import { openerHeaderTitle } from './pitcherRoleState'
+import type {
+  OpenerCapableSource,
+  PitcherRoleOmittedReason,
+  PitcherRoleState,
+} from './pitcherRoleState'
 
 interface PitcherStatus {
   player_id: number
@@ -167,11 +198,16 @@ interface PitcherStatus {
   is_unavailable: boolean
   // 前回と同じ役割で続ける場合の状態（旧来の値）。役割別の状態は as_starter / as_reliever
   projected_status: string
-  // 投手ごとの「先発なら」「リリーフなら」。省略する投手は null（理由は *_omitted_reason）
+  // 投手ごとの「先発なら」「リリーフなら」「オープナーなら」。省略する投手は null（理由は *_omitted_reason）
   as_starter?: PitcherRoleState | null
   as_reliever?: PitcherRoleState | null
+  // 「オープナー可」アビリティを持つ投手だけ値がある（持たない投手は null）
+  as_opener?: PitcherRoleState | null
   as_starter_omitted_reason?: PitcherRoleOmittedReason
   as_reliever_omitted_reason?: PitcherRoleOmittedReason
+  as_opener_omitted_reason?: PitcherRoleOmittedReason
+  // as_opener の出し分けの根拠（fallback_all_relievers = データ未取込のためリリーフ可能な投手全員）
+  opener_capable_source?: OpenerCapableSource
 }
 
 interface LocalStorageOrder {

@@ -4,7 +4,7 @@ import { createVuetify } from 'vuetify'
 import * as components from 'vuetify/components'
 import * as directives from 'vuetify/directives'
 import PitcherRoleStateCell from '../PitcherRoleStateCell.vue'
-import { roleStatusColor, roleStatusLabel } from '../pitcherRoleState'
+import { roleNoteLabel, roleStatusColor, roleStatusLabel } from '../pitcherRoleState'
 
 const vuetify = createVuetify({ components, directives })
 
@@ -55,16 +55,40 @@ describe('PitcherRoleStateCell', () => {
     expect(wrapper.find('[data-testid="cell"]').text()).toContain('🔥 最初から疲労')
   })
 
-  it('オープナーの負傷チェックの注記を出す（リリーフなら側）', () => {
-    const wrapper = mountCell({ status: 'reduced_0', notes: ['opener_injury_check'] })
-    expect(wrapper.text()).toContain('オープナーなら')
-    expect(wrapper.text()).toContain('負傷チェック')
+  // Operator 2026-10-27: オープナーの負傷チェックは「オープナーなら」列に理由ごとに出す。累積イニングは単位を付けない
+  it('オープナーの負傷チェックの理由 3 つを、それぞれの文言で出す', () => {
+    expect(roleNoteLabel('opener_check_consecutive')).toBe(
+      '中2日以内の連続オープナー登板のため負傷チェック',
+    )
+    expect(roleNoteLabel('opener_check_previous_day')).toBe('前日登板のため負傷チェック')
+    expect(roleNoteLabel('opener_check_cumulative')).toBe('累積1以上のため負傷チェック')
+  })
+
+  it('負傷チェックの理由に「I」「IP」の単位を付けない', () => {
+    for (const note of [
+      'opener_check_consecutive',
+      'opener_check_previous_day',
+      'opener_check_cumulative',
+      'previous_day_one_inning_only',
+    ]) {
+      expect(roleNoteLabel(note)).not.toMatch(/\dI|IP/)
+    }
+  })
+
+  it('注記をセルに出す（理由の数だけ並ぶ）', () => {
+    const wrapper = mountCell({
+      status: 'reduced_0',
+      notes: ['opener_check_previous_day', 'opener_check_cumulative'],
+    })
+    expect(wrapper.text()).toContain('前日登板のため負傷チェック')
+    expect(wrapper.text()).toContain('累積1以上のため負傷チェック')
+    expect(wrapper.findAll('.role-state-note')).toHaveLength(2)
   })
 
   it('累積4以上で前日登板: 前日の負傷チェックに合格していれば1イニング限定で登板可、の注意書き', () => {
     const wrapper = mountCell({
       status: 'fatigued_start_check',
-      notes: ['opener_injury_check', 'previous_day_one_inning_only'],
+      notes: ['previous_day_one_inning_only'],
     })
     expect(wrapper.text()).toContain('前日の負傷チェックに合格していれば1イニング限定で登板可')
   })

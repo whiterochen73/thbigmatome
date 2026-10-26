@@ -11,12 +11,13 @@ require "rails_helper"
 RSpec.describe PitcherRestStatus, ".role_states" do
   # 既定: 前回先発・通常・中4日・連続なし・スラッシュでない・リセットなし
   def states(last_role: "starter", rest_days: 4, raw_rest_days: nil, reset: false, category: "normal",
-             cumulative: 0, relief_cumulative: nil, consecutive: 0, injured: false, slash: false)
+             cumulative: 0, relief_cumulative: nil, consecutive: 0, injured: false, slash: false, opener_capable: true)
     described_class.role_states(
       last_role: last_role, rest_days: rest_days, raw_rest_days: raw_rest_days || rest_days, reset: reset,
       last_result_category: category, cumulative_innings: cumulative,
       relief_cumulative_after_last: relief_cumulative || cumulative,
-      consecutive_short_rest_count: consecutive, is_injured: injured, slash: slash
+      consecutive_short_rest_count: consecutive, is_injured: injured, slash: slash,
+      opener_capable: opener_capable
     )
   end
 
@@ -210,22 +211,20 @@ RSpec.describe PitcherRestStatus, ".role_states" do
       expect(after_relief(9, 20)).to eq("full")
     end
 
-    it "注記は上限を掛けた後の累積で決める（中5日で累積4 → 効くのは累積1。前日登板の注意書きは付かない）" do
-      expect(states(last_role: "reliever", rest_days: 5, cumulative: 4)[:as_reliever][:notes]).to eq([ "opener_injury_check" ])
+    it "注記は上限を掛けた後の累積で決める（中5日で累積4 → 前日登板の注意書きは付かない）" do
+      expect(states(last_role: "reliever", rest_days: 5, cumulative: 4)[:as_reliever][:notes]).to eq([])
     end
   end
 
-  describe "リリーフなら: 注記（§8.4.3 オープナー / §8.3.2 前日登板）" do
+  describe "リリーフなら: 注記（§8.3.2 前日登板）" do
     def notes(cum, rest: 1, raw: nil) = states(last_role: "reliever", rest_days: rest, raw_rest_days: raw || rest, cumulative: cum)[:as_reliever][:notes]
 
-    it "オープナーの負傷チェック: 累積1I 以上の時だけ「リリーフなら」側の注記に出す（累積0 には出さない）" do
-      expect(notes(0)).to eq([])
-      expect(notes(1)).to eq([ "opener_injury_check" ])
-      expect(notes(2)).to eq([ "opener_injury_check" ])
+    it "オープナーの負傷チェックの注記は「リリーフなら」側には出さない（「オープナーなら」列へ移した）" do
+      expect([ 0, 1, 2, 3 ].map { |c| notes(c) }).to eq([ [], [], [], [] ])
     end
 
     it "累積4以上かつ前日登板: 合否は記録せず、1イニング限定の注意書きだけ出す" do
-      expect(notes(4, rest: 0)).to eq(%w[opener_injury_check previous_day_one_inning_only])
+      expect(notes(4, rest: 0)).to eq(%w[previous_day_one_inning_only])
       expect(notes(9, rest: 0)).to include("previous_day_one_inning_only")
     end
 
@@ -243,6 +242,74 @@ RSpec.describe PitcherRestStatus, ".role_states" do
 
     it "「先発なら」側には注記を付けない" do
       expect(states(last_role: "reliever", rest_days: 0, cumulative: 5)[:as_starter][:notes]).to eq([])
+    end
+  end
+
+  # Test Basis: rulebook 08 §8.4.2（オープナー本人はこの登板をリリーフ扱い）/ §8.4.3（負傷チェック発動条件 3 つ）/
+  #   §8.4.1（「オープナー可」アビリティ保有選手のみ）/ Operator 2026-10-27（「リリーフなら」の隣に「オープナーなら」列を 1 つ増やす）
+  describe "オープナーなら（§8.4.2・§8.4.3）" do
+    def opener(**args) = states(**args)[:as_opener]
+    def opener_notes(cum, role: "reliever", rest: 1, raw: nil) = opener(last_role: role, rest_days: rest, raw_rest_days: raw || rest, cumulative: cum)[:notes]
+
+    it "「オープナー可」を持たない投手は nil（API でも出さない）" do
+      expect(states(last_role: "reliever", rest_days: 0, cumulative: 5, opener_capable: false)[:as_opener]).to be_nil
+      expect(states(last_role: nil, rest_days: nil, opener_capable: false)[:as_opener]).to be_nil
+      expect(states(injured: true, opener_capable: false)[:as_opener]).to be_nil
+    end
+
+    it "状態は「リリーフなら」と同じ（オープナー本人はリリーフ扱い §8.4.2）。前回が先発でも・リリーフでも" do
+      [ [ "starter", 3, 0 ], [ "starter", 1, 0 ], [ "reliever", 1, 2 ], [ "reliever", 1, 4 ], [ "opener", 3, 1 ] ].each do |role, rest, cum|
+        s = states(last_role: role, rest_days: rest, cumulative: cum)
+        expect(s[:as_opener][:status]).to eq(s[:as_reliever][:status])
+      end
+    end
+
+    it "登板歴なし・中10日リセット・負傷中は注記なし（負傷中は injured）" do
+      expect(opener(last_role: nil, rest_days: nil)).to eq({ status: "full", notes: [] })
+      expect(opener(last_role: "opener", rest_days: 0, raw_rest_days: 10, reset: true, cumulative: 9)).to eq({ status: "full", notes: [] })
+      expect(opener(injured: true)).to eq({ status: "injured", notes: [] })
+    end
+
+    it "累積1以上: 負傷チェック（累積0 は出さない）" do
+      expect(opener_notes(0)).to eq([])
+      expect(opener_notes(1)).to eq(%w[opener_check_cumulative])
+      expect(opener_notes(3)).to eq(%w[opener_check_cumulative])
+    end
+
+    it "累積は上限を掛けた後で見る（中5日で累積4 → 累積1 扱い。中6日で累積9 → 0 扱いで出ない）" do
+      expect(opener_notes(4, rest: 5)).to eq(%w[opener_check_cumulative])
+      expect(opener_notes(9, rest: 6)).to eq([])
+    end
+
+    it "前日登板（離脱を差し引かない実日数 0）: 負傷チェック。実日数 中1日なら前日登板ではない" do
+      expect(opener_notes(0, rest: 0)).to eq(%w[opener_check_previous_day])
+      expect(opener_notes(2, rest: 0)).to eq(%w[opener_check_previous_day opener_check_cumulative])
+      expect(opener_notes(0, rest: 0, raw: 1)).to eq([])
+    end
+
+    it "中2日以内の連続オープナー登板: 前回がオープナー・中2日以内で負傷チェック。中3日以上・前回がリリーフ/先発なら対象外" do
+      expect(opener_notes(0, role: "opener", rest: 2)).to eq(%w[opener_check_consecutive])
+      expect(opener_notes(0, role: "opener", rest: 1)).to eq(%w[opener_check_consecutive])
+      expect(opener_notes(0, role: "opener", rest: 3)).to eq([])
+      expect(opener_notes(0, role: "reliever", rest: 2)).to eq([])
+    end
+
+    it "3 条件が重なれば全部並べる（連続・前日・累積の順）" do
+      expect(opener_notes(2, role: "opener", rest: 0)).to eq(%w[opener_check_consecutive opener_check_previous_day opener_check_cumulative])
+    end
+
+    it "累積4以上で前日登板: 1イニング限定の注意書きも付く（オープナー本人もリリーフ扱い）" do
+      expect(opener_notes(4, rest: 0)).to eq(%w[opener_check_previous_day opener_check_cumulative previous_day_one_inning_only])
+    end
+
+    it "登板不可・負傷中には注記を付けない（登板できないので）" do
+      s = opener(last_role: "starter", rest_days: 0, category: "normal")
+      expect(s).to eq({ status: "unavailable", notes: [] })
+    end
+
+    it "「リリーフなら」「先発なら」の notes には opener_check_* を混ぜない" do
+      s = states(last_role: "opener", rest_days: 0, cumulative: 3)
+      expect((s[:as_reliever][:notes] + s[:as_starter][:notes]).grep(/opener/)).to eq([])
     end
   end
 

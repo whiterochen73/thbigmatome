@@ -455,12 +455,17 @@ RSpec.describe "Api::V1::PitcherGameStatesController", type: :request do
         # スラッシュでない通常の選手（先発疲労P 無し・リリーフ疲労P あり）。先発も出る（既定 3）
         let!(:plain_player) { make_pitcher(starter_stamina: nil, relief_stamina: 3)[0] }
 
-        def make_pitcher(starter_stamina: 7, relief_stamina: nil, is_relief_only: false, cost_type: "normal_cost")
+        def make_pitcher(starter_stamina: 7, relief_stamina: nil, is_relief_only: false, cost_type: "normal_cost", opener: false, ability_name: nil)
           player = create(:player, :pitcher)
           card = create(:player_card, player: player, card_set: card_set, card_type: "pitcher", is_pitcher: true,
                                       starter_stamina: starter_stamina, relief_stamina: relief_stamina, is_relief_only: is_relief_only)
           tm = create(:team_membership, :first_squad, team: team, player: player, player_card: card, selected_cost_type: cost_type)
           create(:season_roster, team_membership: tm, squad: "first", registered_on: "2026-01-01")
+          # 「オープナー可」アビリティ（ability_definitions.name。rulebook 08 §8.4.1）。ability_name で別名のアビリティも作れる
+          if opener || ability_name
+            definition = AbilityDefinition.find_or_create_by!(name: ability_name || "オープナー可")
+            PlayerCardAbility.create!(player_card: card, ability_definition: definition)
+          end
           [ player, tm ]
         end
 
@@ -622,24 +627,137 @@ RSpec.describe "Api::V1::PitcherGameStatesController", type: :request do
         end
 
         describe "リリーフなら: 注記" do
-          it "累積0 の先発明けには注記なし。前回リリーフで累積1以上ならオープナーの負傷チェックの注記（リリーフなら側のみ）" do
+          it "累積1以上でもオープナーの負傷チェックの注記は出さない（「オープナーなら」列へ移した）。先発明けにも注記なし" do
             appear(plain_player, "2026-03-01", role: "starter", category: "normal")
             expect(entry_for(plain_player, target_after(4))["as_reliever"]["notes"]).to eq([])
             reset_appearances(plain_player)
             appear(plain_player, "2026-03-01", innings: 1.0)
             e = entry_for(plain_player, target_after(0))
-            expect(e["as_reliever"]["notes"]).to eq([ "opener_injury_check" ])
+            expect(e["as_reliever"]["notes"]).to eq([])
             expect(e["as_starter"]["notes"]).to eq([])
           end
 
           it "累積4以上かつ前日登板: 注意書きだけ出す（合否は記録しない）。累積3 の前日登板・累積4 の中1日には出さない" do
             appear(plain_player, "2026-03-01"); appear(plain_player, "2026-03-02"); appear(plain_player, "2026-03-03")
-            expect(entry_for(plain_player, "2026-03-04")["as_reliever"]["notes"]).to eq([ "opener_injury_check" ]) # 累積3・前日登板
+            expect(entry_for(plain_player, "2026-03-04")["as_reliever"]["notes"]).to eq([]) # 累積3・前日登板
             appear(plain_player, "2026-03-04")
             e = entry_for(plain_player, "2026-03-05") # 累積4・前日登板
             expect(e["as_reliever"]["status"]).to eq("fatigued_start_check")
-            expect(e["as_reliever"]["notes"]).to eq(%w[opener_injury_check previous_day_one_inning_only])
-            expect(entry_for(plain_player, "2026-03-06")["as_reliever"]["notes"]).to eq([ "opener_injury_check" ]) # 累積4→3 に減衰・中1日
+            expect(e["as_reliever"]["notes"]).to eq(%w[previous_day_one_inning_only])
+            expect(entry_for(plain_player, "2026-03-06")["as_reliever"]["notes"]).to eq([]) # 累積4→3 に減衰・中1日
+          end
+        end
+
+        # Test Basis: rulebook 08 §8.4.1（「オープナー可」アビリティ保有選手のみ）/ §8.4.2 / §8.4.3 / Operator 2026-10-27
+        describe "オープナーなら（「リリーフなら」の隣の列）" do
+          let!(:opener_player) { make_pitcher(starter_stamina: nil, relief_stamina: 3, opener: true).first }
+
+          it "「オープナー可」を持つ投手だけ as_opener を返す。持たない投手は nil と省略理由 no_opener_ability" do
+            appear(opener_player, "2026-03-01", innings: 1.0)
+            appear(plain_player, "2026-03-01", innings: 1.0)
+            get_fatigue_summary(date: target_after(0))
+            body = response.parsed_body
+            with = body.find { |e| e["player_id"] == opener_player.id }
+            without = body.find { |e| e["player_id"] == plain_player.id }
+            expect(with["as_opener"]).to eq({ "status" => "reduced_0", "notes" => %w[opener_check_previous_day opener_check_cumulative] })
+            expect(with["as_opener_omitted_reason"]).to be_nil
+            expect(without["as_opener"]).to be_nil
+            expect(without["as_opener_omitted_reason"]).to eq("no_opener_ability")
+          end
+
+          it "名前が違うアビリティ（「オープナー」「クイック○」）はオープナー可として扱わない" do
+            other, = make_pitcher(starter_stamina: 7, relief_stamina: 3, ability_name: "オープナー")
+            quick, = make_pitcher(starter_stamina: 7, relief_stamina: 3, ability_name: "クイック○")
+            [ other, quick ].each { |pl| appear(pl, "2026-03-01", innings: 1.0) }
+            get_fatigue_summary(date: target_after(0))
+            [ other, quick ].each do |pl|
+              e = response.parsed_body.find { |x| x["player_id"] == pl.id }
+              expect([ pl.id, e["as_opener"], e["as_opener_omitted_reason"] ]).to eq([ pl.id, nil, "no_opener_ability" ])
+            end
+          end
+
+          it "中2日以内の連続オープナー登板（前回 role が opener）で負傷チェック。前回がリリーフの中2日では出ない" do
+            appear(opener_player, "2026-03-01", role: "opener", innings: 0.1)
+            expect(entry_for(opener_player, target_after(2))["as_opener"]["notes"]).to eq(%w[opener_check_consecutive])
+            reset_appearances(opener_player)
+            appear(opener_player, "2026-03-01", role: "reliever", innings: 0.1)
+            expect(entry_for(opener_player, target_after(2))["as_opener"]["notes"]).to eq([])
+          end
+
+          it "先発明けの状態は「リリーフなら」と同じ（§8.4.2）" do
+            appear(opener_player, "2026-03-01", role: "starter", category: "normal")
+            e = entry_for(opener_player, target_after(3))
+            expect(e["as_opener"]).to eq({ "status" => "reduced_0", "notes" => [] })
+            expect(e["as_opener"]["status"]).to eq(e["as_reliever"]["status"])
+          end
+
+          it "リリーフ専門・先発のみのカードでも「オープナー可」なら出す（アビリティで決める）" do
+            relief_only, = make_pitcher(starter_stamina: nil, relief_stamina: 3, is_relief_only: true, opener: true)
+            appear(relief_only, "2026-03-01", innings: 1.0)
+            expect(entry_for(relief_only, target_after(0))["as_opener"]["status"]).to eq("reduced_0")
+          end
+        end
+
+        # Test Basis: Operator 2026-10-27「カードに記載があるけど、なかったら一旦リリーフ全員でいい」。本番 DB は ability_definitions が 0 件（未取込）。
+        #   定義が 1 件でもあればカードの記載どおり。リリーフで投げられる = 「リリーフなら」を出す条件と同じ（relief_stamina またはリリーフ専門）
+        describe "オープナーなら: 「オープナー可」データ未取込の間のフォールバック" do
+          let!(:starter_only) { make_pitcher(starter_stamina: 7, relief_stamina: nil).first }
+          let!(:relief_only) { make_pitcher(starter_stamina: nil, relief_stamina: 3, is_relief_only: true).first }
+
+          def rows
+            get_fatigue_summary(date: "2026-03-10")
+            response.parsed_body.index_by { |e| e["player_id"] }
+          end
+
+          it "定義が 1 件も無い間は、リリーフで投げられる投手（通常・スラッシュ・リリーフ専門）全員に出し、先発専門には出さない" do
+            expect(AbilityDefinition.count).to eq(0)
+            got = rows
+            [ plain_player, slash_player, relief_only ].each do |pl|
+              expect([ pl.id, got[pl.id]["as_opener"]&.dig("status"), got[pl.id]["as_opener_omitted_reason"] ]).to eq([ pl.id, "full", nil ])
+            end
+            expect(got[starter_only.id]["as_opener"]).to be_nil
+            expect(got[starter_only.id]["as_opener_omitted_reason"]).to eq("no_opener_ability")
+            expect(got[starter_only.id]["as_reliever_omitted_reason"]).to eq("no_relief_stamina") # 「リリーフなら」を出す条件と一致
+          end
+
+          it "フォールバック中であることを全行に返す（opener_capable_source = fallback_all_relievers）" do
+            expect(rows.values.map { |e| e["opener_capable_source"] }.uniq).to eq([ "fallback_all_relievers" ])
+          end
+
+          it "定義が 1 件でも入れば（別名のアビリティでも）カードの記載どおりに切り替わる。記載なしは出ない" do
+            AbilityDefinition.create!(name: "クイック○")
+            got = rows
+            [ plain_player, slash_player, relief_only, starter_only ].each do |pl|
+              expect([ pl.id, got[pl.id]["as_opener"], got[pl.id]["as_opener_omitted_reason"] ]).to eq([ pl.id, nil, "no_opener_ability" ])
+            end
+            expect(got.values.map { |e| e["opener_capable_source"] }.uniq).to eq([ "card_ability" ])
+          end
+
+          it "定義があり、カードに「オープナー可」の記載がある投手だけに出す" do
+            capable, = make_pitcher(starter_stamina: nil, relief_stamina: 3, opener: true)
+            got = rows
+            expect(got[capable.id]["as_opener"]["status"]).to eq("full")
+            expect(got[plain_player.id]["as_opener"]).to be_nil
+            expect(got[capable.id]["opener_capable_source"]).to eq("card_ability")
+          end
+
+          it "先発専門でも、カードに「オープナー可」の記載があれば出す（定義あり）" do
+            capable, = make_pitcher(starter_stamina: 7, relief_stamina: nil, opener: true)
+            expect(rows[capable.id]["as_opener"]["status"]).to eq("full")
+          end
+
+          # 定義の有無の問い合わせは 1 リクエストで 1 回（投手ごとに引かない）
+          it "定義の有無の問い合わせは投手が複数いても 1 回（フォールバック中・切り替え後とも）" do
+            count_queries = lambda do
+              queries = []
+              callback = ->(*, payload) { queries << payload[:sql] if payload[:sql].match?(/SELECT 1 AS one FROM "ability_definitions"/) }
+              ActiveSupport::Notifications.subscribed(callback, "sql.active_record") { get_fatigue_summary(date: "2026-03-10") }
+              queries.size
+            end
+            expect(AbilityDefinition.count).to eq(0)
+            expect(count_queries.call).to eq(1)
+            AbilityDefinition.create!(name: "オープナー可")
+            expect(count_queries.call).to eq(1)
           end
         end
 

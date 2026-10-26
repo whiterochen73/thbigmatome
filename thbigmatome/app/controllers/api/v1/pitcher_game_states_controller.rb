@@ -71,7 +71,7 @@ module Api
           .where.not(selected_cost_type: "fielder_only_cost")
           .joins(:player_card)
           .merge(PlayerCard.can_pitch)
-          .includes(:player, :player_card)
+          .includes(:player, player_card: { player_card_abilities: :ability_definition })
           .distinct
 
         pitcher_memberships = all_pitcher_memberships.select do |tm|
@@ -88,6 +88,11 @@ module Api
 
         injured_ids = build_injured_set(pitcher_ids, target_date)
         absence_map = preload_pitcher_absences(pitcher_ids)
+
+        # 「オープナー可」のアビリティ定義が 1 件でもあるか（1 リクエストで 1 回だけ問い合わせる）。無い間は
+        # カードの記載が未取込なので、リリーフで投げられる投手全員を「オープナーなら」の対象にする（PlayerCard#opener_capable?）
+        opener_definitions_present = AbilityDefinition.exists?
+        opener_capable_source = opener_definitions_present ? "card_ability" : "fallback_all_relievers"
 
         result = pitcher_ids.map do |player_id|
           last_app = PitcherGameState
@@ -134,7 +139,8 @@ module Api
             last_result_category: last_result_category, cumulative_innings: cumulative_innings,
             relief_cumulative_after_last: relief_cumulative_after_last,
             consecutive_short_rest_count: consecutive_short_rest_count,
-            is_injured: is_injured, slash: card&.slash_pitcher? || false
+            is_injured: is_injured, slash: card&.slash_pitcher? || false,
+            opener_capable: card&.opener_capable?(opener_definitions_present) || false
           )
           # 既存の projected_status は「前回と同じ役割で続ける場合」の状態
           projected = last_role.nil? || last_role == "starter" ? states[:as_starter][:status] : states[:as_reliever][:status]
@@ -142,6 +148,8 @@ module Api
           reliever_omitted = reliever_omitted_reason(membership)
           as_starter = starter_omitted ? nil : states[:as_starter]
           as_reliever = reliever_omitted ? nil : states[:as_reliever]
+          # 「オープナーなら」は「オープナー可」アビリティを持つ投手だけ（rulebook 08 §8.4.1）。持たない投手は nil
+          as_opener = states[:as_opener]
 
           {
             player_id: player_id,
@@ -156,8 +164,12 @@ module Api
             projected_status: projected,
             as_starter: as_starter,
             as_reliever: as_reliever,
+            as_opener: as_opener,
             as_starter_omitted_reason: starter_omitted,
-            as_reliever_omitted_reason: reliever_omitted
+            as_reliever_omitted_reason: reliever_omitted,
+            as_opener_omitted_reason: as_opener ? nil : "no_opener_ability",
+            # as_opener の出し分けの根拠。fallback_all_relievers = オープナー可のデータ未取込（リリーフで投げられる投手全員）/ card_ability = カードの記載どおり
+            opener_capable_source: opener_capable_source
           }
         end
 
@@ -180,9 +192,9 @@ module Api
         return nil if membership.nil?
 
         card = membership.player_card
-        return nil if card.nil? || card.is_relief_only
+        return nil if card.nil? || card.relief_capable?
 
-        card.relief_stamina.nil? ? "no_relief_stamina" : nil
+        "no_relief_stamina"
       end
 
       def set_team

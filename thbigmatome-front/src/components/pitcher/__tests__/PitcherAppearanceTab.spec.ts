@@ -723,10 +723,19 @@ describe('PitcherAppearanceTab', () => {
         as_starter: { status: 'unavailable', notes: [] },
         as_reliever: {
           status: 'fatigued_start_check',
-          notes: ['opener_injury_check', 'previous_day_one_inning_only'],
+          notes: ['previous_day_one_inning_only'],
+        },
+        as_opener: {
+          status: 'fatigued_start_check',
+          notes: [
+            'opener_check_previous_day',
+            'opener_check_cumulative',
+            'previous_day_one_inning_only',
+          ],
         },
         as_starter_omitted_reason: null,
         as_reliever_omitted_reason: null,
+        as_opener_omitted_reason: null,
       },
       {
         player_id: 11,
@@ -740,8 +749,10 @@ describe('PitcherAppearanceTab', () => {
         projected_status: 'injury_check',
         as_starter: null,
         as_reliever: { status: 'reduced_0', notes: [] },
+        as_opener: null,
         as_starter_omitted_reason: 'relief_only_contract',
         as_reliever_omitted_reason: null,
+        as_opener_omitted_reason: 'no_opener_ability',
       },
       {
         player_id: 12,
@@ -754,9 +765,11 @@ describe('PitcherAppearanceTab', () => {
         is_unavailable: false,
         projected_status: 'reduced_0',
         as_starter: { status: 'unavailable', notes: [] },
-        as_reliever: { status: 'reduced_0', notes: ['opener_injury_check'] },
+        as_reliever: { status: 'reduced_0', notes: [] },
+        as_opener: null,
         as_starter_omitted_reason: null,
         as_reliever_omitted_reason: null,
+        as_opener_omitted_reason: 'no_opener_ability',
       },
     ]
 
@@ -807,6 +820,67 @@ describe('PitcherAppearanceTab', () => {
     it('前回リリーフで中2日以内の先発不可が出る', async () => {
       const wrapper = await mountWithSummary()
       expect(wrapper.find('[data-testid="as-starter-12"]').text()).toContain('🚫 不可')
+    })
+
+    // Operator 2026-10-27: 「リリーフなら」の隣に「オープナーなら」列を 1 つ増やす。オープナー可の投手にだけ値を出す
+    it('「オープナーなら」列見出しは「リリーフなら」の次に 1 つだけ出る', async () => {
+      const wrapper = await mountWithSummary()
+      const headers = wrapper.findAll('th').map((th) => th.text())
+      expect(headers.filter((h) => h === 'オープナーなら')).toHaveLength(1)
+      expect(headers.indexOf('オープナーなら')).toBe(headers.indexOf('リリーフなら') + 1)
+    })
+
+    it('オープナー可の投手（幽々子）には状態と負傷チェックの理由を出す', async () => {
+      const wrapper = await mountWithSummary()
+      const cell = wrapper.find('[data-testid="as-opener-10"]')
+      expect(cell.text()).toContain('最初から疲労')
+      expect(cell.text()).toContain('前日登板のため負傷チェック')
+      expect(cell.text()).toContain('累積1以上のため負傷チェック')
+    })
+
+    it('オープナー可でない投手（紫・妖夢）は「—」だけでバッジを出さない', async () => {
+      const wrapper = await mountWithSummary()
+      for (const id of [11, 12]) {
+        const cell = wrapper.find(`[data-testid="as-opener-${id}"]`)
+        expect(cell.text()).toBe('—')
+        expect(cell.findComponent({ name: 'VChip' }).exists()).toBe(false)
+      }
+    })
+
+    it('「リリーフなら」の列にはオープナーの負傷チェックの文言が出ない', async () => {
+      const wrapper = await mountWithSummary()
+      for (const id of [10, 11, 12]) {
+        expect(wrapper.find(`[data-testid="as-reliever-${id}"]`).text()).not.toContain('オープナー')
+        expect(wrapper.find(`[data-testid="as-reliever-${id}"]`).text()).not.toContain('累積1')
+      }
+    })
+
+    it('フォールバック中（fallback_all_relievers）は、「オープナーなら」見出しのツールチップで未取込を伝える', async () => {
+      summaryRows.forEach((r) =>
+        Object.assign(r, { opener_capable_source: 'fallback_all_relievers' }),
+      )
+      const wrapper = await mountWithSummary()
+      const head = wrapper.find('[data-testid="opener-column-header"]')
+      expect(head.attributes('title')).toBe(
+        'オープナー可のデータ未取込のため、リリーフ可能な投手すべてに表示',
+      )
+      expect(head.text()).toBe('オープナーなら')
+    })
+
+    it('カードの記載どおり（card_ability）ならツールチップを出さない', async () => {
+      summaryRows.forEach((r) => Object.assign(r, { opener_capable_source: 'card_ability' }))
+      const wrapper = await mountWithSummary()
+      expect(
+        wrapper.find('[data-testid="opener-column-header"]').attributes('title'),
+      ).toBeUndefined()
+    })
+
+    // Operator 2026-10-27: 累積イニングは単位を付けない（列見出しは「累積」。「累積IP」ではない）
+    it('列見出しは「中日数 / 累積」で、「IP」の単位を付けない', async () => {
+      const wrapper = await mountWithSummary()
+      const headers = wrapper.findAll('th').map((th) => th.text())
+      expect(headers).toContain('中日数 / 累積')
+      expect(headers.join('|')).not.toContain('IP')
     })
   })
 

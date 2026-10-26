@@ -42,6 +42,24 @@ class PlayerCard < ApplicationRecord
     starter_stamina.present? && relief_stamina.present? && !is_relief_only
   end
 
+  # リリーフで投げられるカードか。画面の「リリーフなら」を出す条件と同じ（リリーフ向けの疲労P を持つ、またはリリーフ専門）
+  def relief_capable?
+    is_relief_only || relief_stamina.present?
+  end
+
+  # 「オープナー可」アビリティ（ability_definitions.name。rulebook 08 §8.4.1）。pitcher_game_states.is_opener は登板時のフラグで別物。
+  # カードの記載は Dugout に未取込のことがある（2026-10-27 時点で ability_definitions は 0 件）。定義が 1 件も無い間は、
+  # リリーフで投げられるカード全員を true にする（Operator 2026-10-27）。定義が 1 件でもあれば、カードの記載どおり。
+  # definitions_present: 定義の有無。一覧で投手ごとに引かないよう、呼び出し側が 1 回だけ AbilityDefinition.exists? を渡す。
+  # includes(player_card_abilities: :ability_definition) 済みなら追加クエリなし。
+  OPENER_ABILITY_NAME = "オープナー可".freeze
+
+  def opener_capable?(definitions_present = AbilityDefinition.exists?)
+    return relief_capable? unless definitions_present
+
+    player_card_abilities.any? { |a| a.ability_definition&.name == OPENER_ABILITY_NAME }
+  end
+
   # DB検索用スコープ: 投手能力を持つカード（can_pitch?のDB版）
   # player_card_defensesにP守備がある OR is_pitcher=true OR card_type='pitcher'
   scope :can_pitch, -> {

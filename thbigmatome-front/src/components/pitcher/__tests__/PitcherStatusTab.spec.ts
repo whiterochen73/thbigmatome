@@ -31,6 +31,9 @@ const mockPitchers = [
   {
     player_id: 1,
     player_name: '霊夢',
+    starter_stamina: 6,
+    relief_stamina: 1,
+    is_relief_only: false,
     last_role: 'starter',
     rest_days: 6,
     cumulative_innings: null,
@@ -47,6 +50,9 @@ const mockPitchers = [
   {
     player_id: 2,
     player_name: '魔理沙',
+    starter_stamina: 6,
+    relief_stamina: null,
+    is_relief_only: false,
     last_role: 'starter',
     rest_days: 3,
     cumulative_innings: null,
@@ -63,6 +69,9 @@ const mockPitchers = [
   {
     player_id: 3,
     player_name: 'チルノ',
+    starter_stamina: null,
+    relief_stamina: 1,
+    is_relief_only: true,
     last_role: 'reliever',
     rest_days: 1,
     cumulative_innings: 2,
@@ -83,6 +92,9 @@ const mockPitchers = [
   {
     player_id: 4,
     player_name: '妖夢',
+    starter_stamina: null,
+    relief_stamina: 2,
+    is_relief_only: false,
     last_role: 'reliever',
     rest_days: null,
     cumulative_innings: 0,
@@ -256,15 +268,121 @@ describe('PitcherStatusTab', () => {
     })
   })
 
-  // Operator 2026-10-27: 累積イニングは単位を付けない。列見出しは「累積」（「累積IP」ではない）
-  it('累積の列見出しは「累積」で、「IP」の単位を付けない（先発・リリーフ両方の表）', async () => {
+  // Operator 2026-10-27: 先発の「累積」とリリーフの「中日数」は不要。疲労P 欄はカード記載の疲労P にする
+  it('列見出しの並び: 先発の表は 中日数・カード疲労P・先発なら・リリーフなら・オープナーなら（累積なし）', async () => {
+    const wrapper = mountComponent()
+    await flushPromises()
+    const headers = wrapper
+      .findAll('table')[0]
+      .findAll('th')
+      .map((th) => th.text())
+    expect(headers).toEqual([
+      '',
+      '選手名',
+      '中日数',
+      'カード疲労P',
+      '先発なら',
+      'リリーフなら',
+      'オープナーなら',
+    ])
+  })
+
+  it('列見出しの並び: リリーフの表は 累積・カード疲労P・先発なら・リリーフなら・オープナーなら（中日数なし）', async () => {
+    const wrapper = mountComponent()
+    await flushPromises()
+    const headers = wrapper
+      .findAll('table')[1]
+      .findAll('th')
+      .map((th) => th.text())
+    expect(headers).toEqual([
+      '',
+      '選手名',
+      '累積',
+      'カード疲労P',
+      '先発なら',
+      'リリーフなら',
+      'オープナーなら',
+    ])
+  })
+
+  // 累積イニングは単位を付けない（「累積IP」ではない）
+  it('累積の列見出しはリリーフの表だけにあり、「IP」の単位を付けない', async () => {
     const wrapper = mountComponent()
     await flushPromises()
     for (const table of wrapper.findAll('table')) {
-      const headers = table.findAll('th').map((th) => th.text())
-      expect(headers).toContain('累積')
       expect(table.text()).not.toContain('IP')
     }
+    expect(
+      wrapper
+        .findAll('table')[0]
+        .findAll('th')
+        .map((th) => th.text()),
+    ).not.toContain('累積')
+  })
+
+  it('計算値だった旧「疲労P」見出しは残らない（カード疲労P と取り違えない）', async () => {
+    const wrapper = mountComponent()
+    await flushPromises()
+    for (const table of wrapper.findAll('table')) {
+      expect(table.findAll('th').map((th) => th.text())).not.toContain('疲労P')
+    }
+  })
+
+  // カードの表記は thbig-rules/sources/card-structure.md §3: 6/1（先発/リリーフ両用）・1R（リリーフ専任）・6（先発のみ）
+  describe('カード疲労P の表記', () => {
+    it('先発/リリーフ両方ある投手は「6/1」（霊夢）', async () => {
+      const wrapper = mountComponent()
+      await flushPromises()
+      expect(wrapper.find('[data-testid="card-fatigue-p-1"]').text()).toBe('6/1')
+    })
+
+    it('リリーフ専任（R 付き）は「1R」（チルノ）', async () => {
+      const wrapper = mountComponent()
+      await flushPromises()
+      expect(wrapper.find('[data-testid="card-fatigue-p-3"]').text()).toBe('1R')
+    })
+
+    it('先発のみは「6」（魔理沙）', async () => {
+      const wrapper = mountComponent()
+      await flushPromises()
+      expect(wrapper.find('[data-testid="card-fatigue-p-2"]').text()).toBe('6')
+    })
+
+    it('リリーフ値だけで R なし（0〜3 の単独記載）は「2」（妖夢）', async () => {
+      const wrapper = mountComponent()
+      await flushPromises()
+      expect(wrapper.find('[data-testid="card-fatigue-p-4"]').text()).toBe('2')
+    })
+
+    it('カードの値が無い応答（旧 API）は「-」', async () => {
+      vi.mocked(axios.get).mockResolvedValue({
+        data: [
+          {
+            player_id: 9,
+            player_name: '旧応答',
+            last_role: 'starter',
+            rest_days: 5,
+            cumulative_innings: null,
+            is_injured: false,
+            is_unavailable: false,
+            projected_status: 'full',
+          },
+        ],
+      })
+      const wrapper = mountComponent()
+      await flushPromises()
+      expect(wrapper.find('[data-testid="card-fatigue-p-9"]').text()).toBe('-')
+    })
+
+    it('計算値（-nP）はカード疲労P 欄に出ない', async () => {
+      vi.mocked(axios.get).mockResolvedValue({
+        data: [{ ...mockPitchers[0], projected_status: 'reduced_3' }],
+      })
+      const wrapper = mountComponent()
+      await flushPromises()
+      expect(wrapper.find('[data-testid="card-fatigue-p-1"]').text()).toBe('6/1')
+      expect(wrapper.find('[data-testid="card-fatigue-p-1"]').text()).not.toContain('-3P')
+    })
   })
 
   it('前回リリーフの中1日は「先発なら」が不可', async () => {
@@ -293,14 +411,6 @@ describe('PitcherStatusTab', () => {
     expect(
       wrapper.find('[data-testid="as-starter-1"]').findComponent({ name: 'VChip' }).exists(),
     ).toBe(false)
-  })
-
-  it('先発投手の累積は"-"が表示されること', async () => {
-    const wrapper = mountComponent()
-    await flushPromises()
-    // starters table: 累積列は"-"
-    const starterSection = wrapper.findAll('v-table, table').at(0)
-    expect(starterSection?.text()).toContain('-')
   })
 
   it('APIエラー時にエラーメッセージが表示されること', async () => {

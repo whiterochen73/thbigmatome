@@ -23,11 +23,12 @@ module PitcherFatigueScenario
 
   # 登板記録（先発）。前の投手を置きたい時は prior_pitchers を指定
   def create_start(team:, pitcher:, date:, innings:, category: "normal", role: "starter", fatigue_p_used: 0,
-                   decision: nil, no_out_exit: false, game: nil, appearance_order: 0)
+                   decision: nil, no_out_exit: false, game: nil, appearance_order: 0, consecutive_short_rest_count: 0)
     create(:pitcher_game_state,
            team: team, pitcher: pitcher, game: game || create(:game), schedule_date: date.to_s,
            role: role, innings_pitched: innings, result_category: category, fatigue_p_used: fatigue_p_used,
-           decision: decision, no_out_exit: no_out_exit, appearance_order: appearance_order)
+           decision: decision, no_out_exit: no_out_exit, appearance_order: appearance_order,
+           consecutive_short_rest_count: consecutive_short_rest_count)
   end
 end
 

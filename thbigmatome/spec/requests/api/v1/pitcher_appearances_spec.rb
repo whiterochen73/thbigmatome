@@ -481,6 +481,217 @@ RSpec.describe "Api::V1::PitcherAppearancesController", type: :request, pitcher_
       end
     end
 
+    # Test Basis: cmd_1775 第2段 E3（rulebook §8.5.1 条件2・§8.7.1 手順3）/ E4（AMB-04 出場停止と負傷は別枠）
+    context "bulk_save: 連続中4日カウント consecutive_short_rest_count はサーバが書く（E3）" do
+      let(:season) { create(:season, team: team) }
+      let!(:membership) do
+        create(:team_membership, team: team, player: pitcher1,
+                                 player_card: create(:player_card, player: pitcher1, card_type: "pitcher", starter_stamina: 7))
+      end
+
+      def bulk_with(appearances)
+        { pitcher_appearances_bulk: { team_id: team.id, competition_id: competition.id, game_id: game.id,
+                                      schedule_date: "2026-03-20", game_result: "win", appearances: appearances } }
+      end
+
+      def ap(pitcher, role, innings, **extra)
+        { pitcher_id: pitcher.id, role: role, innings_pitched: innings, earned_runs: 0, fatigue_p_used: 0,
+          is_opener: false, consecutive_short_rest_count: 0, pre_injury_days_excluded: 0 }.merge(extra)
+      end
+
+      def saved_count(pitcher = pitcher1)
+        PitcherGameState.find_by(game: game, pitcher: pitcher).consecutive_short_rest_count
+      end
+
+      def save_start(**extra)
+        post "/api/v1/pitcher_appearances/bulk_save", params: bulk_with([ ap(pitcher1, "starter", 6.0, **extra) ]), as: :json
+        expect(response).to have_http_status(:ok)
+      end
+
+      it "中4日（3/15 → 3/20）なら前回値 +1。画面が 0 を送っても 0 で上書きしない" do
+        create_start(team: team, pitcher: pitcher1, date: "2026-03-15", innings: 6.0, consecutive_short_rest_count: 0)
+        save_start(consecutive_short_rest_count: 0)
+        expect(saved_count).to eq(1)
+      end
+
+      it "前回が 1 なら 2（連続中4日の 3 回目）。画面が別の値(5)を送っても無視してサーバの値になる" do
+        create_start(team: team, pitcher: pitcher1, date: "2026-03-15", innings: 6.0, consecutive_short_rest_count: 1)
+        save_start(consecutive_short_rest_count: 5)
+        expect(saved_count).to eq(2)
+      end
+
+      it "中5日（3/14 → 3/20）は 0 にリセット（前回 2、画面 3 でも）" do
+        create_start(team: team, pitcher: pitcher1, date: "2026-03-14", innings: 6.0, consecutive_short_rest_count: 2)
+        save_start(consecutive_short_rest_count: 3)
+        expect(saved_count).to eq(0)
+      end
+
+      it "中3日（3/16 → 3/20）も 0" do
+        create_start(team: team, pitcher: pitcher1, date: "2026-03-16", innings: 6.0, consecutive_short_rest_count: 1)
+        save_start
+        expect(saved_count).to eq(0)
+      end
+
+      it "同じ登板記録を保存し直しても増えない（冪等: 1 のまま）" do
+        create_start(team: team, pitcher: pitcher1, date: "2026-03-15", innings: 6.0, consecutive_short_rest_count: 0)
+        save_start
+        save_start
+        expect(saved_count).to eq(1)
+      end
+
+      it "負傷を挟んだ中日数は控除する（実日数中5日 - 負傷1日 = 中4日 → +1）" do
+        create_start(team: team, pitcher: pitcher1, date: "2026-03-14", innings: 6.0, consecutive_short_rest_count: 0)
+        create(:player_absence, team_membership: membership, season: season, absence_type: :injury,
+                                start_date: Date.new(2026, 3, 15), duration: 1, duration_unit: "days")
+        save_start
+        expect(saved_count).to eq(1)
+      end
+
+      it "出場停止を挟んだ中日数は控除しない（実日数中5日のまま → 0。負傷なら +1 になる日付）" do
+        create_start(team: team, pitcher: pitcher1, date: "2026-03-14", innings: 6.0, consecutive_short_rest_count: 1)
+        create(:player_absence, team_membership: membership, season: season, absence_type: :suspension,
+                                start_date: Date.new(2026, 3, 15), duration: 1, duration_unit: "days")
+        save_start
+        expect(saved_count).to eq(0)
+      end
+
+      it "リリーフ登板のカウントは 0（画面が値を送っても書かない）" do
+        post "/api/v1/pitcher_appearances/bulk_save",
+             params: bulk_with([ ap(pitcher1, "starter", 6.0), ap(pitcher2, "reliever", 2.0, consecutive_short_rest_count: 2) ]), as: :json
+        expect(saved_count(pitcher2)).to eq(0)
+      end
+
+      it "単発登録 POST /pitcher_appearances でも同じ規則で書く（中4日 → +1）" do
+        create_start(team: team, pitcher: pitcher1, date: "2026-03-15", innings: 6.0, consecutive_short_rest_count: 0)
+        post "/api/v1/pitcher_appearances",
+             params: { pitcher_appearance: { pitcher_id: pitcher1.id, team_id: team.id, competition_id: competition.id,
+                                             game_id: game.id, role: "starter", innings_pitched: 6.0, earned_runs: 0,
+                                             schedule_date: "2026-03-20", consecutive_short_rest_count: 0 } }, as: :json
+        expect(response).to have_http_status(:created)
+        expect(response.parsed_body["pitcher_appearance"]["consecutive_short_rest_count"]).to eq(1)
+      end
+    end
+
+    # Test Basis: rulebook §8.4.2（第二先発候補の2番手は先発として扱う）/ cmd_1775 第2段 E6
+    context "bulk_save: 第二先発（2番手を role=starter で保存）は先発として扱われる（E6）" do
+      let(:pitcher3) { create(:player, :pitcher) }
+      let(:season) { create(:season, team: team) }
+
+      def bulk_with(appearances, date: "2026-03-20", game_id: game.id)
+        { pitcher_appearances_bulk: { team_id: team.id, competition_id: competition.id, game_id: game_id,
+                                      schedule_date: date, game_result: "win", appearances: appearances } }
+      end
+
+      def ap(pitcher, role, innings, **extra)
+        { pitcher_id: pitcher.id, role: role, innings_pitched: innings, earned_runs: 0, fatigue_p_used: 0,
+          is_opener: false, pre_injury_days_excluded: 0 }.merge(extra)
+      end
+
+      before do
+        create(:team_membership, team: team, player: pitcher2,
+                                 player_card: create(:player_card, player: pitcher2, card_type: "pitcher", starter_stamina: 7))
+      end
+
+      it "保存した role=starter が GET で role=starter のまま返る（開き直しで先発のまま復元できる）" do
+        create_schedule(season, "2026-03-20", score: 0, opponent_score: 1)
+        post "/api/v1/pitcher_appearances/bulk_save",
+             params: bulk_with([ ap(pitcher1, "opener", 1.0), ap(pitcher2, "starter", 6.0), ap(pitcher3, "reliever", 2.0) ]), as: :json
+        expect(response).to have_http_status(:ok)
+
+        get "/api/v1/pitcher_appearances", params: { team_id: team.id, schedule_date: "2026-03-20" }
+        expect(response.parsed_body.map { |a| [ a["pitcher_id"], a["role"] ] })
+          .to eq([ [ pitcher1.id, "opener" ], [ pitcher2.id, "starter" ], [ pitcher3.id, "reliever" ] ])
+      end
+
+      it "KO 判定が効く: 負け・L・3.0回・後続あり の第二先発は ko" do
+        create_schedule(season, "2026-03-20", score: 0, opponent_score: 1)
+        post "/api/v1/pitcher_appearances/bulk_save",
+             params: bulk_with([ ap(pitcher1, "opener", 1.0), ap(pitcher2, "starter", 3.0, decision: "L"), ap(pitcher3, "reliever", 4.0) ]), as: :json
+        expect(PitcherGameState.find_by(game: game, pitcher: pitcher2).result_category).to eq("ko")
+      end
+
+      it "長イニング敗戦が効き、次回登板の休養表も先発のもの（長イニング敗戦・中4日 -4）が効く" do
+        create_schedule(season, "2026-03-20", score: 0, opponent_score: 1)
+        # opener 1.1 の後に入って 8.0 回: 関与 9（入った回2 → 終了回10 → 9）> 7+1 → long_loss
+        post "/api/v1/pitcher_appearances/bulk_save",
+             params: bulk_with([ ap(pitcher1, "opener", 1.1), ap(pitcher2, "starter", 8.0) ]), as: :json
+        expect(PitcherGameState.find_by(game: game, pitcher: pitcher2).result_category).to eq("long_loss")
+
+        next_game = create(:game, competition: competition, home_team: team, visitor_team: create(:team),
+                                  home_schedule_date: "2026-03-25")
+        # 3/20 → 3/25 は中4日。長イニング敗戦後の中4日は -4 → 7 - 4 = 3（リリーフ扱いなら通常表の -3 → 4 か累積）
+        post "/api/v1/pitcher_appearances/bulk_save",
+             params: bulk_with([ ap(pitcher2, "starter", 5.0) ], date: "2026-03-25", game_id: next_game.id), as: :json
+        expect(PitcherGameState.find_by(game: next_game, pitcher: pitcher2).fatigue_p_used).to eq(3)
+      end
+
+      it "role=reliever のままだと先発の判定を受けない（比較: 同じ入力で result_category は normal）" do
+        create_schedule(season, "2026-03-20", score: 0, opponent_score: 1)
+        post "/api/v1/pitcher_appearances/bulk_save",
+             params: bulk_with([ ap(pitcher1, "opener", 1.1), ap(pitcher2, "reliever", 8.0) ]), as: :json
+        expect(PitcherGameState.find_by(game: game, pitcher: pitcher2).result_category).to eq("normal")
+      end
+    end
+
+    # Test Basis: cmd_1775 第1段 QC の残り(1)（日付なしで 500 → 422）
+    context "bulk_save: schedule_date が無い・読めない時は 500 ではなく 422（第1段QC 注意点1）" do
+      let(:body) do
+        { pitcher_appearances_bulk: { team_id: team.id, competition_id: competition.id, game_id: game.id, game_result: "win",
+                                      appearances: [ { pitcher_id: pitcher1.id, role: "starter", innings_pitched: 6.0, earned_runs: 0 } ] } }
+      end
+
+      it "schedule_date なし（game_id だけ）の先発は 422 と schedule_date を示すメッセージ" do
+        post "/api/v1/pitcher_appearances/bulk_save", params: body, as: :json
+        expect(response).to have_http_status(:unprocessable_content)
+        expect(response.parsed_body["errors"].join).to include("schedule_date")
+      end
+
+      it "空文字の schedule_date も 422" do
+        body[:pitcher_appearances_bulk][:schedule_date] = ""
+        post "/api/v1/pitcher_appearances/bulk_save", params: body, as: :json
+        expect(response).to have_http_status(:unprocessable_content)
+      end
+
+      it "日付として読めない schedule_date は 422（値を含めて示す）" do
+        body[:pitcher_appearances_bulk][:schedule_date] = "not-a-date"
+        post "/api/v1/pitcher_appearances/bulk_save", params: body, as: :json
+        expect(response).to have_http_status(:unprocessable_content)
+        expect(response.parsed_body["errors"].join).to include("not-a-date")
+      end
+
+      it "game_id なしで日付が読めない場合も 500 にならず 422" do
+        body[:pitcher_appearances_bulk].delete(:game_id)
+        body[:pitcher_appearances_bulk][:schedule_date] = "garbage"
+        post "/api/v1/pitcher_appearances/bulk_save", params: body, as: :json
+        expect(response).to have_http_status(:unprocessable_content)
+      end
+
+      it "登板が空でも game_id なしで日付が読めなければ（試合を日付で探せない）422" do
+        params = { pitcher_appearances_bulk: { team_id: team.id, schedule_date: "garbage", appearances: [] } }
+        post "/api/v1/pitcher_appearances/bulk_save", params: params, as: :json
+        expect(response).to have_http_status(:unprocessable_content)
+      end
+
+      it "422 の時は何も保存しない" do
+        expect { post "/api/v1/pitcher_appearances/bulk_save", params: body, as: :json }.not_to change(PitcherGameState, :count)
+      end
+
+      it "単発登録 POST /pitcher_appearances も schedule_date なし（game_id だけ）は 422" do
+        post "/api/v1/pitcher_appearances",
+             params: { pitcher_appearance: { pitcher_id: pitcher1.id, team_id: team.id, game_id: game.id, role: "starter",
+                                             innings_pitched: 6.0, earned_runs: 0 } }, as: :json
+        expect(response).to have_http_status(:unprocessable_content)
+        expect(response.parsed_body["errors"].join).to include("schedule_date")
+      end
+
+      it "単発登録で日付が読めなくても 422" do
+        post "/api/v1/pitcher_appearances",
+             params: { pitcher_appearance: { pitcher_id: pitcher1.id, team_id: team.id, game_id: game.id, role: "starter",
+                                             innings_pitched: 6.0, earned_runs: 0, schedule_date: "xx" } }, as: :json
+        expect(response).to have_http_status(:unprocessable_content)
+      end
+    end
+
     context "正常系: 複数投手を一括保存" do
       it "200を返し全投手を登録する" do
         post "/api/v1/pitcher_appearances/bulk_save", params: bulk_params, as: :json

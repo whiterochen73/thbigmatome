@@ -11,7 +11,12 @@ class SeasonSchedule < ApplicationRecord
   # 得点が保存・変更されたら、その試合の自チーム先発の result_category を作り直す（E2）。
   # 区分は登板記録の保存時にだけ計算されていたため、得点を後から直しても長イニング敗戦・KO が残っていた。
   # 得点が消された（未入力に戻った）時は「負けではない」として作り直す。
+  # 作り直しが想定外のエラーで落ちても、得点の保存は取り消さない（pitcher_rebuild_error に残し、呼び出し側が警告にする）。
+  before_save { @pitcher_rebuild_error = nil }
   after_save :rebuild_pitcher_result_categories, if: -> { saved_change_to_score? || saved_change_to_opponent_score? }
+
+  # 直近の保存で、投手の判定の作り直しが失敗した時の例外。成功・未実行なら nil。
+  attr_reader :pitcher_rebuild_error
 
   def calculated_game_number
     game_number || season.season_schedules
@@ -37,7 +42,19 @@ class SeasonSchedule < ApplicationRecord
 
   private
 
+  # 作り直しは得点の保存と同じトランザクションの中で走る。落ちた時に得点ごと取り消さないよう、次の 2 点を守る。
+  #   1. セーブポイント（requires_new）の中で走らせる。PostgreSQL は SQL エラーでトランザクション全体が中断状態になり、
+  #      後続の文もすべて失敗するため。失敗したら作り直しの途中の書き込みだけが戻る
+  #   2. 例外は握ってログに残し、pitcher_rebuild_error に持つ（作り直しは後で rake で再実行できる）
   def rebuild_pitcher_result_categories
-    PitcherResultCategoryRebuilder.new(apply: true, unscored: :not_loss).rebuild_for_schedule(self)
+    self.class.transaction(requires_new: true) do
+      PitcherResultCategoryRebuilder.new(apply: true, unscored: :not_loss).rebuild_for_schedule(self)
+    end
+  rescue StandardError => e
+    @pitcher_rebuild_error = e
+    Rails.logger.error(
+      "[PitcherResultCategoryRebuilder] 判定の作り直しに失敗（得点は保存済み） season_schedule_id=#{id} " \
+      "#{e.class}: #{e.message}\n#{Array(e.backtrace).first(10).join("\n")}"
+    )
   end
 end

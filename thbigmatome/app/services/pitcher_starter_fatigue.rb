@@ -3,7 +3,8 @@
 #   疲労P = 選手カードの先発疲労P（starter_stamina）に、試合前のスタミナ補正（§8.3.1 の表）をかけた値
 #
 # - カードに先発疲労P の記載が無い（starter_stamina が nil）投手だけが既定 3（§8.3）。補正の結果 0 とは別物。
-# - 中10日（実日数差。離脱期間は関与しない・裁定 2026-09-13）以上空けば補正なし。
+# - 中10日（実日数差。離脱期間は関与しない・裁定 2026-09-13）以上空けば補正なし。登板可否より優先する（裁定 2026-10-25）。
+# - 中日数から引く離脱は負傷のみ（裁定 2026-09-12 出場停止と負傷は別枠）。
 # - そのチームでその選手に使っているカードは team_memberships（team_id, player_id は一意）の
 #   player_card_id から引く。メンバー・カードが特定できない場合は推測せず pending を返す。
 class PitcherStarterFatigue
@@ -52,12 +53,12 @@ class PitcherStarterFatigue
     return done(card_fp, card_fp, card_unset) if last_app.nil?
 
     last_date = last_app.schedule_date.to_date
-    raw_rest = (@target_date - last_date).to_i - 1
-    # 中10日リフレッシュ: 実日数差。離脱期間は関与しない
-    return done(card_fp, card_fp, card_unset) if raw_rest >= 10
+    raw_rest = PitcherRestStatus.raw_rest_days(last_date, @target_date)
+    # 中10日リセット: 実日数差。離脱期間は関与しない。登板可否（中2日以内は不可）より優先する（AMB-04 追補2）
+    return done(card_fp, card_fp, card_unset) if PitcherRestStatus.rest_reset?(last_date, @target_date)
 
-    absences = absences_for(membership)
-    return done(card_fp, card_fp, card_unset) if PitcherRestStatus.full_recovery_absence?(absences, last_date, @target_date)
+    # 中日数から引く離脱は負傷のみ（出場停止・再調整は引かない）
+    absences = PitcherRestStatus.injury_absences([ membership.id ])[membership.id]
 
     rest_days = raw_rest - PitcherRestStatus.absence_days_in_range(absences, last_date + 1, @target_date - 1)
 
@@ -89,11 +90,5 @@ class PitcherStarterFatigue
 
   def slash?(card)
     card.starter_stamina.present? && card.relief_stamina.present? && !card.is_relief_only
-  end
-
-  def absences_for(membership)
-    PlayerAbsence.where(team_membership_id: membership.id).filter_map do |pa|
-      { start_date: pa.start_date.to_date, end_date: pa.effective_end_date&.to_date }
-    end
   end
 end

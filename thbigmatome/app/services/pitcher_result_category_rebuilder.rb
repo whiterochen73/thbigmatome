@@ -7,11 +7,18 @@
 # 前登板の区分が次の補正を決めるので、投手ごとに日付順に処理し、作り直した値を次の判定に使う
 # （試運転でも DB に書かずに同じ連鎖を再現する。result_category_overrides を使う）。
 # 判定できないもの（カード未特定・得点未入力・試合概要なし・ノーゲーム）は変えず、理由別に件数を出す。
+#
+# 連続中4日カウント（consecutive_short_rest_count。cmd_1775 第2段 E3）も同じ走査で埋め直す。
+# カウントは得点・カードに依らず日付と離脱だけで決まるので、区分を作り直せない行（スキップ・保留）でも書く。
+# 前回値の連鎖は count_overrides で再現する（試運転でも同じ値になる）。
 class PitcherResultCategoryRebuilder
   # status: :changed / :fatigue_only / :unchanged / :skipped_unscored / :skipped_no_schedule /
   #         :skipped_ambiguous_schedule / :skipped_no_game / :pending
   Row = Struct.new(:state_id, :team_id, :pitcher_id, :schedule_date, :old_category, :new_category,
-                   :old_fatigue_p, :new_fatigue_p, :game_result, :status, :reason, keyword_init: true)
+                   :old_fatigue_p, :new_fatigue_p, :game_result, :status, :reason,
+                   :old_consecutive_short_rest_count, :new_consecutive_short_rest_count, keyword_init: true) do
+    def consecutive_changed? = old_consecutive_short_rest_count != new_consecutive_short_rest_count
+  end
 
   attr_reader :rows
 
@@ -21,6 +28,7 @@ class PitcherResultCategoryRebuilder
     @apply = apply
     @unscored = unscored
     @overrides = {}
+    @count_overrides = {}
     @rows = []
   end
 
@@ -52,6 +60,11 @@ class PitcherResultCategoryRebuilder
     @rows.group_by(&:status).transform_values(&:size)
   end
 
+  # 連続中4日カウントが変わる行数（区分の status とは独立）
+  def consecutive_changed_count
+    @rows.count(&:consecutive_changed?)
+  end
+
   private
 
   def cascade_after(state)
@@ -67,10 +80,19 @@ class PitcherResultCategoryRebuilder
 
   def rebuild_state(state)
     outcome = PitcherGameResult.for(team_id: state.team_id, schedule_date: state.schedule_date)
+    new_count = PitcherConsecutiveShortRest.call(
+      team_id: state.team_id, pitcher_id: state.pitcher_id, schedule_date: state.schedule_date,
+      count_overrides: @count_overrides
+    )
+    old_count = state.consecutive_short_rest_count
+    @count_overrides[state.id] = new_count
+    state.update!(consecutive_short_rest_count: new_count) if @apply && new_count != old_count
     base = {
       state_id: state.id, team_id: state.team_id, pitcher_id: state.pitcher_id,
       schedule_date: state.schedule_date, old_category: state.result_category,
-      old_fatigue_p: state.fatigue_p_used, game_result: outcome.result
+      old_fatigue_p: state.fatigue_p_used, game_result: outcome.result,
+      old_consecutive_short_rest_count: old_count,
+      new_consecutive_short_rest_count: new_count
     }
     return add(base, :skipped_no_game) if state.result_category == "no_game"
     return add(base, outcome.note == :ambiguous ? :skipped_ambiguous_schedule : :skipped_no_schedule) unless outcome.found

@@ -42,13 +42,7 @@ module Api
             last_date = last_app.schedule_date.to_date
             last_role = last_app.role
 
-            if full_recovery_absence?(absences, last_date, target_date)
-              rest_days = nil
-            else
-              raw_rest_days = (target_date - last_date).to_i - 1
-              absent_days = absence_days_in_range(absences, last_date + 1, target_date - 1)
-              rest_days = raw_rest_days - absent_days
-            end
+            rest_days = effective_rest_days(absences, last_date, target_date)
 
             if %w[reliever opener].include?(last_role)
               cumulative_innings = compute_cumulative_innings(player_id, target_date, absences)
@@ -114,13 +108,7 @@ module Api
             last_result_category = last_app.result_category
             consecutive_short_rest_count = last_app.consecutive_short_rest_count || 0
 
-            if full_recovery_absence?(absences, last_date, target_date)
-              rest_days = nil
-            else
-              raw_rest_days = (target_date - last_date).to_i - 1
-              absent_days = absence_days_in_range(absences, last_date + 1, target_date - 1)
-              rest_days = raw_rest_days - absent_days
-            end
+            rest_days = effective_rest_days(absences, last_date, target_date)
 
             if %w[reliever opener].include?(last_role)
               cumulative_innings = compute_cumulative_innings(player_id, target_date, absences)
@@ -177,7 +165,9 @@ module Api
           .to_set
       end
 
-      # 複数投手の離脱期間を一括取得
+      # 複数投手の中日数控除用の離脱期間（負傷のみ）を一括取得。
+      # 出場停止・再調整は中日数にも累積イニングの減衰凍結にも使わない（AMB-04「出場停止と負傷は別枠」）。
+      # 出場可否の表示（build_injured_set）は全種別を見るので、ここを通さない。
       # 戻り値: { player_id => [{start_date:, end_date:}, ...] }
       # end_date は復帰可能日（排他的）。nil は無期限離脱。
       def preload_pitcher_absences(pitcher_ids)
@@ -187,22 +177,23 @@ module Api
 
         return {} if tm_map.empty?
 
-        result = {}
-        PlayerAbsence.where(team_membership_id: tm_map.keys).each do |pa|
-          player_id = tm_map[pa.team_membership_id]
-          next unless player_id
-          result[player_id] ||= []
-          result[player_id] << { start_date: pa.start_date.to_date, end_date: pa.effective_end_date&.to_date }
+        by_membership = PitcherRestStatus.injury_absences(tm_map.keys)
+        tm_map.each_with_object({}) do |(tm_id, player_id), result|
+          result[player_id] = by_membership[tm_id]
         end
-        result
+      end
+
+      # 画面に返す中日数。実日数差が中10日以上ならリセット成立で、離脱を差し引かない実日数を返す
+      # （控除後の中日数が2日以内でも登板不可にしない。AMB-04 追補2）。リセット不成立なら負傷を差し引いた値。
+      def effective_rest_days(absences, last_date, target_date)
+        raw_rest_days = PitcherRestStatus.raw_rest_days(last_date, target_date)
+        return raw_rest_days if PitcherRestStatus.rest_reset?(last_date, target_date)
+
+        raw_rest_days - absence_days_in_range(absences, last_date + 1, target_date - 1)
       end
 
       def absence_days_in_range(absences, from_date, to_date)
         PitcherRestStatus.absence_days_in_range(absences, from_date, to_date)
-      end
-
-      def full_recovery_absence?(absences, after_date, target_date)
-        PitcherRestStatus.full_recovery_absence?(absences, after_date, target_date)
       end
 
       # 判定表は PitcherRestStatus に集約（先発の試合前疲労P計算と共有）

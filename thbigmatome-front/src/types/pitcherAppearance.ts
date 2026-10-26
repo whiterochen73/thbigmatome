@@ -11,13 +11,14 @@ export interface PitcherAppearanceInput {
   fatigue_p_used: number
   decision: PitcherDecision
   is_opener: boolean
-  consecutive_short_rest_count: number
   pre_injury_days_excluded: number
   appearance_order: number
 }
 
 export interface PitcherAppearanceRecord extends PitcherAppearanceInput {
   id: number
+  // サーバが直前の先発との中日数から決める連続中4日先発カウント。画面からは送らない
+  consecutive_short_rest_count: number
   game_id: number
   team_id: number
   competition_id: number

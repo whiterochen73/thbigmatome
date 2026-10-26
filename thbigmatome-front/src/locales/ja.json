@@ -263,6 +263,7 @@
     "save": "保存",
     "saveSuccess": "保存しました",
     "saveFailed": "保存に失敗しました",
+    "pitcherRebuildFailed": "得点は保存しました。ただし投手の判定の作り直しに失敗しました。後で作り直しが必要です",
     "dateDisplay": "{month}月{day}日({weekday})",
     "winningPitcher": "勝利投手",
     "losingPitcher": "敗戦投手",

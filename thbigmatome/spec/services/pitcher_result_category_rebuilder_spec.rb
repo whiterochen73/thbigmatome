@@ -182,6 +182,64 @@ RSpec.describe PitcherResultCategoryRebuilder, :pitcher_fatigue do
     end
   end
 
+  # Test Basis: cmd_1775 第3段 E12（ノーゲーム）/ 台帳 D-11 / rulebook §8.3.1 KO・ノーゲーム表
+  describe "ノーゲーム（season_schedules.no_game）" do
+    it "no_game を立てると、その日の先発は no_game になる（得点は負けでも）。疲労P は持たない" do
+      schedule = create_schedule(season, "2026-06-10", score: 2, opponent_score: 5)
+      state = create_start(team: team, pitcher: pitcher, date: "2026-06-10", innings: 9.0, category: "long_loss", fatigue_p_used: 7)
+      schedule.update!(no_game: true)
+      expect(state.reload).to have_attributes(result_category: "no_game", fatigue_p_used: nil)
+    end
+
+    it "得点が変わらず no_game だけが変わる更新でも作り直す。外すと得点から戻る（負け・9回・疲労P7 は long_loss）" do
+      schedule = create_schedule(season, "2026-06-10", score: 2, opponent_score: 5)
+      state = create_start(team: team, pitcher: pitcher, date: "2026-06-10", innings: 9.0, category: "long_loss")
+      schedule.update!(no_game: true)
+      schedule.update!(no_game: false)
+      expect(state.reload.result_category).to eq("long_loss")
+      expect(state.fatigue_p_used).to eq(7)
+    end
+
+    it "ノーゲームの日に得点だけ直しても no_game のまま（ノーゲームは得点で変わらない）" do
+      schedule = create_schedule(season, "2026-06-10", score: 2, opponent_score: 5)
+      state = create_start(team: team, pitcher: pitcher, date: "2026-06-10", innings: 9.0, category: "long_loss")
+      schedule.update!(no_game: true)
+      schedule.update!(score: 9, opponent_score: 0)
+      expect(state.reload.result_category).to eq("no_game")
+    end
+
+    it "区分が変わると次の先発の補正も連鎖する（前が no_game になれば中4日は P-3 → 区分の基準が変わる）" do
+      schedule = create_schedule(season, "2026-06-01", score: 0, opponent_score: 1)
+      create_schedule(season, "2026-06-05", score: 0, opponent_score: 1)
+      first = create_start(team: team, pitcher: pitcher, date: "2026-06-01", innings: 8.0, category: "long_loss")
+      # 6/5 は中3日。前が long_loss なら P0（5.0 回は関与 5 > 0+1 で long_loss）、no_game なら P-3 → 7-3=4（関与 5 > 5? なし → normal）
+      second = create_start(team: team, pitcher: pitcher, date: "2026-06-05", innings: 5.0, category: "long_loss")
+      schedule.update!(no_game: true)
+      expect(first.reload.result_category).to eq("no_game")
+      expect(second.reload.result_category).to eq("normal")
+      expect(second.fatigue_p_used).to eq(4)
+    end
+
+    it "rake の作り直し（rebuild_all）も no_game の日を no_game にする。ノーゲームの記録は skip せず区分を揃える" do
+      schedule = create_schedule(season, "2026-06-10", score: 2, opponent_score: 5)
+      state = create_start(team: team, pitcher: pitcher, date: "2026-06-10", innings: 9.0, category: "normal")
+      schedule.update_columns(no_game: true)
+      r = rebuild
+      r.rebuild_all
+      expect(state.reload.result_category).to eq("no_game")
+      expect(r.summary[:changed]).to eq(1)
+    end
+
+    it "スケジュールにノーゲームが立っていない過去の no_game 記録は、従来どおり変えない（skipped_no_game）" do
+      create_schedule(season, "2026-06-10", score: 2, opponent_score: 5)
+      state = create_start(team: team, pitcher: pitcher, date: "2026-06-10", innings: 3.0, category: "no_game")
+      r = rebuild
+      r.rebuild_all
+      expect(r.summary[:skipped_no_game]).to eq(1)
+      expect(state.reload.result_category).to eq("no_game")
+    end
+  end
+
   # Test Basis: cmd_1775 第2段 E3（過去分の連続中4日カウントを同じ規則で埋め直す）/ E4
   describe "連続中4日カウントの作り直し（E3）" do
     def starts(dates)
@@ -227,6 +285,19 @@ RSpec.describe PitcherResultCategoryRebuilder, :pitcher_fatigue do
       # 6/7 → 6/17: 実日数中9日 - 負傷 5 日 = 中4日 → 前回 0 + 1
       expect(s3.reload.consecutive_short_rest_count).to eq(1)
       expect(s1.reload.consecutive_short_rest_count).to eq(0)
+    end
+
+    # Test Basis: AMB-04 追補 3（2026-10-26）。リセット成立（実日数中10日以上）は連続カウントも 0
+    it "実日数中10日でリセット成立なら、負傷控除後にちょうど中4日でもカウントは 0（保存済みの +1 も直す）" do
+      membership = TeamMembership.find_by(team_id: team.id, player_id: pitcher.id)
+      s1, s2 = starts(%w[2026-06-01 2026-06-12]) # 実日数中10日
+      create(:player_absence, team_membership: membership, season: season, absence_type: :injury,
+                              start_date: Date.new(2026, 6, 2), duration: 6, duration_unit: "days") # 控除後 中4日
+      s2.update!(consecutive_short_rest_count: 1) # 旧実装が書いた誤った値
+      r = rebuild
+      r.rebuild_all
+      expect(s2.reload.consecutive_short_rest_count).to eq(0)
+      expect(r.rows.find { |row| row.state_id == s2.id }.new_consecutive_short_rest_count).to eq(0)
     end
 
     it "リリーフ登板は対象外のまま（先発のみ）" do

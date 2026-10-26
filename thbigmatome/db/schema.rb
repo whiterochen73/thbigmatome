@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_22_120000) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_26_120000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -554,6 +554,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_22_120000) do
     t.integer "game_number"
     t.string "home_away"
     t.bigint "losing_pitcher_id"
+    t.boolean "no_game", default: false, null: false
     t.integer "opponent_score"
     t.jsonb "opponent_starting_lineup"
     t.bigint "opponent_team_id"

@@ -90,4 +90,39 @@ RSpec.describe "PUT /api/v1/game/:id（得点保存と投手判定の作り直�
       expect(schedule.pitcher_rebuild_error).to be_a(RuntimeError)
     end
   end
+
+  # Test Basis: cmd_1775 第3段 E12。試合結果でノーゲームを選べる（GameResult.vue → PUT /game/:id）
+  context "ノーゲーム（no_game）" do
+    it "PUT で no_game を保存し、GET /game/:id が返す（既定は false）" do
+      get "/api/v1/game/#{schedule.id}"
+      expect(response.parsed_body["no_game"]).to be(false)
+
+      put "/api/v1/game/#{schedule.id}", params: { no_game: true }, as: :json
+      expect(response).to have_http_status(:ok)
+      expect(schedule.reload.no_game).to be(true)
+
+      get "/api/v1/game/#{schedule.id}"
+      expect(response.parsed_body["no_game"]).to be(true)
+    end
+
+    it "ノーゲームにすると、登板記録の区分が no_game に作り直される（得点は変えなくてよい）" do
+      expect(state.result_category).to eq("long_loss")
+      put "/api/v1/game/#{schedule.id}", params: { no_game: true }, as: :json
+      expect(response.parsed_body["warnings"]).to eq([])
+      expect(state.reload.result_category).to eq("no_game")
+      expect(state.fatigue_p_used).to be_nil
+    end
+
+    it "ノーゲームを外すと、得点から区分を作り直す（負け・長いイニングなら long_loss に戻る）" do
+      put "/api/v1/game/#{schedule.id}", params: { no_game: true }, as: :json
+      put "/api/v1/game/#{schedule.id}", params: { no_game: false }, as: :json
+      expect(state.reload.result_category).to eq("long_loss")
+    end
+
+    it "no_game の保存は得点の保存と同時でもよい（得点は残り、区分は no_game）" do
+      put "/api/v1/game/#{schedule.id}", params: { score: 6, opponent_score: 5, no_game: true }, as: :json
+      expect(schedule.reload).to have_attributes(score: 6, opponent_score: 5, no_game: true)
+      expect(state.reload.result_category).to eq("no_game")
+    end
+  end
 end

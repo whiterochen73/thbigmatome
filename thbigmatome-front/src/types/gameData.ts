@@ -19,5 +19,7 @@ export interface GameData {
   opponent_team_name: string
   score: number | null
   opponent_score: number | null
+  // ノーゲーム（試合が成立しなかった）。投手の休養は KO・ノーゲームの表を使う
+  no_game?: boolean
   starting_lineup: LineupItem[] | null
 }

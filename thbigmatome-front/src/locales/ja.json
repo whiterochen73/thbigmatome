@@ -63,6 +63,7 @@
     "legendWin": "勝",
     "legendLose": "負",
     "legendDraw": "分",
+    "legendNoGame": "ノーゲーム",
     "noSchedule": "スケジュールなし",
     "tableHeaders": {
       "date": "日付",
@@ -81,7 +82,8 @@
       "starter": "先発投手",
       "win": "勝ち",
       "lose": "負け",
-      "draw": "引分"
+      "draw": "引分",
+      "noGame": "ノーゲーム"
     },
     "keyPlayer": {
       "label": "特例選手",
@@ -270,6 +272,8 @@
     "savePitcher": "セーブ投手",
     "score": "得点",
     "opponentScore": "失点",
+    "noGame": "ノーゲーム",
+    "noGameHint": "試合が成立しなかった場合に選ぶ。投手の休養は KO・ノーゲームの表で計算され、勝敗投手は付けられない",
     "team": "チーム",
     "total": "合計",
     "addInning": "回追加",

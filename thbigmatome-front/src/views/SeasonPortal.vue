@@ -253,9 +253,16 @@
                             >
                             <span
                               :class="`result-mark result-${day.schedule.game_result.result}`"
+                              data-testid="calendar-result-mark"
                               >{{ resultMark(day.schedule.game_result.result) }}</span
                             >
-                            <span class="score-text">{{ day.schedule.game_result.score }}</span>
+                            <!-- ノーゲームは得点を出さない（勝敗・成績に入れない。台帳 D-11） -->
+                            <span
+                              v-if="day.schedule.game_result.score"
+                              class="score-text"
+                              data-testid="calendar-score"
+                              >{{ day.schedule.game_result.score }}</span
+                            >
                           </div>
                           <div v-else class="game-info">
                             <span v-if="day.schedule.announced_starter" class="starter-text">
@@ -296,7 +303,11 @@
                       <span class="result-mark result-lose">L</span
                       >{{ t('seasonPortal.legendLose') }}&nbsp;
                       <span class="result-mark result-draw">D</span
-                      >{{ t('seasonPortal.legendDraw') }}
+                      >{{ t('seasonPortal.legendDraw') }}&nbsp;
+                      <span data-testid="legend-no-game">
+                        <span class="result-mark result-no_game">NG</span
+                        >{{ t('seasonPortal.legendNoGame') }}
+                      </span>
                     </span>
                   </div>
                 </div>
@@ -381,7 +392,10 @@
                           </template>
                           <span v-else class="text-disabled">—</span>
                         </td>
-                        <td :data-label="t('seasonPortal.tableHeaders.score')">
+                        <td
+                          :data-label="t('seasonPortal.tableHeaders.score')"
+                          data-testid="table-score"
+                        >
                           {{
                             !isCancelledType(row.schedule?.date_type) &&
                             row.schedule?.game_result?.score
@@ -396,6 +410,7 @@
                             "
                             class="result-badge"
                             :class="`result-${row.schedule.game_result.result}`"
+                            data-testid="table-result-badge"
                           >
                             {{ resultMark(row.schedule.game_result.result) }}
                           </span>
@@ -515,13 +530,17 @@
                 >
                 vs {{ selectedDay.schedule.game_result.opponent_short_name }}
               </div>
-              <div class="mb-1">
+              <div
+                v-if="selectedDay.schedule.game_result.score"
+                class="mb-1"
+                data-testid="detail-score"
+              >
                 <span class="text-caption text-medium-emphasis"
                   >{{ t('seasonPortal.detailDialog.score') }}&ensp;</span
                 >
                 {{ selectedDay.schedule.game_result.score }}
               </div>
-              <div class="mb-2">
+              <div class="mb-2" data-testid="detail-result">
                 <span class="text-caption text-medium-emphasis"
                   >{{ t('seasonPortal.detailDialog.result') }}&ensp;</span
                 >
@@ -535,7 +554,9 @@
                     ? t('seasonPortal.detailDialog.win')
                     : selectedDay.schedule.game_result.result === 'lose'
                       ? t('seasonPortal.detailDialog.lose')
-                      : t('seasonPortal.detailDialog.draw')
+                      : selectedDay.schedule.game_result.result === 'no_game'
+                        ? t('seasonPortal.detailDialog.noGame')
+                        : t('seasonPortal.detailDialog.draw')
                 }}
               </div>
             </template>
@@ -920,7 +941,7 @@ const isGameType = (dateType?: string) => {
 
 // 勝敗マーク
 const resultMark = (result: string) => {
-  return ({ win: 'W', lose: 'L', draw: 'D' } as Record<string, string>)[result] || ''
+  return ({ win: 'W', lose: 'L', draw: 'D', no_game: 'NG' } as Record<string, string>)[result] || ''
 }
 
 const isDateBeforeCurrent = (date: Date) => {
@@ -1248,6 +1269,10 @@ onMounted(async () => {
 .result-draw {
   color: rgb(var(--v-theme-secondary));
 }
+/* ノーゲームは勝敗の色を付けない（勝敗・成績に入れない） */
+.result-no_game {
+  color: rgb(var(--v-theme-on-surface-variant));
+}
 
 .entry-btn {
   font-size: 0.72rem !important;
@@ -1355,6 +1380,11 @@ onMounted(async () => {
 .result-badge.result-draw {
   background: rgba(var(--v-theme-secondary), 0.15);
   color: rgb(var(--v-theme-secondary));
+}
+.result-badge.result-no_game {
+  background: rgba(var(--v-theme-on-surface-variant), 0.15);
+  color: rgb(var(--v-theme-on-surface-variant));
+  font-size: 0.7rem;
 }
 
 .date-cell {

@@ -395,13 +395,352 @@ RSpec.describe "Api::V1::PitcherGameStatesController", type: :request do
           expect(entry["projected_status"]).to eq("reduced_0")
         end
 
-        it "累積3以上 → injury_check" do
+        it "累積2 → fatigued_start（最初から疲労状態。累積1 の reduced_0 = 疲労P0 とは別の値。AMB-19 追補）" do
+          create_reliever_pgs(schedule_date: "2026-03-08")
+          create_reliever_pgs(schedule_date: "2026-03-09")
+          get_fatigue_summary(date: "2026-03-10")
+          entry = response.parsed_body.find { |e| e["player_id"] == pitcher_first.id }
+          expect(entry["projected_status"]).to eq("fatigued_start")
+        end
+
+        it "累積3以上 → fatigued_start_check（最初から疲労状態 + 登板後の負傷チェック。疲労状態が見えなくならない）" do
           create_reliever_pgs(schedule_date: "2026-03-07")
           create_reliever_pgs(schedule_date: "2026-03-08")
           create_reliever_pgs(schedule_date: "2026-03-09")
           get_fatigue_summary(date: "2026-03-10")
           entry = response.parsed_body.find { |e| e["player_id"] == pitcher_first.id }
-          expect(entry["projected_status"]).to eq("injury_check")
+          expect(entry["projected_status"]).to eq("fatigued_start_check")
+        end
+      end
+
+      # Test Basis: cmd_1775 第3段 E9・E10 / rulebook §8.3.2〜§8.3.4・§8.4.3・§8.7.2 / 台帳 AMB-18 追補・AMB-19 追補・AMB-21 /
+      #   「Dugout 監査 E9〜E12 の残り — 実装の範囲」（2026-10-26 Operator 決定）
+      context "役割別の状態（as_starter / as_reliever）" do
+        let(:season_first) { create(:season, team: team) }
+        # スラッシュ選手: starter_stamina と relief_stamina の両方があり relief_only でない
+        let!(:slash_player) { make_pitcher(starter_stamina: 7, relief_stamina: 3)[0] }
+        # スラッシュでない通常の選手（先発疲労P 無し・リリーフ疲労P あり）。先発も出る（既定 3）
+        let!(:plain_player) { make_pitcher(starter_stamina: nil, relief_stamina: 3)[0] }
+
+        def make_pitcher(starter_stamina: 7, relief_stamina: nil, is_relief_only: false, cost_type: "normal_cost")
+          player = create(:player, :pitcher)
+          card = create(:player_card, player: player, card_set: card_set, card_type: "pitcher", is_pitcher: true,
+                                      starter_stamina: starter_stamina, relief_stamina: relief_stamina, is_relief_only: is_relief_only)
+          tm = create(:team_membership, :first_squad, team: team, player: player, player_card: card, selected_cost_type: cost_type)
+          create(:season_roster, team_membership: tm, squad: "first", registered_on: "2026-01-01")
+          [ player, tm ]
+        end
+
+        def appear(player, date, role: "reliever", innings: nil, category: nil, consecutive: 0)
+          game = create(:game, competition: competition, home_team: team, visitor_team: create(:team))
+          create(:pitcher_game_state, pitcher: player, team: team, competition: competition, game: game,
+                                      role: role, schedule_date: date, innings_pitched: innings,
+                                      result_category: category, consecutive_short_rest_count: consecutive)
+        end
+
+        def entry_for(player, date)
+          get_fatigue_summary(date: date)
+          response.parsed_body.find { |e| e["player_id"] == player.id }
+        end
+
+        # 3/1 に登板 → 中 rest 日（3/1 から rest + 1 日後）の状態
+        def target_after(rest) = (Date.new(2026, 3, 1) + rest + 1).to_s
+
+        def reset_appearances(player) = PitcherGameState.where(pitcher_id: player.id).delete_all
+
+        it "API は as_starter / as_reliever を {status, notes} で返す（既存の projected_status も残る）" do
+          appear(plain_player, "2026-03-06", role: "starter", category: "normal")
+          e = entry_for(plain_player, "2026-03-10") # 中3日
+          expect(e["as_starter"]).to eq({ "status" => "injury_check", "notes" => [] })
+          expect(e["as_reliever"]).to eq({ "status" => "reduced_0", "notes" => [] })
+          expect(e["as_starter_omitted_reason"]).to be_nil
+          expect(e["as_reliever_omitted_reason"]).to be_nil
+          expect(e["projected_status"]).to eq("injury_check")
+        end
+
+        describe "先発なら: 前回が先発（§8.3.1 の既存表）" do
+          it "前回の区分 × 中日数で既存の projected_status と同じ値を as_starter にも出す" do
+            { "normal" => { 3 => "injury_check", 4 => "reduced_3", 5 => "reduced_1", 6 => "full" },
+              "ko" => { 3 => "reduced_3", 4 => "full" },
+              "no_game" => { 3 => "reduced_3", 4 => "full" },
+              "long_loss" => { 3 => "injury_check", 4 => "reduced_4", 5 => "reduced_2", 6 => "reduced_1", 7 => "full" } }.each do |cat, rows|
+              rows.each do |rest, expected|
+                reset_appearances(plain_player)
+                appear(plain_player, "2026-03-01", role: "starter", category: cat)
+                e = entry_for(plain_player, target_after(rest))
+                expect([ cat, rest, e["as_starter"]["status"] ]).to eq([ cat, rest, expected ])
+                expect(e["projected_status"]).to eq(expected)
+              end
+            end
+          end
+        end
+
+        describe "先発なら: 前回がリリーフ（§8.3.4・§8.7.2）" do
+          it "前回リリーフで中2日以内は先発不可（is_unavailable も true）。中3日から先発可" do
+            [ 0, 1, 2 ].each do |rest|
+              reset_appearances(plain_player)
+              appear(plain_player, "2026-03-01", innings: 1.0)
+              e = entry_for(plain_player, target_after(rest))
+              expect([ rest, e["as_starter"]["status"], e["is_unavailable"] ]).to eq([ rest, "unavailable", true ])
+            end
+            reset_appearances(plain_player)
+            appear(plain_player, "2026-03-01", innings: 1.0)
+            expect(entry_for(plain_player, target_after(3))["is_unavailable"]).to be false
+          end
+
+          it "通常選手: 中3日 injury_check / 中4日 reduced_3 / 中5日 reduced_1 / 中6日 full（前回オープナーも同じ）" do
+            %w[reliever opener].each do |role|
+              expected = { 3 => "injury_check", 4 => "reduced_3", 5 => "reduced_1", 6 => "full" }
+              got = expected.keys.to_h do |rest|
+                reset_appearances(plain_player)
+                appear(plain_player, "2026-03-01", role: role, innings: 1.0)
+                [ rest, entry_for(plain_player, target_after(rest))["as_starter"]["status"] ]
+              end
+              expect(got).to eq(expected)
+            end
+          end
+
+          it "スラッシュ選手: 直近リリーフ登板の累積 2 / 3 / 4 の 3 表（中3日〜中6日）" do
+            tables = {
+              2.0 => { 3 => "reduced_1", 4 => "full", 5 => "full" },
+              3.0 => { 3 => "reduced_3", 4 => "reduced_1", 5 => "full" },
+              4.0 => { 3 => "injury_check", 4 => "reduced_3", 5 => "reduced_1", 6 => "full" }
+            }
+            tables.each do |innings, rows|
+              got = rows.keys.to_h do |rest|
+                reset_appearances(slash_player)
+                appear(slash_player, "2026-03-01", innings: innings)
+                [ rest, entry_for(slash_player, target_after(rest))["as_starter"]["status"] ]
+              end
+              expect([ innings, got ]).to eq([ innings, rows ])
+            end
+          end
+
+          it "スラッシュ選手の表は登板直後（減衰前）の累積で選ぶ（累積4 は中3日で減衰して 0 でも累積4 の表）" do
+            appear(slash_player, "2026-03-01", innings: 4.0)
+            expect(entry_for(slash_player, target_after(3))["as_starter"]["status"]).to eq("injury_check")
+          end
+        end
+
+        describe "リリーフなら: 前回が先発（§8.3.3）" do
+          # [前回区分, 中日数, 通常選手, スラッシュ選手]
+          {
+            "normal" => { 2 => %w[unavailable reduced_0], 3 => %w[reduced_0 full], 4 => %w[full full], 1 => %w[unavailable unavailable] },
+            "ko" => { 1 => %w[unavailable reduced_0], 2 => %w[reduced_0 full], 3 => %w[full full], 0 => %w[unavailable unavailable] },
+            "no_game" => { 1 => %w[unavailable reduced_0], 2 => %w[reduced_0 full], 3 => %w[full full] },
+            "long_loss" => { 3 => %w[unavailable reduced_0], 4 => %w[reduced_0 full], 5 => %w[full full], 2 => %w[unavailable unavailable] }
+          }.each do |category, rows|
+            rows.each do |rest, (plain_status, slash_status)|
+              it "#{category} 中#{rest}日: 通常選手 #{plain_status} / スラッシュ選手 #{slash_status}" do
+                # as_reliever の通常選手は relief_stamina があり relief_only でも starter 側が無い選手（plain_player）
+                appear(plain_player, "2026-03-01", role: "starter", category: category)
+                appear(slash_player, "2026-03-01", role: "starter", category: category)
+                expect(entry_for(plain_player, target_after(rest))["as_reliever"]["status"]).to eq(plain_status)
+                expect(entry_for(slash_player, target_after(rest))["as_reliever"]["status"]).to eq(slash_status)
+              end
+            end
+          end
+        end
+
+        describe "リリーフなら: 前回がリリーフ（§8.3.2・AMB-19 追補）" do
+          # 登板 1 回（innings 回）で累積 N を作り、翌日（休養 0 日）の状態を見る
+          it "累積0 は full / 1 は reduced_0（疲労P0）/ 2 は fatigued_start（最初から疲労状態）/ 3 以上は fatigued_start_check" do
+            got = [ 1.0, 2.0, 3.0, 5.0 ].map do |innings|
+              reset_appearances(plain_player)
+              appear(plain_player, "2026-03-01", innings: innings)
+              entry_for(plain_player, target_after(0))["as_reliever"]["status"]
+            end
+            expect(got).to eq(%w[reduced_0 fatigued_start fatigued_start_check fatigued_start_check])
+            reset_appearances(plain_player)
+            appear(plain_player, "2026-03-01", innings: 1.0)
+            expect(entry_for(plain_player, target_after(1))["as_reliever"]["status"]).to eq("full") # 累積 1 が 1 日で 0 に減衰
+          end
+        end
+
+        # Test Basis: AMB-21（2026-10-26）。中5日 → 累積1以下（P0）、中6日以上 → 累積0（カード値）が回復の上限。減衰でそれより良ければ累積の表
+        describe "リリーフなら: 中5日・中6日は回復の上限（AMB-21）" do
+          def status_for(innings, rest)
+            reset_appearances(plain_player)
+            appear(plain_player, "2026-03-01", innings: innings)
+            entry_for(plain_player, target_after(rest))["as_reliever"]["status"]
+          end
+
+          it "累積8: 休養5日 → 減衰後 3 でも reduced_0（P0）/ 休養6日 → 減衰後 1 でも full（カード値）/ 休養4日 → 上限なし" do
+            expect([ status_for(8.0, 4), status_for(8.0, 5), status_for(8.0, 6) ]).to eq(%w[fatigued_start_check reduced_0 full])
+          end
+
+          it "累積0（登板後に減衰しきった状態）: 休養5日でもカード値のまま（P0 に悪化させない）" do
+            expect(status_for(1.0, 5)).to eq("full")
+          end
+
+          it "累積7: 休養5日 → 減衰後 1 で reduced_0 / 休養6日 → full（上限と減衰が一致する境）" do
+            expect([ status_for(7.0, 4), status_for(7.0, 5), status_for(7.0, 6) ]).to eq(%w[fatigued_start_check reduced_0 full])
+          end
+
+          it "累積9・10: 休養5日 → reduced_0 / 休養6日 → full（減衰だけでは戻りきらない分を上限が引き上げる）" do
+            [ 9.0, 10.0 ].each do |innings|
+              expect([ status_for(innings, 5), status_for(innings, 6) ]).to eq(%w[reduced_0 full])
+            end
+          end
+
+          it "累積6以下は減衰だけで中5日 full（上限が悪化させない）" do
+            expect([ status_for(6.0, 5), status_for(4.0, 5), status_for(3.0, 5) ]).to eq(%w[full full full])
+          end
+        end
+
+        describe "リリーフなら: 注記" do
+          it "累積0 の先発明けには注記なし。前回リリーフで累積1以上ならオープナーの負傷チェックの注記（リリーフなら側のみ）" do
+            appear(plain_player, "2026-03-01", role: "starter", category: "normal")
+            expect(entry_for(plain_player, target_after(4))["as_reliever"]["notes"]).to eq([])
+            reset_appearances(plain_player)
+            appear(plain_player, "2026-03-01", innings: 1.0)
+            e = entry_for(plain_player, target_after(0))
+            expect(e["as_reliever"]["notes"]).to eq([ "opener_injury_check" ])
+            expect(e["as_starter"]["notes"]).to eq([])
+          end
+
+          it "累積4以上かつ前日登板: 注意書きだけ出す（合否は記録しない）。累積3 の前日登板・累積4 の中1日には出さない" do
+            appear(plain_player, "2026-03-01"); appear(plain_player, "2026-03-02"); appear(plain_player, "2026-03-03")
+            expect(entry_for(plain_player, "2026-03-04")["as_reliever"]["notes"]).to eq([ "opener_injury_check" ]) # 累積3・前日登板
+            appear(plain_player, "2026-03-04")
+            e = entry_for(plain_player, "2026-03-05") # 累積4・前日登板
+            expect(e["as_reliever"]["status"]).to eq("fatigued_start_check")
+            expect(e["as_reliever"]["notes"]).to eq(%w[opener_injury_check previous_day_one_inning_only])
+            expect(entry_for(plain_player, "2026-03-06")["as_reliever"]["notes"]).to eq([ "opener_injury_check" ]) # 累積4→3 に減衰・中1日
+          end
+        end
+
+        describe "表示の省略" do
+          it "リリーフ専門（カードの is_relief_only）は「先発なら」を出さない。「リリーフなら」は出す" do
+            player, = make_pitcher(starter_stamina: nil, relief_stamina: 3, is_relief_only: true)
+            appear(player, "2026-03-01", role: "starter", category: "normal")
+            e = entry_for(player, target_after(3))
+            expect(e["as_starter"]).to be_nil
+            expect(e["as_starter_omitted_reason"]).to eq("relief_only_card")
+            expect(e["as_reliever"]["status"]).to eq("reduced_0")
+            expect(e["is_unavailable"]).to be false
+          end
+
+          it "救援専任契約（selected_cost_type = relief_only_cost）の選手も「先発なら」を出さない。先発もできる契約に変えると再び出す" do
+            player, tm = make_pitcher(starter_stamina: 7, relief_stamina: 3, cost_type: "relief_only_cost")
+            appear(player, "2026-03-01", role: "starter", category: "normal")
+            e = entry_for(player, target_after(3))
+            expect(e["as_starter"]).to be_nil
+            expect(e["as_starter_omitted_reason"]).to eq("relief_only_contract")
+            expect(e["as_reliever"]).not_to be_nil
+
+            tm.update!(selected_cost_type: "normal_cost")
+            e = entry_for(player, target_after(3))
+            expect(e["as_starter"]["status"]).to eq("injury_check")
+            expect(e["as_starter_omitted_reason"]).to be_nil
+
+            %w[pitcher_only_cost two_way_cost].each do |type|
+              tm.update!(selected_cost_type: type)
+              expect(entry_for(player, target_after(3))["as_starter"]).not_to be_nil, type
+            end
+            tm.update!(selected_cost_type: "relief_only_cost")
+            expect(entry_for(player, target_after(3))["as_starter"]).to be_nil
+          end
+
+          it "リリーフ向けの疲労P（relief_stamina）をカードに持たない先発は「リリーフなら」を出さない。「先発なら」は出す" do
+            player, = make_pitcher(starter_stamina: 7, relief_stamina: nil)
+            appear(player, "2026-03-01", role: "starter", category: "normal")
+            e = entry_for(player, target_after(3))
+            expect(e["as_reliever"]).to be_nil
+            expect(e["as_reliever_omitted_reason"]).to eq("no_relief_stamina")
+            expect(e["as_starter"]["status"]).to eq("injury_check")
+          end
+
+          it "relief_only のカードは relief_stamina が無くても「リリーフなら」を出す（リリーフ専門だから）" do
+            player, = make_pitcher(starter_stamina: nil, relief_stamina: nil, is_relief_only: true)
+            appear(player, "2026-03-01", role: "starter", category: "normal")
+            expect(entry_for(player, target_after(3))["as_reliever"]).not_to be_nil
+          end
+
+          it "スラッシュ選手（starter_stamina と relief_stamina の両方あり relief_only でない）は両方出す" do
+            appear(slash_player, "2026-03-01", role: "starter", category: "normal")
+            e = entry_for(slash_player, target_after(5))
+            expect(e["as_starter"]).not_to be_nil
+            expect(e["as_reliever"]).not_to be_nil
+          end
+        end
+
+        # Test Basis: 台帳 D-11 再確認（2026-10-26 Operator）「ノーゲームは負傷と登板の疲労計算だけはする」。
+        #   ノーゲームの日の登板は、休養日数・累積イニング・先発→リリーフの表のいずれからも外れない（勝敗・成績だけが対象外）
+        describe "ノーゲームの日の登板も疲労・累積の計算に入る（D-11）" do
+          it "ノーゲームの日のリリーフ登板（3回）は累積に入る: 翌日は 最初から疲労 + 負傷CK（通常の日と同じ）" do
+            appear(plain_player, "2026-03-01", innings: 3.0, category: "no_game")
+            e = entry_for(plain_player, "2026-03-02")
+            expect(e["cumulative_innings"]).to eq(3)
+            expect(e["as_reliever"]["status"]).to eq("fatigued_start_check")
+          end
+
+          it "ノーゲームの日と通常の日の登板は、連日なら累積が足される（1 + 1 + 1 = 3）" do
+            appear(plain_player, "2026-03-01", innings: 1.0, category: "no_game")
+            appear(plain_player, "2026-03-02", innings: 1.0)
+            appear(plain_player, "2026-03-03", innings: 1.0, category: "no_game")
+            expect(entry_for(plain_player, "2026-03-04")["cumulative_innings"]).to eq(3)
+          end
+
+          it "ノーゲームの日の先発登板は休養日数の起点になる: 前日なら rest_days 0・先発は登板不可" do
+            appear(plain_player, "2026-03-01", role: "starter", category: "no_game")
+            e = entry_for(plain_player, "2026-03-02")
+            expect(e["rest_days"]).to eq(0)
+            expect(e["as_starter"]["status"]).to eq("unavailable")
+            expect(e["last_result_category"]).to eq("no_game")
+          end
+
+          it "ノーゲームの日の先発登板は、KO・ノーゲーム表で次の登板を補正する（中3日で P-3。通常なら 負傷CK）" do
+            appear(plain_player, "2026-03-01", role: "starter", category: "no_game")
+            expect(entry_for(plain_player, target_after(3))["as_starter"]["status"]).to eq("reduced_3")
+          end
+
+          it "ノーゲームの日の先発登板の後、リリーフは KO・ノーゲーム表（中2日 P0・AMB-22 で中1日以内は不可）" do
+            appear(plain_player, "2026-03-01", role: "starter", category: "no_game")
+            expect([ 1, 2, 3 ].map { |r| entry_for(plain_player, target_after(r))["as_reliever"]["status"] }).to eq(%w[unavailable reduced_0 full])
+          end
+
+          it "ノーゲームの日の登板から中10日で、通常どおりリセットされる" do
+            appear(slash_player, "2026-03-01", innings: 9.0, category: "no_game")
+            e = entry_for(slash_player, target_after(10))
+            expect([ e["as_starter"]["status"], e["as_reliever"]["status"] ]).to eq(%w[full full])
+          end
+
+          it "負傷離脱（試合数単位）は、ノーゲームの日も試合日として数える" do
+            tm = TeamMembership.find_by(team: team, player: plain_player)
+            create(:season_schedule, season: season_first, date: Date.new(2026, 3, 10), no_game: true)
+            create(:season_schedule, season: season_first, date: Date.new(2026, 3, 11))
+            absence = create(:player_absence, team_membership: tm, season: season_first, absence_type: :injury,
+                                              start_date: Date.new(2026, 3, 10), duration: 2, duration_unit: "games")
+            expect(absence.effective_end_date).to eq(Date.new(2026, 3, 12))
+            appear(plain_player, "2026-03-01", innings: 1.0, category: "no_game")
+            expect(entry_for(plain_player, "2026-03-11")["is_injured"]).to be true
+          end
+        end
+
+        describe "中10日リセット・負傷" do
+          it "実日数中10日: どの前回の役割でも「先発なら」「リリーフなら」とも full（前回リリーフ・累積大でも）" do
+            appear(slash_player, "2026-03-01", innings: 9.0)
+            e = entry_for(slash_player, target_after(10))
+            expect([ e["as_starter"]["status"], e["as_reliever"]["status"] ]).to eq(%w[full full])
+          end
+
+          it "負傷中は両方 injured" do
+            appear(plain_player, "2026-03-01", innings: 1.0)
+            tm = TeamMembership.find_by(team: team, player: plain_player)
+            create(:player_absence, team_membership: tm, season: season_first, absence_type: :injury,
+                                    start_date: Date.new(2026, 3, 5), duration: 10, duration_unit: "days")
+            e = entry_for(plain_player, "2026-03-08")
+            expect([ e["as_starter"]["status"], e["as_reliever"]["status"] ]).to eq(%w[injured injured])
+          end
+
+          it "負傷離脱は控除後の中日数で見る: 前回リリーフ・実日数中4日 - 負傷3日 = 中1日 → 先発不可。リセットは差し引かない実日数" do
+            appear(plain_player, "2026-03-01", innings: 1.0)
+            tm = TeamMembership.find_by(team: team, player: plain_player)
+            create(:player_absence, team_membership: tm, season: season_first, absence_type: :injury,
+                                    start_date: Date.new(2026, 3, 2), duration: 3, duration_unit: "days")
+            expect(entry_for(plain_player, target_after(4))["as_starter"]["status"]).to eq("unavailable")
+          end
         end
       end
     end

@@ -2,15 +2,16 @@ class Api::V1::HomeController < Api::V1::BaseController
   def summary
     competition = Competition.find(params[:competition_id])
 
+    # ノーゲームは勝敗・成績に入れない（台帳 D-11）。消化試合数・直近試合にも数えない
+    counted_games = competition.games.where(status: "confirmed").excluding_no_game
     # 直近試合（最新5件 confirmed）
-    recent_games = competition.games
-      .where(status: "confirmed")
+    recent_games = counted_games
       .order(real_date: :desc)
       .limit(5)
       .includes(:home_team, :visitor_team, :stadium)
 
     # シーズン進行
-    total_games = competition.games.where(status: "confirmed").count
+    total_games = counted_games.count
     season_progress = { completed: total_games, total: 143 }
 
     # 成績サマリー

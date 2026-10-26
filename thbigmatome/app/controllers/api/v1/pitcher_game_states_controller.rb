@@ -71,7 +71,7 @@ module Api
           .where.not(selected_cost_type: "fielder_only_cost")
           .joins(:player_card)
           .merge(PlayerCard.can_pitch)
-          .includes(:player)
+          .includes(:player, :player_card)
           .distinct
 
         pitcher_memberships = all_pitcher_memberships.select do |tm|
@@ -84,6 +84,7 @@ module Api
 
         pitcher_ids = pitcher_memberships.map(&:player_id)
         name_map = pitcher_memberships.each_with_object({}) { |tm, h| h[tm.player_id] = tm.player.name }
+        membership_map = pitcher_memberships.index_by(&:player_id)
 
         injured_ids = build_injured_set(pitcher_ids, target_date)
         absence_map = preload_pitcher_absences(pitcher_ids)
@@ -96,11 +97,16 @@ module Api
             .first
 
           rest_days = nil
+          raw_rest_days = nil
+          reset = false
           cumulative_innings = 0
+          relief_cumulative_after_last = 0
           last_role = nil
           last_result_category = nil
           consecutive_short_rest_count = 0
           absences = absence_map[player_id] || []
+          membership = membership_map[player_id]
+          card = membership&.player_card
 
           if last_app
             last_date = last_app.schedule_date.to_date
@@ -109,19 +115,33 @@ module Api
             consecutive_short_rest_count = last_app.consecutive_short_rest_count || 0
 
             rest_days = effective_rest_days(absences, last_date, target_date)
+            raw_rest_days = PitcherRestStatus.raw_rest_days(last_date, target_date)
+            reset = PitcherRestStatus.rest_reset?(last_date, target_date)
 
             if %w[reliever opener].include?(last_role)
               cumulative_innings = compute_cumulative_innings(player_id, target_date, absences)
+              # スラッシュ選手がリリーフ明けに先発する時の表選びは、直近リリーフ登板直後（減衰前）の累積（AMB-18 追補）
+              if card&.slash_pitcher?
+                relief_cumulative_after_last = compute_cumulative_innings(player_id, last_date + 1, absences)
+              end
             end
           end
 
           is_injured = injured_ids.include?(player_id)
-          is_unavailable = !is_injured && last_role == "starter" && rest_days != nil && rest_days <= 2
 
-          projected = calculate_projected_status(
-            last_role, rest_days, last_result_category,
-            cumulative_innings, is_injured, consecutive_short_rest_count
+          states = PitcherRestStatus.role_states(
+            last_role: last_role, rest_days: rest_days, raw_rest_days: raw_rest_days, reset: reset,
+            last_result_category: last_result_category, cumulative_innings: cumulative_innings,
+            relief_cumulative_after_last: relief_cumulative_after_last,
+            consecutive_short_rest_count: consecutive_short_rest_count,
+            is_injured: is_injured, slash: card&.slash_pitcher? || false
           )
+          # 既存の projected_status は「前回と同じ役割で続ける場合」の状態
+          projected = last_role.nil? || last_role == "starter" ? states[:as_starter][:status] : states[:as_reliever][:status]
+          starter_omitted = starter_omitted_reason(membership)
+          reliever_omitted = reliever_omitted_reason(membership)
+          as_starter = starter_omitted ? nil : states[:as_starter]
+          as_reliever = reliever_omitted ? nil : states[:as_reliever]
 
           {
             player_id: player_id,
@@ -131,8 +151,13 @@ module Api
             cumulative_innings: %w[reliever opener].include?(last_role) ? cumulative_innings : nil,
             last_result_category: last_result_category,
             is_injured: is_injured,
-            is_unavailable: is_unavailable,
-            projected_status: projected
+            # 先発としては登板不可（中2日以内。前回の役割に依らない §8.7.2）。リリーフ専門など「先発なら」を出さない投手は false
+            is_unavailable: !is_injured && as_starter&.dig(:status) == "unavailable",
+            projected_status: projected,
+            as_starter: as_starter,
+            as_reliever: as_reliever,
+            as_starter_omitted_reason: starter_omitted,
+            as_reliever_omitted_reason: reliever_omitted
           }
         end
 
@@ -140,6 +165,25 @@ module Api
       end
 
       private
+
+      # 「先発なら」を出さない理由。リリーフ専門（カード）か救援専任契約。先発もできる契約に変われば nil に戻る
+      def starter_omitted_reason(membership)
+        return nil if membership.nil?
+        return "relief_only_card" if membership.player_card&.is_relief_only
+        return "relief_only_contract" if membership.relief_only_contract?
+
+        nil
+      end
+
+      # 「リリーフなら」を出さない理由。リリーフ向けの疲労P（relief_stamina）をカードに持たない先発。リリーフ専門のカードは出す
+      def reliever_omitted_reason(membership)
+        return nil if membership.nil?
+
+        card = membership.player_card
+        return nil if card.nil? || card.is_relief_only
+
+        card.relief_stamina.nil? ? "no_relief_stamina" : nil
+      end
 
       def set_team
         @team = Team.find(params[:team_id])

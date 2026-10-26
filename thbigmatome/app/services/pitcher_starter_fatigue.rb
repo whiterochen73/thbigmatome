@@ -65,7 +65,7 @@ class PitcherStarterFatigue
     fp = if last_app.role == "starter"
       category = @overrides.fetch(last_app.id) { last_app.result_category } || "normal"
       PitcherRestStatus.starter_fatigue_p(card_fp, category, rest_days)
-    elsif slash?(card)
+    elsif card.slash_pitcher?
       # リリーフ/オープナー→先発（§8.3.4 スラッシュ選手）: 直近リリーフ登板直後の累積イニングで表を選ぶ
       cumulative = PitcherRestStatus.cumulative_innings(@team_id, @pitcher_id, last_date + 1, absences)
       PitcherRestStatus.slash_starter_fatigue_p_after_relief(card_fp, cumulative, rest_days)
@@ -86,9 +86,5 @@ class PitcherStarterFatigue
 
   def pending(reason)
     Result.new(fatigue_p: nil, card_fatigue_p: nil, card_unset: nil, pending: reason)
-  end
-
-  def slash?(card)
-    card.starter_stamina.present? && card.relief_stamina.present? && !card.is_relief_only
   end
 end

@@ -50,4 +50,22 @@ RSpec.describe PitcherGameResult, :pitcher_fatigue do
     create_schedule(other_season, "2026-06-10", score: 0, opponent_score: 9)
     expect(outcome.found).to be(false)
   end
+
+  # Test Basis: cmd_1775 第3段 E12（ノーゲームを試合結果で選べる）/ rulebook §8.3.1 の KO・ノーゲーム表 / 台帳 D-11（ノーゲームは疲労を計算する）
+  describe "ノーゲーム（season_schedules.no_game）" do
+    it "no_game が立っていれば、得点が入っていても result は no_game（得点では表せない）" do
+      create_schedule(season, "2026-06-10", score: 4, opponent_score: 3).update_columns(no_game: true)
+      expect(outcome).to have_attributes(found: true, scored: true, result: "no_game")
+    end
+
+    it "得点が未入力でも no_game は決まっている（scored: true。未入力は負けではない扱いにする必要がない）" do
+      create_schedule(season, "2026-06-10", score: nil, opponent_score: nil).update_columns(no_game: true)
+      expect(outcome).to have_attributes(found: true, scored: true, result: "no_game")
+    end
+
+    it "既定は false。立っていなければ従来どおり得点から決める" do
+      create_schedule(season, "2026-06-10", score: 1, opponent_score: 2)
+      expect(outcome.result).to eq("lose")
+    end
+  end
 end

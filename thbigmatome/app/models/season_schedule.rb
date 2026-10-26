@@ -11,9 +11,11 @@ class SeasonSchedule < ApplicationRecord
   # 得点が保存・変更されたら、その試合の自チーム先発の result_category を作り直す（E2）。
   # 区分は登板記録の保存時にだけ計算されていたため、得点を後から直しても長イニング敗戦・KO が残っていた。
   # 得点が消された（未入力に戻った）時は「負けではない」として作り直す。
+  # ノーゲーム（no_game）が立った・外れた時も作り直す（立てば no_game、外せば得点から戻す。cmd_1775 第3段 E12）。
   # 作り直しが想定外のエラーで落ちても、得点の保存は取り消さない（pitcher_rebuild_error に残し、呼び出し側が警告にする）。
   before_save { @pitcher_rebuild_error = nil }
-  after_save :rebuild_pitcher_result_categories, if: -> { saved_change_to_score? || saved_change_to_opponent_score? }
+  after_save :rebuild_pitcher_result_categories,
+             if: -> { saved_change_to_score? || saved_change_to_opponent_score? || saved_change_to_no_game? }
 
   # 直近の保存で、投手の判定の作り直しが失敗した時の例外。成功・未実行なら nil。
   attr_reader :pitcher_rebuild_error
@@ -25,7 +27,10 @@ class SeasonSchedule < ApplicationRecord
       .count + 1
   end
 
+  # シーズン画面の勝敗の印。ノーゲームは勝ち・負け・引き分けにせず result "no_game" を返し、得点も出さない
+  # （得点が入っていても成績ではない。台帳 D-11 再確認 2026-10-26）。得点が未入力でもノーゲームの印は返す。
   def game_result_hash
+    return { opponent_short_name: opponent_team&.short_name, score: nil, result: "no_game" } if no_game
     return nil if score.blank? || opponent_score.blank?
 
     result = if score > opponent_score then "win"
@@ -48,7 +53,8 @@ class SeasonSchedule < ApplicationRecord
   #   2. 例外は握ってログに残し、pitcher_rebuild_error に持つ（作り直しは後で rake で再実行できる）
   def rebuild_pitcher_result_categories
     self.class.transaction(requires_new: true) do
-      PitcherResultCategoryRebuilder.new(apply: true, unscored: :not_loss).rebuild_for_schedule(self)
+      PitcherResultCategoryRebuilder.new(apply: true, unscored: :not_loss)
+                                    .rebuild_for_schedule(self, recompute_no_game: saved_change_to_no_game?)
     end
   rescue StandardError => e
     @pitcher_rebuild_error = e

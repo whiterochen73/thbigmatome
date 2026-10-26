@@ -7,8 +7,8 @@
 #   間にリリーフ登板があっても先発同士で数える。
 # - 中日数は離脱を差し引いた値（rulebook §8.7.2）。差し引くのは負傷のみ（AMB-04 出場停止と負傷は別枠）。
 # - このカウントは次回の中4日先発の負傷チェック（§8.5.1 条件2・§8.3.1 の「2回連続で発動」）に使う。
-# - 中10日リセット（実日数差）は疲労P・累積イニングの扱いで、このカウントでは見ていない
-#   （実日数が中10日以上でも、控除後の中日数がちょうど4なら +1 になる。指示どおり控除後の rest_days で判定）。
+# - 中10日リセット（実日数差。離脱期間は関与しない）が成立する時は 0（AMB-04 追補 3・Operator 裁定 2026-10-26）。
+#   疲労に関わる情報がすべてリセットされるので、控除後の中日数がちょうど 4 でも +1 しない。リセットは他の判定より先に見る。
 class PitcherConsecutiveShortRest
   SHORT_REST_DAYS = 4
 
@@ -34,6 +34,8 @@ class PitcherConsecutiveShortRest
     return 0 if last_start.nil?
 
     last_date = last_start.schedule_date.to_date
+    return 0 if PitcherRestStatus.rest_reset?(last_date, @target_date)
+
     rest_days = PitcherRestStatus.raw_rest_days(last_date, @target_date) -
                 PitcherRestStatus.absence_days_in_range(injury_absences, last_date + 1, @target_date - 1)
     return 0 unless rest_days == SHORT_REST_DAYS

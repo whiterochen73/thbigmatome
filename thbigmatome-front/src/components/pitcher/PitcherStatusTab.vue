@@ -31,7 +31,8 @@
               <th class="text-center">中日数</th>
               <th class="text-center">累積IP</th>
               <th class="text-center">疲労P</th>
-              <th class="text-center">状態</th>
+              <th class="text-center">先発なら</th>
+              <th class="text-center">リリーフなら</th>
             </tr>
           </thead>
           <tbody>
@@ -58,13 +59,20 @@
               <td class="text-center text-grey">-</td>
               <td class="text-center">{{ starterFatiguePLabel(pitcher) }}</td>
               <td class="text-center">
-                <v-chip :color="statusColor(pitcher.projected_status)" size="x-small" label>
-                  {{ statusLabel(pitcher.projected_status) }}
-                </v-chip>
+                <PitcherRoleStateCell
+                  :state="pitcher.as_starter"
+                  :test-id="`as-starter-${pitcher.player_id}`"
+                />
+              </td>
+              <td class="text-center">
+                <PitcherRoleStateCell
+                  :state="pitcher.as_reliever"
+                  :test-id="`as-reliever-${pitcher.player_id}`"
+                />
               </td>
             </tr>
             <tr v-if="orderedStarters.length === 0">
-              <td colspan="6" class="text-center text-grey text-caption py-2">先発投手なし</td>
+              <td colspan="7" class="text-center text-grey text-caption py-2">先発投手なし</td>
             </tr>
           </tbody>
         </v-table>
@@ -90,7 +98,8 @@
               <th class="text-center">中日数</th>
               <th class="text-center">累積IP</th>
               <th class="text-center">疲労P</th>
-              <th class="text-center">状態</th>
+              <th class="text-center">先発なら</th>
+              <th class="text-center">リリーフなら</th>
             </tr>
           </thead>
           <tbody>
@@ -119,13 +128,20 @@
               </td>
               <td class="text-center text-grey">-</td>
               <td class="text-center">
-                <v-chip :color="statusColor(pitcher.projected_status)" size="x-small" label>
-                  {{ statusLabel(pitcher.projected_status) }}
-                </v-chip>
+                <PitcherRoleStateCell
+                  :state="pitcher.as_starter"
+                  :test-id="`as-starter-${pitcher.player_id}`"
+                />
+              </td>
+              <td class="text-center">
+                <PitcherRoleStateCell
+                  :state="pitcher.as_reliever"
+                  :test-id="`as-reliever-${pitcher.player_id}`"
+                />
               </td>
             </tr>
             <tr v-if="orderedRelievers.length === 0">
-              <td colspan="6" class="text-center text-grey text-caption py-2">リリーフ投手なし</td>
+              <td colspan="7" class="text-center text-grey text-caption py-2">リリーフ投手なし</td>
             </tr>
           </tbody>
         </v-table>
@@ -138,6 +154,8 @@
 import { ref, computed, onMounted, watch } from 'vue'
 import axios from 'axios'
 import PlayerNameLink from '@/components/shared/PlayerNameLink.vue'
+import PitcherRoleStateCell from './PitcherRoleStateCell.vue'
+import type { PitcherRoleOmittedReason, PitcherRoleState } from './pitcherRoleState'
 
 interface PitcherStatus {
   player_id: number
@@ -147,7 +165,13 @@ interface PitcherStatus {
   cumulative_innings: number | null
   is_injured: boolean
   is_unavailable: boolean
+  // 前回と同じ役割で続ける場合の状態（旧来の値）。役割別の状態は as_starter / as_reliever
   projected_status: string
+  // 投手ごとの「先発なら」「リリーフなら」。省略する投手は null（理由は *_omitted_reason）
+  as_starter?: PitcherRoleState | null
+  as_reliever?: PitcherRoleState | null
+  as_starter_omitted_reason?: PitcherRoleOmittedReason
+  as_reliever_omitted_reason?: PitcherRoleOmittedReason
 }
 
 interface LocalStorageOrder {
@@ -259,23 +283,6 @@ watch(
   () => [props.teamId, props.scheduleDate],
   () => fetchPitcherStatuses(),
 )
-
-function statusLabel(status: string): string {
-  if (status === 'full') return '✅全快'
-  if (status === 'injury_check') return '⚠️負傷CK要'
-  if (status === 'unavailable') return '🚫不可'
-  if (status === 'injured') return '🏥負傷中'
-  if (status.startsWith('reduced_')) return '⚡P減少'
-  return status
-}
-
-function statusColor(status: string): string {
-  if (status === 'full') return 'success'
-  if (status === 'injury_check') return 'warning'
-  if (status === 'unavailable' || status === 'injured') return 'error'
-  if (status.startsWith('reduced_')) return 'info'
-  return 'default'
-}
 
 function starterFatiguePLabel(pitcher: PitcherStatus): string {
   const s = pitcher.projected_status

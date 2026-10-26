@@ -11,7 +11,8 @@ namespace :pitcher_game_states do
       TEAM_ID=3 bundle exec rake pitcher_game_states:recalculate_result_category    # チームを絞る
       OUT=/path/to/dry_run.csv bundle exec rake ...                                 # CSV をファイルへ
     投手ごとに日付順に処理し、作り直した値を次の登板の補正に使う。
-    カード未特定・得点未入力・試合概要なし・ノーゲームは変えずに件数を出す。
+    カード未特定・得点未入力・試合概要なしは変えずに件数を出す。
+    試合概要にノーゲーム（season_schedules.no_game）が立っている日は no_game に揃える。ノーゲームの印が無いのに no_game の記録は、変えずに件数を出す。
   DESC
   task recalculate_result_category: :environment do
     apply = ENV["APPLY"] == "1"
@@ -51,7 +52,7 @@ namespace :pitcher_game_states do
     puts "# skipped_unscored(得点未入力): #{summary.fetch(:skipped_unscored, 0)}"
     puts "# skipped_no_schedule(試合概要なし): #{summary.fetch(:skipped_no_schedule, 0)}"
     puts "# skipped_ambiguous_schedule(試合概要が複数): #{summary.fetch(:skipped_ambiguous_schedule, 0)}"
-    puts "# skipped_no_game(ノーゲーム): #{summary.fetch(:skipped_no_game, 0)}"
+    puts "# skipped_no_game(試合概要にノーゲームの印が無い no_game 記録): #{summary.fetch(:skipped_no_game, 0)}"
     pending = rebuilder.rows.select { |r| r.status == :pending }
     puts "# pending(判定保留): #{pending.size}"
     pending.group_by(&:reason).each do |reason, rs|

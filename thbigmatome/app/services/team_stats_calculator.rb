@@ -9,7 +9,7 @@ class TeamStatsCalculator
   end
 
   def calculate
-    confirmed_games = @competition.games.where(status: "confirmed")
+    confirmed_games = @competition.games.where(status: "confirmed").excluding_no_game # ノーゲームは勝敗・成績に入れない（D-11）
                                   .includes(:home_team, :visitor_team)
     return [] if confirmed_games.empty?
 

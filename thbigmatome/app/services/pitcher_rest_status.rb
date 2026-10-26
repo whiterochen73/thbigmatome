@@ -128,13 +128,137 @@ module PitcherRestStatus
         end
       end
     else # reliever / opener
-      case cumulative_innings
-      when 0 then "full"
-      when 1 then "reduced_0"
-      when 2 then "reduced_0"
-      else "injury_check"
-      end
+      reliever_status_after_reliever(cumulative_innings, rest_days)
     end
+  end
+
+  # ─── 投手ごとの「先発なら」「リリーフなら」（cmd_1775 第3段 E9・E10）────────────────────
+  #
+  # status の値（既存の値に 3 つ足した）:
+  #   full / reduced_N / injury_check / unavailable / injured    … 既存
+  #   fatigued_start        登板の最初から疲労状態（AMB-19 追補。疲労P0 とは別の状態）
+  #   fatigued_start_check  最初から疲労状態 + 登板後の負傷チェック（累積3I 以上のリリーフ登板 §8.3.2・§8.5.1 条件3）
+  #   unavailable           先発→リリーフ（§8.3.3）の表の最短行より短い中日数は、リリーフも登板不可（AMB-22・2026-10-26 Operator）
+  # 注記（notes）:
+  #   opener_injury_check                 オープナーとして登板するなら負傷チェック（累積1I 以上・§8.4.3）。リリーフなら側のみ
+  #   previous_day_one_inning_only        累積4I 以上で前日登板: 前日の負傷チェックに合格していれば 1 イニング限定で登板可（§8.3.2）。
+  #                                       合否は記録しないので、画面に注意書きだけ出す（Operator 決定 2026-10-26）
+
+  # 先発→リリーフ（§8.3.3）。キー: 前登板の result_category → [P0 になる中日数, カード値に戻る中日数]
+  RELIEVER_AFTER_STARTER_TABLE = {
+    "normal" => [ 3, 4 ],
+    "ko" => [ 2, 3 ],
+    "no_game" => [ 2, 3 ],
+    "long_loss" => [ 4, 5 ]
+  }.freeze
+
+  # スラッシュ選手（先発もリリーフもできるカード）は先発→リリーフが各ケース 1 日短い（§8.3.3）
+  SLASH_RELIEVER_SHORTENING_DAYS = 1
+
+  # リリーフの中日数による回復の上限（AMB-21）。中5日 → 累積1以下（P0）、中6日以上 → 累積0（カード値）
+  RELIEVER_RECOVERY_CAP = { 5 => 1 }.freeze
+  RELIEVER_FULL_RECOVERY_DAYS = 6
+
+  # 累積3I 以上で登板すると試合後に負傷チェック（§8.3.2・§8.5.1 条件3）
+  RELIEVER_INJURY_CHECK_CUMULATIVE = 3
+  # 累積4I 以上で前日登板した時の制限（§8.3.2）
+  PREVIOUS_DAY_LIMIT_CUMULATIVE = 4
+
+  # 休養日数による回復の上限を掛けた累積。累積の減衰でそれより良ければそのまま（中5日で P0 に悪化させない）。
+  # rest_days は負傷控除後の値（nil は登板歴なし）。
+  def capped_reliever_cumulative(cumulative_innings, rest_days)
+    return cumulative_innings if rest_days.nil?
+    return 0 if rest_days >= RELIEVER_FULL_RECOVERY_DAYS
+
+    cap = RELIEVER_RECOVERY_CAP[rest_days]
+    cap ? [ cumulative_innings, cap ].min : cumulative_innings
+  end
+
+  # リリーフ→リリーフ（§8.3.2）の登板時の状態
+  def reliever_status_after_reliever(cumulative_innings, rest_days)
+    case capped_reliever_cumulative(cumulative_innings, rest_days)
+    when 0 then "full"
+    when 1 then "reduced_0"
+    when 2 then "fatigued_start"
+    else "fatigued_start_check"
+    end
+  end
+
+  # 先発→リリーフ（§8.3.3）の登板時の状態。表の最短行（P0）より短い間隔はリリーフも登板不可（AMB-22）
+  def reliever_status_after_starter(result_category, rest_days, slash)
+    zero_day, card_day = RELIEVER_AFTER_STARTER_TABLE.fetch(result_category || "normal", RELIEVER_AFTER_STARTER_TABLE["normal"])
+    if slash
+      zero_day -= SLASH_RELIEVER_SHORTENING_DAYS
+      card_day -= SLASH_RELIEVER_SHORTENING_DAYS
+    end
+    if rest_days >= card_day then "full"
+    elsif rest_days == zero_day then "reduced_0"
+    else "unavailable" # 表の最短行（P0）より短い間隔は登板不可（AMB-22）
+    end
+  end
+
+  # リリーフ/オープナー→先発（§8.3.4）の登板時の状態。中2日以内は先発不可（§8.7.2）。
+  # relief_cumulative: 直近リリーフ登板直後の累積（減衰前）。スラッシュ選手の表選びに使う（AMB-18 追補）
+  def starter_status_after_reliever(rest_days, slash, relief_cumulative)
+    return "unavailable" if rest_days <= MAX_UNAVAILABLE_REST_DAYS
+
+    rule = if slash
+      bucket = [ [ relief_cumulative.to_i, 2 ].max, 4 ].min
+      SLASH_AFTER_RELIEF_TABLE.fetch(bucket)[rest_days]
+    else
+      STARTER_REST_TABLE["normal"][rest_days]
+    end
+    status_from_rule(rule)
+  end
+
+  # 補正ルール → 状態。P0 に置き換える中3日は負傷チェック（§8.5.1 条件1）
+  def status_from_rule(rule)
+    return "full" if rule.nil?
+
+    kind, n = rule
+    return "injury_check" if kind == :set && n.zero?
+
+    "reduced_#{n}"
+  end
+
+  # 登板時の状態を「先発なら」「リリーフなら」で並べて返す。表示の省略（リリーフ専門の「先発なら」など）は呼び出し側で行う。
+  #
+  # 引数:
+  #   last_role / rest_days（負傷控除後。リセット成立時は差し引かない実日数）/ raw_rest_days（実日数差）/
+  #   reset（実日数差で中10日リセット成立）/ last_result_category（前回登板の区分）/
+  #   cumulative_innings（対象日時点の累積・減衰後）/ relief_cumulative_after_last（直近リリーフ登板直後の累積）/
+  #   consecutive_short_rest_count（直近の登板に保存された連続中4日の回数）/ is_injured / slash
+  # 戻り値: { as_starter: { status:, notes: [] }, as_reliever: { status:, notes: [] } }
+  def role_states(last_role:, rest_days:, raw_rest_days:, reset:, last_result_category:, cumulative_innings:,
+                  relief_cumulative_after_last:, consecutive_short_rest_count:, is_injured:, slash:)
+    return both_states("injured") if is_injured
+    # 中10日リセットは前回の役割・中日数に依らず最優先（AMB-04 追補 2）。累積は 0、疲労P はカード値
+    return both_states("full") if last_role.nil? || reset || rest_days.nil?
+
+    if last_role == "starter"
+      as_starter = calculate_projected_status("starter", rest_days, last_result_category, 0, false, consecutive_short_rest_count)
+      as_reliever = reliever_status_after_starter(last_result_category, rest_days, slash)
+      reliever_notes = []
+    else
+      as_starter = starter_status_after_reliever(rest_days, slash, relief_cumulative_after_last)
+      as_reliever = reliever_status_after_reliever(cumulative_innings, rest_days)
+      reliever_notes = reliever_notes_after_reliever(cumulative_innings, rest_days, raw_rest_days)
+    end
+
+    { as_starter: { status: as_starter, notes: [] }, as_reliever: { status: as_reliever, notes: reliever_notes } }
+  end
+
+  def both_states(status)
+    { as_starter: { status: status, notes: [] }, as_reliever: { status: status, notes: [] } }
+  end
+
+  # リリーフなら側の注記。上限を掛けた後の累積で決める。前日登板は離脱を差し引かない実日数で見る
+  def reliever_notes_after_reliever(cumulative_innings, rest_days, raw_rest_days)
+    effective = capped_reliever_cumulative(cumulative_innings, rest_days)
+    notes = []
+    notes << "opener_injury_check" if effective >= 1
+    notes << "previous_day_one_inning_only" if effective >= PREVIOUS_DAY_LIMIT_CUMULATIVE && raw_rest_days == 0
+    notes
   end
 
   # 指定日時点のリリーフ/オープナーの累積イニング（減衰込み）。離脱中は減衰凍結（absences は負傷のみを渡す）。

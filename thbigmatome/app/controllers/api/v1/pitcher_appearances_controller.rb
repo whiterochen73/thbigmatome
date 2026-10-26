@@ -216,8 +216,9 @@ class Api::V1::PitcherAppearancesController < Api::V1::BaseController
       game_result: game_result
     )
     attrs[:result_category] = result.category
-    # 先発の fatigue_p_used はサーバが求めた値（試合前のスタミナ補正後）で上書きする。特定できなければ nil
-    attrs[:fatigue_p_used] = result.fatigue_p if attrs[:role] == "starter" && game_result != "no_game"
+    # 先発の fatigue_p_used はサーバが求めた値（試合前のスタミナ補正後）で上書きする。特定できなければ nil。
+    # ノーゲームは区分の判定に疲労P を使わないので求めず、画面の値も残さない（作り直しの rake と同じく nil）
+    attrs[:fatigue_p_used] = result.fatigue_p if attrs[:role] == "starter"
     return unless result.pending?
 
     warnings << "投手ID #{attrs[:pitcher_id]}: 判定保留 - #{PitcherResultCategory.pending_message(result.pending_reason)}（result_category 未設定）"

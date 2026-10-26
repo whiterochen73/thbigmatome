@@ -123,3 +123,121 @@ describe('GameResult 得点の保存', () => {
     expect(wrapper.vm.snackbarColor).toBe('error')
   })
 })
+
+// cmd_1775 第3段 E12: 試合結果でノーゲームを選べる（精神疲労・精神崩壊は入れない — Operator 決定 2026-10-26）
+describe('GameResult ノーゲーム', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  async function mountWith(extra: Record<string, unknown> = {}) {
+    mockGet.mockImplementation((url: string) => {
+      if (url === '/game/100') return Promise.resolve({ data: { ...gameResponse, ...extra } })
+      if (url === '/teams') return Promise.resolve({ data: [] })
+      return Promise.reject(new Error(`Unexpected GET ${url}`))
+    })
+    const wrapper = mount(GameResult, {
+      global: {
+        plugins: [vuetify, i18n],
+        stubs: {
+          TeamMemberSelect: true,
+          TeamSelect: true,
+          PitcherAppearanceTab: true,
+          PitcherStatusTab: true,
+          RouterLink: true,
+        },
+      },
+    })
+    await flushPromises()
+    return wrapper
+  }
+
+  it('既定はノーゲームでない。勝敗は得点から決まる（6-5 は win、5-6 は lose、同点は draw）', async () => {
+    const wrapper = await mountWith()
+    expect(wrapper.vm.pitcherGameResult).toBe('win')
+    wrapper.vm.gameData.score = 5
+    wrapper.vm.gameData.opponent_score = 6
+    expect(wrapper.vm.pitcherGameResult).toBe('lose')
+    wrapper.vm.gameData.opponent_score = 5
+    expect(wrapper.vm.pitcherGameResult).toBe('draw')
+  })
+
+  it('ノーゲームのチェックを入れると、得点に依らず投手へ渡す結果が no_game になる', async () => {
+    const wrapper = await mountWith()
+    const input = wrapper.find('[data-testid="no-game-checkbox"] input')
+    expect(input.exists()).toBe(true)
+    await input.setValue(true)
+    expect(wrapper.vm.gameData.no_game).toBe(true)
+    expect(wrapper.vm.pitcherGameResult).toBe('no_game')
+  })
+
+  it('チェックを外すと得点から決める結果に戻る', async () => {
+    const wrapper = await mountWith({ no_game: true })
+    expect(wrapper.vm.pitcherGameResult).toBe('no_game')
+    await wrapper.find('[data-testid="no-game-checkbox"] input').setValue(false)
+    expect(wrapper.vm.pitcherGameResult).toBe('win')
+  })
+
+  it('保存済みのノーゲーム（API の no_game: true）はチェックが入った状態で開く', async () => {
+    const wrapper = await mountWith({ no_game: true })
+    const input = wrapper.find('[data-testid="no-game-checkbox"] input')
+    expect((input.element as HTMLInputElement).checked).toBe(true)
+  })
+
+  it('保存は no_game を PUT /game に含める', async () => {
+    const wrapper = await mountWith()
+    await wrapper.find('[data-testid="no-game-checkbox"] input').setValue(true)
+    mockPut.mockResolvedValueOnce({ data: { id: 100, warnings: [] } })
+    await wrapper.vm.saveGame()
+    expect(mockPut).toHaveBeenCalledWith('/game/100', expect.objectContaining({ no_game: true }))
+  })
+
+  it('得点が無い（未入力）ときも no_game を選べる', async () => {
+    const wrapper = await mountWith({ score: null, opponent_score: null })
+    expect(wrapper.vm.pitcherGameResult).toBe('draw')
+    await wrapper.find('[data-testid="no-game-checkbox"] input').setValue(true)
+    expect(wrapper.vm.pitcherGameResult).toBe('no_game')
+  })
+
+  it('保存の成功後、登板記録タブの保存済み結果区分を再取得させる（判定が作り直されるため）。失敗時・タブ未表示でも保存は成功扱い', async () => {
+    const refresh = vi.fn().mockResolvedValue(undefined)
+    mockGet.mockImplementation((url: string) => {
+      if (url === '/game/100') return Promise.resolve({ data: gameResponse })
+      if (url === '/teams') return Promise.resolve({ data: [] })
+      return Promise.reject(new Error(`Unexpected GET ${url}`))
+    })
+    const wrapper = mount(GameResult, {
+      global: {
+        plugins: [vuetify, i18n],
+        stubs: {
+          TeamMemberSelect: true,
+          TeamSelect: true,
+          PitcherAppearanceTab: {
+            props: ['gameResult'],
+            methods: { refreshSavedResultCategories: refresh },
+            template: '<div data-testid="tab-stub">{{ gameResult }}</div>',
+          },
+          PitcherStatusTab: true,
+          RouterLink: true,
+        },
+      },
+    })
+    await flushPromises()
+    wrapper.vm.activeTab = 'pitchers'
+    await flushPromises()
+    expect(wrapper.find('[data-testid="tab-stub"]').text()).toBe('win')
+    mockPut.mockResolvedValueOnce({ data: { id: 100, warnings: [] } })
+
+    await wrapper.vm.saveGame()
+
+    expect(refresh).toHaveBeenCalledTimes(1)
+    expect(wrapper.vm.snackbarText).toBe('保存しました')
+  })
+
+  it('登板記録タブがまだ開かれていなくても、保存は成功する（再取得の対象がいない）', async () => {
+    const wrapper = await mountWith()
+    mockPut.mockResolvedValueOnce({ data: { id: 100, warnings: [] } })
+    await wrapper.vm.saveGame()
+    expect(wrapper.vm.snackbarText).toBe('保存しました')
+  })
+})

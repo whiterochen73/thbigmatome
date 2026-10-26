@@ -36,6 +36,12 @@ class PlayerCard < ApplicationRecord
       player_card_defenses.any? { |d| d.position&.upcase == "P" }
   end
 
+  # スラッシュ選手: 先発もリリーフもできるカード（先発疲労P とリリーフ疲労P の両方があり、リリーフ専門でない）。
+  # 先発→リリーフ・リリーフ→先発の休養表（rulebook 08 §8.3.3 / §8.3.4）がスラッシュ用に変わる。
+  def slash_pitcher?
+    starter_stamina.present? && relief_stamina.present? && !is_relief_only
+  end
+
   # DB検索用スコープ: 投手能力を持つカード（can_pitch?のDB版）
   # player_card_defensesにP守備がある OR is_pitcher=true OR card_type='pitcher'
   scope :can_pitch, -> {

@@ -6,7 +6,10 @@
 #
 # 前登板の区分が次の補正を決めるので、投手ごとに日付順に処理し、作り直した値を次の判定に使う
 # （試運転でも DB に書かずに同じ連鎖を再現する。result_category_overrides を使う）。
-# 判定できないもの（カード未特定・得点未入力・試合概要なし・ノーゲーム）は変えず、理由別に件数を出す。
+# 判定できないもの（カード未特定・得点未入力・試合概要なし）は変えず、理由別に件数を出す。
+# ノーゲーム: 試合概要に no_game が立っていれば、その日の登板は no_game に揃える（得点に依らない）。
+# 試合概要に no_game が立っていないのに result_category が no_game の古い記録は、変えず skipped_no_game に数える
+# （画面から選べなかった頃に API で直接入れたもの）。ただし no_game を立てた・外した直後の再計算では、その日の記録を作り直す。
 #
 # 連続中4日カウント（consecutive_short_rest_count。cmd_1775 第2段 E3）も同じ走査で埋め直す。
 # カウントは得点・カードに依らず日付と離脱だけで決まるので、区分を作り直せない行（スキップ・保留）でも書く。
@@ -34,12 +37,13 @@ class PitcherResultCategoryRebuilder
 
   # 得点が保存・変更された試合の自チーム先発を作り直し、区分が変わった投手は後続の先発へ波及させる。
   # 波及は「区分が変わらなくなった所」で止める（無関係な過去分を巻き込まない）。
-  def rebuild_for_schedule(schedule)
+  # recompute_no_game: ノーゲームを立てた・外した直後。その日の no_game の記録も作り直す（試合概要の no_game が正）
+  def rebuild_for_schedule(schedule, recompute_no_game: false)
     team_id = schedule.season.team_id
     date = schedule.date.to_s
     starters = PitcherGameState.where(team_id: team_id, schedule_date: date, role: "starter").order(:id).to_a
     starters.each do |state|
-      row = rebuild_state(state)
+      row = rebuild_state(state, recompute_no_game: recompute_no_game)
       cascade_after(state) if row.status == :changed
     end
     @rows
@@ -78,7 +82,7 @@ class PitcherResultCategoryRebuilder
     end
   end
 
-  def rebuild_state(state)
+  def rebuild_state(state, recompute_no_game: false)
     outcome = PitcherGameResult.for(team_id: state.team_id, schedule_date: state.schedule_date)
     new_count = PitcherConsecutiveShortRest.call(
       team_id: state.team_id, pitcher_id: state.pitcher_id, schedule_date: state.schedule_date,
@@ -94,7 +98,7 @@ class PitcherResultCategoryRebuilder
       old_consecutive_short_rest_count: old_count,
       new_consecutive_short_rest_count: new_count
     }
-    return add(base, :skipped_no_game) if state.result_category == "no_game"
+    return add(base, :skipped_no_game) if state.result_category == "no_game" && outcome.result != "no_game" && !recompute_no_game
     return add(base, outcome.note == :ambiguous ? :skipped_ambiguous_schedule : :skipped_no_schedule) unless outcome.found
     return add(base, :skipped_unscored) if !outcome.scored && @unscored == :skip
 

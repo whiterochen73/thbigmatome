@@ -519,6 +519,16 @@ RSpec.describe "Api::V1::PitcherAppearancesController", type: :request, pitcher_
         expect(PitcherGameState.find_by(game: game, pitcher: pitcher1).result_category).to eq("no_game")
       end
 
+      it "ノーゲームの日の負傷チェック（injured）と登板記録は保存される（負傷はノーゲームでも有効。D-11 再確認）" do
+        create_schedule(season, "2026-03-20", score: 5, opponent_score: 1).update_columns(no_game: true)
+        post "/api/v1/pitcher_appearances/bulk_save",
+             params: bulk_with([ ap(pitcher1, "starter", 6.0, injury_check: "injured") ]), as: :json
+        expect(response).to have_http_status(:ok)
+        expect(PitcherGameState.find_by(game: game, pitcher: pitcher1)).to have_attributes(
+          result_category: "no_game", injury_check: "injured", innings_pitched: 6.0
+        )
+      end
+
       it "ノーゲームの先発の次の先発は、KO・ノーゲーム表で補正される（中3日で P-3 → fatigue_p_used 4。通常なら P0）" do
         create_schedule(season, "2026-03-20", score: 0, opponent_score: 1).update_columns(no_game: true)
         post "/api/v1/pitcher_appearances/bulk_save", params: bulk_with([ ap(pitcher1, "starter", 3.0) ]), as: :json

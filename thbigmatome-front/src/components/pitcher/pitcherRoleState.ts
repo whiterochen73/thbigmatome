@@ -21,8 +21,6 @@ export function roleStatusLabel(status: string): string {
   // 登板の最初から疲労状態（AMB-19 追補）。疲労P0（reduced_0）とは別の状態
   if (status === 'fatigued_start') return '🔥 最初から疲労'
   if (status === 'fatigued_start_check') return '🔥 最初から疲労 + ⚠️ 負傷CK'
-  // 表に載っていない中日数（§8.3.3 の P0 になる日より短い）。ルールに規定が無いので推測しない
-  if (status === 'no_rule') return '規定なし'
   if (status.startsWith('reduced_')) {
     const n = status.replace('reduced_', '')
     return n === '0' ? '⚡ P0' : `⚡ P-${n}`
@@ -36,7 +34,6 @@ export function roleStatusColor(status: string): string {
   if (status === 'unavailable' || status === 'injured') return 'error'
   if (status === 'fatigued_start') return 'deep-orange'
   if (status === 'fatigued_start_check') return 'deep-orange-darken-2'
-  if (status === 'no_rule') return 'grey'
   if (status.startsWith('reduced_')) return 'info'
   return 'default'
 }

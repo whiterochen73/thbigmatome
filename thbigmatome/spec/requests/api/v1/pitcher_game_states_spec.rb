@@ -525,10 +525,10 @@ RSpec.describe "Api::V1::PitcherGameStatesController", type: :request do
         describe "リリーフなら: 前回が先発（§8.3.3）" do
           # [前回区分, 中日数, 通常選手, スラッシュ選手]
           {
-            "normal" => { 2 => %w[no_rule reduced_0], 3 => %w[reduced_0 full], 4 => %w[full full], 1 => %w[no_rule no_rule] },
-            "ko" => { 1 => %w[no_rule reduced_0], 2 => %w[reduced_0 full], 3 => %w[full full], 0 => %w[no_rule no_rule] },
-            "no_game" => { 1 => %w[no_rule reduced_0], 2 => %w[reduced_0 full], 3 => %w[full full] },
-            "long_loss" => { 3 => %w[no_rule reduced_0], 4 => %w[reduced_0 full], 5 => %w[full full], 2 => %w[no_rule no_rule] }
+            "normal" => { 2 => %w[unavailable reduced_0], 3 => %w[reduced_0 full], 4 => %w[full full], 1 => %w[unavailable unavailable] },
+            "ko" => { 1 => %w[unavailable reduced_0], 2 => %w[reduced_0 full], 3 => %w[full full], 0 => %w[unavailable unavailable] },
+            "no_game" => { 1 => %w[unavailable reduced_0], 2 => %w[reduced_0 full], 3 => %w[full full] },
+            "long_loss" => { 3 => %w[unavailable reduced_0], 4 => %w[reduced_0 full], 5 => %w[full full], 2 => %w[unavailable unavailable] }
           }.each do |category, rows|
             rows.each do |rest, (plain_status, slash_status)|
               it "#{category} 中#{rest}日: 通常選手 #{plain_status} / スラッシュ選手 #{slash_status}" do
@@ -662,6 +662,59 @@ RSpec.describe "Api::V1::PitcherGameStatesController", type: :request do
             e = entry_for(slash_player, target_after(5))
             expect(e["as_starter"]).not_to be_nil
             expect(e["as_reliever"]).not_to be_nil
+          end
+        end
+
+        # Test Basis: 台帳 D-11 再確認（2026-10-26 Operator）「ノーゲームは負傷と登板の疲労計算だけはする」。
+        #   ノーゲームの日の登板は、休養日数・累積イニング・先発→リリーフの表のいずれからも外れない（勝敗・成績だけが対象外）
+        describe "ノーゲームの日の登板も疲労・累積の計算に入る（D-11）" do
+          it "ノーゲームの日のリリーフ登板（3回）は累積に入る: 翌日は 最初から疲労 + 負傷CK（通常の日と同じ）" do
+            appear(plain_player, "2026-03-01", innings: 3.0, category: "no_game")
+            e = entry_for(plain_player, "2026-03-02")
+            expect(e["cumulative_innings"]).to eq(3)
+            expect(e["as_reliever"]["status"]).to eq("fatigued_start_check")
+          end
+
+          it "ノーゲームの日と通常の日の登板は、連日なら累積が足される（1 + 1 + 1 = 3）" do
+            appear(plain_player, "2026-03-01", innings: 1.0, category: "no_game")
+            appear(plain_player, "2026-03-02", innings: 1.0)
+            appear(plain_player, "2026-03-03", innings: 1.0, category: "no_game")
+            expect(entry_for(plain_player, "2026-03-04")["cumulative_innings"]).to eq(3)
+          end
+
+          it "ノーゲームの日の先発登板は休養日数の起点になる: 前日なら rest_days 0・先発は登板不可" do
+            appear(plain_player, "2026-03-01", role: "starter", category: "no_game")
+            e = entry_for(plain_player, "2026-03-02")
+            expect(e["rest_days"]).to eq(0)
+            expect(e["as_starter"]["status"]).to eq("unavailable")
+            expect(e["last_result_category"]).to eq("no_game")
+          end
+
+          it "ノーゲームの日の先発登板は、KO・ノーゲーム表で次の登板を補正する（中3日で P-3。通常なら 負傷CK）" do
+            appear(plain_player, "2026-03-01", role: "starter", category: "no_game")
+            expect(entry_for(plain_player, target_after(3))["as_starter"]["status"]).to eq("reduced_3")
+          end
+
+          it "ノーゲームの日の先発登板の後、リリーフは KO・ノーゲーム表（中2日 P0・AMB-22 で中1日以内は不可）" do
+            appear(plain_player, "2026-03-01", role: "starter", category: "no_game")
+            expect([ 1, 2, 3 ].map { |r| entry_for(plain_player, target_after(r))["as_reliever"]["status"] }).to eq(%w[unavailable reduced_0 full])
+          end
+
+          it "ノーゲームの日の登板から中10日で、通常どおりリセットされる" do
+            appear(slash_player, "2026-03-01", innings: 9.0, category: "no_game")
+            e = entry_for(slash_player, target_after(10))
+            expect([ e["as_starter"]["status"], e["as_reliever"]["status"] ]).to eq(%w[full full])
+          end
+
+          it "負傷離脱（試合数単位）は、ノーゲームの日も試合日として数える" do
+            tm = TeamMembership.find_by(team: team, player: plain_player)
+            create(:season_schedule, season: season_first, date: Date.new(2026, 3, 10), no_game: true)
+            create(:season_schedule, season: season_first, date: Date.new(2026, 3, 11))
+            absence = create(:player_absence, team_membership: tm, season: season_first, absence_type: :injury,
+                                              start_date: Date.new(2026, 3, 10), duration: 2, duration_unit: "games")
+            expect(absence.effective_end_date).to eq(Date.new(2026, 3, 12))
+            appear(plain_player, "2026-03-01", innings: 1.0, category: "no_game")
+            expect(entry_for(plain_player, "2026-03-11")["is_injured"]).to be true
           end
         end
 

@@ -769,7 +769,7 @@ class SeasonSchedule < ApplicationRecord
 
 **インスタンスメソッド**:
 - `calculated_game_number` — 明示的なgame_numberがなければ該当日までの試合数から算出
-- `game_result_hash` — 試合結果を `{ opponent_short_name:, score:, result: }` で返す
+- `game_result_hash` — 試合結果を `{ opponent_short_name:, score:, result: }` で返す。`no_game` が立っていれば得点に依らず `{ score: nil, result: "no_game" }`（勝ち・負け・引き分けの印を出さない。台帳 D-11 再確認）
 
 **コールバック**: 得点（`score` / `opponent_score`）または `no_game` が変わった保存の後に、その日の自チーム先発の `result_category` を作り直す（`PitcherResultCategoryRebuilder`）。失敗しても保存は取り消さず `pitcher_rebuild_error` に持つ
 

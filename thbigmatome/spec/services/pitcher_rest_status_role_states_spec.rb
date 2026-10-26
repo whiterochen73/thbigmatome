@@ -105,23 +105,53 @@ RSpec.describe PitcherRestStatus, ".role_states" do
   describe "リリーフなら: 前回が先発（§8.3.3）" do
     def after_start(category, rest, slash: false) = reliever(last_role: "starter", rest_days: rest, category: category, slash: slash)
 
-    it "通常: 中3日 P0 / 中4日以上 カード値。それ未満は表に規定なし" do
-      expect([ 0, 2, 3, 4, 8 ].map { |r| after_start("normal", r) }).to eq(%w[no_rule no_rule reduced_0 full full])
+    it "通常: 中3日 P0 / 中4日以上 カード値。それ未満（中2日以内）は登板不可（AMB-22）" do
+      expect([ 0, 2, 3, 4, 8 ].map { |r| after_start("normal", r) }).to eq(%w[unavailable unavailable reduced_0 full full])
     end
 
-    it "KO・ノーゲーム: 中2日 P0 / 中3日以上 カード値" do
-      %w[ko no_game].each { |c| expect([ 1, 2, 3, 6 ].map { |r| after_start(c, r) }).to eq(%w[no_rule reduced_0 full full]) }
+    it "KO・ノーゲーム: 中2日 P0 / 中3日以上 カード値。中1日以内は登板不可（AMB-22）" do
+      %w[ko no_game].each { |c| expect([ 0, 1, 2, 3, 6 ].map { |r| after_start(c, r) }).to eq(%w[unavailable unavailable reduced_0 full full]) }
     end
 
-    it "長イニング敗戦: 中4日 P0 / 中5日以上 カード値" do
-      expect([ 2, 3, 4, 5, 7 ].map { |r| after_start("long_loss", r) }).to eq(%w[no_rule no_rule reduced_0 full full])
+    it "長イニング敗戦: 中4日 P0 / 中5日以上 カード値。中3日以内は登板不可（AMB-22）" do
+      expect([ 0, 2, 3, 4, 5, 7 ].map { |r| after_start("long_loss", r) }).to eq(%w[unavailable unavailable unavailable reduced_0 full full])
     end
 
     it "スラッシュ選手は各ケース 1 日短縮: 通常 中2日 P0・中3日以上 / KO 中1日 P0・中2日以上 / 長イニング 中3日 P0・中4日以上" do
-      expect([ 1, 2, 3 ].map { |r| after_start("normal", r, slash: true) }).to eq(%w[no_rule reduced_0 full])
-      expect([ 0, 1, 2 ].map { |r| after_start("ko", r, slash: true) }).to eq(%w[no_rule reduced_0 full])
-      expect([ 0, 1, 2 ].map { |r| after_start("no_game", r, slash: true) }).to eq(%w[no_rule reduced_0 full])
-      expect([ 2, 3, 4 ].map { |r| after_start("long_loss", r, slash: true) }).to eq(%w[no_rule reduced_0 full])
+      expect([ 1, 2, 3 ].map { |r| after_start("normal", r, slash: true) }).to eq(%w[unavailable reduced_0 full])
+      expect([ 0, 1, 2 ].map { |r| after_start("ko", r, slash: true) }).to eq(%w[unavailable reduced_0 full])
+      expect([ 0, 1, 2 ].map { |r| after_start("no_game", r, slash: true) }).to eq(%w[unavailable reduced_0 full])
+      expect([ 2, 3, 4 ].map { |r| after_start("long_loss", r, slash: true) }).to eq(%w[unavailable reduced_0 full])
+    end
+
+    # Test Basis: 台帳 AMB-22（2026-10-26 Operator）「表にないほど短い間隔では救援登板も不可」。
+    #   境界: 表の最短行（P0）の 1 日前は不可、最短行は P0。最短行より短い日数はすべて不可（no_rule という状態は無い）
+    describe "AMB-22: 表より短い間隔はリリーフも登板不可（区分 × スラッシュ有無の境界）" do
+      # [区分, スラッシュ, 表の最短行（P0 になる中日数）]
+      [
+        [ "normal", false, 3 ], [ "normal", true, 2 ],
+        [ "ko", false, 2 ], [ "ko", true, 1 ],
+        [ "no_game", false, 2 ], [ "no_game", true, 1 ],
+        [ "long_loss", false, 4 ], [ "long_loss", true, 3 ]
+      ].each do |category, slash, shortest|
+        it "#{category}#{slash ? '（スラッシュ）' : ''}: 中#{shortest - 1}日 = unavailable / 中#{shortest}日 = reduced_0" do
+          expect(after_start(category, shortest - 1, slash: slash)).to eq("unavailable")
+          expect(after_start(category, shortest, slash: slash)).to eq("reduced_0")
+        end
+
+        it "#{category}#{slash ? '（スラッシュ）' : ''}: 中0日〜中#{shortest - 1}日はすべて unavailable（no_rule にならない）" do
+          expect((0...shortest).map { |r| after_start(category, r, slash: slash) }.uniq).to eq([ "unavailable" ])
+        end
+      end
+
+      it "no_rule という状態は返さない（どの区分・中日数・スラッシュ有無でも）" do
+        got = %w[normal ko no_game long_loss].product([ true, false ], (0..12).to_a).map { |c, s, r| after_start(c, r, slash: s) }
+        expect(got).not_to include("no_rule")
+      end
+
+      it "先発明けの登板不可は is_injured に勝たない（負傷中は injured のまま）" do
+        expect(states(last_role: "starter", rest_days: 1, injured: true)[:as_reliever][:status]).to eq("injured")
+      end
     end
 
     it "前回の区分が nil なら通常の表" do

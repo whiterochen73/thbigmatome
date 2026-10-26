@@ -37,8 +37,11 @@ describe('roleStatusLabel / roleStatusColor', () => {
     expect(roleStatusLabel('reduced_3')).toBe('⚡ P-3')
   })
 
-  it('表に規定が無い中日数（no_rule）は推測せず「規定なし」', () => {
-    expect(roleStatusLabel('no_rule')).toBe('規定なし')
+  // 台帳 AMB-22（2026-10-26 Operator）: 先発→リリーフの表より短い間隔はリリーフも登板不可。「規定なし」という状態は無い
+  it('表より短い間隔は「不可」と同じ表示（規定なしの表示は無い）', () => {
+    expect(roleStatusLabel('unavailable')).toBe('🚫 不可')
+    expect(roleStatusLabel('no_rule')).toBe('no_rule')
+    expect(roleStatusColor('unavailable')).toBe('error')
   })
 
   it('未知の値はそのまま返す（握りつぶさない）', () => {

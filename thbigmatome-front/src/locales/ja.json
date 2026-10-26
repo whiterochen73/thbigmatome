@@ -63,6 +63,7 @@
     "legendWin": "勝",
     "legendLose": "負",
     "legendDraw": "分",
+    "legendNoGame": "ノーゲーム",
     "noSchedule": "スケジュールなし",
     "tableHeaders": {
       "date": "日付",
@@ -81,7 +82,8 @@
       "starter": "先発投手",
       "win": "勝ち",
       "lose": "負け",
-      "draw": "引分"
+      "draw": "引分",
+      "noGame": "ノーゲーム"
     },
     "keyPlayer": {
       "label": "特例選手",

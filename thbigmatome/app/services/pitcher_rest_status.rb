@@ -138,7 +138,7 @@ module PitcherRestStatus
   #   full / reduced_N / injury_check / unavailable / injured    … 既存
   #   fatigued_start        登板の最初から疲労状態（AMB-19 追補。疲労P0 とは別の状態）
   #   fatigued_start_check  最初から疲労状態 + 登板後の負傷チェック（累積3I 以上のリリーフ登板 §8.3.2・§8.5.1 条件3）
-  #   no_rule               §8.3.3 の表に載っていない中日数（P0 になる日より短い）。ルールに規定が無いので推測しない
+  #   unavailable           先発→リリーフ（§8.3.3）の表の最短行より短い中日数は、リリーフも登板不可（AMB-22・2026-10-26 Operator）
   # 注記（notes）:
   #   opener_injury_check                 オープナーとして登板するなら負傷チェック（累積1I 以上・§8.4.3）。リリーフなら側のみ
   #   previous_day_one_inning_only        累積4I 以上で前日登板: 前日の負傷チェックに合格していれば 1 イニング限定で登板可（§8.3.2）。
@@ -184,7 +184,7 @@ module PitcherRestStatus
     end
   end
 
-  # 先発→リリーフ（§8.3.3）の登板時の状態
+  # 先発→リリーフ（§8.3.3）の登板時の状態。表の最短行（P0）より短い間隔はリリーフも登板不可（AMB-22）
   def reliever_status_after_starter(result_category, rest_days, slash)
     zero_day, card_day = RELIEVER_AFTER_STARTER_TABLE.fetch(result_category || "normal", RELIEVER_AFTER_STARTER_TABLE["normal"])
     if slash
@@ -193,7 +193,7 @@ module PitcherRestStatus
     end
     if rest_days >= card_day then "full"
     elsif rest_days == zero_day then "reduced_0"
-    else "no_rule"
+    else "unavailable" # 表の最短行（P0）より短い間隔は登板不可（AMB-22）
     end
   end
 

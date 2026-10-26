@@ -87,6 +87,11 @@ function createTestRouter() {
     routes: [
       { path: '/', component: { template: '<div />' } },
       { path: '/teams/:teamId/season', name: 'SeasonPortal', component: { template: '<div />' } },
+      {
+        path: '/teams/:teamId/season/schedules/:scheduleId/game',
+        name: 'GameResult',
+        component: { template: '<div />' },
+      },
     ],
   })
 }
@@ -223,6 +228,104 @@ describe('SeasonPortal', () => {
       expect(wrapper.find('.v-tabs').exists()).toBe(true)
       // 初期化フォームは非表示
       expect(wrapper.text()).not.toContain('日程表が登録されていません')
+    })
+  })
+
+  // Test Basis: 台帳 D-11 再確認（2026-10-26 Operator）「ノーゲームは勝敗・成績に入れない」。
+  //   サーバが game_result.result = 'no_game'（score なし）を返した日は、勝ち・負け・引き分けの印を出さずノーゲームと分かる表示にする
+  describe('ノーゲームの表示（勝敗の印を出さない）', () => {
+    const gameResult = (result: string, score: string | null) => ({
+      opponent_short_name: '相手',
+      score,
+      result,
+    })
+    const season = {
+      id: 1,
+      name: '2026シーズン',
+      current_date: '2026-04-10',
+      season_schedules: [
+        {
+          id: 1,
+          date: '2026-04-05',
+          date_type: 'game_day',
+          game_result: gameResult('win', '3 - 1'),
+        },
+        {
+          id: 2,
+          date: '2026-04-06',
+          date_type: 'game_day',
+          game_result: gameResult('no_game', null),
+        },
+        {
+          id: 3,
+          date: '2026-04-07',
+          date_type: 'game_day',
+          game_result: gameResult('lose', '0 - 2'),
+        },
+        {
+          id: 4,
+          date: '2026-04-08',
+          date_type: 'game_day',
+          game_result: gameResult('draw', '1 - 1'),
+        },
+      ],
+    }
+    const texts = (wrapper: Awaited<ReturnType<typeof mountSeasonPortal>>, testid: string) =>
+      wrapper.findAll(`[data-testid="${testid}"]`).map((e) => e.text())
+
+    beforeEach(() => {
+      localStorage.removeItem('sp_view')
+    })
+
+    it('カレンダー: 勝ち・負け・引き分けは W / L / D、ノーゲームは NG（勝敗の印にならない）', async () => {
+      const wrapper = await mountSeasonPortal({ season })
+      expect(texts(wrapper, 'calendar-result-mark')).toEqual(['W', 'NG', 'L', 'D'])
+      expect(wrapper.find('[data-testid="calendar-result-mark"].result-no_game').exists()).toBe(
+        true,
+      )
+    })
+
+    it('カレンダー: ノーゲームの日はスコアを出さない（得点を成績として見せない）', async () => {
+      const wrapper = await mountSeasonPortal({ season })
+      expect(texts(wrapper, 'calendar-score')).toEqual(['3 - 1', '0 - 2', '1 - 1'])
+    })
+
+    it('カレンダー: ノーゲームの日に勝ち・負け・引き分けのクラスが付かない', async () => {
+      const wrapper = await mountSeasonPortal({ season })
+      const marks = wrapper.findAll('[data-testid="calendar-result-mark"]')
+      const ng = marks[1]
+      expect(ng.classes()).not.toContain('result-win')
+      expect(ng.classes()).not.toContain('result-lose')
+      expect(ng.classes()).not.toContain('result-draw')
+    })
+
+    it('凡例にノーゲームがある', async () => {
+      const wrapper = await mountSeasonPortal({ season })
+      expect(wrapper.find('[data-testid="legend-no-game"]').exists()).toBe(true)
+    })
+
+    it('表形式: 勝敗の列はノーゲームだけ NG、スコアの列は「—」', async () => {
+      localStorage.setItem('sp_view', 'table')
+      const wrapper = await mountSeasonPortal({ season })
+      expect(texts(wrapper, 'table-result-badge')).toEqual(['W', 'NG', 'L', 'D'])
+      expect(texts(wrapper, 'table-score')).toContain('—')
+      expect(texts(wrapper, 'table-score')).not.toContain('null')
+    })
+
+    it('日付詳細: ノーゲームの日は結果を「ノーゲーム」と出し、勝ち・負け・引分の語を出さない', async () => {
+      const wrapper = await mountSeasonPortal({ season })
+      const cells = wrapper.findAll('.day-cell')
+      const ngCell = cells.find((c) =>
+        c.find('[data-testid="calendar-result-mark"].result-no_game').exists(),
+      )
+      expect(ngCell).toBeTruthy()
+      await ngCell!.trigger('click')
+      await flushPromises()
+      const dialogResult = document.body.querySelector('[data-testid="detail-result"]')
+      expect(dialogResult?.textContent).toContain('NG')
+      expect(dialogResult?.textContent).toContain('detailDialog.noGame')
+      expect(dialogResult?.textContent).not.toMatch(/win|lose|draw/)
+      expect(document.body.querySelector('[data-testid="detail-score"]')).toBeNull()
     })
   })
 })

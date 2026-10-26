@@ -27,7 +27,10 @@ class SeasonSchedule < ApplicationRecord
       .count + 1
   end
 
+  # シーズン画面の勝敗の印。ノーゲームは勝ち・負け・引き分けにせず result "no_game" を返し、得点も出さない
+  # （得点が入っていても成績ではない。台帳 D-11 再確認 2026-10-26）。得点が未入力でもノーゲームの印は返す。
   def game_result_hash
+    return { opponent_short_name: opponent_team&.short_name, score: nil, result: "no_game" } if no_game
     return nil if score.blank? || opponent_score.blank?
 
     result = if score > opponent_score then "win"

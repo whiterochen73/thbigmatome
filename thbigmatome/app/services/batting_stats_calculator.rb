@@ -13,7 +13,7 @@ class BattingStatsCalculator
   end
 
   def calculate
-    game_ids = @competition.games.where(status: "confirmed").pluck(:id)
+    game_ids = @competition.games.where(status: "confirmed").excluding_no_game.pluck(:id) # ノーゲームは成績に入れない（D-11）
     return [] if game_ids.empty?
 
     at_bats = AtBat.where(game_id: game_ids, status: :confirmed).includes(:batter)

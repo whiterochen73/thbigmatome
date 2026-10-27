@@ -1006,6 +1006,25 @@ describe('PitcherAppearanceTab', () => {
       expect(wrapper.emitted('saved')).toHaveLength(1)
     })
 
+    it('保存に成功した後の再読み込みが失敗しても、未保存には戻らない（保存した内容が今の行。離脱ガードを出さない）', async () => {
+      const wrapper = await mountWithEvents()
+      wrapper.vm.pitcherRows[0].pitcher_id = 10
+      wrapper.vm.pitcherRows[0].innings_int = 6
+      await flushPromises()
+      expect(dirtyEvents(wrapper)).toEqual([true])
+      // 保存後の取り直し（GET /pitcher_appearances）だけ失敗させる。画面の行は入力のまま残る
+      mockPitcherRequests({ state: null, savedReject: true })
+      vi.mocked(axios.post).mockResolvedValueOnce({ data: { warnings: [] } })
+
+      await wrapper.vm.saveAll()
+      await flushPromises()
+
+      expect(wrapper.vm.pitcherRows[0].innings_int).toBe(6)
+      expect(wrapper.vm.isDirty).toBe(false)
+      expect(dirtyEvents(wrapper)).toEqual([true, false])
+      expect(wrapper.emitted('saved')).toHaveLength(1)
+    })
+
     it('保存に失敗したら未保存のまま残り、saved は通知しない', async () => {
       const wrapper = await mountWithEvents()
       wrapper.vm.pitcherRows[0].pitcher_id = 10

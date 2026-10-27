@@ -42,7 +42,7 @@ export function hasSavedScore(
 }
 
 // 得点と登板記録の食い違い。ノーゲームは疲労・負傷は計算するが成績に入れない扱い（台帳 D-11）なので、
-// 得点が無くても登板があれば正常。登板が無くても、ノーゲームで登板前に打ち切られた試合がありうるので食い違いにしない
+// 得点が無くても登板があれば正常。ノーゲームの登板なしは食い違い（赤）にはしないが、登板記録の段は未入力（黄）で促す
 function mismatchOf(scored: boolean, noGame: boolean, appearanceCount: number): RecordMismatch {
   if (noGame) return null
   const hasAppearances = appearanceCount > 0
@@ -80,8 +80,8 @@ export function pitcherStageState(record: SavedGameRecord, ctx: StageContext): S
   if (ctx.dirty) return 'editing'
   if (detectRecordMismatch(record) !== null) return 'warn'
   if (record.appearanceCount > 0) return 'done'
-  // ノーゲームで登板が無いのは、登板前に打ち切られた試合として正常（入力を求めない）
-  if (record.noGame) return 'none'
+  // ノーゲームでも疲労・負傷は計算する（台帳 D-11）ので、登板は記録されている必要がある。
+  // 登板が無ければ通常の試合と同じく未入力（試合日前は急かさない）。赤（要確認）にはしない。雨天中止は試合自体が無い扱い
   return ctx.arrived ? 'todo' : 'upcoming'
 }
 
@@ -146,6 +146,7 @@ export function hasGameDayArrived(
 }
 
 // カレンダーのセルの印（試合日のセルだけ）。warn = 要確認（赤）、todo = 未入力（黄）、null = 印なし
+// ノーゲームは結果の入力は済だが、登板が 0 件と分かっている時は登板記録が未入力なので、試合日到来後は黄（登板記録の段と同じ結果）
 // シーズン画面は得点を「勝敗の印」（game_result）で持つ。得点が入っていれば game_result があり、ノーゲームは result が no_game。
 // appearanceCount が undefined（古いサーバで項目が無い）の時は登板の有無が分からないので、食い違いは出さない
 export interface CalendarDayMarkInput {
@@ -160,6 +161,9 @@ export function calendarDayMark(input: CalendarDayMarkInput): 'warn' | 'todo' | 
   if (input.appearanceCount !== undefined) {
     if (mismatchOf(scored, noGame, input.appearanceCount) !== null) return 'warn'
   }
-  if (noGame || scored) return null
+  if (noGame) {
+    return input.appearanceCount === 0 && input.arrived ? 'todo' : null
+  }
+  if (scored) return null
   return input.arrived ? 'todo' : null
 }

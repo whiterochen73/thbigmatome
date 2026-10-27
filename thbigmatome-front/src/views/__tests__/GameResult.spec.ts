@@ -398,13 +398,13 @@ describe('GameResult 試合日ページ', () => {
     expect(state(wrapper, 'section-pitchers')).toBe('done')
   })
 
-  it('ノーゲーム + 登板なし → 帯は出ず、登板記録は「なし」', async () => {
+  it('ノーゲーム + 登板なし → 帯は出ず、登板記録は「未入力」（D-11: ノーゲームでも疲労は計算する）', async () => {
     const wrapper = await mountDay({
       game: { score: null, opponent_score: null, no_game: true },
       appearances: [],
     })
     expect(wrapper.find('[data-testid="mismatch-banner"]').exists()).toBe(false)
-    expect(state(wrapper, 'section-pitchers')).toBe('none')
+    expect(state(wrapper, 'section-pitchers')).toBe('todo')
   })
 
   it('得点あり・登板あり → 帯なし、結果・登板記録とも済、進み具合は 登板記録まで点灯', async () => {
@@ -590,6 +590,26 @@ describe('GameResult 試合日ページ', () => {
       handler(dirty)
       expect(dirty.preventDefault).toHaveBeenCalled()
       addSpy.mockRestore()
+    })
+
+    it('画面を離れる（アンマウント）時に、beforeunload の受け手を外す（他のページでタブを閉じる時に確認が出ないように）', async () => {
+      const addSpy = vi.spyOn(window, 'addEventListener')
+      const removeSpy = vi.spyOn(window, 'removeEventListener')
+      const wrapper = await mountDay()
+      const added = addSpy.mock.calls.find(([type]) => type === 'beforeunload')
+      expect(added).toBeTruthy()
+      // 取り付けた listener と同じ関数が、アンマウントの時に外される
+      expect(removeSpy.mock.calls.some(([type]) => type === 'beforeunload')).toBe(false)
+
+      // afterEach で二重に外さないよう、ここで外した分は管理対象から除く
+      mounted.splice(mounted.indexOf(wrapper), 1)
+      wrapper.unmount()
+
+      const removed = removeSpy.mock.calls.filter(([type]) => type === 'beforeunload')
+      expect(removed).toHaveLength(1)
+      expect(removed[0][1]).toBe(added![1])
+      addSpy.mockRestore()
+      removeSpy.mockRestore()
     })
   })
 

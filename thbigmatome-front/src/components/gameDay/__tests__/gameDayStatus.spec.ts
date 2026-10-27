@@ -150,8 +150,30 @@ describe('pitcherStageState（登板記録の段）', () => {
     expect(pitcherStageState(record({ noGame: true, appearanceCount: 1 }), arrivedCtx)).toBe('done')
   })
 
-  it('ノーゲーム + 登板なし → なし（入力を求めない）', () => {
-    expect(pitcherStageState(record({ noGame: true }), arrivedCtx)).toBe('none')
+  // 台帳 D-11: ノーゲームでも疲労・負傷は計算するので、登板は記録されている必要がある（雨天中止は試合自体が無い扱い）
+  it('ノーゲーム + 登板なし・試合日が来ている → 未入力（黄）。「なし」にも要確認（赤）にもしない', () => {
+    expect(pitcherStageState(record({ noGame: true }), arrivedCtx)).toBe('todo')
+  })
+
+  it('ノーゲーム + 登板なし・試合日が来ていない → まだ（急かさない）', () => {
+    expect(pitcherStageState(record({ noGame: true }), notArrivedCtx)).toBe('upcoming')
+  })
+
+  it('ノーゲーム + 登板あり → 済（試合日が来ていなくても）', () => {
+    expect(pitcherStageState(record({ noGame: true, appearanceCount: 1 }), notArrivedCtx)).toBe(
+      'done',
+    )
+  })
+
+  it('ノーゲーム + 登板なしでも、食い違い（赤）にはしない', () => {
+    expect(pitcherStageState(record({ noGame: true }), arrivedCtx)).not.toBe('warn')
+    expect(pitcherStageState(record({ noGame: true }), notArrivedCtx)).not.toBe('warn')
+  })
+
+  it('ノーゲーム + 登板なしでも未保存の入力があれば編集中', () => {
+    expect(pitcherStageState(record({ noGame: true }), { dirty: true, arrived: true })).toBe(
+      'editing',
+    )
   })
 
   it('両方なし・試合日が来ている → 未入力', () => {
@@ -218,9 +240,22 @@ describe('calendarDayMark（カレンダーのセルの印）', () => {
     ).toBeNull()
   })
 
-  it('ノーゲーム + 登板なし → 印なし', () => {
+  // 登板記録の段（pitcherStageState）と同じ結果になること
+  it('ノーゲーム + 登板なし・試合日が来ている → 黄（登板記録が未入力。D-11）', () => {
+    expect(calendarDayMark({ gameResult: noGameResult, appearanceCount: 0, arrived: true })).toBe(
+      'todo',
+    )
+  })
+
+  it('ノーゲーム + 登板なし・試合日が来ていない → 印なし（急かさない）', () => {
     expect(
-      calendarDayMark({ gameResult: noGameResult, appearanceCount: 0, arrived: true }),
+      calendarDayMark({ gameResult: noGameResult, appearanceCount: 0, arrived: false }),
+    ).toBeNull()
+  })
+
+  it('ノーゲーム + 登板の件数が不明（古いサーバ）→ 印なし（未入力と決めつけない）', () => {
+    expect(
+      calendarDayMark({ gameResult: noGameResult, appearanceCount: undefined, arrived: true }),
     ).toBeNull()
   })
 

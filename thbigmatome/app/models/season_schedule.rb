@@ -20,6 +20,15 @@ class SeasonSchedule < ApplicationRecord
   # 直近の保存で、投手の判定の作り直しが失敗した時の例外。成功・未実行なら nil。
   attr_reader :pitcher_rebuild_error
 
+  # この試合日の自チームの登板記録の件数（pitcher_game_states の行数）。シーズン画面が入力漏れの印に使う。
+  # 一覧を返す側（SeasonDetailSerializer）が日付ごとの件数をまとめて入れる（行ごとの問い合わせを避ける）。
+  # 入っていない時は、この試合日の分だけ問い合わせて求める。
+  attr_writer :pitcher_appearance_count
+
+  def pitcher_appearance_count
+    @pitcher_appearance_count ||= PitcherGameState.where(team_id: season.team_id, schedule_date: date.to_s).count
+  end
+
   def calculated_game_number
     game_number || season.season_schedules
       .where(date_type: [ "game_day", "interleague_game_day" ])

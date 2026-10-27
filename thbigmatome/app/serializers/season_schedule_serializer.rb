@@ -1,5 +1,5 @@
 class SeasonScheduleSerializer < ActiveModel::Serializer
-  attributes :id, :date, :date_type, :announced_starter, :game_result
+  attributes :id, :date, :date_type, :announced_starter, :game_result, :pitcher_appearance_count
 
   def announced_starter
     return nil unless object.announced_starter_id

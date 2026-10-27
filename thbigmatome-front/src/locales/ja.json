@@ -65,6 +65,16 @@
     "legendDraw": "分",
     "legendNoGame": "ノーゲーム",
     "noSchedule": "スケジュールなし",
+    "calendarMark": {
+      "warn": "要確認",
+      "todo": "未入力",
+      "warnTitle": "得点と登板記録が食い違っています",
+      "todoTitle": "結果が未入力です"
+    },
+    "dayFlow": {
+      "heading": "この試合日の作業の順番",
+      "steps": "選手登録・契約変更 → 昇降格 → 負傷 → 結果 → 登板記録"
+    },
     "tableHeaders": {
       "date": "日付",
       "dow": "曜日",
@@ -279,6 +289,70 @@
     "addInning": "回追加",
     "removeInning": "回削除",
     "noBottomInning": "最終回後攻攻撃なし"
+  },
+  "gameDay": {
+    "phase": {
+      "before": "試合前",
+      "game": "試合（IRC）",
+      "after": "試合後"
+    },
+    "state": {
+      "done": "済",
+      "none": "なし",
+      "editing": "編集中",
+      "todo": "未入力",
+      "warn": "要確認",
+      "upcoming": "試合日前",
+      "info": "確認"
+    },
+    "sections": {
+      "members": "選手登録・契約変更",
+      "roster": "登録・昇降格",
+      "absences": "負傷・出場停止",
+      "setup": "予告先発・対戦設定",
+      "result": "結果",
+      "pitchers": "登板記録",
+      "pitcherStatus": "投手状態",
+      "inGameAbsences": "試合中の負傷・出場停止"
+    },
+    "summary": {
+      "members": "新規登録・契約変更はチーム編成タブで行う",
+      "roster": "1軍・2軍の入れ替えはロスター画面で行う",
+      "absences": "負傷・出場停止の登録は離脱者画面で行う",
+      "inGameAbsences": "試合中に出た負傷・出場停止も離脱者画面で登録する",
+      "pitcherCount": "登板 {count} 人",
+      "noGame": "ノーゲーム",
+      "vsOpponent": "vs {name}"
+    },
+    "links": {
+      "members": "チーム編成を開く",
+      "roster": "ロスターを開く",
+      "absences": "離脱者を開く"
+    },
+    "progress": {
+      "label": "進み具合",
+      "text": "{done} / {total} 済"
+    },
+    "nav": {
+      "prev": "前の試合日",
+      "next": "次の試合日"
+    },
+    "mismatch": {
+      "scoreWithoutAppearances": "得点は保存済みですが、登板記録がありません。登板記録を入力しないと、次の登板の休養判定が狂います。",
+      "appearancesWithoutScore": "登板記録はありますが、得点が保存されていません。得点を入力してください。試合が成立しなかった場合は、ノーゲームにチェックを入れてください。",
+      "openPitchers": "登板記録を開く",
+      "openResult": "結果を開く"
+    },
+    "moveConfirm": {
+      "title": "要確認が残っています",
+      "suffix": "このまま移動しますか？"
+    },
+    "leaveConfirm": {
+      "title": "未保存の変更があります",
+      "message": "保存せずにこのページを離れると、入力した内容は失われます。離れますか？"
+    },
+    "save": "保存",
+    "unsaved": "未保存の変更があります"
   },
   "gameResults": {
     "win": "勝ち",

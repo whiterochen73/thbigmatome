@@ -578,6 +578,7 @@ import { useI18n } from 'vue-i18n'
 import AbsenceInfo from '@/components/AbsenceInfo.vue'
 import PromotionCooldownInfo from '@/components/PromotionCooldownInfo.vue'
 import PlayerNameLink from '@/components/shared/PlayerNameLink.vue'
+import { useSnackbar } from '@/composables/useSnackbar'
 import type { RosterPlayer } from '@/types/rosterPlayer'
 
 const props = defineProps<{
@@ -585,6 +586,7 @@ const props = defineProps<{
 }>()
 
 const { t } = useI18n()
+const { showSnackbar } = useSnackbar()
 const seasonId = ref<number | null>(null)
 
 // 1軍制限定数
@@ -870,13 +872,14 @@ const saveRoster = async () => {
       roster_updates: updates,
       target_date: currentDate.value.toISOString().split('T')[0],
     })
-    alert(t('activeRoster.saveSuccess'))
+    showSnackbar(t('activeRoster.saveSuccess'), 'success')
     fetchRoster()
   } catch (error: unknown) {
     console.error('Failed to save roster:', error)
     const axiosError = error as { response?: { data?: { error?: string } }; message?: string }
-    alert(
+    showSnackbar(
       `${t('activeRoster.saveFailed')}: ${axiosError.response?.data?.error || axiosError.message}`,
+      'error',
     )
   }
 }
@@ -886,12 +889,13 @@ const saveKeyPlayer = async () => {
     await axios.post(`/teams/${props.teamId}/key_player`, {
       key_player_id: selectedKeyPlayerId.value,
     })
-    alert(t('activeRoster.keyPlayerSaveSuccess'))
+    showSnackbar(t('activeRoster.keyPlayerSaveSuccess'), 'success')
   } catch (error: unknown) {
     console.error('Failed to save key player:', error)
     const axiosError = error as { response?: { data?: { error?: string } }; message?: string }
-    alert(
+    showSnackbar(
       `${t('activeRoster.keyPlayerSaveFailed')}: ${axiosError.response?.data?.error || axiosError.message}`,
+      'error',
     )
   }
 }

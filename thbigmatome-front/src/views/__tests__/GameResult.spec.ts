@@ -21,6 +21,35 @@ const { mockGet, mockPut, mockPush, routeGuards, routeQuery } = vi.hoisted(() =>
   },
 }))
 
+// 埋め込む 3 つの部品（シーズンポータルのタブと同じ部品）。中身は別のスペックで検証しているので、ここでは
+// 「いつ描画されるか」「何を渡されるか」を見る差し替え（マウント・アンマウント回数を数える）
+const { embedLog, embedStub } = vi.hoisted(() => {
+  const embedLog = {
+    mounts: {} as Record<string, number>,
+    unmounts: {} as Record<string, number>,
+  }
+  const embedStub = async (name: string) => {
+    const { defineComponent, h, onBeforeUnmount } = await import('vue')
+    return {
+      default: defineComponent({
+        name,
+        props: { teamId: { type: Number, default: undefined } },
+        setup() {
+          embedLog.mounts[name] = (embedLog.mounts[name] ?? 0) + 1
+          onBeforeUnmount(() => {
+            embedLog.unmounts[name] = (embedLog.unmounts[name] ?? 0) + 1
+          })
+          return () => h('div', { 'data-embed': name })
+        },
+      }),
+    }
+  }
+  return { embedLog, embedStub }
+})
+vi.mock('@/views/TeamMembers.vue', () => embedStub('TeamMembers'))
+vi.mock('@/components/season/SeasonRosterTab.vue', () => embedStub('SeasonRosterTab'))
+vi.mock('@/components/season/SeasonAbsenceTab.vue', () => embedStub('SeasonAbsenceTab'))
+
 vi.mock('axios', () => ({
   default: {
     get: mockGet,
@@ -298,6 +327,8 @@ interface MountDayOptions {
   query?: Record<string, string>
   // 登板記録タブの差し替え（マウント回数を数えるなど）
   pitcherStub?: unknown
+  // 指定すると、シーズンの取得がこの Promise の解決まで終わらない（読み込み中の操作を再現する）
+  seasonGate?: Promise<void>
 }
 
 const LAYOUTS = [
@@ -314,6 +345,8 @@ describe.each(LAYOUTS)('GameResult 試合日ページ: $name', ({ width, kind })
     routeGuards.leave = null
     routeGuards.update = null
     routeQuery.value = {}
+    embedLog.mounts = {}
+    embedLog.unmounts = {}
   })
 
   afterEach(() => {
@@ -332,7 +365,9 @@ describe.each(LAYOUTS)('GameResult 試合日ページ: $name', ({ width, kind })
           : Promise.resolve({ data: appearances })
       }
       if (url === '/teams/1/season') {
-        return season instanceof Error ? Promise.reject(season) : Promise.resolve({ data: season })
+        if (season instanceof Error) return Promise.reject(season)
+        const response = { data: season }
+        return opts.seasonGate ? opts.seasonGate.then(() => response) : Promise.resolve(response)
       }
       return Promise.reject(new Error(`Unexpected GET ${url}`))
     })
@@ -376,7 +411,21 @@ describe.each(LAYOUTS)('GameResult 試合日ページ: $name', ({ width, kind })
   const appearanceRows = (n: number) =>
     Array.from({ length: n }, (_, i) => ({ id: i + 1, pitcher_id: 10 + i }))
 
-  it('ロスター・離脱・チーム編成は埋め込まず、シーズンポータルの該当タブへのリンクにする', async () => {
+  // 画面幅を変える（Vuetify の useDisplay は resize を間引いて反映する）
+  const resizeTo = async (newWidth: number) => {
+    setViewportWidth(newWidth)
+    window.dispatchEvent(new Event('resize'))
+    await new Promise((r) => setTimeout(r, 200))
+    await flushPromises()
+  }
+
+  // 「未保存の編集がある」と知らせてくる登板記録タブの差し替え（ボタンを押すと dirty-change を出す）
+  const dirtyPitcherStub = {
+    emits: ['dirty-change', 'saved'],
+    template: '<button data-testid="make-dirty" @click="$emit(\'dirty-change\', true)" />',
+  }
+
+  it('補助として、シーズンポータルの該当タブへのリンクも残す', async () => {
     const wrapper = await mountDay()
     expect(wrapper.vm.membersRoute).toEqual({
       name: 'SeasonPortal',
@@ -385,10 +434,143 @@ describe.each(LAYOUTS)('GameResult 試合日ページ: $name', ({ width, kind })
     })
     expect(wrapper.vm.rosterRoute.query).toEqual({ tab: 'roster' })
     expect(wrapper.vm.absencesRoute.query).toEqual({ tab: 'absences' })
-    expect(wrapper.find('[data-testid="link-members"]').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="link-members"]').text()).toBe('シーズンポータルで開く')
     expect(wrapper.find('[data-testid="link-roster"]').exists()).toBe(true)
     expect(wrapper.find('[data-testid="link-absences"]').exists()).toBe(true)
     expect(wrapper.find('[data-testid="link-in-game-absences"]').exists()).toBe(true)
+  })
+
+  // ───────── 埋め込んだ画面（選手登録・契約変更 / 登録・昇降格 / 負傷・出場停止 / 試合中の負傷） ─────────
+  describe('埋め込んだ画面', () => {
+    const EMBEDS = [
+      { slug: 'members', component: 'TeamMembers' },
+      { slug: 'roster', component: 'SeasonRosterTab' },
+      { slug: 'absences', component: 'SeasonAbsenceTab' },
+      { slug: 'in-game-absences', component: 'SeasonAbsenceTab' },
+    ] as const
+
+    // 段・ステップを開く（スマホ幅 = 段の見出しを押す、PC 幅 = ステップを選ぶ）
+    const openStep = async (wrapper: Wrapper, slug: string) => {
+      await wrapper
+        .find(
+          kind === 'section'
+            ? `[data-testid="section-${slug}"] .game-day-section__title`
+            : `[data-testid="step-${slug}"]`,
+        )
+        .trigger('click')
+      await flushPromises()
+    }
+    // 開いた段・選んだステップから離れる（スマホ幅 = 同じ段を閉じる、PC 幅 = 結果のステップへ移る）
+    const leaveStep = async (wrapper: Wrapper, slug: string) => {
+      await wrapper
+        .find(
+          kind === 'section'
+            ? `[data-testid="section-${slug}"] .game-day-section__title`
+            : '[data-testid="step-result"]',
+        )
+        .trigger('click')
+      await flushPromises()
+    }
+
+    it.each(EMBEDS)(
+      '$slug: 開くまで描画せず、開くと $component がシーズンポータルと同じ props（team-id だけ）で描画される',
+      async ({ slug, component }) => {
+        const wrapper = await mountDay({ appearances: appearanceRows(1) })
+        expect(embedLog.mounts).toEqual({})
+        expect(body(wrapper, slug).find('[data-embed]').exists()).toBe(false)
+
+        await openStep(wrapper, slug)
+
+        const embedded = body(wrapper, slug).find('[data-embed]')
+        expect(embedded.attributes('data-embed')).toBe(component)
+        // 他の部品は描画されない
+        expect(embedLog.mounts).toEqual({ [component]: 1 })
+        // SeasonPortal.vue は `:team-id="teamId"`（数値）だけを渡す
+        expect(body(wrapper, slug).findComponent({ name: component }).props()).toEqual({
+          teamId: 1,
+        })
+        // team-id 以外の props・属性（asOfDate など）を足していない（scoped style の識別子は除く）
+        expect(Object.keys(embedded.attributes()).filter((k) => !k.startsWith('data-v-'))).toEqual([
+          'data-embed',
+        ])
+        expect(isShown(wrapper, slug)).toBe(true)
+      },
+    )
+
+    it('離れて戻っても、チーム編成とロスターは作り直さない（入力中の値を保つ）', async () => {
+      const wrapper = await mountDay({ appearances: appearanceRows(1) })
+      for (const slug of ['members', 'roster']) {
+        await openStep(wrapper, slug)
+        await leaveStep(wrapper, slug)
+        await openStep(wrapper, slug)
+      }
+      expect(embedLog.mounts).toEqual({ TeamMembers: 1, SeasonRosterTab: 1 })
+      expect(embedLog.unmounts).toEqual({})
+    })
+
+    it('離脱者の画面は 2 か所（離脱者・試合中の負傷）にあるので、開くたびに作り直して取り直す', async () => {
+      const wrapper = await mountDay({ appearances: appearanceRows(1) })
+      await openStep(wrapper, 'absences')
+      expect(embedLog.mounts.SeasonAbsenceTab).toBe(1)
+      await leaveStep(wrapper, 'absences')
+      await openStep(wrapper, 'in-game-absences')
+      expect(embedLog.mounts.SeasonAbsenceTab).toBe(2)
+      await leaveStep(wrapper, 'in-game-absences')
+      await openStep(wrapper, 'absences')
+      expect(embedLog.mounts.SeasonAbsenceTab).toBe(3)
+      expect(body(wrapper, 'absences').find('[data-embed]').exists()).toBe(true)
+    })
+
+    describe('現在日と試合日が違う時の注記', () => {
+      const NOTE = 'この画面の操作は現在日（6/8）として記録されます。試合日は 6/10 です'
+      const withCurrent = (current: string) => ({ ...seasonResponse, current_date: current })
+
+      it.each(EMBEDS)('$slug: 現在日が試合日と違えば、画面の上に注記を出す', async ({ slug }) => {
+        const wrapper = await mountDay({ season: withCurrent('2026-06-08') })
+        await openStep(wrapper, slug)
+        const panel = body(wrapper, slug)
+        expect(panel.find('[data-testid="date-note"]').text()).toBe(NOTE)
+        const html = panel.element.innerHTML
+        expect(html.indexOf('data-testid="date-note"')).toBeGreaterThan(-1)
+        expect(html.indexOf('data-testid="date-note"')).toBeLessThan(html.indexOf('data-embed'))
+      })
+
+      it.each(EMBEDS)('$slug: 同じ日なら注記を出さない', async ({ slug }) => {
+        const wrapper = await mountDay()
+        await openStep(wrapper, slug)
+        expect(body(wrapper, slug).find('[data-embed]').exists()).toBe(true)
+        expect(wrapper.find('[data-testid="date-note"]').exists()).toBe(false)
+      })
+
+      it('時刻つきの現在日（同じ日）でも出さない。1 日でも違えば出す（現在日が試合日より後でも）', async () => {
+        const same = await mountDay({ season: withCurrent('2026-06-10T00:00:00.000Z') })
+        await openStep(same, 'roster')
+        expect(same.find('[data-testid="date-note"]').exists()).toBe(false)
+
+        const after = await mountDay({ season: withCurrent('2026-06-11') })
+        await openStep(after, 'roster')
+        expect(after.find('[data-testid="date-note"]').text()).toBe(
+          'この画面の操作は現在日（6/11）として記録されます。試合日は 6/10 です',
+        )
+      })
+
+      it('現在日が取れない時は、何も出さない（日付の食い違いを断定しない）', async () => {
+        const wrapper = await mountDay({ season: new Error('500') })
+        await openStep(wrapper, 'members')
+        expect(wrapper.find('[data-testid="date-note"]').exists()).toBe(false)
+      })
+
+      it('埋め込んだ画面以外（予告先発・結果・登板記録）には出さない', async () => {
+        const wrapper = await mountDay({
+          season: withCurrent('2026-06-08'),
+          appearances: appearanceRows(1),
+        })
+        await openStep(wrapper, 'setup')
+        await openStep(wrapper, 'result')
+        expect(body(wrapper, 'setup').find('[data-testid="date-note"]').exists()).toBe(false)
+        expect(body(wrapper, 'result').find('[data-testid="date-note"]').exists()).toBe(false)
+      })
+    })
   })
 
   it('得点あり・登板なし → 赤い帯（登板記録を入力してください）と、登板記録が要確認', async () => {
@@ -729,6 +911,24 @@ describe.each(LAYOUTS)('GameResult 試合日ページ: $name', ({ width, kind })
         expect(text).toContain('選手登録・契約変更')
       })
 
+      it('スマホ幅から PC 幅に変わると、登板記録の編集は描き直しで失われるので、未保存の印も戻す', async () => {
+        const wrapper = await mountDay({
+          appearances: appearanceRows(1),
+          pitcherStub: dirtyPitcherStub,
+        })
+        await wrapper
+          .find('[data-testid="section-pitchers"] .game-day-section__title')
+          .trigger('click')
+        await wrapper.find('[data-testid="make-dirty"]').trigger('click')
+        expect(wrapper.vm.hasUnsavedChanges).toBe(true)
+
+        await resizeTo(PC_WIDTH)
+
+        expect(wrapper.find('[data-testid="game-day-stepper"]').exists()).toBe(true)
+        expect(wrapper.vm.pitcherDirty).toBe(false)
+        expect(wrapper.vm.hasUnsavedChanges).toBe(false)
+      })
+
       describe('旧 URL のタブ名', () => {
         it('既定（overview）は予告先発・対戦設定と結果の段を開く', async () => {
           const wrapper = await mountDay({ appearances: appearanceRows(1) })
@@ -952,27 +1152,51 @@ describe.each(LAYOUTS)('GameResult 試合日ページ: $name', ({ width, kind })
           expect(wrapper.find('[data-testid="tab-stub"]').exists()).toBe(true)
         })
 
-        it('自分で選んだステップは、読み込みの完了で上書きされない', async () => {
-          const wrapper = await mountDay({ game: { score: null, opponent_score: null } })
-          expect(visiblePanels(wrapper)).toEqual(['setup'])
+        it('自分で選んだステップは、読み込みの完了で上書きされない（読み込み中に選んだ場合）', async () => {
+          let release!: () => void
+          const seasonGate = new Promise<void>((resolve) => {
+            release = resolve
+          })
+          const wrapper = await mountDay({
+            game: { score: null, opponent_score: null },
+            seasonGate,
+          })
+          // 読み込みの途中（シーズンの取得待ち）。初期ステップのまま
+          expect(visiblePanels(wrapper)).toEqual(['result'])
           await wrapper.find('[data-testid="step-in-game-absences"]').trigger('click')
-          await wrapper.vm.fetchAppearanceCount()
+
+          release()
           await flushPromises()
+
+          // 読み込みが終われば、選ばなければ最初の未入力（予告先発・対戦設定）に移るところ
+          expect(state(wrapper, 'setup')).toBe('todo')
           expect(visiblePanels(wrapper)).toEqual(['in-game-absences'])
+        })
+
+        it('読み込み中に何も選ばなければ、読み込みの完了で最初の未入力のステップへ移る', async () => {
+          let release!: () => void
+          const seasonGate = new Promise<void>((resolve) => {
+            release = resolve
+          })
+          const wrapper = await mountDay({
+            game: { score: null, opponent_score: null },
+            seasonGate,
+          })
+          expect(visiblePanels(wrapper)).toEqual(['result'])
+          release()
+          await flushPromises()
+          expect(visiblePanels(wrapper)).toEqual(['setup'])
         })
       })
 
       describe('幅の変化', () => {
-        it('PC 幅からスマホ幅に変わると縦積みに切り替わり、入力済みの値と選んでいたステップの段が引き継がれる', async () => {
+        it('PC 幅からスマホ幅に変わると縦積みに切り替わり、入力済みの値が引き継がれ、PC 幅で選んでいたステップの段が開く', async () => {
           const wrapper = await mountDay({ appearances: appearanceRows(1) })
           await wrapper.find('[data-testid="panel-result"] input[type="number"]').setValue(9)
           await wrapper.find('[data-testid="step-pitchers"]').trigger('click')
           expect(wrapper.find('[data-testid="game-day-stepper"]').exists()).toBe(true)
 
-          setViewportWidth(PHONE_WIDTH)
-          window.dispatchEvent(new Event('resize'))
-          await new Promise((r) => setTimeout(r, 200))
-          await flushPromises()
+          await resizeTo(PHONE_WIDTH)
 
           expect(wrapper.find('[data-testid="game-day-stepper"]').exists()).toBe(false)
           expect(wrapper.find('[data-testid="game-day-stack"]').exists()).toBe(true)
@@ -983,6 +1207,41 @@ describe.each(LAYOUTS)('GameResult 試合日ページ: $name', ({ width, kind })
                 .element as HTMLInputElement
             ).value,
           ).toBe('9')
+          expect(wrapper.vm.hasUnsavedChanges).toBe(true)
+          // PC 幅で選んでいた登板記録の段が、縦積みで開いている（読み込み直後は結果の段だけが開いていた）
+          const pitchers = wrapper.find('[data-testid="section-pitchers"]')
+          expect(pitchers.classes()).toContain('game-day-section--open')
+          expect(pitchers.find('.game-day-section__body').isVisible()).toBe(true)
+        })
+
+        it('幅が変わると登板記録の編集は描き直しで失われるので、未保存の印も戻す（ガードが空振りしない）', async () => {
+          const wrapper = await mountDay({
+            appearances: appearanceRows(1),
+            pitcherStub: dirtyPitcherStub,
+          })
+          await wrapper.find('[data-testid="step-pitchers"]').trigger('click')
+          await wrapper.find('[data-testid="make-dirty"]').trigger('click')
+          expect(wrapper.vm.pitcherDirty).toBe(true)
+          expect(wrapper.vm.hasUnsavedChanges).toBe(true)
+          expect(state(wrapper, 'pitchers')).toBe('editing')
+
+          await resizeTo(PHONE_WIDTH)
+
+          expect(wrapper.vm.pitcherDirty).toBe(false)
+          expect(wrapper.vm.hasUnsavedChanges).toBe(false)
+          // 離脱ガードも確認を出さない
+          expect(await routeGuards.leave!()).toBe(true)
+          expect(document.body.textContent).not.toContain('未保存の変更があります')
+        })
+
+        it('得点など親が持つ未保存の入力は、幅が変わっても残り、ガードの対象のまま', async () => {
+          const wrapper = await mountDay({
+            appearances: appearanceRows(1),
+            pitcherStub: dirtyPitcherStub,
+          })
+          await wrapper.find('[data-testid="panel-result"] input[type="number"]').setValue(9)
+          await resizeTo(PHONE_WIDTH)
+          expect(wrapper.vm.pitcherDirty).toBe(false)
           expect(wrapper.vm.hasUnsavedChanges).toBe(true)
         })
       })

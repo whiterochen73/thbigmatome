@@ -316,19 +316,20 @@
       "inGameAbsences": "試合中の負傷・出場停止"
     },
     "summary": {
-      "members": "新規登録・契約変更はチーム編成タブで行う",
-      "roster": "1軍・2軍の入れ替えはロスター画面で行う",
-      "absences": "負傷・出場停止の登録は離脱者画面で行う",
-      "inGameAbsences": "試合中に出た負傷・出場停止も離脱者画面で登録する",
+      "members": "新規登録・契約変更",
+      "roster": "1軍・2軍の入れ替え",
+      "absences": "負傷・出場停止の登録・編集",
+      "inGameAbsences": "試合中に出た負傷・出場停止も、同じ離脱者の画面で登録",
       "pitcherCount": "登板 {count} 人",
       "noGame": "ノーゲーム",
       "vsOpponent": "vs {name}"
     },
     "links": {
-      "members": "チーム編成を開く",
-      "roster": "ロスターを開く",
-      "absences": "離脱者を開く"
+      "members": "シーズンポータルで開く",
+      "roster": "シーズンポータルで開く",
+      "absences": "シーズンポータルで開く"
     },
+    "dateNote": "この画面の操作は現在日（{current}）として記録されます。試合日は {game} です",
     "progress": {
       "label": "進み具合",
       "text": "{done} / {total} 済"

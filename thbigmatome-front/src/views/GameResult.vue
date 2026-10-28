@@ -114,8 +114,40 @@
       :active="activeStep"
       :open="openSections"
       @update:active="pickStep"
-      @update:open="(id, value) => (openSections[id] = value)"
+      @update:open="setOpen"
     >
+      <!-- 埋め込んだ 4 つの画面は、シーズンポータルのタブと同じ部品を同じ props で置く（現在日基準の振る舞いも同じ） -->
+      <template #body-members>
+        <div class="mt-2">
+          <GameDayDateNote :game-date="gameData.game_date" :current-date="seasonCurrentDate" />
+          <TeamMembers :team-id="Number(teamId)" />
+        </div>
+      </template>
+
+      <template #body-roster>
+        <div class="mt-2">
+          <GameDayDateNote :game-date="gameData.game_date" :current-date="seasonCurrentDate" />
+          <SeasonRosterTab :team-id="Number(teamId)" />
+        </div>
+      </template>
+
+      <template #body-absences>
+        <div class="mt-2">
+          <GameDayDateNote :game-date="gameData.game_date" :current-date="seasonCurrentDate" />
+          <SeasonAbsenceTab :key="`absences-${embedKey.absences}`" :team-id="Number(teamId)" />
+        </div>
+      </template>
+
+      <template #body-inGameAbsences>
+        <div class="mt-2">
+          <GameDayDateNote :game-date="gameData.game_date" :current-date="seasonCurrentDate" />
+          <SeasonAbsenceTab
+            :key="`in-game-absences-${embedKey.inGameAbsences}`"
+            :team-id="Number(teamId)"
+          />
+        </div>
+      </template>
+
       <template #body-setup>
         <v-row density="compact" class="mt-1">
           <v-col cols="12" sm="6" md="4">
@@ -251,7 +283,11 @@ import TeamSelect from '@/components/shared/TeamSelect.vue'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
 import PitcherAppearanceTab from '@/components/pitcher/PitcherAppearanceTab.vue'
 import PitcherStatusTab from '@/components/pitcher/PitcherStatusTab.vue'
+import TeamMembers from '@/views/TeamMembers.vue'
+import SeasonRosterTab from '@/components/season/SeasonRosterTab.vue'
+import SeasonAbsenceTab from '@/components/season/SeasonAbsenceTab.vue'
 import GameDaySteps, { type GameDayStep } from '@/components/gameDay/GameDaySteps.vue'
+import GameDayDateNote from '@/components/gameDay/GameDayDateNote.vue'
 import {
   detectRecordMismatch,
   hasGameDayArrived,
@@ -302,7 +338,7 @@ const seasonPortalRoute = computed(() => ({
   name: 'SeasonPortal',
   params: { teamId: teamId.value },
 }))
-// 「選手登録・契約変更」は、シーズンポータルの「チーム編成」タブ（TeamMembers.vue）が担う
+// 埋め込んだ画面の補助リンク（シーズンポータルの該当タブ）。「選手登録・契約変更」は「チーム編成」タブ（TeamMembers.vue）が担う
 const membersRoute = computed(() => ({
   name: 'SeasonPortal',
   params: { teamId: teamId.value },
@@ -572,7 +608,8 @@ const steps = computed<GameDayStep[]>(() => [
     title: t('gameDay.sections.members'),
     summary: t('gameDay.summary.members'),
     state: 'info',
-    hasBody: false,
+    hasBody: true,
+    lazy: true,
     link: { to: membersRoute.value, label: t('gameDay.links.members'), testId: 'link-members' },
   },
   {
@@ -583,7 +620,8 @@ const steps = computed<GameDayStep[]>(() => [
     title: t('gameDay.sections.roster'),
     summary: t('gameDay.summary.roster'),
     state: 'info',
-    hasBody: false,
+    hasBody: true,
+    lazy: true,
     link: { to: rosterRoute.value, label: t('gameDay.links.roster'), testId: 'link-roster' },
   },
   {
@@ -594,7 +632,8 @@ const steps = computed<GameDayStep[]>(() => [
     title: t('gameDay.sections.absences'),
     summary: t('gameDay.summary.absences'),
     state: 'info',
-    hasBody: false,
+    hasBody: true,
+    lazy: true,
     link: { to: absencesRoute.value, label: t('gameDay.links.absences'), testId: 'link-absences' },
   },
   {
@@ -641,7 +680,8 @@ const steps = computed<GameDayStep[]>(() => [
     title: t('gameDay.sections.inGameAbsences'),
     summary: t('gameDay.summary.inGameAbsences'),
     state: 'info',
-    hasBody: false,
+    hasBody: true,
+    lazy: true,
     link: {
       to: absencesRoute.value,
       label: t('gameDay.links.absences'),
@@ -650,14 +690,31 @@ const steps = computed<GameDayStep[]>(() => [
   },
 ])
 
-// 選択中のステップ（PC 幅）と、開いている段（スマホ幅）。どちらも常に更新しておき、幅が変わっても同じ場所を指す
+// 選択中のステップ（PC 幅）と、開いている段（スマホ幅）。ステップを選ぶと同じ段も開くので、幅が変わっても選んでいた場所が開く
+// （PC 幅 → スマホ幅で段が開く。逆のスマホ幅 → PC 幅は、段の開閉からは選択中のステップを決めず、PC 幅で最後に選んだステップのまま）
 const activeStep = ref('result')
 const openSections = reactive<Record<string, boolean>>({
+  members: false,
+  roster: false,
+  absences: false,
   setup: false,
   result: false,
   pitchers: false,
   pitcherStatus: false,
+  inGameAbsences: false,
 })
+
+// 離脱者の画面は、埋め込みが 2 か所（離脱者・試合中の負傷）ある。片方で保存した結果がもう片方に反映されるよう、
+// 開く／選ぶたびに作り直して取り直す（保存はダイアログで即時に行うので、未保存の入力は無い）
+const embedKey = reactive({ absences: 0, inGameAbsences: 0 })
+const refreshEmbedded = (id: string) => {
+  if (id === 'absences' || id === 'inGameAbsences') embedKey[id] += 1
+}
+
+const setOpen = (id: string, value: boolean) => {
+  openSections[id] = value
+  if (value) refreshEmbedded(id)
+}
 
 // 旧タブ名 → スマホ幅で開く段
 const TAB_OPEN: Record<string, string[]> = {
@@ -693,15 +750,17 @@ let userPicked = false
 // URL の ?tab 指定。最初の読み込みで一度だけ使う
 let tabIntent: string | null = (route.query.tab as string) || null
 
+// ステップを選ぶ（PC 幅）。縦積み側の同じ段も開く
 const pickStep = (id: string) => {
   userPicked = true
   activeStep.value = id
+  openSections[id] = true
+  refreshEmbedded(id)
 }
 
 // 赤い帯のボタンなど、プログラムから特定のステップへ移す
 const focusStep = (id: string) => {
   pickStep(id)
-  openSections[id] = true
   if (stepsMode.value === 'stack') scrollToSection(id)
 }
 

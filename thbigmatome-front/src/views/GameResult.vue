@@ -108,61 +108,15 @@
       </div>
     </v-alert>
 
-    <div class="game-day-phase text-caption mt-4 mb-1">{{ t('gameDay.phase.before') }}</div>
-    <div class="d-flex flex-column ga-2">
-      <GameDaySection
-        no="1"
-        :title="t('gameDay.sections.members')"
-        :summary="t('gameDay.summary.members')"
-        state="info"
-        :collapsible="false"
-        test-id="section-members"
-      >
-        <template #actions>
-          <v-btn size="small" variant="outlined" :to="membersRoute" data-testid="link-members">
-            {{ t('gameDay.links.members') }}
-          </v-btn>
-        </template>
-      </GameDaySection>
-
-      <GameDaySection
-        no="2"
-        :title="t('gameDay.sections.roster')"
-        :summary="t('gameDay.summary.roster')"
-        state="info"
-        :collapsible="false"
-        test-id="section-roster"
-      >
-        <template #actions>
-          <v-btn size="small" variant="outlined" :to="rosterRoute" data-testid="link-roster">
-            {{ t('gameDay.links.roster') }}
-          </v-btn>
-        </template>
-      </GameDaySection>
-
-      <GameDaySection
-        no="3"
-        :title="t('gameDay.sections.absences')"
-        :summary="t('gameDay.summary.absences')"
-        state="info"
-        :collapsible="false"
-        test-id="section-absences"
-      >
-        <template #actions>
-          <v-btn size="small" variant="outlined" :to="absencesRoute" data-testid="link-absences">
-            {{ t('gameDay.links.absences') }}
-          </v-btn>
-        </template>
-      </GameDaySection>
-
-      <GameDaySection
-        v-model:open="openSections.setup"
-        no="4"
-        :title="t('gameDay.sections.setup')"
-        :summary="setupSummary"
-        :state="setupState"
-        test-id="section-setup"
-      >
+    <GameDaySteps
+      :steps="steps"
+      :mode="stepsMode"
+      :active="activeStep"
+      :open="openSections"
+      @update:active="pickStep"
+      @update:open="(id, value) => (openSections[id] = value)"
+    >
+      <template #body-setup>
         <v-row density="compact" class="mt-1">
           <v-col cols="12" sm="6" md="4">
             <TeamMemberSelect
@@ -209,21 +163,9 @@
             {{ t('gameDay.save') }}
           </v-btn>
         </div>
-      </GameDaySection>
-    </div>
+      </template>
 
-    <div class="game-day-divider text-caption my-3">{{ t('gameDay.phase.game') }}</div>
-
-    <div class="game-day-phase text-caption mb-1">{{ t('gameDay.phase.after') }}</div>
-    <div class="d-flex flex-column ga-2">
-      <GameDaySection
-        v-model:open="openSections.result"
-        no="5"
-        :title="t('gameDay.sections.result')"
-        :summary="resultSummary"
-        :state="resultState"
-        test-id="section-result"
-      >
+      <template #body-result>
         <v-row density="compact" class="mt-1">
           <v-col cols="6" sm="4" md="3">
             <v-text-field
@@ -259,17 +201,9 @@
             {{ t('gameDay.save') }}
           </v-btn>
         </div>
-      </GameDaySection>
+      </template>
 
-      <GameDaySection
-        v-model:open="openSections.pitchers"
-        no="6"
-        :title="t('gameDay.sections.pitchers')"
-        :summary="pitcherSummary"
-        :state="pitcherState"
-        lazy
-        test-id="section-pitchers"
-      >
+      <template #body-pitchers>
         <PitcherAppearanceTab
           v-if="gameData.team_id"
           :key="`pitchers-${scheduleId}`"
@@ -283,16 +217,9 @@
           @saved="fetchAppearanceCount"
           @dirty-change="pitcherDirty = $event"
         />
-      </GameDaySection>
+      </template>
 
-      <GameDaySection
-        v-model:open="openSections.pitcherStatus"
-        no="–"
-        :title="t('gameDay.sections.pitcherStatus')"
-        state="info"
-        lazy
-        test-id="section-pitcher-status"
-      >
+      <template #body-pitcherStatus>
         <PitcherStatusTab
           v-if="gameData.team_id"
           :key="`status-${scheduleId}`"
@@ -300,28 +227,8 @@
           :schedule-date="gameData.game_date"
           :competition-id="gameData.competition_id ?? null"
         />
-      </GameDaySection>
-
-      <GameDaySection
-        no="7"
-        :title="t('gameDay.sections.inGameAbsences')"
-        :summary="t('gameDay.summary.inGameAbsences')"
-        state="info"
-        :collapsible="false"
-        test-id="section-in-game-absences"
-      >
-        <template #actions>
-          <v-btn
-            size="small"
-            variant="outlined"
-            :to="absencesRoute"
-            data-testid="link-in-game-absences"
-          >
-            {{ t('gameDay.links.absences') }}
-          </v-btn>
-        </template>
-      </GameDaySection>
-    </div>
+      </template>
+    </GameDaySteps>
 
     <v-snackbar v-model="snackbar" :color="snackbarColor" :timeout="snackbarTimeout">
       {{ snackbarText }}
@@ -336,6 +243,7 @@ import { ref, reactive, onMounted, onBeforeUnmount, computed, watch, nextTick } 
 import { useRoute, useRouter, onBeforeRouteLeave, onBeforeRouteUpdate } from 'vue-router'
 import axios from 'axios'
 import { useI18n } from 'vue-i18n'
+import { useDisplay } from 'vuetify'
 import type { GameData } from '@/types/gameData'
 import type { Team } from '@/types/team'
 import TeamMemberSelect from '@/components/shared/TeamMemberSelect.vue'
@@ -343,7 +251,7 @@ import TeamSelect from '@/components/shared/TeamSelect.vue'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
 import PitcherAppearanceTab from '@/components/pitcher/PitcherAppearanceTab.vue'
 import PitcherStatusTab from '@/components/pitcher/PitcherStatusTab.vue'
-import GameDaySection from '@/components/gameDay/GameDaySection.vue'
+import GameDaySteps, { type GameDayStep } from '@/components/gameDay/GameDaySteps.vue'
 import {
   detectRecordMismatch,
   hasGameDayArrived,
@@ -360,7 +268,7 @@ const { t } = useI18n()
 const route = useRoute()
 const router = useRouter()
 const gameDate = ref(new Date())
-// 旧 URL のタブ名（overview / pitchers / pitcher_status）は、該当する段を開く指定として受け付ける
+// 旧 URL のタブ名（overview / pitchers / pitcher_status）は、該当するステップ（段）を開く指定として受け付ける
 const activeTab = ref((route.query.tab as string) || 'overview')
 
 const snackbar = ref(false)
@@ -449,48 +357,6 @@ watch(
     }
   },
 )
-
-// ─────────────────────────────────────────
-// 段の開閉（旧タブ名 → 開く段）
-// ─────────────────────────────────────────
-
-const openSections = reactive<Record<string, boolean>>({
-  setup: false,
-  result: false,
-  pitchers: false,
-  pitcherStatus: false,
-})
-
-const TAB_SECTIONS: Record<string, string[]> = {
-  overview: ['setup', 'result'],
-  pitchers: ['pitchers'],
-  pitcher_status: ['pitcherStatus'],
-}
-
-const applyTab = (tab: string, scroll: boolean) => {
-  const ids = TAB_SECTIONS[tab] ?? TAB_SECTIONS.overview
-  ids.forEach((id) => {
-    openSections[id] = true
-  })
-  if (scroll) scrollToSection(ids[0])
-}
-
-const SECTION_TEST_IDS: Record<string, string> = {
-  setup: 'section-setup',
-  result: 'section-result',
-  pitchers: 'section-pitchers',
-  pitcherStatus: 'section-pitcher-status',
-}
-
-const scrollToSection = (id: string) => {
-  nextTick(() => {
-    const el = document.querySelector(`[data-testid="${SECTION_TEST_IDS[id]}"]`)
-    if (el && typeof el.scrollIntoView === 'function') el.scrollIntoView({ block: 'start' })
-  })
-}
-
-applyTab(activeTab.value, false)
-watch(activeTab, (tab) => applyTab(tab, true))
 
 // ─────────────────────────────────────────
 // 保存済みの値・未保存の入力
@@ -643,12 +509,6 @@ const progress = computed(() =>
   progressMarks([setupState.value, resultState.value, pitcherState.value]),
 )
 
-const openMismatchSection = () => {
-  const id = mismatch.value === 'score_without_appearances' ? 'pitchers' : 'result'
-  openSections[id] = true
-  scrollToSection(id)
-}
-
 // ─────────────────────────────────────────
 // 表示用の文
 // ─────────────────────────────────────────
@@ -695,10 +555,194 @@ const pitcherSummary = computed(() =>
 )
 
 // ─────────────────────────────────────────
-// 取得
+// ステップ（PC 幅 = ステッパー + タブ、スマホ幅 = 縦積みの折りたたみ）
+// どちらの形も、同じ steps・同じ状態から描く（判定は上の computed と gameDayStatus.ts）
 // ─────────────────────────────────────────
 
-let initialOpenApplied = false
+// md 以上（960px〜）はステッパー。ステップ 7 つ + 状態の文字が 1 行に収まる幅の下限。それより狭い幅（スマホ・縦持ちのタブレット）は縦積み
+const { mdAndUp } = useDisplay()
+const stepsMode = computed<'tabs' | 'stack'>(() => (mdAndUp.value ? 'tabs' : 'stack'))
+
+const steps = computed<GameDayStep[]>(() => [
+  {
+    id: 'members',
+    slug: 'members',
+    group: 'before',
+    no: 1,
+    title: t('gameDay.sections.members'),
+    summary: t('gameDay.summary.members'),
+    state: 'info',
+    hasBody: false,
+    link: { to: membersRoute.value, label: t('gameDay.links.members'), testId: 'link-members' },
+  },
+  {
+    id: 'roster',
+    slug: 'roster',
+    group: 'before',
+    no: 2,
+    title: t('gameDay.sections.roster'),
+    summary: t('gameDay.summary.roster'),
+    state: 'info',
+    hasBody: false,
+    link: { to: rosterRoute.value, label: t('gameDay.links.roster'), testId: 'link-roster' },
+  },
+  {
+    id: 'absences',
+    slug: 'absences',
+    group: 'before',
+    no: 3,
+    title: t('gameDay.sections.absences'),
+    summary: t('gameDay.summary.absences'),
+    state: 'info',
+    hasBody: false,
+    link: { to: absencesRoute.value, label: t('gameDay.links.absences'), testId: 'link-absences' },
+  },
+  {
+    id: 'setup',
+    slug: 'setup',
+    group: 'before',
+    no: 4,
+    title: t('gameDay.sections.setup'),
+    summary: setupSummary.value,
+    state: setupState.value,
+    hasBody: true,
+  },
+  {
+    id: 'result',
+    slug: 'result',
+    group: 'after',
+    no: 5,
+    title: t('gameDay.sections.result'),
+    summary: resultSummary.value,
+    state: resultState.value,
+    hasBody: true,
+  },
+  {
+    id: 'pitchers',
+    slug: 'pitchers',
+    group: 'after',
+    no: 6,
+    title: t('gameDay.sections.pitchers'),
+    summary: pitcherSummary.value,
+    state: pitcherState.value,
+    hasBody: true,
+    lazy: true,
+    sub: {
+      id: 'pitcherStatus',
+      slug: 'pitcher-status',
+      title: t('gameDay.sections.pitcherStatus'),
+    },
+  },
+  {
+    id: 'inGameAbsences',
+    slug: 'in-game-absences',
+    group: 'after',
+    no: 7,
+    title: t('gameDay.sections.inGameAbsences'),
+    summary: t('gameDay.summary.inGameAbsences'),
+    state: 'info',
+    hasBody: false,
+    link: {
+      to: absencesRoute.value,
+      label: t('gameDay.links.absences'),
+      testId: 'link-in-game-absences',
+    },
+  },
+])
+
+// 選択中のステップ（PC 幅）と、開いている段（スマホ幅）。どちらも常に更新しておき、幅が変わっても同じ場所を指す
+const activeStep = ref('result')
+const openSections = reactive<Record<string, boolean>>({
+  setup: false,
+  result: false,
+  pitchers: false,
+  pitcherStatus: false,
+})
+
+// 旧タブ名 → スマホ幅で開く段
+const TAB_OPEN: Record<string, string[]> = {
+  overview: ['setup', 'result'],
+  pitchers: ['pitchers'],
+  pitcher_status: ['pitcherStatus'],
+}
+
+const stateOf = (id: string) => steps.value.find((s) => s.id === id)?.state
+
+// 候補の中で、要確認（赤）を先に、次に最初の未入力・編集中のステップ。無ければ undefined
+const attentionStep = (candidates: string[]): string | undefined =>
+  candidates.find((id) => stateOf(id) === 'warn') ??
+  candidates.find((id) => stateOf(id) === 'todo' || stateOf(id) === 'editing')
+
+// 旧タブ名が指すステップ。overview は 予告先発・対戦設定 と 結果 のうち、手の要る方（無ければ結果）
+const stepForTab = (tab: string): string =>
+  tab === 'pitchers' || tab === 'pitcher_status'
+    ? 'pitchers'
+    : (attentionStep(['setup', 'result']) ?? 'result')
+
+const scrollToSection = (id: string) => {
+  nextTick(() => {
+    const slug =
+      id === 'pitcherStatus' ? 'pitcher-status' : (steps.value.find((s) => s.id === id)?.slug ?? id)
+    const el = document.querySelector(`[data-testid="section-${slug}"]`)
+    if (el && typeof el.scrollIntoView === 'function') el.scrollIntoView({ block: 'start' })
+  })
+}
+
+// ユーザーが自分でステップを選んだら、読み込み後の自動選択で上書きしない
+let userPicked = false
+// URL の ?tab 指定。最初の読み込みで一度だけ使う
+let tabIntent: string | null = (route.query.tab as string) || null
+
+const pickStep = (id: string) => {
+  userPicked = true
+  activeStep.value = id
+}
+
+// 赤い帯のボタンなど、プログラムから特定のステップへ移す
+const focusStep = (id: string) => {
+  pickStep(id)
+  openSections[id] = true
+  if (stepsMode.value === 'stack') scrollToSection(id)
+}
+
+const openMismatchSection = () => {
+  focusStep(mismatch.value === 'score_without_appearances' ? 'pitchers' : 'result')
+}
+
+const applyTab = (tab: string, scroll: boolean) => {
+  const ids = TAB_OPEN[tab] ?? TAB_OPEN.overview
+  ids.forEach((id) => {
+    openSections[id] = true
+  })
+  activeStep.value = stepForTab(tab)
+  if (scroll && stepsMode.value === 'stack') scrollToSection(ids[0])
+}
+
+// 読み込み後の初期ステップ: ?tab 指定 > 最初の要確認・未入力 > 結果。スマホ幅ではその段を開く
+const resolveInitialStep = () => {
+  const intent = tabIntent
+  tabIntent = null
+  const id = intent
+    ? stepForTab(intent)
+    : (attentionStep(['setup', 'result', 'pitchers']) ?? 'result')
+  if (!userPicked) activeStep.value = id
+  openSections[id] = true
+  // 要確認の段は閉じたままにしない（赤い帯の行き先が見える状態にする）
+  if (mismatch.value)
+    openSections[mismatch.value === 'score_without_appearances' ? 'pitchers' : 'result'] = true
+}
+
+applyTab(activeTab.value, false)
+watch(activeTab, (tab) => applyTab(tab, true))
+
+// 幅が変わると描き直されるので、登板記録の未保存の編集は失われる。ガードが空振りしないよう印を戻す
+watch(stepsMode, () => {
+  pitcherDirty.value = false
+})
+
+// ─────────────────────────────────────────
+// 取得
+// ─────────────────────────────────────────
 
 const fetchGame = async () => {
   try {
@@ -752,12 +796,7 @@ const loadAll = async () => {
   pitcherDirty.value = false
   await fetchGame()
   await Promise.all([fetchAppearanceCount(), fetchSeasonInfo()])
-  // 初めて開いた時に、要確認の段は閉じたままにしない（赤い帯の行き先が見える状態にする）
-  if (!initialOpenApplied) {
-    initialOpenApplied = true
-    if (mismatch.value)
-      openSections[mismatch.value === 'score_without_appearances' ? 'pitchers' : 'result'] = true
-  }
+  resolveInitialStep()
 }
 
 const showSnackbar = (text: string, color: string = 'success', timeout: number = 3000) => {
@@ -833,7 +872,10 @@ const goToGameDay = async (id: number) => {
 }
 
 watch(scheduleId, (next, prev) => {
-  if (next !== prev) loadAll()
+  if (next === prev) return
+  // 別の試合日へ移ったら、その日の最初の要確認・未入力のステップを選び直す
+  userPicked = false
+  loadAll()
 })
 
 onMounted(() => {
@@ -848,18 +890,6 @@ onBeforeUnmount(() => {
 </script>
 
 <style scoped>
-.game-day-phase {
-  color: rgba(var(--v-theme-on-surface), var(--v-medium-emphasis-opacity));
-  font-weight: 700;
-  letter-spacing: 0.08em;
-}
-.game-day-divider {
-  text-align: center;
-  color: rgba(var(--v-theme-on-surface), var(--v-medium-emphasis-opacity));
-  border-top: 1px dashed rgba(var(--v-border-color), var(--v-border-opacity));
-  border-bottom: 1px dashed rgba(var(--v-border-color), var(--v-border-opacity));
-  padding: 6px 0;
-}
 .game-day-progress {
   display: flex;
   align-items: center;

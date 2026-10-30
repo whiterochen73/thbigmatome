@@ -950,4 +950,92 @@ describe('PitcherAppearanceTab', () => {
       expect(wrapper.vm.pitcherRows[0].innings_int).toBe(6)
     })
   })
+  // cmd_1783 段A: 未保存の入力を試合日ページへ知らせる（離脱ガード・「編集中」の表示）／保存したことを知らせる（状態の取り直し）
+  describe('未保存の入力と保存の通知', () => {
+    async function mountWithEvents() {
+      mockPitcherRequests({ state: null })
+      const wrapper = mount(PitcherAppearanceTab, {
+        props: defaultProps,
+        global: { plugins: [vuetify] },
+      })
+      await flushPromises()
+      return wrapper
+    }
+    const dirtyEvents = (wrapper: Awaited<ReturnType<typeof mountWithEvents>>) =>
+      (wrapper.emitted('dirty-change') ?? []).map((e) => e[0])
+
+    it('読み込んだだけでは未保存にならない（通知も出さない）', async () => {
+      const wrapper = await mountWithEvents()
+      expect(wrapper.vm.isDirty).toBe(false)
+      expect(dirtyEvents(wrapper)).toEqual([])
+    })
+
+    it('行を編集すると未保存になり、元の値に戻すと未保存でなくなる', async () => {
+      const wrapper = await mountWithEvents()
+      wrapper.vm.pitcherRows[0].innings_int = 6
+      await flushPromises()
+      expect(dirtyEvents(wrapper)).toEqual([true])
+      wrapper.vm.pitcherRows[0].innings_int = null
+      await flushPromises()
+      expect(dirtyEvents(wrapper)).toEqual([true, false])
+    })
+
+    it('投手の追加・削除も未保存として扱う', async () => {
+      const wrapper = await mountWithEvents()
+      wrapper.vm.addRow()
+      await flushPromises()
+      expect(wrapper.vm.isDirty).toBe(true)
+      wrapper.vm.removeRow(1)
+      await flushPromises()
+      expect(wrapper.vm.isDirty).toBe(false)
+    })
+
+    it('保存に成功したら未保存でなくなり、saved を通知する', async () => {
+      const wrapper = await mountWithEvents()
+      wrapper.vm.pitcherRows[0].pitcher_id = 10
+      wrapper.vm.pitcherRows[0].innings_int = 6
+      await flushPromises()
+      expect(wrapper.vm.isDirty).toBe(true)
+      vi.mocked(axios.post).mockResolvedValueOnce({ data: { warnings: [] } })
+
+      await wrapper.vm.saveAll()
+      await flushPromises()
+
+      expect(wrapper.vm.isDirty).toBe(false)
+      expect(dirtyEvents(wrapper)).toEqual([true, false])
+      expect(wrapper.emitted('saved')).toHaveLength(1)
+    })
+
+    it('保存に成功した後の再読み込みが失敗しても、未保存には戻らない（保存した内容が今の行。離脱ガードを出さない）', async () => {
+      const wrapper = await mountWithEvents()
+      wrapper.vm.pitcherRows[0].pitcher_id = 10
+      wrapper.vm.pitcherRows[0].innings_int = 6
+      await flushPromises()
+      expect(dirtyEvents(wrapper)).toEqual([true])
+      // 保存後の取り直し（GET /pitcher_appearances）だけ失敗させる。画面の行は入力のまま残る
+      mockPitcherRequests({ state: null, savedReject: true })
+      vi.mocked(axios.post).mockResolvedValueOnce({ data: { warnings: [] } })
+
+      await wrapper.vm.saveAll()
+      await flushPromises()
+
+      expect(wrapper.vm.pitcherRows[0].innings_int).toBe(6)
+      expect(wrapper.vm.isDirty).toBe(false)
+      expect(dirtyEvents(wrapper)).toEqual([true, false])
+      expect(wrapper.emitted('saved')).toHaveLength(1)
+    })
+
+    it('保存に失敗したら未保存のまま残り、saved は通知しない', async () => {
+      const wrapper = await mountWithEvents()
+      wrapper.vm.pitcherRows[0].pitcher_id = 10
+      wrapper.vm.pitcherRows[0].innings_int = 6
+      vi.mocked(axios.post).mockRejectedValueOnce({ response: { data: { errors: ['NG'] } } })
+
+      await wrapper.vm.saveAll()
+      await flushPromises()
+
+      expect(wrapper.vm.isDirty).toBe(true)
+      expect(wrapper.emitted('saved')).toBeUndefined()
+    })
+  })
 })

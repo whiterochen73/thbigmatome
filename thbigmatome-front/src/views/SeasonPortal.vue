@@ -270,6 +270,14 @@
                               {{ day.schedule.announced_starter.name }}
                             </span>
                           </div>
+                          <span
+                            v-if="dayMark(day.schedule)"
+                            class="day-mark"
+                            :class="`day-mark--${dayMark(day.schedule)}`"
+                            :title="dayMarkTitle(day.schedule)"
+                            data-testid="calendar-day-mark"
+                            >{{ t(`seasonPortal.calendarMark.${dayMark(day.schedule)}`) }}</span
+                          >
                           <v-btn
                             size="x-small"
                             color="primary"
@@ -417,6 +425,14 @@
                           <span v-else class="text-disabled">—</span>
                         </td>
                         <td>
+                          <span
+                            v-if="row.schedule && dayMark(row.schedule)"
+                            class="day-mark mr-1"
+                            :class="`day-mark--${dayMark(row.schedule)}`"
+                            :title="dayMarkTitle(row.schedule)"
+                            data-testid="table-day-mark"
+                            >{{ t(`seasonPortal.calendarMark.${dayMark(row.schedule)}`) }}</span
+                          >
                           <v-btn
                             v-if="row.schedule && isGameType(row.schedule.date_type)"
                             size="x-small"
@@ -568,6 +584,20 @@
                 {{ selectedDay.schedule.announced_starter.name }}
               </div>
             </template>
+            <div
+              v-if="dayMark(selectedDay.schedule)"
+              class="day-mark-note mb-2"
+              :class="`day-mark-note--${dayMark(selectedDay.schedule)}`"
+              data-testid="detail-day-mark"
+            >
+              <span class="day-mark" :class="`day-mark--${dayMark(selectedDay.schedule)}`">{{
+                t(`seasonPortal.calendarMark.${dayMark(selectedDay.schedule)}`)
+              }}</span>
+              {{ dayMarkTitle(selectedDay.schedule) }}
+            </div>
+            <div class="text-caption text-medium-emphasis mt-2" data-testid="detail-day-flow">
+              {{ t('seasonPortal.dayFlow.heading') }}：{{ t('seasonPortal.dayFlow.steps') }}
+            </div>
             <v-btn
               color="primary"
               variant="elevated"
@@ -624,6 +654,7 @@ import TeamMembers from '@/views/TeamMembers.vue'
 // import SquadTextGenerator from '@/components/squad/SquadTextGenerator.vue'
 import { useTeamSelectionStore } from '@/stores/teamSelection'
 import { useAuth } from '@/composables/useAuth'
+import { calendarDayMark, hasGameDayArrived } from '@/components/gameDay/gameDayStatus'
 
 const props = defineProps<{ teamId?: number }>()
 
@@ -937,6 +968,23 @@ const isCancelledType = (dateType?: string) => {
 const isGameType = (dateType?: string) => {
   if (!dateType) return false
   return ['game_day', 'interleague_game_day', 'playoff_day', 'no_game'].includes(dateType)
+}
+
+// 試合日のセルの印: 得点と登板記録の食い違い（要確認・赤）、試合日が来ているのに結果が未入力（黄）
+const dayMark = (schedule?: SeasonSchedule | null): 'warn' | 'todo' | null => {
+  if (!schedule || !isGameType(schedule.date_type) || isCancelledType(schedule.date_type)) {
+    return null
+  }
+  return calendarDayMark({
+    gameResult: schedule.game_result,
+    appearanceCount: schedule.pitcher_appearance_count,
+    arrived: hasGameDayArrived(schedule.date, season.value?.current_date),
+  })
+}
+
+const dayMarkTitle = (schedule?: SeasonSchedule | null) => {
+  const mark = dayMark(schedule)
+  return mark ? t(`seasonPortal.calendarMark.${mark}Title`) : ''
 }
 
 // 勝敗マーク
@@ -1272,6 +1320,36 @@ onMounted(async () => {
 /* ノーゲームは勝敗の色を付けない（勝敗・成績に入れない） */
 .result-no_game {
   color: rgb(var(--v-theme-on-surface-variant));
+}
+
+/* 入力漏れの印。色だけで伝えないため文字を付ける（配色は試合日ページの状態チップと同じ） */
+.day-mark {
+  display: inline-block;
+  border-radius: 10px;
+  padding: 0 8px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  line-height: 18px;
+  white-space: nowrap;
+}
+.day-mark--warn {
+  background: #f7d9dc;
+  color: #8a1420;
+}
+.day-mark--todo {
+  background: #fbebc2;
+  color: #7a5200;
+}
+.v-theme--dark .day-mark--warn {
+  background: #5a1a22;
+  color: #ffb3b8;
+}
+.v-theme--dark .day-mark--todo {
+  background: #4d3a0c;
+  color: #ffd777;
+}
+.day-mark-note {
+  font-size: 0.85rem;
 }
 
 .entry-btn {

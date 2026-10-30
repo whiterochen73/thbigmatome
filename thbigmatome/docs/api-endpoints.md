@@ -157,6 +157,7 @@
 
 - **Controller**: `Api::V1::TeamSeasonsController#show`
 - **Response**: `SeasonDetailSerializer`
+- 各 `season_schedules[]` に `pitcher_appearance_count`（その試合日の自チームの登板記録の件数）を含む。シーズンポータルのカレンダーが「得点だけ保存済みで登板記録が無い」「登板記録だけあって得点が無い」といった入力漏れの印を出すために使う（cmd_1783）
 
 ### PATCH/PUT /api/v1/teams/:team_id/season
 

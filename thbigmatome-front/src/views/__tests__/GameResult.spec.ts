@@ -8,9 +8,10 @@ import { createI18n } from 'vue-i18n'
 import ja from '@/locales/ja.json'
 import GameResult from '../GameResult.vue'
 
-const { mockGet, mockPut, mockPush, routeGuards, routeQuery } = vi.hoisted(() => ({
+const { mockGet, mockPut, mockPatch, mockPush, routeGuards, routeQuery } = vi.hoisted(() => ({
   mockGet: vi.fn(),
   mockPut: vi.fn(),
+  mockPatch: vi.fn(),
   mockPush: vi.fn(),
   // ?tab= などの URL クエリ（テストごとに差し替える）
   routeQuery: { value: {} as Record<string, string> },
@@ -54,6 +55,7 @@ vi.mock('axios', () => ({
   default: {
     get: mockGet,
     put: mockPut,
+    patch: mockPatch,
     defaults: { baseURL: '', withCredentials: false, headers: { common: {} } },
     interceptors: { request: { use: vi.fn() }, response: { use: vi.fn() } },
   },
@@ -648,8 +650,8 @@ describe.each(LAYOUTS)('GameResult 試合日ページ: $name', ({ width, kind })
       season: new Error('500'),
     })
     expect(state(wrapper, 'result')).toBe('upcoming')
-    expect(wrapper.vm.prevGameDay).toBeNull()
-    expect(wrapper.vm.nextGameDay).toBeNull()
+    expect(wrapper.vm.prevSchedule).toBeNull()
+    expect(wrapper.vm.nextSchedule).toBeNull()
   })
 
   it('登板記録の件数が取れない時は、登板なしの赤を出さない（件数不明）', async () => {
@@ -1293,28 +1295,28 @@ describe.each(LAYOUTS)('GameResult 試合日ページ: $name', ({ width, kind })
     })
   })
 
-  describe('前後の試合日', () => {
-    it('試合日だけをたどる（移動日 101 を飛ばして 99 ←→ 102）', async () => {
+  describe('前後の日程', () => {
+    it('試合日と移動日を日付順にたどる（99 ← 100 → 101）', async () => {
       const wrapper = await mountDay({ appearances: appearanceRows(1) })
-      expect(wrapper.vm.prevGameDay.id).toBe(99)
-      expect(wrapper.vm.nextGameDay.id).toBe(102)
+      expect(wrapper.vm.prevSchedule.id).toBe(99)
+      expect(wrapper.vm.nextSchedule.id).toBe(101)
       await wrapper.find('[data-testid="next-game-day"]').trigger('click')
       await flushPromises()
       expect(mockPush).toHaveBeenCalledWith({
         name: 'GameResult',
-        params: { teamId: '1', scheduleId: '102' },
+        params: { teamId: '1', scheduleId: '101' },
       })
     })
 
-    it('最初・最後の試合日では、該当側のボタンが押せない', async () => {
+    it('最初・最後の日程では、該当側のボタンを表示しない', async () => {
       const wrapper = await mountDay({
         season: {
           current_date: '2026-06-10',
           season_schedules: [{ id: 100, date: '2026-06-10', date_type: 'game_day' }],
         },
       })
-      expect(wrapper.find('[data-testid="prev-game-day"]').attributes('disabled')).toBeDefined()
-      expect(wrapper.find('[data-testid="next-game-day"]').attributes('disabled')).toBeDefined()
+      expect(wrapper.find('[data-testid="prev-game-day"]').exists()).toBe(false)
+      expect(wrapper.find('[data-testid="next-game-day"]').exists()).toBe(false)
     })
 
     it('要確認が残ったまま次の試合日へ移る時は、同じ理由を出して確認し、キャンセルなら移らない', async () => {
@@ -1342,11 +1344,231 @@ describe.each(LAYOUTS)('GameResult 試合日ページ: $name', ({ width, kind })
     })
   })
 
+  // Test Basis: cmd_1783 A-E（試合日ページの改修）
+  describe('cmd_1783 日程の移動と種類', () => {
+    const schedule = (id: number, date: string, date_type: string) => ({ id, date, date_type })
+    const scheduleWith = (...rows: ReturnType<typeof schedule>[]) => ({
+      current_date: '2026-06-10',
+      season_schedules: rows,
+    })
+
+    it('A: 種類が混在し取得順が逆でも日付順に隣へ移り、移動先の日付と種類を表示する', async () => {
+      const wrapper = await mountDay({
+        appearances: appearanceRows(1),
+        season: scheduleWith(
+          schedule(102, '2026-06-12', 'game_day'),
+          schedule(101, '2026-06-11', 'travel_day'),
+          schedule(100, '2026-06-10', 'game_day'),
+          schedule(99, '2026-06-09', 'reserve_day'),
+        ),
+      })
+      expect(wrapper.vm.prevSchedule.id).toBe(99)
+      expect(wrapper.vm.nextSchedule.id).toBe(101)
+      expect(wrapper.find('[data-testid="prev-game-day"]').text()).toContain('予備日')
+      expect(wrapper.find('[data-testid="next-game-day"]').text()).toContain('移動日')
+      expect(wrapper.find('[data-testid="next-game-day"]').text()).toContain('6/11')
+      await wrapper.find('[data-testid="next-game-day"]').trigger('click')
+      await flushPromises()
+      expect(mockPush).toHaveBeenCalledWith({
+        name: 'GameResult',
+        params: { teamId: '1', scheduleId: '101' },
+      })
+    })
+
+    it('A: 最初の日は前、最後の日は次のボタンが無い', async () => {
+      const first = await mountDay({
+        season: scheduleWith(
+          schedule(100, '2026-06-10', 'travel_day'),
+          schedule(101, '2026-06-11', 'game_day'),
+        ),
+      })
+      expect(first.find('[data-testid="prev-game-day"]').exists()).toBe(false)
+      const last = await mountDay({
+        season: scheduleWith(
+          schedule(99, '2026-06-09', 'game_day'),
+          schedule(100, '2026-06-10', 'travel_day'),
+        ),
+      })
+      expect(last.find('[data-testid="next-game-day"]').exists()).toBe(false)
+    })
+
+    it('A: 移動日を開いても前後の異なる種類の日へ移れる', async () => {
+      const wrapper = await mountDay({
+        appearances: appearanceRows(1),
+        season: scheduleWith(
+          schedule(99, '2026-06-09', 'reserve_day'),
+          schedule(100, '2026-06-10', 'travel_day'),
+          schedule(101, '2026-06-11', 'game_day'),
+        ),
+      })
+      expect(wrapper.find('[data-testid="prev-game-day"]').text()).toContain('予備日')
+      expect(wrapper.find('[data-testid="next-game-day"]').text()).toContain('試合日')
+      await wrapper.find('[data-testid="next-game-day"]').trigger('click')
+      await flushPromises()
+      expect(mockPush).toHaveBeenCalledWith({
+        name: 'GameResult',
+        params: { teamId: '1', scheduleId: '101' },
+      })
+    })
+
+    it('B: 9 種の選択肢を表示し、保存済みデータなしなら確認なしで PATCH する', async () => {
+      const wrapper = await mountDay({
+        game: { score: null, opponent_score: null },
+        appearances: [],
+      })
+      const select = wrapper.find('[data-testid="date-type-select"]')
+      expect(select.exists()).toBe(true)
+      const items = wrapper.findComponent('[data-testid="date-type-select"]').props('items')
+      expect(items).toHaveLength(9)
+      expect(items).toContainEqual({ value: 'travel_day', title: '移動日' })
+      mockPatch.mockResolvedValueOnce({ data: {} })
+      wrapper
+        .findComponent('[data-testid="date-type-select"]')
+        .vm.$emit('update:modelValue', 'travel_day')
+      await flushPromises()
+      expect(mockPatch).toHaveBeenCalledWith('/teams/1/season/season_schedules/100', {
+        season_schedule: { date_type: 'travel_day' },
+      })
+      expect(wrapper.vm.currentDateType).toBe('travel_day')
+      expect(document.body.textContent).not.toContain('データは消えず')
+    })
+
+    it.each([
+      { name: '得点', game: { score: 0, opponent_score: null }, appearances: [] },
+      { name: '相手得点', game: { score: null, opponent_score: 0 }, appearances: [] },
+      {
+        name: 'ノーゲーム',
+        game: { score: null, opponent_score: null, no_game: true },
+        appearances: [],
+      },
+      {
+        name: '登板記録',
+        game: { score: null, opponent_score: null },
+        appearances: appearanceRows(1),
+      },
+    ])(
+      'B: 保存済み $name がある試合日から移動日へ変える時は確認し、キャンセルで PATCH しない',
+      async ({ game, appearances }) => {
+        const wrapper = await mountDay({ game, appearances })
+        const pending = wrapper.vm.updateDateType('travel_day')
+        await flushPromises()
+        expect(document.body.textContent).toContain('データは消えず、隠れるだけ')
+        const cancel = Array.from(document.body.querySelectorAll('button')).find(
+          (b) => b.textContent?.trim() === 'キャンセル',
+        )
+        cancel!.click()
+        await pending
+        await flushPromises()
+        expect(mockPatch).not.toHaveBeenCalled()
+        expect(wrapper.vm.currentDateType).toBe('game_day')
+      },
+    )
+
+    it('B: dirty 中は選択不可で、保存後に変更する案内を出す', async () => {
+      const wrapper = await mountDay()
+      wrapper.vm.gameData.score = 9
+      await flushPromises()
+      expect(wrapper.findComponent('[data-testid="date-type-select"]').props('disabled')).toBe(true)
+      expect(wrapper.text()).toContain('保存してから変更')
+    })
+
+    it('B: PATCH 失敗時は元の種類に戻し、エラーを出す', async () => {
+      const wrapper = await mountDay({ game: { score: null, opponent_score: null } })
+      mockPatch.mockRejectedValueOnce(new Error('500'))
+      await wrapper.vm.updateDateType('travel_day')
+      await flushPromises()
+      expect(wrapper.vm.currentDateType).toBe('game_day')
+      expect(wrapper.vm.snackbarColor).toBe('error')
+    })
+
+    it('C: 移動日は試合の 4 段と要確認を隠し、tab=result でも members を開く', async () => {
+      const wrapper = await mountDay({
+        season: scheduleWith(schedule(100, '2026-06-10', 'travel_day')),
+        query: { tab: 'result' },
+      })
+      for (const slug of ['setup', 'result', 'pitchers', 'in-game-absences']) {
+        expect(wrapper.find(`[data-testid="${kind}-${slug}"]`).exists()).toBe(false)
+      }
+      expect(wrapper.find('[data-testid="mismatch-banner"]').exists()).toBe(false)
+      expect(wrapper.vm.activeStep).toBe('members')
+      expect(wrapper.vm.openSections.members).toBe(true)
+      expect(wrapper.find('[data-testid="game-day-progress-text"]').exists()).toBe(false)
+    })
+
+    it('C: no_game は試合日扱いで 4 段を出し、種類変更でその場で段が出入りする', async () => {
+      const wrapper = await mountDay({
+        game: { score: null, opponent_score: null },
+        season: scheduleWith(schedule(100, '2026-06-10', 'no_game')),
+      })
+      for (const slug of ['setup', 'result', 'pitchers', 'in-game-absences']) {
+        expect(wrapper.find(`[data-testid="${kind}-${slug}"]`).exists()).toBe(true)
+      }
+      mockPatch.mockResolvedValue({ data: {} })
+      await wrapper.vm.updateDateType('travel_day')
+      await flushPromises()
+      expect(wrapper.find(`[data-testid="${kind}-result"]`).exists()).toBe(false)
+      expect(wrapper.vm.activeStep).toBe('members')
+      await wrapper.vm.updateDateType('game_day')
+      await flushPromises()
+      expect(wrapper.find(`[data-testid="${kind}-result"]`).exists()).toBe(true)
+    })
+
+    it('D: 登録・離脱の 3 段、試合日の 4 段を各見出しの下に順に出す', async () => {
+      const wrapper = await mountDay()
+      const first = wrapper.find('[data-testid="step-group-registration"]')
+      const second = wrapper.find('[data-testid="step-group-game"]')
+      expect(wrapper.text()).toContain('登録・離脱')
+      expect(wrapper.text()).toContain('試合日')
+      const ids = (node: ReturnType<Wrapper['find']>) =>
+        node.findAll(`[data-testid^="${kind}-"]`).map((e) => e.attributes('data-testid'))
+      if (kind === 'step') {
+        expect(ids(first)).toEqual(['step-members', 'step-roster', 'step-absences'])
+        expect(ids(second)).toEqual([
+          'step-setup',
+          'step-result',
+          'step-pitchers',
+          'step-in-game-absences',
+        ])
+      } else {
+        expect(ids(first)).toEqual(['section-members', 'section-roster', 'section-absences'])
+        expect(ids(second)).toEqual([
+          'section-setup',
+          'section-result',
+          'section-pitchers',
+          'section-pitcher-status',
+          'section-in-game-absences',
+        ])
+      }
+    })
+
+    if (kind === 'step') {
+      it('E: 全段の指定アイコンは done と warn でも変わらず、読み上げから隠す', async () => {
+        const wrapper = await mountDay({ appearances: [] })
+        const icons = {
+          members: 'mdi-account-multiple-plus-outline',
+          roster: 'mdi-swap-vertical-bold',
+          absences: 'mdi-bandage',
+          setup: 'mdi-clipboard-list-outline',
+          result: 'mdi-scoreboard-outline',
+          pitchers: 'mdi-baseball',
+          'in-game-absences': 'mdi-ambulance',
+        }
+        for (const [slug, icon] of Object.entries(icons)) {
+          const step = wrapper.find(`[data-testid="step-${slug}"]`)
+          expect(step.html()).toContain(icon)
+          expect(step.find('.v-icon').attributes('aria-hidden')).toBe('true')
+        }
+        expect(wrapper.find('[data-testid="step-result"]').attributes('data-state')).toBe('done')
+        expect(wrapper.find('[data-testid="step-pitchers"]').attributes('data-state')).toBe('warn')
+      })
+    }
+  })
+
   // ───────── スマホ幅（縦積み）だけの振る舞い ─────────
   // 該当しない幅では describe 自体を登録しない（skip ではなく、そもそも存在しないテスト）
   if (kind === 'section') {
     describe('縦積み', () => {
-      it('段が 試合前（選手登録・契約変更 → 昇降格 → 負傷 → 予告先発・対戦設定）→ 試合後（結果 → 登板記録 → 試合中の負傷）の順に並ぶ', async () => {
+      it('段が 登録・離脱（選手登録・契約変更 → 昇降格 → 負傷）→ 試合日（予告先発・対戦設定 → 結果 → 登板記録 → 試合中の負傷）の順に並ぶ', async () => {
         const wrapper = await mountDay()
         expect(wrapper.find('[data-testid="game-day-stepper"]').exists()).toBe(false)
         const ids = wrapper
@@ -1428,7 +1650,7 @@ describe.each(LAYOUTS)('GameResult 試合日ページ: $name', ({ width, kind })
           .filter((p) => p.isVisible())
           .map((p) => p.attributes('data-testid')!.replace('panel-', ''))
 
-      it('試合前（選手登録・契約変更 → 登録・昇降格 → 負傷・出場停止 → 予告先発・対戦設定）と 試合後（結果 → 登板記録 → 試合中の負傷）の順に、境目つきで並ぶ', async () => {
+      it('登録・離脱（選手登録・契約変更 → 登録・昇降格 → 負傷・出場停止）と 試合日（予告先発・対戦設定 → 結果 → 登板記録 → 試合中の負傷）の順に、境目つきで並ぶ', async () => {
         const wrapper = await mountDay()
         expect(wrapper.find('[data-testid="game-day-stack"]').exists()).toBe(false)
         const stepIds = (group: string) =>
@@ -1436,16 +1658,18 @@ describe.each(LAYOUTS)('GameResult 試合日ページ: $name', ({ width, kind })
             .find(`[data-testid="step-group-${group}"]`)
             .findAll('.v-stepper-item')
             .map((e) => e.attributes('data-testid'))
-        expect(stepIds('before')).toEqual([
-          'step-members',
-          'step-roster',
-          'step-absences',
+        expect(stepIds('registration')).toEqual(['step-members', 'step-roster', 'step-absences'])
+        expect(stepIds('game')).toEqual([
           'step-setup',
+          'step-result',
+          'step-pitchers',
+          'step-in-game-absences',
         ])
-        expect(stepIds('after')).toEqual(['step-result', 'step-pitchers', 'step-in-game-absences'])
-        expect(wrapper.find('[data-testid="step-group-before"]').text()).toContain('試合前')
-        expect(wrapper.find('[data-testid="step-group-after"]').text()).toContain('試合後')
-        // 試合前と試合後の境目
+        expect(wrapper.find('[data-testid="step-group-registration"]').text()).toContain(
+          '登録・離脱',
+        )
+        expect(wrapper.find('[data-testid="step-group-game"]').text()).toContain('試合日')
+        // setup と result の境目
         expect(wrapper.find('.game-day-stepper__game').text()).toContain('試合')
         expect(wrapper.find('[data-testid="step-members"]').text()).toContain('選手登録・契約変更')
       })

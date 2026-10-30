@@ -58,6 +58,7 @@ const i18n = createI18n({
       seasonPortal: {
         goToGameResult: '今日の試合へ',
         gameResultInput: '試合結果入力',
+        openSchedule: '日程を開く',
         currentDate: '現在の日付',
         noSeasonData: 'シーズンデータが見つかりません',
         tabs: {
@@ -88,6 +89,7 @@ const i18n = createI18n({
         },
       },
       common: { close: '閉じる' },
+      settings: { schedule: { dateTypes: { travel_day: '移動日' } } },
     },
   },
 })
@@ -140,6 +142,40 @@ async function mountSeasonPortal(options: { season?: object | null; schedules?: 
 describe('SeasonPortal', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+  })
+
+  // Test Basis: cmd_1783 A（全日程から試合日ページを開く）
+  it('移動日にもカレンダー・一覧・詳細から日程を開くリンクが出る', async () => {
+    localStorage.setItem('sp_view', 'calendar')
+    const season = {
+      id: 1,
+      name: '2026シーズン',
+      current_date: '2026-04-10',
+      season_schedules: [{ id: 8, date: '2026-04-11', date_type: 'travel_day', game_result: null }],
+    }
+    const calendar = await mountSeasonPortal({ season })
+    const day = calendar
+      .findAll('.day-cell')
+      .find(
+        (cell) =>
+          cell.find('.day-number').text() === '11' && !cell.classes().includes('not-current-month'),
+      )!
+    expect(day.find('.entry-btn').text()).toBe('日程を開く')
+    await day.trigger('click')
+    await flushPromises()
+    expect(
+      document.body.querySelector('[data-testid="detail-open-schedule"]')?.textContent,
+    ).toContain('日程を開く')
+    calendar.unmount()
+    mountedWrappers.splice(mountedWrappers.indexOf(calendar), 1)
+
+    localStorage.setItem('sp_view', 'table')
+    const table = await mountSeasonPortal({ season })
+    const row = table.findAll('tr').find((tr) => tr.text().includes('移動日'))!
+    expect(row.text()).toContain('日程を開く')
+    table.unmount()
+    mountedWrappers.splice(mountedWrappers.indexOf(table), 1)
+    localStorage.removeItem('sp_view')
   })
 
   describe('シーズン未作成時', () => {

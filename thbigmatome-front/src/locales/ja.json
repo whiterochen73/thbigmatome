@@ -36,6 +36,7 @@
     "title": "シーズン画面",
     "currentDate": "現在の日付",
     "gameResultInput": "試合結果入力",
+    "openSchedule": "日程を開く",
     "announcedPitcher": "先発予定",
     "goToGameResult": "今日の試合へ",
     "gameResult": {
@@ -315,9 +316,16 @@
   },
   "gameDay": {
     "phase": {
-      "before": "試合前",
-      "game": "試合（IRC）",
-      "after": "試合後"
+      "registration": "登録・離脱",
+      "game": "試合日",
+      "gameDivider": "試合（IRC）"
+    },
+    "dateType": {
+      "label": "日付種類",
+      "saveFirst": "保存してから変更",
+      "confirmTitle": "日付種類を変更しますか？",
+      "confirmMessage": "保存済みの試合データがあります。日付種類を変更してもデータは消えず、隠れるだけです。変更しますか？",
+      "saveFailed": "日付種類の変更に失敗しました"
     },
     "state": {
       "done": "済",
@@ -358,8 +366,8 @@
       "text": "{done} / {total} 済"
     },
     "nav": {
-      "prev": "前の試合日",
-      "next": "次の試合日"
+      "prev": "前の日程",
+      "next": "次の日程"
     },
     "mismatch": {
       "scoreWithoutAppearances": "得点は保存済みですが、登板記録がありません。登板記録を入力しないと、次の登板の休養判定が狂います。",

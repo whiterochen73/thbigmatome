@@ -278,21 +278,25 @@
                             data-testid="calendar-day-mark"
                             >{{ t(`seasonPortal.calendarMark.${dayMark(day.schedule)}`) }}</span
                           >
-                          <v-btn
-                            size="x-small"
-                            color="primary"
-                            variant="text"
-                            density="compact"
-                            :to="{
-                              name: 'GameResult',
-                              params: { teamId, scheduleId: day.schedule.id },
-                            }"
-                            @click.stop
-                            class="entry-btn"
-                          >
-                            {{ t('seasonPortal.gameResultInput') }}
-                          </v-btn>
                         </template>
+                        <v-btn
+                          size="x-small"
+                          color="primary"
+                          variant="text"
+                          density="compact"
+                          :to="{
+                            name: 'GameResult',
+                            params: { teamId, scheduleId: day.schedule.id },
+                          }"
+                          @click.stop
+                          class="entry-btn"
+                        >
+                          {{
+                            isGameType(day.schedule.date_type)
+                              ? t('seasonPortal.gameResultInput')
+                              : t('seasonPortal.openSchedule')
+                          }}
+                        </v-btn>
                       </div>
                     </div>
                   </div>
@@ -434,7 +438,7 @@
                             >{{ t(`seasonPortal.calendarMark.${dayMark(row.schedule)}`) }}</span
                           >
                           <v-btn
-                            v-if="row.schedule && isGameType(row.schedule.date_type)"
+                            v-if="row.schedule"
                             size="x-small"
                             color="primary"
                             variant="text"
@@ -443,7 +447,11 @@
                               params: { teamId, scheduleId: row.schedule.id },
                             }"
                           >
-                            {{ t('seasonPortal.gameResultInput') }}
+                            {{
+                              isGameType(row.schedule.date_type)
+                                ? t('seasonPortal.gameResultInput')
+                                : t('seasonPortal.openSchedule')
+                            }}
                           </v-btn>
                         </td>
                       </tr>
@@ -598,19 +606,26 @@
             <div class="text-caption text-medium-emphasis mt-2" data-testid="detail-day-flow">
               {{ t('seasonPortal.dayFlow.heading') }}：{{ t('seasonPortal.dayFlow.steps') }}
             </div>
-            <v-btn
-              color="primary"
-              variant="elevated"
-              block
-              class="mt-2"
-              :to="{
-                name: 'GameResult',
-                params: { teamId, scheduleId: selectedDay.schedule.id },
-              }"
-              @click="isDayDetailOpen = false"
-            >
-              {{ t('seasonPortal.gameResultInput') }}
-            </v-btn>
+          </template>
+          <v-btn
+            color="primary"
+            variant="elevated"
+            block
+            class="mt-2"
+            data-testid="detail-open-schedule"
+            :to="{
+              name: 'GameResult',
+              params: { teamId, scheduleId: selectedDay.schedule.id },
+            }"
+            @click="isDayDetailOpen = false"
+          >
+            {{
+              isGameType(selectedDay.schedule.date_type)
+                ? t('seasonPortal.gameResultInput')
+                : t('seasonPortal.openSchedule')
+            }}
+          </v-btn>
+          <template v-if="isGameType(selectedDay.schedule.date_type)">
             <v-btn
               color="teal"
               variant="outlined"
@@ -654,7 +669,12 @@ import TeamMembers from '@/views/TeamMembers.vue'
 // import SquadTextGenerator from '@/components/squad/SquadTextGenerator.vue'
 import { useTeamSelectionStore } from '@/stores/teamSelection'
 import { useAuth } from '@/composables/useAuth'
-import { calendarDayMark, hasGameDayArrived } from '@/components/gameDay/gameDayStatus'
+import {
+  calendarDayMark,
+  hasGameDayArrived,
+  isGameType,
+  SCHEDULE_DATE_TYPES,
+} from '@/components/gameDay/gameDayStatus'
 
 const props = defineProps<{ teamId?: number }>()
 
@@ -923,17 +943,7 @@ const nextMonth = () => {
   currentDate.value = new Date(currentDate.value.setMonth(currentDate.value.getMonth() + 1))
 }
 
-const dateTypes = [
-  'game_day',
-  'interleague_game_day',
-  'playoff_day',
-  'travel_day',
-  'reserve_day',
-  'interleague_reserve_day',
-  'no_game_day',
-  'postponed',
-  'no_game',
-]
+const dateTypes = SCHEDULE_DATE_TYPES
 
 const legendItems = [
   { type: 'game_day', color: 'primary' },
@@ -962,12 +972,6 @@ const getTypeCategory = (dateType?: string) => {
 const isCancelledType = (dateType?: string) => {
   if (!dateType) return false
   return ['no_game', 'postponed'].includes(dateType)
-}
-
-// 試合系date_typeか判定
-const isGameType = (dateType?: string) => {
-  if (!dateType) return false
-  return ['game_day', 'interleague_game_day', 'playoff_day', 'no_game'].includes(dateType)
 }
 
 // 試合日のセルの印: 得点と登板記録の食い違い（要確認・赤）、試合日が来ているのに結果が未入力（黄）
@@ -1030,8 +1034,7 @@ const currentDaySchedule = computed(() => {
 
 const isGameDayToday = computed(() => {
   if (!currentDaySchedule.value) return false
-  const gameDayTypes = ['game_day', 'interleague_game_day', 'playoff_day', 'no_game']
-  return gameDayTypes.includes(currentDaySchedule.value.date_type)
+  return isGameType(currentDaySchedule.value.date_type)
 })
 
 const gameResultRoute = computed(() => {

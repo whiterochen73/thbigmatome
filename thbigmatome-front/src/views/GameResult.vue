@@ -21,7 +21,9 @@
           <v-icon size="x-small" class="text-white mx-1" style="opacity: 0.7"
             >mdi-chevron-right</v-icon
           >
-          <span class="text-subtitle-2 text-white mx-1">Game {{ gameData.game_number }}</span>
+          <span v-if="isGameDay" class="text-subtitle-2 text-white mx-1"
+            >Game {{ gameData.game_number }}</span
+          >
           <span class="text-caption text-white mx-1" style="opacity: 0.9">{{
             formattedGameDate
           }}</span>
@@ -29,6 +31,7 @@
       </template>
       <template #append>
         <v-btn
+          v-if="isGameDay"
           @click="saveGame"
           color="success"
           variant="flat"
@@ -41,14 +44,37 @@
       </template>
     </v-toolbar>
 
-    <!-- 試合日ヘッダ: 日付・進み具合・前後の試合日への移動 -->
+    <!-- 日程ヘッダ: 日付・種類・前後の日への移動 -->
     <v-card variant="outlined" class="mt-2 pa-3" data-testid="game-day-head">
       <div class="d-flex flex-wrap align-center ga-4">
         <div>
           <div class="text-h6 font-weight-bold">{{ formattedGameDate }}</div>
           <div class="text-body-2 text-medium-emphasis">{{ headLine }}</div>
         </div>
-        <div class="game-day-progress" role="group" :aria-label="t('gameDay.progress.label')">
+        <div class="d-flex flex-column" style="min-width: 220px">
+          <v-select
+            :model-value="currentDateType"
+            :items="dateTypeItems"
+            item-title="title"
+            item-value="value"
+            :label="t('gameDay.dateType.label')"
+            :disabled="hasUnsavedChanges || !currentDateType || dateTypeSaving"
+            :loading="dateTypeSaving"
+            density="compact"
+            hide-details
+            data-testid="date-type-select"
+            @update:model-value="updateDateType"
+          />
+          <span v-if="hasUnsavedChanges" class="text-caption text-medium-emphasis">{{
+            t('gameDay.dateType.saveFirst')
+          }}</span>
+        </div>
+        <div
+          v-if="isGameDay"
+          class="game-day-progress"
+          role="group"
+          :aria-label="t('gameDay.progress.label')"
+        >
           <span class="text-caption">{{ t('gameDay.progress.label') }}</span>
           <span class="game-day-progress__bar" aria-hidden="true">
             <i v-for="(mark, i) in progress" :key="i" :class="`game-day-progress__cell--${mark}`" />
@@ -63,24 +89,28 @@
         <v-spacer />
         <div class="d-flex ga-2">
           <v-btn
+            v-if="prevSchedule"
             size="small"
             variant="outlined"
             prepend-icon="mdi-chevron-left"
-            :disabled="!prevGameDay"
             data-testid="prev-game-day"
-            @click="prevGameDay && goToGameDay(prevGameDay.id)"
+            @click="prevSchedule && goToGameDay(prevSchedule.id)"
           >
-            {{ t('gameDay.nav.prev') }}
+            {{
+              `${t('gameDay.nav.prev')} ${formatScheduleDate(prevSchedule.date)} ${dateTypeLabel(prevSchedule.date_type)}`
+            }}
           </v-btn>
           <v-btn
+            v-if="nextSchedule"
             size="small"
             variant="outlined"
             append-icon="mdi-chevron-right"
-            :disabled="!nextGameDay"
             data-testid="next-game-day"
-            @click="nextGameDay && goToGameDay(nextGameDay.id)"
+            @click="nextSchedule && goToGameDay(nextSchedule.id)"
           >
-            {{ t('gameDay.nav.next') }}
+            {{
+              `${t('gameDay.nav.next')} ${formatScheduleDate(nextSchedule.date)} ${dateTypeLabel(nextSchedule.date_type)}`
+            }}
           </v-btn>
         </div>
       </div>
@@ -368,11 +398,13 @@ import {
   detectRecordMismatch,
   hasGameDayArrived,
   hasSavedScore,
+  isGameType,
   mismatchMessageKey,
   pitcherStageState,
   progressMarks,
   resultStageState,
   setupStageState,
+  SCHEDULE_DATE_TYPES,
   type StageState,
 } from '@/components/gameDay/gameDayStatus'
 
@@ -572,22 +604,34 @@ interface SeasonScheduleLite {
 }
 const seasonCurrentDate = ref<string | null>(null)
 const seasonSchedules = ref<SeasonScheduleLite[]>([])
-
-const GAME_DAY_TYPES = ['game_day', 'interleague_game_day', 'playoff_day']
-
-const gameDays = computed(() =>
-  seasonSchedules.value
-    .filter((s) => GAME_DAY_TYPES.includes(s.date_type))
-    .sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0)),
+const currentDateType = ref('')
+const dateTypeSaving = ref(false)
+const dateTypeItems = computed(() =>
+  SCHEDULE_DATE_TYPES.map((value) => ({
+    value,
+    title: t(`settings.schedule.dateTypes.${value}`),
+  })),
 )
-const currentGameDayIndex = computed(() =>
-  gameDays.value.findIndex((s) => String(s.id) === String(scheduleId.value)),
+const dateTypeLabel = (value: string) => t(`settings.schedule.dateTypes.${value}`)
+const formatScheduleDate = (value: string) => {
+  const [, month, day] = value.slice(0, 10).split('-')
+  return `${Number(month)}/${Number(day)}`
+}
+// 日程の取得前は既存の試合入力画面を表示し、取得後に種類に合わせて切り替える
+const isGameDay = computed(() => !currentDateType.value || isGameType(currentDateType.value))
+const sortedSchedules = computed(() =>
+  [...seasonSchedules.value].sort((a, b) => a.date.localeCompare(b.date) || a.id - b.id),
 )
-const prevGameDay = computed(() =>
-  currentGameDayIndex.value > 0 ? gameDays.value[currentGameDayIndex.value - 1] : null,
+const currentScheduleIndex = computed(() =>
+  sortedSchedules.value.findIndex((s) => String(s.id) === String(scheduleId.value)),
 )
-const nextGameDay = computed(() =>
-  currentGameDayIndex.value >= 0 ? (gameDays.value[currentGameDayIndex.value + 1] ?? null) : null,
+const prevSchedule = computed(() =>
+  currentScheduleIndex.value > 0 ? sortedSchedules.value[currentScheduleIndex.value - 1] : null,
+)
+const nextSchedule = computed(() =>
+  currentScheduleIndex.value >= 0
+    ? (sortedSchedules.value[currentScheduleIndex.value + 1] ?? null)
+    : null,
 )
 
 // 試合日が来るまでは入力を急かさない（黄色にしない）。現在日が取れない時も来ていない扱い
@@ -635,7 +679,9 @@ const pitcherState = computed<StageState>(() =>
 )
 
 const mismatch = computed(() =>
-  appearanceCount.value === null ? null : detectRecordMismatch(savedRecord.value),
+  !isGameDay.value || appearanceCount.value === null
+    ? null
+    : detectRecordMismatch(savedRecord.value),
 )
 const mismatchMessage = computed(() => {
   const key = mismatchMessageKey(mismatch.value)
@@ -678,7 +724,9 @@ const setupSummary = computed(() =>
 )
 
 const headLine = computed(() =>
-  [`Game ${gameData.value.game_number}`, setupSummary.value].filter(Boolean).join(' ・ '),
+  isGameDay.value
+    ? [`Game ${gameData.value.game_number}`, setupSummary.value].filter(Boolean).join(' ・ ')
+    : dateTypeLabel(currentDateType.value),
 )
 
 const resultSummary = computed(() => {
@@ -700,96 +748,110 @@ const pitcherSummary = computed(() =>
 const { mdAndUp } = useDisplay()
 const stepsMode = computed<'tabs' | 'stack'>(() => (mdAndUp.value ? 'tabs' : 'stack'))
 
-const steps = computed<GameDayStep[]>(() => [
-  {
-    id: 'members',
-    slug: 'members',
-    group: 'before',
-    no: 1,
-    title: t('gameDay.sections.members'),
-    summary: t('gameDay.summary.members'),
-    state: 'info',
-    hasBody: true,
-    lazy: true,
-    link: { to: membersRoute.value, label: t('gameDay.links.members'), testId: 'link-members' },
-  },
-  {
-    id: 'roster',
-    slug: 'roster',
-    group: 'before',
-    no: 2,
-    title: t('gameDay.sections.roster'),
-    summary: t('gameDay.summary.roster'),
-    state: 'info',
-    hasBody: true,
-    lazy: true,
-    link: { to: rosterRoute.value, label: t('gameDay.links.roster'), testId: 'link-roster' },
-  },
-  {
-    id: 'absences',
-    slug: 'absences',
-    group: 'before',
-    no: 3,
-    title: t('gameDay.sections.absences'),
-    summary: t('gameDay.summary.absences'),
-    state: 'info',
-    hasBody: true,
-    lazy: true,
-    link: { to: absencesRoute.value, label: t('gameDay.links.absences'), testId: 'link-absences' },
-  },
-  {
-    id: 'setup',
-    slug: 'setup',
-    group: 'before',
-    no: 4,
-    title: t('gameDay.sections.setup'),
-    summary: setupSummary.value,
-    state: setupState.value,
-    hasBody: true,
-  },
-  {
-    id: 'result',
-    slug: 'result',
-    group: 'after',
-    no: 5,
-    title: t('gameDay.sections.result'),
-    summary: resultSummary.value,
-    state: resultState.value,
-    hasBody: true,
-  },
-  {
-    id: 'pitchers',
-    slug: 'pitchers',
-    group: 'after',
-    no: 6,
-    title: t('gameDay.sections.pitchers'),
-    summary: pitcherSummary.value,
-    state: pitcherState.value,
-    hasBody: true,
-    lazy: true,
-    sub: {
-      id: 'pitcherStatus',
-      slug: 'pitcher-status',
-      title: t('gameDay.sections.pitcherStatus'),
+const steps = computed<GameDayStep[]>(() => {
+  const allSteps: GameDayStep[] = [
+    {
+      id: 'members',
+      slug: 'members',
+      group: 'registration',
+      no: 1,
+      icon: 'mdi-account-multiple-plus-outline',
+      title: t('gameDay.sections.members'),
+      summary: t('gameDay.summary.members'),
+      state: 'info',
+      hasBody: true,
+      lazy: true,
+      link: { to: membersRoute.value, label: t('gameDay.links.members'), testId: 'link-members' },
     },
-  },
-  {
-    id: 'inGameAbsences',
-    slug: 'in-game-absences',
-    group: 'after',
-    no: 7,
-    title: t('gameDay.sections.inGameAbsences'),
-    summary: t('gameDay.summary.inGameAbsences'),
-    state: 'info',
-    hasBody: true,
-    lazy: true,
-    link: {
-      to: absencesRoute.value,
-      label: t('gameDay.links.absences'),
-      testId: 'link-in-game-absences',
+    {
+      id: 'roster',
+      slug: 'roster',
+      group: 'registration',
+      no: 2,
+      icon: 'mdi-swap-vertical-bold',
+      title: t('gameDay.sections.roster'),
+      summary: t('gameDay.summary.roster'),
+      state: 'info',
+      hasBody: true,
+      lazy: true,
+      link: { to: rosterRoute.value, label: t('gameDay.links.roster'), testId: 'link-roster' },
     },
-  },
-])
+    {
+      id: 'absences',
+      slug: 'absences',
+      group: 'registration',
+      no: 3,
+      icon: 'mdi-bandage',
+      title: t('gameDay.sections.absences'),
+      summary: t('gameDay.summary.absences'),
+      state: 'info',
+      hasBody: true,
+      lazy: true,
+      link: {
+        to: absencesRoute.value,
+        label: t('gameDay.links.absences'),
+        testId: 'link-absences',
+      },
+    },
+    {
+      id: 'setup',
+      slug: 'setup',
+      group: 'game',
+      no: 4,
+      icon: 'mdi-clipboard-list-outline',
+      title: t('gameDay.sections.setup'),
+      summary: setupSummary.value,
+      state: setupState.value,
+      hasBody: true,
+    },
+    {
+      id: 'result',
+      slug: 'result',
+      group: 'game',
+      no: 5,
+      icon: 'mdi-scoreboard-outline',
+      title: t('gameDay.sections.result'),
+      summary: resultSummary.value,
+      state: resultState.value,
+      hasBody: true,
+    },
+    {
+      id: 'pitchers',
+      slug: 'pitchers',
+      group: 'game',
+      no: 6,
+      icon: 'mdi-baseball',
+      title: t('gameDay.sections.pitchers'),
+      summary: pitcherSummary.value,
+      state: pitcherState.value,
+      hasBody: true,
+      lazy: true,
+      sub: {
+        id: 'pitcherStatus',
+        slug: 'pitcher-status',
+        title: t('gameDay.sections.pitcherStatus'),
+      },
+    },
+    {
+      id: 'inGameAbsences',
+      slug: 'in-game-absences',
+      group: 'game',
+      no: 7,
+      icon: 'mdi-ambulance',
+      title: t('gameDay.sections.inGameAbsences'),
+      summary: t('gameDay.summary.inGameAbsences'),
+      state: 'info',
+      hasBody: true,
+      lazy: true,
+      link: {
+        to: absencesRoute.value,
+        label: t('gameDay.links.absences'),
+        testId: 'link-in-game-absences',
+      },
+    },
+  ]
+  return allSteps.filter((step) => isGameDay.value || step.group === 'registration')
+})
 
 // 選択中のステップ（PC 幅）と、開いている段（スマホ幅）。ステップを選ぶと同じ段も開くので、幅が変わっても選んでいた場所が開く
 // （PC 幅 → スマホ幅で段が開く。逆のスマホ幅 → PC 幅は、段の開閉からは選択中のステップを決めず、PC 幅で最後に選んだステップのまま）
@@ -870,6 +932,11 @@ const openMismatchSection = () => {
 }
 
 const applyTab = (tab: string, scroll: boolean) => {
+  if (!isGameDay.value) {
+    activeStep.value = 'members'
+    openSections.members = true
+    return
+  }
   const ids = TAB_OPEN[tab] ?? TAB_OPEN.overview
   ids.forEach((id) => {
     openSections[id] = true
@@ -882,6 +949,11 @@ const applyTab = (tab: string, scroll: boolean) => {
 const resolveInitialStep = () => {
   const intent = tabIntent
   tabIntent = null
+  if (!isGameDay.value) {
+    activeStep.value = 'members'
+    openSections.members = true
+    return
+  }
   const id = intent
     ? stepForTab(intent)
     : (attentionStep(['setup', 'result', 'pitchers']) ?? 'result')
@@ -892,7 +964,6 @@ const resolveInitialStep = () => {
     openSections[mismatch.value === 'score_without_appearances' ? 'pitchers' : 'result'] = true
 }
 
-applyTab(activeTab.value, false)
 watch(activeTab, (tab) => applyTab(tab, true))
 
 // 幅が変わると描き直されるので、登板記録の未保存の編集は失われる。ガードが空振りしないよう印を戻す
@@ -934,10 +1005,15 @@ const fetchSeasonInfo = async () => {
   try {
     const response = await axios.get(`/teams/${teamId.value}/season`)
     seasonCurrentDate.value = response?.data?.current_date ?? null
-    seasonSchedules.value = response?.data?.season_schedules ?? []
+    seasonSchedules.value = (response?.data?.season_schedules ?? []).map(
+      (schedule: SeasonScheduleLite) => ({ ...schedule }),
+    )
+    currentDateType.value =
+      seasonSchedules.value.find((s) => String(s.id) === String(scheduleId.value))?.date_type ?? ''
   } catch (error) {
     seasonCurrentDate.value = null
     seasonSchedules.value = []
+    currentDateType.value = ''
     console.error('Failed to fetch season info:', error)
   }
 }
@@ -952,10 +1028,12 @@ const fetchAllTeams = async () => {
 }
 
 const loadAll = async () => {
+  currentDateType.value = ''
   appearanceCount.value = null
   pitcherDirty.value = false
   await fetchGame()
   await Promise.all([fetchAppearanceCount(), fetchSeasonInfo()])
+  if (!userPicked) applyTab(activeTab.value, false)
   resolveInitialStep()
 }
 
@@ -1036,6 +1114,48 @@ const onGameLogFileChange = async (event: Event) => {
     showSnackbar(t('gameResult.gameLog.readFailed'), 'error')
   } finally {
     resetInput()
+  }
+}
+
+// 保存済みの試合記録がある場合、日付種類を変えてもデータは削除されず非表示になる。
+const hasSavedGameData = computed(
+  () =>
+    savedFields.value.score !== null ||
+    savedFields.value.opponentScore !== null ||
+    savedFields.value.noGame ||
+    (appearanceCount.value ?? 0) > 0,
+)
+
+const updateDateType = async (nextType: string) => {
+  const previous = currentDateType.value
+  if (!previous || nextType === previous || hasUnsavedChanges.value || dateTypeSaving.value) return
+  if (!SCHEDULE_DATE_TYPES.some((type) => type === nextType)) return
+  if (isGameType(previous) && !isGameType(nextType) && hasSavedGameData.value) {
+    const accepted = await confirmDialog.value?.open(
+      t('gameDay.dateType.confirmTitle'),
+      t('gameDay.dateType.confirmMessage'),
+      { color: 'warning' },
+    )
+    if (!accepted) return
+  }
+  dateTypeSaving.value = true
+  try {
+    await axios.patch(`/teams/${teamId.value}/season/season_schedules/${scheduleId.value}`, {
+      season_schedule: { date_type: nextType },
+    })
+    currentDateType.value = nextType
+    const schedule = seasonSchedules.value.find((s) => String(s.id) === String(scheduleId.value))
+    if (schedule) schedule.date_type = nextType
+    if (!isGameDay.value) {
+      activeStep.value = 'members'
+      openSections.members = true
+    }
+  } catch (error) {
+    console.error('Failed to update schedule:', error)
+    currentDateType.value = previous
+    showSnackbar(t('gameDay.dateType.saveFailed'), 'error')
+  } finally {
+    dateTypeSaving.value = false
   }
 }
 

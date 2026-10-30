@@ -1,15 +1,15 @@
 <template>
   <!-- スマホ・狭い幅: 段を縦に積んで折りたたむ -->
   <div v-if="mode === 'stack'" data-testid="game-day-stack">
-    <template v-for="(group, gi) in groups" :key="group.id">
-      <div v-if="gi > 0" class="game-day-divider text-caption my-3">
-        {{ t('gameDay.phase.game') }}
-      </div>
-      <div class="game-day-phase text-caption mb-1" :class="{ 'mt-4': gi === 0 }">
+    <div v-for="group in groups" :key="group.id" :data-testid="`step-group-${group.id}`">
+      <div class="game-day-phase text-caption mb-1 mt-4">
         {{ t(`gameDay.phase.${group.id}`) }}
       </div>
       <div class="d-flex flex-column ga-2">
         <template v-for="step in group.steps" :key="step.id">
+          <div v-if="step.id === 'result'" class="game-day-divider text-caption my-3">
+            {{ t('gameDay.phase.gameDivider') }}
+          </div>
           <GameDaySection
             :no="step.no"
             :title="step.title"
@@ -49,7 +49,7 @@
           </GameDaySection>
         </template>
       </div>
-    </template>
+    </div>
   </div>
 
   <!-- PC 幅: 上部のステッパー + タブ切り替え。順番は強制しない（どのステップにも直接行ける） -->
@@ -65,10 +65,7 @@
     @update:model-value="onSelect"
   >
     <v-stepper-header class="game-day-stepper__header">
-      <template v-for="(group, gi) in groups" :key="group.id">
-        <div v-if="gi > 0" class="game-day-stepper__game" aria-hidden="true">
-          {{ t('gameDay.phase.game') }}
-        </div>
+      <template v-for="group in groups" :key="group.id">
         <div
           class="game-day-stepper__group"
           role="group"
@@ -77,25 +74,26 @@
         >
           <div class="game-day-stepper__phase">{{ t(`gameDay.phase.${group.id}`) }}</div>
           <div class="game-day-stepper__items">
-            <v-stepper-item
-              v-for="step in group.steps"
-              :key="step.id"
-              :value="step.id"
-              :title="step.title"
-              :complete="step.state === 'done'"
-              :error="step.state === 'warn'"
-              :data-testid="`step-${step.slug}`"
-              :data-state="step.state"
-            >
-              <template #icon>
-                <v-icon v-if="step.state === 'done'" size="small">mdi-check</v-icon>
-                <v-icon v-else-if="step.state === 'warn'" size="small">mdi-alert-circle</v-icon>
-                <template v-else>{{ step.no }}</template>
-              </template>
-              <template #subtitle>
-                <GameDayStateChip v-if="step.state !== 'info'" :state="step.state" />
-              </template>
-            </v-stepper-item>
+            <template v-for="step in group.steps" :key="step.id">
+              <div v-if="step.id === 'result'" class="game-day-stepper__game" aria-hidden="true">
+                {{ t('gameDay.phase.gameDivider') }}
+              </div>
+              <v-stepper-item
+                :value="step.id"
+                :title="step.title"
+                :complete="step.state === 'done'"
+                :error="step.state === 'warn'"
+                :data-testid="`step-${step.slug}`"
+                :data-state="step.state"
+              >
+                <template #icon>
+                  <v-icon size="small" aria-hidden="true">{{ step.icon }}</v-icon>
+                </template>
+                <template #subtitle>
+                  <GameDayStateChip v-if="step.state !== 'info'" :state="step.state" />
+                </template>
+              </v-stepper-item>
+            </template>
           </div>
         </div>
       </template>
@@ -167,8 +165,9 @@ export interface GameDayStepSub {
 export interface GameDayStep {
   id: string
   slug: string
-  group: 'before' | 'after'
+  group: 'registration' | 'game'
   no: number
+  icon: string
   title: string
   summary?: string
   state: StageState
@@ -198,10 +197,12 @@ const emit = defineEmits<{
 const { t } = useI18n()
 
 const groups = computed(() =>
-  (['before', 'after'] as const).map((id) => ({
-    id,
-    steps: props.steps.filter((s) => s.group === id),
-  })),
+  (['registration', 'game'] as const)
+    .map((id) => ({
+      id,
+      steps: props.steps.filter((s) => s.group === id),
+    }))
+    .filter((group) => group.steps.length > 0),
 )
 
 // 遅延させる段は、一度選ばれたら描画したままにする（切り替えで入力中の値を失わない）
@@ -236,6 +237,7 @@ const onSelect = (id: unknown) => {
 .game-day-stepper__header {
   box-shadow: none;
   align-items: stretch;
+  flex-direction: column;
   gap: 8px;
   padding: 4px 8px;
   border-bottom: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
@@ -243,7 +245,7 @@ const onSelect = (id: unknown) => {
 .game-day-stepper__group {
   display: flex;
   flex-direction: column;
-  flex: 0 1 auto;
+  flex: 1 1 auto;
   min-width: 0;
 }
 .game-day-stepper__phase {

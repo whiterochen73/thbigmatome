@@ -13,6 +13,28 @@ export type StageState =
   | 'upcoming' // まだ（試合日が来ていない。急かさない）
   | 'info' // 別画面で行う段。状態は出さず、入口だけ置く
 
+// SeasonPortal と試合日ページで共用する日付種類・試合日判定
+export const SCHEDULE_DATE_TYPES = [
+  'game_day',
+  'interleague_game_day',
+  'playoff_day',
+  'travel_day',
+  'reserve_day',
+  'interleague_reserve_day',
+  'no_game_day',
+  'postponed',
+  'no_game',
+] as const
+
+export function isGameType(dateType?: string | null): boolean {
+  return (
+    dateType === 'game_day' ||
+    dateType === 'interleague_game_day' ||
+    dateType === 'playoff_day' ||
+    dateType === 'no_game'
+  )
+}
+
 // 得点と登板記録の食い違い
 export type RecordMismatch =
   | 'score_without_appearances' // 得点は保存済みだが登板記録が無い

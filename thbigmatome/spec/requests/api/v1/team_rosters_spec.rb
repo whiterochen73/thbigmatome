@@ -154,6 +154,56 @@ RSpec.describe "Api::V1::TeamRosters", type: :request do
       end
     end
 
+    context "when a player was injured during a game (phase: in_game, AMB-25)" do
+      let!(:player_result) do
+        add_player_to_team(team: team, cost: cost, squad: "first", cost_value: 5)
+      end
+      let!(:absence) do
+        create(:player_absence, :injury,
+          team_membership: player_result[:membership],
+          season: season,
+          start_date: Date.new(2026, 5, 10),
+          duration: 3,
+          duration_unit: "days",
+          phase: "in_game"
+        )
+      end
+
+      def absence_entry(target_date)
+        get "/api/v1/teams/#{team.id}/roster", params: { target_date: target_date }
+        response.parsed_body["roster"].find { |r| r["team_membership_id"] == player_result[:membership].id }
+      end
+
+      it "is not absent on the game day itself (he played), absent from the next day, and back on D+N+1" do
+        expect(absence_entry("2026-05-09")["is_absent"]).to be false
+        expect(absence_entry("2026-05-10")["is_absent"]).to be false
+        expect(absence_entry("2026-05-11")["is_absent"]).to be true
+        expect(absence_entry("2026-05-13")["is_absent"]).to be true
+        expect(absence_entry("2026-05-14")["is_absent"]).to be false
+      end
+
+      it "reports phase, start/end dates and remaining days that follow the phase" do
+        info = absence_entry("2026-05-11")["absence_info"]
+        expect(info).to include(
+          "phase" => "in_game",
+          "effective_start_date" => "2026-05-11",
+          "effective_end_date" => "2026-05-14",
+          "remaining_days" => 3
+        )
+        expect(absence_entry("2026-05-13")["absence_info"]["remaining_days"]).to eq(1)
+      end
+
+      it "leaves a pre_game absence exactly as before (absent on D, back on D+N)" do
+        absence.update!(phase: "pre_game")
+
+        expect(absence_entry("2026-05-10")["is_absent"]).to be true
+        info = absence_entry("2026-05-10")["absence_info"]
+        expect(info).to include("phase" => "pre_game", "effective_end_date" => "2026-05-13", "remaining_days" => 3)
+        expect(absence_entry("2026-05-12")["is_absent"]).to be true
+        expect(absence_entry("2026-05-13")["is_absent"]).to be false
+      end
+    end
+
     context "pitcher fields (is_starter_pitcher / is_relief_only)" do
       it "returns is_starter_pitcher=true when pitcher has player_card with starter_stamina >= 4" do
         player = create(:player, :pitcher)

@@ -36,6 +36,7 @@
     "title": "シーズン画面",
     "currentDate": "現在の日付",
     "gameResultInput": "試合結果入力",
+    "openSchedule": "日程を開く",
     "announcedPitcher": "先発予定",
     "goToGameResult": "今日の試合へ",
     "gameResult": {
@@ -65,6 +66,16 @@
     "legendDraw": "分",
     "legendNoGame": "ノーゲーム",
     "noSchedule": "スケジュールなし",
+    "calendarMark": {
+      "warn": "要確認",
+      "todo": "未入力",
+      "warnTitle": "得点と登板記録が食い違っています",
+      "todoTitle": "結果が未入力です"
+    },
+    "dayFlow": {
+      "heading": "この試合日の作業の順番",
+      "steps": "選手登録・契約変更 → 昇降格 → 負傷 → 結果 → 登板記録"
+    },
     "tableHeaders": {
       "date": "日付",
       "dow": "曜日",
@@ -129,6 +140,7 @@
       "absenceType": "離脱種別",
       "reason": "理由",
       "startDate": "開始日",
+      "phase": "区分",
       "duration": "期間",
       "durationUnit": "期間単位",
       "actions": "操作"
@@ -153,7 +165,13 @@
       "enterDuration": "期間を入力してください",
       "durationMin": "期間は1以上である必要があります",
       "durationUnit": "期間単位",
-      "selectDurationUnit": "期間単位を選択してください"
+      "selectDurationUnit": "期間単位を選択してください",
+      "phase": "区分",
+      "selectPhase": "区分を選択してください",
+      "phaseHint": {
+        "pre_game": "開始日の当日から数える（試合前の負傷）",
+        "in_game": "開始日の試合には出ていて、翌日から数える（試合中の負傷）"
+      }
     },
     "notifications": {
       "saveSuccess": "離脱情報を保存しました。",
@@ -256,6 +274,29 @@
       "away": "ビジター"
     },
     "stadium": "球場",
+    "realDate": "試合日（リアルの日付）",
+    "realStartTime": "開始時刻（目安）",
+    "venue": {
+      "title": "チャンネル",
+      "ch1": "チャンネル1",
+      "ch2": "チャンネル2",
+      "ch3": "チャンネル3",
+      "ch4": "チャンネル4",
+      "ch5": "チャンネル5",
+      "tlb": "TLB球場"
+    },
+    "gameLog": {
+      "title": "試合ログ",
+      "hint": "IRC のログをそのまま保存します（解析はしません）",
+      "counter": "{chars} 文字 / {bytes} バイト（上限 {limit} バイト）",
+      "tooLarge": "試合ログが上限（{limit} バイト）を超えています（現在 {bytes} バイト）。短くしてから保存してください",
+      "loadFile": "ファイルから読み込む",
+      "replaceTitle": "試合ログを置き換えますか？",
+      "replaceMessage": "いまの試合ログは、読み込んだファイルの内容で置き換わります（追記ではありません）。",
+      "fileTooLarge": "ファイルが大きすぎるため読み込めません（{limit} MB まで）",
+      "decodeFailed": "ファイルの文字コードを判別できませんでした（UTF-8 / Shift_JIS / ISO-2022-JP に対応）",
+      "readFailed": "ファイルの読み込みに失敗しました"
+    },
     "dhSystem": {
       "title": "DH制",
       "enabled": "あり",
@@ -279,6 +320,78 @@
     "addInning": "回追加",
     "removeInning": "回削除",
     "noBottomInning": "最終回後攻攻撃なし"
+  },
+  "gameDay": {
+    "phase": {
+      "registration": "登録・離脱",
+      "game": "試合日",
+      "gameDivider": "試合（IRC）"
+    },
+    "dateType": {
+      "label": "日付種類",
+      "saveFirst": "保存してから変更",
+      "confirmTitle": "日付種類を変更しますか？",
+      "confirmMessage": "保存済みの試合データがあります。日付種類を変更してもデータは消えず、隠れるだけです。変更しますか？",
+      "saveFailed": "日付種類の変更に失敗しました"
+    },
+    "state": {
+      "done": "済",
+      "none": "なし",
+      "editing": "編集中",
+      "todo": "未入力",
+      "warn": "要確認",
+      "upcoming": "試合日前",
+      "info": "確認"
+    },
+    "sections": {
+      "members": "選手登録・契約変更",
+      "roster": "登録・昇降格",
+      "absences": "負傷・出場停止",
+      "setup": "予告先発・対戦設定",
+      "result": "結果",
+      "pitchers": "登板記録",
+      "pitcherStatus": "投手状態",
+      "inGameAbsences": "試合中の負傷・出場停止"
+    },
+    "summary": {
+      "members": "新規登録・契約変更",
+      "roster": "1軍・2軍の入れ替え",
+      "absences": "負傷・出場停止の登録・編集",
+      "inGameAbsences": "試合中に出た負傷・出場停止も、同じ離脱者の画面で登録",
+      "pitcherCount": "登板 {count} 人",
+      "noGame": "ノーゲーム",
+      "vsOpponent": "vs {name}"
+    },
+    "links": {
+      "members": "シーズンポータルで開く",
+      "roster": "シーズンポータルで開く",
+      "absences": "シーズンポータルで開く"
+    },
+    "dateNote": "この画面の操作は現在日（{current}）として記録されます。試合日は {game} です",
+    "progress": {
+      "label": "進み具合",
+      "text": "{done} / {total} 済"
+    },
+    "nav": {
+      "prev": "前の日程",
+      "next": "次の日程"
+    },
+    "mismatch": {
+      "scoreWithoutAppearances": "得点は保存済みですが、登板記録がありません。登板記録を入力しないと、次の登板の休養判定が狂います。",
+      "appearancesWithoutScore": "登板記録はありますが、得点が保存されていません。得点を入力してください。試合が成立しなかった場合は、ノーゲームにチェックを入れてください。",
+      "openPitchers": "登板記録を開く",
+      "openResult": "結果を開く"
+    },
+    "moveConfirm": {
+      "title": "要確認が残っています",
+      "suffix": "このまま移動しますか？"
+    },
+    "leaveConfirm": {
+      "title": "未保存の変更があります",
+      "message": "保存せずにこのページを離れると、入力した内容は失われます。離れますか？"
+    },
+    "save": "保存",
+    "unsaved": "未保存の変更があります"
   },
   "gameResults": {
     "win": "勝ち",
@@ -963,6 +1076,10 @@
       "duration_unit": {
         "days": "日間",
         "games": "試合"
+      },
+      "phase": {
+        "pre_game": "試合前",
+        "in_game": "試合中"
       }
     }
   },

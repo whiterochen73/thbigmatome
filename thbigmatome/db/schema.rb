@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_26_120000) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_31_130000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -387,6 +387,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_26_120000) do
     t.datetime "created_at", null: false
     t.integer "duration", null: false
     t.string "duration_unit", null: false
+    t.string "phase", default: "pre_game", null: false
     t.text "reason"
     t.bigint "season_id", null: false
     t.date "start_date", null: false
@@ -551,6 +552,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_26_120000) do
     t.date "date", null: false
     t.string "date_type"
     t.boolean "designated_hitter_enabled"
+    t.text "game_log"
     t.integer "game_number"
     t.string "home_away"
     t.bigint "losing_pitcher_id"
@@ -558,6 +560,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_26_120000) do
     t.integer "opponent_score"
     t.jsonb "opponent_starting_lineup"
     t.bigint "opponent_team_id"
+    t.date "real_date"
+    t.string "real_start_time"
     t.bigint "save_pitcher_id"
     t.integer "score"
     t.jsonb "scoreboard"
@@ -565,6 +569,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_26_120000) do
     t.string "stadium"
     t.jsonb "starting_lineup"
     t.datetime "updated_at", null: false
+    t.string "venue"
     t.bigint "winning_pitcher_id"
     t.index [ "announced_starter_id" ], name: "index_season_schedules_on_announced_starter_id"
     t.index [ "losing_pitcher_id" ], name: "index_season_schedules_on_losing_pitcher_id"

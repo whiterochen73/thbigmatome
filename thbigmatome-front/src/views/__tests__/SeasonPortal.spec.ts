@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { mount, flushPromises } from '@vue/test-utils'
 import { createVuetify } from 'vuetify'
 import * as components from 'vuetify/components'
@@ -57,6 +57,8 @@ const i18n = createI18n({
     ja: {
       seasonPortal: {
         goToGameResult: '今日の試合へ',
+        gameResultInput: '試合結果入力',
+        openSchedule: '日程を開く',
         currentDate: '現在の日付',
         noSeasonData: 'シーズンデータが見つかりません',
         tabs: {
@@ -68,6 +70,16 @@ const i18n = createI18n({
           stats: '成績',
           promotionHistory: '昇降格履歴',
         },
+        calendarMark: {
+          warn: '要確認',
+          todo: '未入力',
+          warnTitle: '得点と登板記録が食い違っています',
+          todoTitle: '結果が未入力です',
+        },
+        dayFlow: {
+          heading: 'この試合日の作業の順番',
+          steps: '選手登録・契約変更 → 昇降格 → 負傷 → 結果 → 登板記録',
+        },
         initForm: {
           title: 'シーズン開始',
           seasonNameLabel: 'シーズン名',
@@ -77,6 +89,7 @@ const i18n = createI18n({
         },
       },
       common: { close: '閉じる' },
+      settings: { schedule: { dateTypes: { travel_day: '移動日' } } },
     },
   },
 })
@@ -95,6 +108,9 @@ function createTestRouter() {
     ],
   })
 }
+
+// 日付詳細ダイアログは body に出るので、テストごとに外して前のテストの残りと混ざらないようにする
+const mountedWrappers: Array<{ unmount: () => void }> = []
 
 async function mountSeasonPortal(options: { season?: object | null; schedules?: object[] } = {}) {
   const { season = null, schedules = [] } = options
@@ -119,12 +135,47 @@ async function mountSeasonPortal(options: { season?: object | null; schedules?: 
   })
 
   await flushPromises()
+  mountedWrappers.push(wrapper)
   return wrapper
 }
 
 describe('SeasonPortal', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+  })
+
+  // Test Basis: cmd_1783 A（全日程から試合日ページを開く）
+  it('移動日にもカレンダー・一覧・詳細から日程を開くリンクが出る', async () => {
+    localStorage.setItem('sp_view', 'calendar')
+    const season = {
+      id: 1,
+      name: '2026シーズン',
+      current_date: '2026-04-10',
+      season_schedules: [{ id: 8, date: '2026-04-11', date_type: 'travel_day', game_result: null }],
+    }
+    const calendar = await mountSeasonPortal({ season })
+    const day = calendar
+      .findAll('.day-cell')
+      .find(
+        (cell) =>
+          cell.find('.day-number').text() === '11' && !cell.classes().includes('not-current-month'),
+      )!
+    expect(day.find('.entry-btn').text()).toBe('日程を開く')
+    await day.trigger('click')
+    await flushPromises()
+    expect(
+      document.body.querySelector('[data-testid="detail-open-schedule"]')?.textContent,
+    ).toContain('日程を開く')
+    calendar.unmount()
+    mountedWrappers.splice(mountedWrappers.indexOf(calendar), 1)
+
+    localStorage.setItem('sp_view', 'table')
+    const table = await mountSeasonPortal({ season })
+    const row = table.findAll('tr').find((tr) => tr.text().includes('移動日'))!
+    expect(row.text()).toContain('日程を開く')
+    table.unmount()
+    mountedWrappers.splice(mountedWrappers.indexOf(table), 1)
+    localStorage.removeItem('sp_view')
   })
 
   describe('シーズン未作成時', () => {
@@ -326,6 +377,108 @@ describe('SeasonPortal', () => {
       expect(dialogResult?.textContent).toContain('detailDialog.noGame')
       expect(dialogResult?.textContent).not.toMatch(/win|lose|draw/)
       expect(document.body.querySelector('[data-testid="detail-score"]')).toBeNull()
+    })
+  })
+  // cmd_1783 段B: カレンダーの入力漏れの印（得点と登板記録の食い違い・結果の未入力）と、日付詳細ダイアログの並び
+  describe('入力漏れの印', () => {
+    const win = { opponent_short_name: '相手', score: '3 - 1', result: 'win' }
+    const noGame = { opponent_short_name: '相手', score: null, result: 'no_game' }
+    const sched = (
+      id: number,
+      date: string,
+      game_result: object | null,
+      pitcher_appearance_count?: number,
+    ) => ({ id, date, date_type: 'game_day', game_result, pitcher_appearance_count })
+    const season = {
+      id: 1,
+      name: '2026シーズン',
+      current_date: '2026-04-10',
+      season_schedules: [
+        sched(1, '2026-04-02', win), // 件数の項目が無い（古いサーバ）→ 印なし
+        sched(2, '2026-04-05', win, 0), // 得点あり・登板なし → 要確認
+        sched(3, '2026-04-06', null, 2), // 得点なし・登板あり → 要確認
+        sched(4, '2026-04-07', win, 2), // 両方あり → 印なし
+        sched(5, '2026-04-08', noGame, 2), // ノーゲーム + 登板あり → 印なし
+        sched(6, '2026-04-09', null, 0), // 試合日が来ていて結果なし → 未入力
+        sched(7, '2026-04-20', null, 0), // 試合日が来ていない → 印なし
+        {
+          id: 8,
+          date: '2026-04-11',
+          date_type: 'travel_day',
+          game_result: null,
+          pitcher_appearance_count: 0,
+        },
+      ],
+    }
+
+    beforeEach(() => {
+      localStorage.removeItem('sp_view')
+    })
+
+    afterEach(() => {
+      mountedWrappers.splice(0).forEach((w) => w.unmount())
+    })
+
+    const dayCellOf = (wrapper: Awaited<ReturnType<typeof mountSeasonPortal>>, n: number) =>
+      wrapper
+        .findAll('.day-cell')
+        .find(
+          (c) =>
+            !c.classes().includes('not-current-month') &&
+            c.find('.day-number').text() === String(n),
+        )!
+
+    it('カレンダー: 食い違いは「要確認」、結果の未入力は「未入力」を出し、他の日には出さない', async () => {
+      const wrapper = await mountSeasonPortal({ season })
+      const marks = (n: number) =>
+        dayCellOf(wrapper, n)
+          .findAll('[data-testid="calendar-day-mark"]')
+          .map((m) => m.text())
+      expect(marks(2)).toEqual([])
+      expect(marks(5)).toEqual(['要確認'])
+      expect(marks(6)).toEqual(['要確認'])
+      expect(marks(7)).toEqual([])
+      expect(marks(8)).toEqual([])
+      expect(marks(9)).toEqual(['未入力'])
+      expect(marks(20)).toEqual([])
+      expect(marks(11)).toEqual([]) // 移動日には出さない
+    })
+
+    it('印の色クラスは種別ごとに分かれ、理由を title に持つ', async () => {
+      const wrapper = await mountSeasonPortal({ season })
+      const warn = dayCellOf(wrapper, 5).find('[data-testid="calendar-day-mark"]')
+      expect(warn.classes()).toContain('day-mark--warn')
+      expect(warn.attributes('title')).toBe('得点と登板記録が食い違っています')
+      const todo = dayCellOf(wrapper, 9).find('[data-testid="calendar-day-mark"]')
+      expect(todo.classes()).toContain('day-mark--todo')
+      expect(todo.attributes('title')).toBe('結果が未入力です')
+    })
+
+    it('表形式でも同じ印が出る', async () => {
+      localStorage.setItem('sp_view', 'table')
+      const wrapper = await mountSeasonPortal({ season })
+      const texts = wrapper.findAll('[data-testid="table-day-mark"]').map((m) => m.text())
+      expect(texts).toEqual(['要確認', '要確認', '未入力'])
+    })
+
+    it('日付詳細ダイアログ: 印と理由、作業の順番（選手登録・契約変更 → 昇降格 → 負傷 → 結果 → 登板記録）、試合日ページへの入口を出す', async () => {
+      const wrapper = await mountSeasonPortal({ season })
+      await dayCellOf(wrapper, 5).trigger('click')
+      await flushPromises()
+      const note = document.body.querySelector('[data-testid="detail-day-mark"]')
+      expect(note?.textContent).toContain('要確認')
+      expect(note?.textContent).toContain('得点と登板記録が食い違っています')
+      const flow = document.body.querySelector('[data-testid="detail-day-flow"]')
+      expect(flow?.textContent).toContain('選手登録・契約変更 → 昇降格 → 負傷 → 結果 → 登板記録')
+      expect(document.body.textContent).toContain('試合結果入力')
+    })
+
+    it('日付詳細ダイアログ: 印の無い日は印の帯を出さない（作業の順番は出す）', async () => {
+      const wrapper = await mountSeasonPortal({ season })
+      await dayCellOf(wrapper, 7).trigger('click')
+      await flushPromises()
+      expect(document.body.querySelector('[data-testid="detail-day-mark"]')).toBeNull()
+      expect(document.body.querySelector('[data-testid="detail-day-flow"]')).not.toBeNull()
     })
   })
 })

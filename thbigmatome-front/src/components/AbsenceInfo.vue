@@ -65,7 +65,8 @@ const filteredAbsences = computed(() => {
   selected.setHours(0, 0, 0, 0)
 
   return playerAbsences.value.filter((absence) => {
-    const startDate = new Date(absence.start_date)
+    // 離脱が始まる最初の日。試合中の離脱は start_date の翌日（バックエンドの effective_start_date）
+    const startDate = new Date(absence.effective_start_date ?? absence.start_date)
     startDate.setHours(0, 0, 0, 0)
 
     if (absence.duration_unit === 'days') {
@@ -88,7 +89,8 @@ const filteredAbsences = computed(() => {
 const getAbsenceDisplayText = (absence: PlayerAbsence) => {
   const absenceType = t(`enums.player_absence.absence_type.${absence.absence_type}`)
   const durationUnit = t(`enums.player_absence.duration_unit.${absence.duration_unit}`)
-  return `【${absenceType}】${absence.player_name}: ${absence.reason} (${new Date(absence.start_date).toLocaleDateString('ja-JP', { month: 'long', day: 'numeric' })}から${absence.duration}${durationUnit})`
+  const phase = absence.phase === 'in_game' ? `（${t('enums.player_absence.phase.in_game')}）` : ''
+  return `【${absenceType}】${absence.player_name}: ${absence.reason} (${new Date(absence.start_date).toLocaleDateString('ja-JP', { month: 'long', day: 'numeric' })}${phase}から${absence.duration}${durationUnit})`
 }
 
 watch(

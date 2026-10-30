@@ -8,6 +8,24 @@ class SeasonSchedule < ApplicationRecord
 
   validates :home_away, inclusion: { in: [ "home", "visitor" ] }, allow_blank: true
 
+  # 開催球場（IRC のチャンネル）。stadium（ゲーム内の球場）とは別の列。
+  VENUES = %w[ch1 ch2 ch3 ch4 ch5 tlb].freeze
+  # 大まかな開始時刻は 30 分刻み（"00:00"〜"23:30"）
+  REAL_START_TIME_FORMAT = /\A([01]\d|2[0-3]):(00|30)\z/
+
+  # 画面の「未選択」は空文字で届くことがある。日付列が空文字を nil にするのと揃え、空文字・空白だけは nil として保存する
+  normalizes :real_start_time, :venue, with: ->(value) { value.presence }
+
+  validates :real_start_time, format: { with: REAL_START_TIME_FORMAT }, allow_nil: true
+  validates :venue, inclusion: { in: VENUES }, allow_nil: true
+
+  # 試合ログの原文（解析はしない。保存するだけ）。上限は 1MB。文字数ではなくバイト数で数える（日本語は 1 文字 3 バイト）。
+  # 空文字は null に正規化する（空白だけのログは内容として残すので presence は使わない）
+  GAME_LOG_MAX_BYTES = 1_048_576
+  normalizes :game_log, with: ->(value) { value.empty? ? nil : value }
+  validate :game_log_within_limit
+  validate :game_log_without_nul
+
   # 得点が保存・変更されたら、その試合の自チーム先発の result_category を作り直す（E2）。
   # 区分は登板記録の保存時にだけ計算されていたため、得点を後から直しても長イニング敗戦・KO が残っていた。
   # 得点が消された（未入力に戻った）時は「負けではない」として作り直す。
@@ -19,6 +37,15 @@ class SeasonSchedule < ApplicationRecord
 
   # 直近の保存で、投手の判定の作り直しが失敗した時の例外。成功・未実行なら nil。
   attr_reader :pitcher_rebuild_error
+
+  # この試合日の自チームの登板記録の件数（pitcher_game_states の行数）。シーズン画面が入力漏れの印に使う。
+  # 一覧を返す側（SeasonDetailSerializer）が日付ごとの件数をまとめて入れる（行ごとの問い合わせを避ける）。
+  # 入っていない時は、この試合日の分だけ問い合わせて求める。
+  attr_writer :pitcher_appearance_count
+
+  def pitcher_appearance_count
+    @pitcher_appearance_count ||= PitcherGameState.where(team_id: season.team_id, schedule_date: date.to_s).count
+  end
 
   def calculated_game_number
     game_number || season.season_schedules
@@ -46,6 +73,20 @@ class SeasonSchedule < ApplicationRecord
   end
 
   private
+
+  # PostgreSQL の text 列は NUL 文字（\u0000）を保存できず、そのまま渡すと 500 になる。
+  # ログは無加工で保存する方針なので NUL を取り除いて通さず、422 で断る（他の制御文字・タブは通す）。
+  def game_log_without_nul
+    return if game_log.nil? || !game_log.include?("\u0000")
+
+    errors.add(:game_log, "に NUL 文字（\\u0000）は含められません。取り除いてから保存してください")
+  end
+
+  def game_log_within_limit
+    return if game_log.nil? || game_log.bytesize <= GAME_LOG_MAX_BYTES
+
+    errors.add(:game_log, "は #{GAME_LOG_MAX_BYTES} バイト（1MB）以下にしてください（現在 #{game_log.bytesize} バイト）")
+  end
 
   # 作り直しは得点の保存と同じトランザクションの中で走る。落ちた時に得点ごと取り消さないよう、次の 2 点を守る。
   #   1. セーブポイント（requires_new）の中で走らせる。PostgreSQL は SQL エラーでトランザクション全体が中断状態になり、

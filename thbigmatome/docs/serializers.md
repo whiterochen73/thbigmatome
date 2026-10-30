@@ -238,6 +238,8 @@
 | `start_date` | 開始日 |
 | `duration` | 欠場期間 |
 | `duration_unit` | 期間単位 |
+| `phase` | 試合前 / 試合中（`pre_game` / `in_game`） |
+| `effective_start_date` | 離脱が始まる最初の日（`in_game` は `start_date` の翌日） |
 | `player_name` | 選手名（computed） |
 | `player_id` | 選手ID（computed） |
 | `effective_end_date` | 実質終了日（computed、モデル側で計算） |
@@ -521,10 +523,12 @@
 | `date_type` | 日付種別 (game_day/off_day等) |
 | `announced_starter` | 先発予告（computed） |
 | `game_result` | 試合結果（computed） |
+| `pitcher_appearance_count` | この試合日の自チームの登板記録の件数（computed。`SeasonDetailSerializer` が日付ごとの集計をまとめて入れる） |
 
 **computed属性の計算ロジック**:
 - `announced_starter`: `announced_starter_id` が存在する場合、`object.announced_starter` (PlayerCard) から Player を取得して `{ id, name }` を返す。存在しなければnil
 - `game_result`: `object.game_result_hash` — モデルのメソッドを呼び出す
+- `pitcher_appearance_count`: `object.pitcher_appearance_count` — `pitcher_game_states` の `team_id` と `schedule_date`（文字列の列）が一致する行数。`SeasonDetailSerializer` 経由では `PitcherGameState.where(team_id:).group(:schedule_date).count` の 1 回の集計から日付ごとに入れる。単体で使うと、その試合日の分だけ問い合わせる
 
 ---
 

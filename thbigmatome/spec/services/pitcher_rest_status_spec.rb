@@ -152,5 +152,39 @@ RSpec.describe PitcherRestStatus do
     it "離脱が無い登録は空配列（キーなしでも空で引ける）" do
       expect(described_class.injury_absences([ membership.id ])[membership.id]).to eq([])
     end
+
+    # Test Basis: AMB-25（試合前の負傷は当日から、試合中の負傷は翌日から数える）
+    describe "離脱期間は区分に沿う（中日数から引く日数）" do
+      def window_for(phase:, unit: "days", duration: 3)
+        create(:player_absence, team_membership: membership, season: season, absence_type: :injury,
+                                start_date: Date.new(2026, 6, 10), duration: duration, duration_unit: unit, phase: phase)
+        described_class.injury_absences([ membership.id ])[membership.id].first
+      end
+
+      it "試合前 N=3: 6/10〜6/12 を引く（start 6/10、復帰 6/13）" do
+        expect(window_for(phase: "pre_game")).to eq(start_date: Date.new(2026, 6, 10), end_date: Date.new(2026, 6, 13))
+      end
+
+      it "試合中 N=3: 6/11〜6/13 を引く（start 6/11、復帰 6/14）。試合日 6/10 は引かない" do
+        expect(window_for(phase: "in_game")).to eq(start_date: Date.new(2026, 6, 11), end_date: Date.new(2026, 6, 14))
+      end
+
+      it "absence_days_in_range は区分どおりに数える（6/10 〜 6/16 の範囲で、どちらも 3 日。範囲を 6/10 だけにすると試合前 1 日・試合中 0 日）" do
+        pre = [ { start_date: Date.new(2026, 6, 10), end_date: Date.new(2026, 6, 13) } ]
+        mid = [ { start_date: Date.new(2026, 6, 11), end_date: Date.new(2026, 6, 14) } ]
+        expect(described_class.absence_days_in_range(pre, Date.new(2026, 6, 10), Date.new(2026, 6, 16))).to eq(3)
+        expect(described_class.absence_days_in_range(mid, Date.new(2026, 6, 10), Date.new(2026, 6, 16))).to eq(3)
+        expect(described_class.absence_days_in_range(pre, Date.new(2026, 6, 10), Date.new(2026, 6, 10))).to eq(1)
+        expect(described_class.absence_days_in_range(mid, Date.new(2026, 6, 10), Date.new(2026, 6, 10))).to eq(0)
+      end
+
+      it "試合数の離脱: 試合中は試合日 6/10 の試合を数えず、次の試合日から" do
+        [ [ 10, "game_day" ], [ 11, "off_day" ], [ 12, "game_day" ], [ 13, "game_day" ] ].each do |day, type|
+          create(:season_schedule, season: season, date: Date.new(2026, 6, day), date_type: type)
+        end
+        expect(window_for(phase: "in_game", unit: "games", duration: 1))
+          .to eq(start_date: Date.new(2026, 6, 11), end_date: Date.new(2026, 6, 13))
+      end
+    end
   end
 end

@@ -312,7 +312,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import axios, { type AxiosResponse } from 'axios'
 import PlayerNameLink from '@/components/shared/PlayerNameLink.vue'
 import PitcherRoleStateCell from './PitcherRoleStateCell.vue'
@@ -336,6 +336,13 @@ const props = defineProps<{
   scheduleId: number
   announcedStarterId?: number | null
   competitionId?: number | null
+}>()
+
+const emit = defineEmits<{
+  // 登板記録を保存した（試合日ページが状態を取り直す）
+  saved: []
+  // 未保存の入力があるかが変わった（試合日ページが離脱ガードと「編集中」の表示に使う）
+  'dirty-change': [dirty: boolean]
 }>()
 
 // ─────────────────────────────────────────
@@ -420,6 +427,16 @@ const pitcherRows = ref<PitcherRow[]>([createEmptyRow('starter')])
 const fatigueSummary = ref<FatigueSummaryRow[]>([])
 const loadingFatigue = ref(false)
 const dragSrcIdx = ref<number | null>(null)
+
+// 未保存の入力の検知: サーバから読み込んだ・保存した時点の行を基準に、今の行との違いを見る
+const baselineRows = ref(JSON.stringify(pitcherRows.value))
+const isDirty = computed(
+  () => !loadingPitchers.value && JSON.stringify(pitcherRows.value) !== baselineRows.value,
+)
+function markClean() {
+  baselineRows.value = JSON.stringify(pitcherRows.value)
+}
+watch(isDirty, (value) => emit('dirty-change', value))
 
 // ─────────────────────────────────────────
 // Computed
@@ -845,6 +862,8 @@ async function fetchPitchersAndStates(options: FetchPitchersOptions = {}) {
     } else {
       pitcherRows.value = [createEmptyRow('starter')]
     }
+    // ここまで来たら画面の行はサーバの内容（または予告先発の初期値）。この時点を未保存の判定の基準にする
+    markClean()
   } finally {
     loadingPitchers.value = false
   }
@@ -893,10 +912,13 @@ async function saveAll() {
     const res = await axios.post('/pitcher_appearances/bulk_save', payload)
     warnings.value = res.data.warnings ?? []
     savedMessage.value = '登板記録を保存しました'
+    // 保存できた内容が今の行。再読み込みが一部失敗しても「未保存」には戻さない
+    markClean()
     await fetchPitchersAndStates({
       preserveRowsOnPartialFailure: true,
       preserveMessages: true,
     })
+    emit('saved')
   } catch (err: unknown) {
     const axiosErr = err as { response?: { data?: { errors?: string[]; pitcher_id?: number } } }
     const data = axiosErr.response?.data

@@ -270,21 +270,33 @@
                               {{ day.schedule.announced_starter.name }}
                             </span>
                           </div>
-                          <v-btn
-                            size="x-small"
-                            color="primary"
-                            variant="text"
-                            density="compact"
-                            :to="{
-                              name: 'GameResult',
-                              params: { teamId, scheduleId: day.schedule.id },
-                            }"
-                            @click.stop
-                            class="entry-btn"
+                          <span
+                            v-if="dayMark(day.schedule)"
+                            class="day-mark"
+                            :class="`day-mark--${dayMark(day.schedule)}`"
+                            :title="dayMarkTitle(day.schedule)"
+                            data-testid="calendar-day-mark"
+                            >{{ t(`seasonPortal.calendarMark.${dayMark(day.schedule)}`) }}</span
                           >
-                            {{ t('seasonPortal.gameResultInput') }}
-                          </v-btn>
                         </template>
+                        <v-btn
+                          size="x-small"
+                          color="primary"
+                          variant="text"
+                          density="compact"
+                          :to="{
+                            name: 'GameResult',
+                            params: { teamId, scheduleId: day.schedule.id },
+                          }"
+                          @click.stop
+                          class="entry-btn"
+                        >
+                          {{
+                            isGameType(day.schedule.date_type)
+                              ? t('seasonPortal.gameResultInput')
+                              : t('seasonPortal.openSchedule')
+                          }}
+                        </v-btn>
                       </div>
                     </div>
                   </div>
@@ -417,8 +429,16 @@
                           <span v-else class="text-disabled">—</span>
                         </td>
                         <td>
+                          <span
+                            v-if="row.schedule && dayMark(row.schedule)"
+                            class="day-mark mr-1"
+                            :class="`day-mark--${dayMark(row.schedule)}`"
+                            :title="dayMarkTitle(row.schedule)"
+                            data-testid="table-day-mark"
+                            >{{ t(`seasonPortal.calendarMark.${dayMark(row.schedule)}`) }}</span
+                          >
                           <v-btn
-                            v-if="row.schedule && isGameType(row.schedule.date_type)"
+                            v-if="row.schedule"
                             size="x-small"
                             color="primary"
                             variant="text"
@@ -427,7 +447,11 @@
                               params: { teamId, scheduleId: row.schedule.id },
                             }"
                           >
-                            {{ t('seasonPortal.gameResultInput') }}
+                            {{
+                              isGameType(row.schedule.date_type)
+                                ? t('seasonPortal.gameResultInput')
+                                : t('seasonPortal.openSchedule')
+                            }}
                           </v-btn>
                         </td>
                       </tr>
@@ -568,19 +592,40 @@
                 {{ selectedDay.schedule.announced_starter.name }}
               </div>
             </template>
-            <v-btn
-              color="primary"
-              variant="elevated"
-              block
-              class="mt-2"
-              :to="{
-                name: 'GameResult',
-                params: { teamId, scheduleId: selectedDay.schedule.id },
-              }"
-              @click="isDayDetailOpen = false"
+            <div
+              v-if="dayMark(selectedDay.schedule)"
+              class="day-mark-note mb-2"
+              :class="`day-mark-note--${dayMark(selectedDay.schedule)}`"
+              data-testid="detail-day-mark"
             >
-              {{ t('seasonPortal.gameResultInput') }}
-            </v-btn>
+              <span class="day-mark" :class="`day-mark--${dayMark(selectedDay.schedule)}`">{{
+                t(`seasonPortal.calendarMark.${dayMark(selectedDay.schedule)}`)
+              }}</span>
+              {{ dayMarkTitle(selectedDay.schedule) }}
+            </div>
+            <div class="text-caption text-medium-emphasis mt-2" data-testid="detail-day-flow">
+              {{ t('seasonPortal.dayFlow.heading') }}：{{ t('seasonPortal.dayFlow.steps') }}
+            </div>
+          </template>
+          <v-btn
+            color="primary"
+            variant="elevated"
+            block
+            class="mt-2"
+            data-testid="detail-open-schedule"
+            :to="{
+              name: 'GameResult',
+              params: { teamId, scheduleId: selectedDay.schedule.id },
+            }"
+            @click="isDayDetailOpen = false"
+          >
+            {{
+              isGameType(selectedDay.schedule.date_type)
+                ? t('seasonPortal.gameResultInput')
+                : t('seasonPortal.openSchedule')
+            }}
+          </v-btn>
+          <template v-if="isGameType(selectedDay.schedule.date_type)">
             <v-btn
               color="teal"
               variant="outlined"
@@ -624,6 +669,12 @@ import TeamMembers from '@/views/TeamMembers.vue'
 // import SquadTextGenerator from '@/components/squad/SquadTextGenerator.vue'
 import { useTeamSelectionStore } from '@/stores/teamSelection'
 import { useAuth } from '@/composables/useAuth'
+import {
+  calendarDayMark,
+  hasGameDayArrived,
+  isGameType,
+  SCHEDULE_DATE_TYPES,
+} from '@/components/gameDay/gameDayStatus'
 
 const props = defineProps<{ teamId?: number }>()
 
@@ -892,17 +943,7 @@ const nextMonth = () => {
   currentDate.value = new Date(currentDate.value.setMonth(currentDate.value.getMonth() + 1))
 }
 
-const dateTypes = [
-  'game_day',
-  'interleague_game_day',
-  'playoff_day',
-  'travel_day',
-  'reserve_day',
-  'interleague_reserve_day',
-  'no_game_day',
-  'postponed',
-  'no_game',
-]
+const dateTypes = SCHEDULE_DATE_TYPES
 
 const legendItems = [
   { type: 'game_day', color: 'primary' },
@@ -933,10 +974,21 @@ const isCancelledType = (dateType?: string) => {
   return ['no_game', 'postponed'].includes(dateType)
 }
 
-// 試合系date_typeか判定
-const isGameType = (dateType?: string) => {
-  if (!dateType) return false
-  return ['game_day', 'interleague_game_day', 'playoff_day', 'no_game'].includes(dateType)
+// 試合日のセルの印: 得点と登板記録の食い違い（要確認・赤）、試合日が来ているのに結果が未入力（黄）
+const dayMark = (schedule?: SeasonSchedule | null): 'warn' | 'todo' | null => {
+  if (!schedule || !isGameType(schedule.date_type) || isCancelledType(schedule.date_type)) {
+    return null
+  }
+  return calendarDayMark({
+    gameResult: schedule.game_result,
+    appearanceCount: schedule.pitcher_appearance_count,
+    arrived: hasGameDayArrived(schedule.date, season.value?.current_date),
+  })
+}
+
+const dayMarkTitle = (schedule?: SeasonSchedule | null) => {
+  const mark = dayMark(schedule)
+  return mark ? t(`seasonPortal.calendarMark.${mark}Title`) : ''
 }
 
 // 勝敗マーク
@@ -982,8 +1034,7 @@ const currentDaySchedule = computed(() => {
 
 const isGameDayToday = computed(() => {
   if (!currentDaySchedule.value) return false
-  const gameDayTypes = ['game_day', 'interleague_game_day', 'playoff_day', 'no_game']
-  return gameDayTypes.includes(currentDaySchedule.value.date_type)
+  return isGameType(currentDaySchedule.value.date_type)
 })
 
 const gameResultRoute = computed(() => {
@@ -1272,6 +1323,36 @@ onMounted(async () => {
 /* ノーゲームは勝敗の色を付けない（勝敗・成績に入れない） */
 .result-no_game {
   color: rgb(var(--v-theme-on-surface-variant));
+}
+
+/* 入力漏れの印。色だけで伝えないため文字を付ける（配色は試合日ページの状態チップと同じ） */
+.day-mark {
+  display: inline-block;
+  border-radius: 10px;
+  padding: 0 8px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  line-height: 18px;
+  white-space: nowrap;
+}
+.day-mark--warn {
+  background: #f7d9dc;
+  color: #8a1420;
+}
+.day-mark--todo {
+  background: #fbebc2;
+  color: #7a5200;
+}
+.v-theme--dark .day-mark--warn {
+  background: #5a1a22;
+  color: #ffb3b8;
+}
+.v-theme--dark .day-mark--todo {
+  background: #4d3a0c;
+  color: #ffd777;
+}
+.day-mark-note {
+  font-size: 0.85rem;
 }
 
 .entry-btn {

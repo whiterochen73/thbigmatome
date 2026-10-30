@@ -45,6 +45,6 @@ class Api::V1::Commissioner::PlayerAbsencesController < Api::V1::Commissioner::B
   end
 
   def player_absence_params
-    params.require(:player_absence).permit(:season_id, :absence_type, :start_date, :duration, :duration_unit)
+    params.require(:player_absence).permit(:season_id, :absence_type, :start_date, :duration, :duration_unit, :phase)
   end
 end

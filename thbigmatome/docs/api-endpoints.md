@@ -671,13 +671,13 @@
 ### POST /api/v1/player_absences
 
 - **Controller**: `Api::V1::PlayerAbsencesController#create`
-- **Body Params**: `player_absence: { team_membership_id, season_id, absence_type, reason, start_date, duration, duration_unit }`
+- **Body Params**: `player_absence: { team_membership_id, season_id, absence_type, reason, start_date, duration, duration_unit, phase }`（phase は `pre_game` / `in_game`。省略時 `pre_game`、不正値は 422）
 - **Response**: PlayerAbsenceSerializer 201
 
 ### PATCH/PUT /api/v1/player_absences/:id
 
 - **Controller**: `Api::V1::PlayerAbsencesController#update`
-- **Body Params**: `player_absence: { team_membership_id, season_id, absence_type, reason, start_date, duration, duration_unit }`
+- **Body Params**: `player_absence: { team_membership_id, season_id, absence_type, reason, start_date, duration, duration_unit, phase }`（phase は `pre_game` / `in_game`。省略時 `pre_game`、不正値は 422）
 - **Response**: PlayerAbsenceSerializer
 
 ### DELETE /api/v1/player_absences/:id
@@ -1077,7 +1077,7 @@ Commissioner ロール必須。チームメンバーシップに紐づく離脱�
 ### POST /api/v1/commissioner/team_memberships/:team_membership_id/player_absences
 
 - **Controller**: `Api::V1::Commissioner::PlayerAbsencesController#create`
-- **Body Params**: `player_absence` → `{ season_id, absence_type, start_date, duration, duration_unit }`
+- **Body Params**: `player_absence` → `{ season_id, absence_type, start_date, duration, duration_unit, phase }`
 - **Response**: 201 Created
 
 ### GET /api/v1/commissioner/team_memberships/:team_membership_id/player_absences/:id
@@ -1087,7 +1087,7 @@ Commissioner ロール必須。チームメンバーシップに紐づく離脱�
 ### PATCH /api/v1/commissioner/team_memberships/:team_membership_id/player_absences/:id
 
 - **Controller**: `Api::V1::Commissioner::PlayerAbsencesController#update`
-- **Body Params**: `player_absence` → `{ season_id, absence_type, start_date, duration, duration_unit }`
+- **Body Params**: `player_absence` → `{ season_id, absence_type, start_date, duration, duration_unit, phase }`
 
 ### DELETE /api/v1/commissioner/team_memberships/:team_membership_id/player_absences/:id
 

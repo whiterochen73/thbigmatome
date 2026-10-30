@@ -1,6 +1,8 @@
 export interface AbsenceInfo {
   absence_type: 'injury' | 'suspension' | 'reconditioning'
   reason: string | null
+  phase?: 'pre_game' | 'in_game'
+  effective_start_date?: string
   effective_end_date: string | null
   remaining_days: number | null
   duration_unit: 'days' | 'games'

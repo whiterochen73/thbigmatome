@@ -544,10 +544,14 @@ class PlayerAbsence < ApplicationRecord
 - `start_date`: presence
 - `duration`: presence, integer > 0
 - `duration_unit`: presence, inclusion in %w[days games]
+- `phase`: inclusion in %w[pre_game in_game]（既定 `pre_game`。試合前 / 試合中。裁定 AMB-25）
 
 **インスタンスメソッド**:
-- `effective_end_date` — 離脱終了日を計算
-  - `duration_unit == "days"`: `start_date + duration.days`
+- `effective_start_date` — 離脱が始まる最初の日。`pre_game` は `start_date`、`in_game` は `start_date + 1日`
+- `active_on?(date)` — date の日に離脱中か（呼び出し側はこれを使う）
+- `remaining_days_on(date)` — date 時点の残り日数（復帰日まで）
+- `effective_end_date` — 離脱終了日（排他的）を計算
+  - `duration_unit == "days"`: `effective_start_date + duration.days`
   - `duration_unit == "games"`: シーズンスケジュールからN試合後の翌日
 
 ---

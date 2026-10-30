@@ -55,6 +55,62 @@ RSpec.describe "Api::V1::Commissioner::Dashboard", type: :request do
         expect(ended).to be_nil
       end
 
+      context "試合前 / 試合中の区分（phase。AMB-25）" do
+        let(:team) { create(:team, is_active: true) }
+        let(:current) { Date.new(2026, 6, 10) }
+        let(:season) { create(:season, team: team, current_date: current) }
+        let(:tm) { create(:team_membership, team: team, player: create(:player)) }
+
+        def entry
+          get "/api/v1/commissioner/dashboard/absences"
+          response.parsed_body.find { |a| a["team_id"] == team.id }
+        end
+
+        it "日数: 試合前は現在日から数え、残り日数は N。区分と離脱の最初の日が返る" do
+          create(:player_absence, team_membership: tm, season: season, start_date: current, duration: 3, duration_unit: "days")
+
+          expect(entry).to include("phase" => "pre_game", "effective_start_date" => "2026-06-10",
+                                   "effective_end_date" => "2026-06-13", "remaining_days" => 3)
+        end
+
+        it "日数: 試合中は試合日（現在日）を数えず、現在日に見ても残り日数は N、復帰日は D+N+1" do
+          create(:player_absence, team_membership: tm, season: season, start_date: current, duration: 3,
+                                  duration_unit: "days", phase: "in_game")
+
+          expect(entry).to include("phase" => "in_game", "effective_start_date" => "2026-06-11",
+                                   "effective_end_date" => "2026-06-14", "remaining_days" => 3)
+        end
+
+        it "日数: 試合中の負傷は D+1 に見ると残り N、D+N に見ると残り 1" do
+          create(:player_absence, team_membership: tm, season: season, start_date: current - 1, duration: 3,
+                                  duration_unit: "days", phase: "in_game")
+          expect(entry["remaining_days"]).to eq(3)
+
+          season.update!(current_date: current + 2)
+          expect(entry["remaining_days"]).to eq(1)
+        end
+
+        it "試合数: 試合中は試合日の試合を残りに数えない（移動日をはさんでも次の試合日から）" do
+          [ [ 10, "game_day" ], [ 11, "off_day" ], [ 12, "game_day" ], [ 13, "game_day" ] ].each do |day, type|
+            create(:season_schedule, season: season, date: Date.new(2026, 6, day), date_type: type)
+          end
+          absence = create(:player_absence, team_membership: tm, season: season, start_date: current, duration: 2,
+                                            duration_unit: "games", phase: "in_game")
+
+          expect(entry).to include("remaining_games" => 2, "effective_end_date" => "2026-06-14")
+
+          absence.update!(phase: "pre_game")
+          expect(entry).to include("remaining_games" => 2, "effective_end_date" => "2026-06-13")
+        end
+
+        it "試合中・N=1: 復帰日（D+2）に見ると残り 0 日で、まだ一覧に残る（従来の試合前と同じ扱い）" do
+          create(:player_absence, team_membership: tm, season: season, start_date: current - 2, duration: 1,
+                                  duration_unit: "days", phase: "in_game")
+
+          expect(entry).to include("effective_end_date" => "2026-06-10", "remaining_days" => 0)
+        end
+      end
+
       it "inactive チームは含まない" do
         team = create(:team, is_active: false)
         season = create(:season, team: team, current_date: Date.current)

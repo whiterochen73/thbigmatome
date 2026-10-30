@@ -174,12 +174,13 @@
           <SeasonAbsenceTab
             :key="`in-game-absences-${embedKey.inGameAbsences}`"
             :team-id="Number(teamId)"
+            default-phase="in_game"
           />
         </div>
       </template>
 
       <template #body-setup>
-        <v-row density="compact" class="mt-1">
+        <v-row density="compact" class="mt-1" data-testid="setup-row-main">
           <v-col cols="12" sm="6" md="4">
             <TeamMemberSelect
               v-model="gameData.announced_starter_id"
@@ -208,8 +209,23 @@
             />
           </v-col>
           <v-col cols="12" sm="6" md="4">
-            <v-text-field v-model="gameData.stadium" :label="t('gameResult.stadium')" />
+            <v-text-field
+              v-model="gameData.stadium"
+              data-testid="stadium"
+              :label="t('gameResult.stadium')"
+            />
           </v-col>
+          <v-col cols="12" sm="6" md="4">
+            <v-select
+              v-model="gameData.designated_hitter_enabled"
+              :items="dhItems"
+              item-title="name"
+              item-value="value"
+              :label="t('gameResult.dhSystem.title')"
+            />
+          </v-col>
+        </v-row>
+        <v-row density="compact" data-testid="setup-row-real">
           <v-col cols="12" sm="6" md="4">
             <v-text-field
               v-model="gameData.real_date"
@@ -237,15 +253,6 @@
               data-testid="venue"
               :label="t('gameResult.venue.title')"
               clearable
-            />
-          </v-col>
-          <v-col cols="12" sm="6" md="4">
-            <v-select
-              v-model="gameData.designated_hitter_enabled"
-              :items="dhItems"
-              item-title="name"
-              item-value="value"
-              :label="t('gameResult.dhSystem.title')"
             />
           </v-col>
         </v-row>

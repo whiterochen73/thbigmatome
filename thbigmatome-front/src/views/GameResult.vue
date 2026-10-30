@@ -181,6 +181,35 @@
             <v-text-field v-model="gameData.stadium" :label="t('gameResult.stadium')" />
           </v-col>
           <v-col cols="12" sm="6" md="4">
+            <v-text-field
+              v-model="gameData.real_date"
+              type="date"
+              data-testid="real-date"
+              :label="t('gameResult.realDate')"
+              clearable
+            />
+          </v-col>
+          <v-col cols="12" sm="6" md="4">
+            <v-select
+              v-model="gameData.real_start_time"
+              :items="realStartTimeItems"
+              data-testid="real-start-time"
+              :label="t('gameResult.realStartTime')"
+              clearable
+            />
+          </v-col>
+          <v-col cols="12" sm="6" md="4">
+            <v-select
+              v-model="gameData.venue"
+              :items="venueItems"
+              item-title="name"
+              item-value="value"
+              data-testid="venue"
+              :label="t('gameResult.venue.title')"
+              clearable
+            />
+          </v-col>
+          <v-col cols="12" sm="6" md="4">
             <v-select
               v-model="gameData.designated_hitter_enabled"
               :items="dhItems"
@@ -228,6 +257,47 @@
             />
           </v-col>
         </v-row>
+        <div class="mt-2" data-testid="game-log">
+          <div class="d-flex align-center flex-wrap ga-2 mb-1">
+            <span class="text-subtitle-2">{{ t('gameResult.gameLog.title') }}</span>
+            <v-btn
+              size="small"
+              variant="outlined"
+              prepend-icon="mdi-file-upload-outline"
+              data-testid="game-log-load"
+              @click="gameLogFileInput?.click()"
+            >
+              {{ t('gameResult.gameLog.loadFile') }}
+            </v-btn>
+            <input
+              ref="gameLogFileInput"
+              type="file"
+              accept=".txt,.log,text/plain"
+              class="d-none"
+              data-testid="game-log-file-input"
+              @change="onGameLogFileChange"
+            />
+          </div>
+          <v-textarea
+            v-model="gameLogText"
+            class="game-log-textarea"
+            data-testid="game-log-textarea"
+            rows="10"
+            :auto-grow="false"
+            variant="outlined"
+            density="compact"
+            persistent-hint
+            :hint="t('gameResult.gameLog.hint')"
+            :error="gameLogTooLarge"
+            :error-messages="gameLogTooLarge ? [gameLogTooLargeMessage] : []"
+          >
+            <template #details>
+              <span data-testid="game-log-counter" :class="{ 'text-error': gameLogTooLarge }">
+                {{ gameLogCounter }}
+              </span>
+            </template>
+          </v-textarea>
+        </div>
         <div class="d-flex justify-end mt-2">
           <v-btn color="primary" variant="elevated" data-testid="save-result" @click="saveGame">
             {{ t('gameDay.save') }}
@@ -289,6 +359,12 @@ import SeasonAbsenceTab from '@/components/season/SeasonAbsenceTab.vue'
 import GameDaySteps, { type GameDayStep } from '@/components/gameDay/GameDaySteps.vue'
 import GameDayDateNote from '@/components/gameDay/GameDayDateNote.vue'
 import {
+  GAME_LOG_MAX_BYTES,
+  GAME_LOG_FILE_READ_MAX_BYTES,
+  gameLogByteLength,
+  decodeGameLogBytes,
+} from '@/components/gameDay/gameLog'
+import {
   detectRecordMismatch,
   hasGameDayArrived,
   hasSavedScore,
@@ -324,6 +400,10 @@ const defaultGameData: GameData = {
   game_number: 0,
   announced_starter_id: null,
   stadium: '',
+  real_date: null,
+  real_start_time: null,
+  venue: null,
+  game_log: null,
   home_away: null,
   designated_hitter_enabled: null,
   opponent_team_id: null,
@@ -364,6 +444,18 @@ const homeAwayItems = [
   { name: t('gameResult.homeAway.home'), value: 'home' },
   { name: t('gameResult.homeAway.away'), value: 'visitor' },
 ]
+
+// 開始時刻は 30 分刻み（00:00〜23:30）。サーバ側も同じ形式だけを受け付ける
+const realStartTimeItems = Array.from({ length: 48 }, (_, i) => {
+  const hour = String(Math.floor(i / 2)).padStart(2, '0')
+  return `${hour}:${i % 2 === 0 ? '00' : '30'}`
+})
+
+// 開催球場（IRC のチャンネル）。ゲーム内の球場（stadium）とは別
+const venueItems = (['ch1', 'ch2', 'ch3', 'ch4', 'ch5', 'tlb'] as const).map((value) => ({
+  name: t(`gameResult.venue.${value}`),
+  value,
+}))
 
 const dhItems = [
   { name: t('gameResult.dhSystem.enabled'), value: true },
@@ -419,10 +511,19 @@ const setupSnapshot = (g: GameData) =>
     g.home_away ?? null,
     g.designated_hitter_enabled ?? null,
     g.stadium || null,
+    g.real_date || null,
+    g.real_start_time || null,
+    g.venue || null,
   ])
 
+// 試合ログは結果の段に置く。空文字と null は同じ（サーバも空文字を null で保存する）
 const resultSnapshot = (g: GameData) =>
-  JSON.stringify([normNumber(g.score), normNumber(g.opponent_score), !!g.no_game])
+  JSON.stringify([
+    normNumber(g.score),
+    normNumber(g.opponent_score),
+    !!g.no_game,
+    g.game_log || null,
+  ])
 
 const baseline = reactive({
   setup: setupSnapshot(defaultGameData),
@@ -865,7 +966,85 @@ const showSnackbar = (text: string, color: string = 'success', timeout: number =
   snackbar.value = true
 }
 
+// ─────────────────────────────────────────
+// 試合ログ（原文を保存するだけ。解析はしない）
+// ─────────────────────────────────────────
+
+const gameLogFileInput = ref<HTMLInputElement | null>(null)
+// 画面の入力欄は空欄を '' で持ち、保存では空文字を null にそろえる（サーバも空文字は null にする）
+const gameLogText = computed<string>({
+  get: () => gameData.value.game_log ?? '',
+  set: (value) => {
+    gameData.value.game_log = value ? value : null
+  },
+})
+const gameLogBytes = computed(() => gameLogByteLength(gameLogText.value))
+const gameLogTooLarge = computed(() => gameLogBytes.value > GAME_LOG_MAX_BYTES)
+const formatCount = (n: number) => n.toLocaleString('ja-JP')
+const gameLogCounter = computed(() =>
+  t('gameResult.gameLog.counter', {
+    chars: formatCount(gameLogText.value.length),
+    bytes: formatCount(gameLogBytes.value),
+    limit: formatCount(GAME_LOG_MAX_BYTES),
+  }),
+)
+const gameLogTooLargeMessage = computed(() =>
+  t('gameResult.gameLog.tooLarge', {
+    limit: formatCount(GAME_LOG_MAX_BYTES),
+    bytes: formatCount(gameLogBytes.value),
+  }),
+)
+
+// ファイルをブラウザの中で読み、試合ログの欄を置き換える（追記ではない）。
+// IRC のログは Shift_JIS / ISO-2022-JP のことがあるため、文字コードは中身から判別する
+const onGameLogFileChange = async (event: Event) => {
+  const input = event.target as HTMLInputElement
+  const file = input.files?.[0]
+  // 同じファイルをもう一度選んでも change が起きるよう、選択を空に戻す
+  const resetInput = () => {
+    try {
+      input.value = ''
+    } catch {
+      // 読み込みの成否に関わらないので無視する
+    }
+  }
+  if (!file) return
+  try {
+    if (file.size > GAME_LOG_FILE_READ_MAX_BYTES) {
+      showSnackbar(
+        t('gameResult.gameLog.fileTooLarge', { limit: GAME_LOG_FILE_READ_MAX_BYTES / 1024 / 1024 }),
+        'error',
+      )
+      return
+    }
+    const decoded = decodeGameLogBytes(new Uint8Array(await file.arrayBuffer()))
+    if (!decoded.ok) {
+      showSnackbar(t('gameResult.gameLog.decodeFailed'), 'error')
+      return
+    }
+    if (gameLogText.value) {
+      const ok = await confirmDialog.value?.open(
+        t('gameResult.gameLog.replaceTitle'),
+        t('gameResult.gameLog.replaceMessage'),
+        { color: 'warning' },
+      )
+      if (!ok) return
+    }
+    gameLogText.value = decoded.text
+  } catch (error) {
+    console.error('Failed to read game log file:', error)
+    showSnackbar(t('gameResult.gameLog.readFailed'), 'error')
+  } finally {
+    resetInput()
+  }
+}
+
 const saveGame = async () => {
+  // 上限を超えたログはサーバが 422 で弾き、ほかの項目も保存されない。送る前に画面で知らせて止める
+  if (gameLogTooLarge.value) {
+    showSnackbar(gameLogTooLargeMessage.value, 'error', 8000)
+    return
+  }
   try {
     const response = await axios.put(`/game/${scheduleId.value}`, gameData.value)
     takeBaseline()
@@ -949,6 +1128,11 @@ onBeforeUnmount(() => {
 </script>
 
 <style scoped>
+.game-log-textarea :deep(textarea) {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, 'Courier New', monospace;
+  font-size: 0.85rem;
+  line-height: 1.4;
+}
 .game-day-progress {
   display: flex;
   align-items: center;

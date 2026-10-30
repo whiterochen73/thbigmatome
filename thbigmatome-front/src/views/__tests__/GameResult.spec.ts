@@ -740,6 +740,461 @@ describe.each(LAYOUTS)('GameResult 試合日ページ: $name', ({ width, kind })
     expect(isShown(wrapper, 'result')).toBe(true)
   })
 
+  // ───────── 実日付・開始時刻・開催球場（cmd_1783 subtask_1783j 要望 1） ─────────
+  describe('実日付・開始時刻・開催球場', () => {
+    const panelSetup = (wrapper: Wrapper) => body(wrapper, 'setup')
+    const field = (wrapper: Wrapper, id: string) => wrapper.findComponent(`[data-testid="${id}"]`)
+    const pick = async (wrapper: Wrapper, id: string, value: string | null) => {
+      field(wrapper, id).vm.$emit('update:modelValue', value)
+      await flushPromises()
+    }
+
+    it('3 欄が出る。既存の欄は「球場（ゲーム内）」と見出しで区別される', async () => {
+      const wrapper = await mountDay()
+      const setup = body(wrapper, 'setup')
+      expect(setup.find('[data-testid="real-date"] input').attributes('type')).toBe('date')
+      expect(setup.text()).toContain('試合日（リアルの日付）')
+      expect(setup.text()).toContain('開始時刻（目安）')
+      expect(setup.text()).toContain('開催球場')
+      const labels = setup.findAll('.v-input').map((e) => e.text())
+      expect(labels.some((l) => l.includes('球場（ゲーム内）'))).toBe(true)
+    })
+
+    it('開始時刻の選択肢は 00:00〜23:30 の 30 分刻み 48 個、開催球場は 6 択（表示名つき）', async () => {
+      const wrapper = await mountDay()
+      const times = field(wrapper, 'real-start-time').props('items') as string[]
+      expect(times).toHaveLength(48)
+      expect(times[0]).toBe('00:00')
+      expect(times[1]).toBe('00:30')
+      expect(times[47]).toBe('23:30')
+      expect(times.every((v) => /^([01]\d|2[0-3]):(00|30)$/.test(v))).toBe(true)
+
+      const venues = field(wrapper, 'venue').props('items') as Array<{
+        name: string
+        value: string
+      }>
+      expect(venues).toEqual([
+        { name: 'チャンネル1', value: 'ch1' },
+        { name: 'チャンネル2', value: 'ch2' },
+        { name: 'チャンネル3', value: 'ch3' },
+        { name: 'チャンネル4', value: 'ch4' },
+        { name: 'チャンネル5', value: 'ch5' },
+        { name: 'TLB球場', value: 'tlb' },
+      ])
+    })
+
+    it('保存済みの値が欄に出る。サーバが 3 列を返さない（旧サーバ）時も落ちず、未保存にならない', async () => {
+      const wrapper = await mountDay({
+        game: { real_date: '2026-11-03', real_start_time: '21:30', venue: 'tlb' },
+      })
+      expect(
+        (wrapper.find('[data-testid="real-date"] input').element as HTMLInputElement).value,
+      ).toBe('2026-11-03')
+      expect(field(wrapper, 'real-start-time').props('modelValue')).toBe('21:30')
+      expect(field(wrapper, 'venue').props('modelValue')).toBe('tlb')
+      expect(wrapper.vm.hasUnsavedChanges).toBe(false)
+
+      const old = await mountDay()
+      expect(old.vm.hasUnsavedChanges).toBe(false)
+    })
+
+    it.each([
+      [
+        '実日付',
+        async (w: Wrapper) => w.find('[data-testid="real-date"] input').setValue('2026-11-03'),
+      ],
+      ['開始時刻', async (w: Wrapper) => pick(w, 'real-start-time', '21:30')],
+      ['開催球場', async (w: Wrapper) => pick(w, 'venue', 'ch3')],
+    ])('%sを選ぶと未保存（dirty）になり、保存で解除される', async (_name, act) => {
+      const wrapper = await mountDay()
+      expect(wrapper.vm.hasUnsavedChanges).toBe(false)
+      await act(wrapper)
+      expect(wrapper.vm.hasUnsavedChanges).toBe(true)
+      expect(wrapper.vm.setupDirty).toBe(true)
+      expect(state(wrapper, 'setup')).toBe('editing')
+
+      mockPut.mockResolvedValueOnce({ data: { id: 100, warnings: [] } })
+      await wrapper.find('[data-testid="save-setup"]').trigger('click')
+      await flushPromises()
+      expect(wrapper.vm.hasUnsavedChanges).toBe(false)
+      expect(wrapper.vm.setupDirty).toBe(false)
+    })
+
+    it('保存の PUT の body に 3 列が入り、ゲーム内の球場も従来どおり送られる', async () => {
+      const wrapper = await mountDay()
+      await wrapper.find('[data-testid="real-date"] input').setValue('2026-11-03')
+      await pick(wrapper, 'real-start-time', '00:00')
+      await pick(wrapper, 'venue', 'tlb')
+      const stadium = panelSetup(wrapper)
+        .findAll('.v-input')
+        .find((e) => e.text().includes('球場（ゲーム内）'))!
+        .find('input')
+      await stadium.setValue('甲子園')
+
+      mockPut.mockResolvedValueOnce({ data: { id: 100, warnings: [] } })
+      await wrapper.find('[data-testid="save-setup"]').trigger('click')
+      await flushPromises()
+
+      expect(mockPut).toHaveBeenCalledTimes(1)
+      expect(mockPut.mock.calls[0][0]).toBe('/game/100')
+      expect(mockPut.mock.calls[0][1]).toMatchObject({
+        stadium: '甲子園',
+        real_date: '2026-11-03',
+        real_start_time: '00:00',
+        venue: 'tlb',
+      })
+    })
+
+    it('ゲーム内の球場だけを変えて保存しても、3 列は変わらず送られる（互いに独立）', async () => {
+      const wrapper = await mountDay({
+        game: { real_date: '2026-11-03', real_start_time: '21:30', venue: 'ch2' },
+      })
+      const stadium = panelSetup(wrapper)
+        .findAll('.v-input')
+        .find((e) => e.text().includes('球場（ゲーム内）'))!
+        .find('input')
+      await stadium.setValue('神宮')
+      expect(wrapper.vm.hasUnsavedChanges).toBe(true)
+
+      mockPut.mockResolvedValueOnce({ data: { id: 100, warnings: [] } })
+      await wrapper.vm.saveGame()
+      expect(mockPut.mock.calls[0][1]).toMatchObject({
+        stadium: '神宮',
+        real_date: '2026-11-03',
+        real_start_time: '21:30',
+        venue: 'ch2',
+      })
+    })
+
+    it('選び直して元の値に戻すと未保存でなくなる。選択を外す（null）と未保存になり、null で送る', async () => {
+      const wrapper = await mountDay({ game: { venue: 'ch1' } })
+      await pick(wrapper, 'venue', 'ch2')
+      expect(wrapper.vm.hasUnsavedChanges).toBe(true)
+      await pick(wrapper, 'venue', 'ch1')
+      expect(wrapper.vm.hasUnsavedChanges).toBe(false)
+
+      await pick(wrapper, 'venue', null)
+      expect(wrapper.vm.hasUnsavedChanges).toBe(true)
+      mockPut.mockResolvedValueOnce({ data: { id: 100, warnings: [] } })
+      await wrapper.vm.saveGame()
+      expect(mockPut.mock.calls[0][1]).toMatchObject({ venue: null })
+      expect(wrapper.vm.hasUnsavedChanges).toBe(false)
+    })
+
+    it('実日付を消す（空欄）と、未保存になる。null と空欄は同じ扱い（読み込み直後は未保存でない）', async () => {
+      const wrapper = await mountDay({ game: { real_date: '2026-11-03' } })
+      await wrapper.find('[data-testid="real-date"] input').setValue('')
+      expect(wrapper.vm.hasUnsavedChanges).toBe(true)
+
+      const empty = await mountDay({ game: { real_date: '' } })
+      expect(empty.vm.hasUnsavedChanges).toBe(false)
+    })
+
+    it('未入力の黄色（段の状態）の判定に、3 項目は含めない（任意項目）', async () => {
+      const unset = await mountDay()
+      const filled = await mountDay({
+        game: { real_date: '2026-11-03', real_start_time: '21:30', venue: 'ch1' },
+      })
+      expect(state(filled, 'setup')).toBe(state(unset, 'setup'))
+      expect(state(filled, 'result')).toBe(state(unset, 'result'))
+      expect(state(filled, 'pitchers')).toBe(state(unset, 'pitchers'))
+    })
+  })
+
+  // ───────── 試合ログ（cmd_1783 subtask_1783j 要望 2） ─────────
+  describe('試合ログ', () => {
+    const textarea = (wrapper: Wrapper) =>
+      wrapper.find('[data-testid="game-log-textarea"] textarea')
+    const counter = (wrapper: Wrapper) => wrapper.find('[data-testid="game-log-counter"]').text()
+    const dialogButton = (label: string) =>
+      Array.from(document.body.querySelectorAll('button')).find(
+        (b) => b.textContent?.trim() === label,
+      )
+
+    // ブラウザのファイル選択を再現する（files を差し込んで change を起こす）
+    const chooseFile = async (wrapper: Wrapper, file: File) => {
+      const input = wrapper.find('[data-testid="game-log-file-input"]')
+      Object.defineProperty(input.element, 'files', { configurable: true, value: [file] })
+      await input.trigger('change')
+      await flushPromises()
+    }
+    const sjis = new Uint8Array([142, 142, 141, 135, 138, 74, 142, 110]) // 試合開始
+    const jis = new Uint8Array([27, 36, 66, 59, 110, 57, 103, 51, 43, 59, 79, 27, 40, 66]) // 試合開始
+
+    it('結果の段に、等幅フォントの試合ログ欄（10 行・自動で伸びない）と読み込みボタンがある', async () => {
+      const wrapper = await mountDay()
+      const result = body(wrapper, 'result')
+      expect(result.find('[data-testid="game-log"]').exists()).toBe(true)
+      expect(result.text()).toContain('試合ログ')
+      expect(result.text()).toContain('ファイルから読み込む')
+      const area = wrapper.findComponent('[data-testid="game-log-textarea"]')
+      expect(Number(area.props('rows'))).toBe(10)
+      expect(area.props('autoGrow')).toBe(false)
+      expect(area.classes()).toContain('game-log-textarea')
+      expect(wrapper.find('[data-testid="game-log-file-input"]').attributes('accept')).toContain(
+        '.log',
+      )
+      expect(wrapper.find('[data-testid="game-log-file-input"]').attributes('accept')).toContain(
+        '.txt',
+      )
+    })
+
+    it('保存済みのログが欄に出る。読み込み直後は未保存でない', async () => {
+      const wrapper = await mountDay({ game: { game_log: '[21:30] 開始\n' } })
+      expect((textarea(wrapper).element as HTMLTextAreaElement).value).toBe('[21:30] 開始\n')
+      expect(wrapper.vm.hasUnsavedChanges).toBe(false)
+    })
+
+    it('入力すると未保存（結果の段が編集中）になり、保存で PUT の body に入って解除される', async () => {
+      const wrapper = await mountDay()
+      await textarea(wrapper).setValue('[21:30] 試合開始\r\n[21:31] プレイボール')
+      expect(wrapper.vm.resultDirty).toBe(true)
+      expect(wrapper.vm.hasUnsavedChanges).toBe(true)
+      expect(state(wrapper, 'result')).toBe('editing')
+
+      mockPut.mockResolvedValueOnce({ data: { id: 100, warnings: [] } })
+      await wrapper.find('[data-testid="save-result"]').trigger('click')
+      await flushPromises()
+
+      expect(mockPut.mock.calls[0][1]).toMatchObject({
+        game_log: '[21:30] 試合開始\r\n[21:31] プレイボール',
+      })
+      expect(wrapper.vm.hasUnsavedChanges).toBe(false)
+      expect(wrapper.vm.resultDirty).toBe(false)
+    })
+
+    it('ログだけの変更は、予告先発・対戦設定の段を未保存にしない', async () => {
+      const wrapper = await mountDay()
+      await textarea(wrapper).setValue('abc')
+      expect(wrapper.vm.setupDirty).toBe(false)
+    })
+
+    it('全部消すと null で送る。null と空欄は同じ扱い', async () => {
+      const wrapper = await mountDay({ game: { game_log: 'abc' } })
+      await textarea(wrapper).setValue('')
+      expect(wrapper.vm.hasUnsavedChanges).toBe(true)
+      expect(wrapper.vm.gameData.game_log).toBeNull()
+      mockPut.mockResolvedValueOnce({ data: { id: 100, warnings: [] } })
+      await wrapper.vm.saveGame()
+      expect(mockPut.mock.calls[0][1]).toMatchObject({ game_log: null })
+      expect(wrapper.vm.hasUnsavedChanges).toBe(false)
+
+      const empty = await mountDay({ game: { game_log: '' } })
+      expect(empty.vm.hasUnsavedChanges).toBe(false)
+    })
+
+    it('未入力の黄色（段の状態）の判定に、ログは含めない（任意項目）', async () => {
+      const without = await mountDay()
+      const withLog = await mountDay({ game: { game_log: 'abc' } })
+      expect(state(withLog, 'result')).toBe(state(without, 'result'))
+      expect(state(withLog, 'setup')).toBe(state(without, 'setup'))
+    })
+
+    // 運営が試合の正しさを検証する原文なので、画面も加工しない（前後の空白・空行・タブ・全角を保つ）
+    it('入力した内容を加工せず保存する（前後の空白・空行・タブ・全角・空白だけ）', async () => {
+      const raw = '  \n\n[21:30]\t＜芳乃＞　ホームラン！\n\n  '
+      const wrapper = await mountDay()
+      await textarea(wrapper).setValue(raw)
+      expect(wrapper.vm.gameData.game_log).toBe(raw)
+      mockPut.mockResolvedValueOnce({ data: { id: 100, warnings: [] } })
+      await wrapper.vm.saveGame()
+      expect(mockPut.mock.calls[0][1].game_log).toBe(raw)
+
+      const blank = await mountDay()
+      await textarea(blank).setValue('   \n\t ')
+      expect(blank.vm.gameData.game_log).toBe('   \n\t ')
+      expect(blank.vm.hasUnsavedChanges).toBe(true)
+    })
+
+    it('保存済みのログは加工せず欄に出す', async () => {
+      const raw = '\n  [21:30]\t＜芳乃＞\r\n\n'
+      const wrapper = await mountDay({ game: { game_log: raw } })
+      expect(wrapper.vm.gameData.game_log).toBe(raw)
+      expect(wrapper.vm.hasUnsavedChanges).toBe(false)
+    })
+
+    it('ファイルの内容も加工せず欄に入れる（前後の空白・空行・CRLF のまま）', async () => {
+      const raw = '\n\n  [21:30]\t＜芳乃＞ 試合開始\r\n\r\n  '
+      const wrapper = await mountDay()
+      await chooseFile(wrapper, new File([raw], 'game.log'))
+      expect(wrapper.vm.gameData.game_log).toBe(raw)
+    })
+
+    describe('文字数・バイト数と上限（1_048_576 バイト）', () => {
+      it('文字数とバイト数の目安を出す（日本語は 1 文字 3 バイト）', async () => {
+        const wrapper = await mountDay()
+        expect(counter(wrapper)).toContain('0 文字 / 0 バイト')
+        expect(counter(wrapper)).toContain('1,048,576')
+        await textarea(wrapper).setValue('試合a')
+        expect(counter(wrapper)).toContain('3 文字 / 7 バイト')
+      })
+
+      it('ちょうど 1_048_576 バイトはエラーにならず、保存できる', async () => {
+        const wrapper = await mountDay()
+        await textarea(wrapper).setValue('a'.repeat(1_048_576))
+        expect(wrapper.vm.gameLogTooLarge).toBe(false)
+        expect(wrapper.find('[data-testid="game-log-counter"]').classes()).not.toContain(
+          'text-error',
+        )
+        mockPut.mockResolvedValueOnce({ data: { id: 100, warnings: [] } })
+        await wrapper.vm.saveGame()
+        expect(mockPut).toHaveBeenCalledTimes(1)
+      })
+
+      it('1_048_577 バイトはエラー表示になり、保存前に止める（PUT しない・未保存のまま）', async () => {
+        const wrapper = await mountDay()
+        await textarea(wrapper).setValue('a'.repeat(1_048_577))
+        expect(wrapper.vm.gameLogTooLarge).toBe(true)
+        expect(wrapper.find('[data-testid="game-log-counter"]').classes()).toContain('text-error')
+        expect(body(wrapper, 'result').text()).toContain('上限（1,048,576 バイト）を超えています')
+
+        await wrapper.find('[data-testid="save-result"]').trigger('click')
+        await flushPromises()
+        expect(mockPut).not.toHaveBeenCalled()
+        expect(wrapper.vm.snackbarColor).toBe('error')
+        expect(wrapper.vm.snackbarText).toContain('上限')
+        expect(wrapper.vm.hasUnsavedChanges).toBe(true)
+        // 設定の段の保存ボタンも同じ（ほかの項目の保存で、ログの超過が黙って通らない）
+        await wrapper.find('[data-testid="save-setup"]').trigger('click')
+        await flushPromises()
+        expect(mockPut).not.toHaveBeenCalled()
+      })
+
+      it('文字数ではなくバイト数で数える（349_525 文字 = 1_048_575 バイトは通り、349_526 文字は超過）', async () => {
+        const wrapper = await mountDay()
+        await textarea(wrapper).setValue('あ'.repeat(349_525))
+        expect(wrapper.vm.gameLogTooLarge).toBe(false)
+        await textarea(wrapper).setValue('あ'.repeat(349_526))
+        expect(wrapper.vm.gameLogTooLarge).toBe(true)
+      })
+
+      it('短くすればエラーが消え、保存できる', async () => {
+        const wrapper = await mountDay()
+        await textarea(wrapper).setValue('a'.repeat(1_048_577))
+        await textarea(wrapper).setValue('a'.repeat(10))
+        expect(wrapper.vm.gameLogTooLarge).toBe(false)
+        mockPut.mockResolvedValueOnce({ data: { id: 100, warnings: [] } })
+        await wrapper.vm.saveGame()
+        expect(mockPut).toHaveBeenCalledTimes(1)
+      })
+    })
+
+    describe('ファイルから読み込む', () => {
+      it('ボタンはファイル選択を開く', async () => {
+        const wrapper = await mountDay()
+        const click = vi
+          .spyOn(
+            wrapper.find('[data-testid="game-log-file-input"]').element as HTMLInputElement,
+            'click',
+          )
+          .mockImplementation(() => {})
+        await wrapper.find('[data-testid="game-log-load"]').trigger('click')
+        expect(click).toHaveBeenCalledTimes(1)
+      })
+
+      it('UTF-8 のファイルを読み、欄に入れる（未保存になる）。確認は出さない（欄が空のため）', async () => {
+        const wrapper = await mountDay()
+        await chooseFile(wrapper, new File(['[21:30] 試合開始\n'], 'game.log'))
+        expect(wrapper.vm.gameData.game_log).toBe('[21:30] 試合開始\n')
+        expect((textarea(wrapper).element as HTMLTextAreaElement).value).toBe('[21:30] 試合開始\n')
+        expect(wrapper.vm.hasUnsavedChanges).toBe(true)
+        expect(document.body.textContent).not.toContain('試合ログを置き換えますか')
+      })
+
+      it('Shift_JIS のファイルを読める', async () => {
+        const wrapper = await mountDay()
+        await chooseFile(wrapper, new File([sjis], 'game.txt'))
+        expect(wrapper.vm.gameData.game_log).toBe('試合開始')
+      })
+
+      it('ISO-2022-JP のファイルを読める', async () => {
+        const wrapper = await mountDay()
+        await chooseFile(wrapper, new File([jis], 'game.txt'))
+        expect(wrapper.vm.gameData.game_log).toBe('試合開始')
+      })
+
+      it('読み込んだログを保存すると PUT の body に入る', async () => {
+        const wrapper = await mountDay()
+        await chooseFile(wrapper, new File([sjis], 'game.txt'))
+        mockPut.mockResolvedValueOnce({ data: { id: 100, warnings: [] } })
+        await wrapper.vm.saveGame()
+        expect(mockPut.mock.calls[0][1]).toMatchObject({ game_log: '試合開始' })
+        expect(wrapper.vm.hasUnsavedChanges).toBe(false)
+      })
+
+      it('既に内容がある時は確認を出す。キャンセルなら置き換えない', async () => {
+        const wrapper = await mountDay({ game: { game_log: '元のログ' } })
+        await chooseFile(wrapper, new File(['新しいログ'], 'game.log'))
+        expect(document.body.textContent).toContain('試合ログを置き換えますか')
+        // 確認の間は、まだ置き換わっていない
+        expect(wrapper.vm.gameData.game_log).toBe('元のログ')
+
+        dialogButton('キャンセル')!.click()
+        await flushPromises()
+        expect(wrapper.vm.gameData.game_log).toBe('元のログ')
+        expect(wrapper.vm.hasUnsavedChanges).toBe(false)
+      })
+
+      it('確認で OK なら、追記ではなく置き換える', async () => {
+        const wrapper = await mountDay({ game: { game_log: '元のログ' } })
+        await chooseFile(wrapper, new File(['新しいログ'], 'game.log'))
+        dialogButton('OK')!.click()
+        await flushPromises()
+        expect(wrapper.vm.gameData.game_log).toBe('新しいログ')
+        expect(wrapper.vm.hasUnsavedChanges).toBe(true)
+      })
+
+      it('文字コードを判別できないファイルはエラー表示にして、欄を変えない', async () => {
+        const wrapper = await mountDay({ game: { game_log: '元のログ' } })
+        await chooseFile(wrapper, new File([new Uint8Array([0x81, 0x20, 0xff])], 'bad.log'))
+        expect(wrapper.vm.snackbarColor).toBe('error')
+        expect(wrapper.vm.snackbarText).toContain('文字コード')
+        expect(wrapper.vm.gameData.game_log).toBe('元のログ')
+        expect(document.body.textContent).not.toContain('試合ログを置き換えますか')
+      })
+
+      it('大きすぎるファイル（8MB 超）は読まずにエラー表示にする', async () => {
+        const wrapper = await mountDay()
+        const big = new File(['a'], 'big.log')
+        Object.defineProperty(big, 'size', { value: 8 * 1024 * 1024 + 1 })
+        await chooseFile(wrapper, big)
+        expect(wrapper.vm.snackbarColor).toBe('error')
+        expect(wrapper.vm.snackbarText).toContain('大きすぎる')
+        expect(wrapper.vm.gameData.game_log ?? null).toBeNull()
+      })
+
+      it('1MB を超えるファイルは欄に入るが、超過のエラー表示になり保存できない', async () => {
+        const wrapper = await mountDay()
+        await chooseFile(wrapper, new File(['a'.repeat(1_048_577)], 'large.log'))
+        expect(wrapper.vm.gameLogTooLarge).toBe(true)
+        await wrapper.vm.saveGame()
+        expect(mockPut).not.toHaveBeenCalled()
+      })
+
+      it('ファイルを選ばずに閉じた（files が空）時は何もしない', async () => {
+        const wrapper = await mountDay({ game: { game_log: '元のログ' } })
+        const input = wrapper.find('[data-testid="game-log-file-input"]')
+        Object.defineProperty(input.element, 'files', { configurable: true, value: [] })
+        await input.trigger('change')
+        await flushPromises()
+        expect(wrapper.vm.gameData.game_log).toBe('元のログ')
+        expect(document.body.textContent).not.toContain('試合ログを置き換えますか')
+      })
+
+      it('読み込みに失敗したら（読み取りエラー）エラー表示にして、欄を変えない', async () => {
+        const wrapper = await mountDay({ game: { game_log: '元のログ' } })
+        const broken = new File(['x'], 'broken.log')
+        Object.defineProperty(broken, 'arrayBuffer', {
+          value: () => Promise.reject(new Error('NotReadableError')),
+        })
+        await chooseFile(wrapper, broken)
+        expect(wrapper.vm.snackbarColor).toBe('error')
+        expect(wrapper.vm.snackbarText).toContain('読み込みに失敗')
+        expect(wrapper.vm.gameData.game_log).toBe('元のログ')
+      })
+    })
+  })
+
   describe('離脱ガード', () => {
     const clickDialogButton = async (label: string) => {
       const button = Array.from(document.body.querySelectorAll('button')).find(
@@ -1099,7 +1554,7 @@ describe.each(LAYOUTS)('GameResult 試合日ページ: $name', ({ width, kind })
           await scoreInput().setValue(9)
           const stadium = wrapper
             .findAll('[data-testid="panel-setup"] .v-input')
-            .find((e) => e.text().includes('球場'))!
+            .find((e) => e.text().includes('球場（ゲーム内）'))!
             .find('input')
           await stadium.setValue('東京ドーム')
           expect(wrapper.vm.hasUnsavedChanges).toBe(true)

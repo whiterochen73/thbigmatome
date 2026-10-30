@@ -7,7 +7,8 @@ class SeasonDetailSerializer < ActiveModel::Serializer
   # カレンダーが「得点だけ保存済みで登板記録が無い」などの入力漏れの印を出すために使う。
   def season_schedules
     counts = PitcherGameState.where(team_id: object.team_id).group(:schedule_date).count
-    schedules = object.season_schedules.to_a
+    # game_log（最大 1MB の原文）は一覧に要らないので読まない。試合日ごとに読むと全試合日分の転送になる
+    schedules = object.season_schedules.select(SeasonSchedule.column_names - [ "game_log" ]).to_a
     schedules.each { |schedule| schedule.pitcher_appearance_count = counts[schedule.date.to_s] || 0 }
     schedules
   end

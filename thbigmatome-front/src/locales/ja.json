@@ -265,7 +265,30 @@
       "home": "ホーム",
       "away": "ビジター"
     },
-    "stadium": "球場",
+    "stadium": "球場（ゲーム内）",
+    "realDate": "試合日（リアルの日付）",
+    "realStartTime": "開始時刻（目安）",
+    "venue": {
+      "title": "開催球場",
+      "ch1": "チャンネル1",
+      "ch2": "チャンネル2",
+      "ch3": "チャンネル3",
+      "ch4": "チャンネル4",
+      "ch5": "チャンネル5",
+      "tlb": "TLB球場"
+    },
+    "gameLog": {
+      "title": "試合ログ",
+      "hint": "IRC のログをそのまま保存します（解析はしません）",
+      "counter": "{chars} 文字 / {bytes} バイト（上限 {limit} バイト）",
+      "tooLarge": "試合ログが上限（{limit} バイト）を超えています（現在 {bytes} バイト）。短くしてから保存してください",
+      "loadFile": "ファイルから読み込む",
+      "replaceTitle": "試合ログを置き換えますか？",
+      "replaceMessage": "いまの試合ログは、読み込んだファイルの内容で置き換わります（追記ではありません）。",
+      "fileTooLarge": "ファイルが大きすぎるため読み込めません（{limit} MB まで）",
+      "decodeFailed": "ファイルの文字コードを判別できませんでした（UTF-8 / Shift_JIS / ISO-2022-JP に対応）",
+      "readFailed": "ファイルの読み込みに失敗しました"
+    },
     "dhSystem": {
       "title": "DH制",
       "enabled": "あり",

@@ -48,12 +48,13 @@ class Api::V1::Commissioner::DashboardController < Api::V1::Commissioner::BaseCo
     return render json: [] unless current_cost
 
     teams = Team.where(is_active: true).includes(
-      team_memberships: { player: :cost_players }
+      :season,
+      team_memberships: [ :season_rosters, { player: :cost_players } ]
     )
 
     result = teams.map do |team|
       memberships = team.team_memberships
-      first_squad = memberships.select { |tm| tm.squad == "first" }
+      first_squad = first_squad_memberships(team)
 
       total = memberships.reject(&:excluded_from_team_total).sum do |tm|
         tm.selected_cost_value(current_cost)
@@ -94,8 +95,9 @@ class Api::V1::Commissioner::DashboardController < Api::V1::Commissioner::BaseCo
       season = team.season
       next unless season
 
+      entries = squad_entries(team)
       team.team_memberships.each do |tm|
-        next unless tm.squad == "second"
+        next unless entries.fetch(tm.id).squad == "second"
         next if tm.player.nil?
 
         info = calculate_cooldown_info(tm, season.current_date)
@@ -152,11 +154,23 @@ class Api::V1::Commissioner::DashboardController < Api::V1::Commissioner::BaseCo
 
   private
 
+  # 1軍/2軍は昇降格の変更記録から、シーズンの現在日カーソル（シーズンが無ければ今日）・試合前の時点で導く（RosterState）。
+  # 写し（team_memberships.squad）は読まない。
+  def squad_entries(team)
+    @squad_entries ||= {}
+    @squad_entries[team.id] ||= roster_state_for_team(team).at(team.season&.current_date || Date.current)
+  end
+
+  def first_squad_memberships(team)
+    entries = squad_entries(team)
+    team.team_memberships.select { |tm| entries.fetch(tm.id).squad == "first" }
+  end
+
   def build_roster_summary(team, current_cost)
     season = team.season
     memberships = team.team_memberships
-    first_squad = memberships.select { |tm| tm.squad == "first" }
-    second_squad = memberships.select { |tm| tm.squad == "second" }
+    first_squad = first_squad_memberships(team)
+    second_squad = memberships.to_a - first_squad
 
     native_series = Team::NATIVE_SERIES[team.team_type] || Team::NATIVE_SERIES["normal"]
     outside_world_count = first_squad.count { |tm| !native_series.include?(tm.player.series) }
@@ -200,8 +214,9 @@ class Api::V1::Commissioner::DashboardController < Api::V1::Commissioner::BaseCo
         native_series = Team::NATIVE_SERIES[team.team_type] || Team::NATIVE_SERIES["normal"]
         game_date = season&.current_date
 
+        entries = squad_entries(team)
         memberships = team.team_memberships.sort_by do |tm|
-          squad_order = tm.squad == "first" ? 0 : 1
+          squad_order = entries.fetch(tm.id).squad == "first" ? 0 : 1
           [ squad_order, tm.player.number.to_i ]
         end
 
@@ -236,7 +251,7 @@ class Api::V1::Commissioner::DashboardController < Api::V1::Commissioner::BaseCo
             game_date,
             player.number,
             player.short_name.presence || player.name,
-            translate_squad(tm.squad),
+            translate_squad(entries.fetch(tm.id).squad),
             translate_position(position),
             card&.handedness,
             player.series,

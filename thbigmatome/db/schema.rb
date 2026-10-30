@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_26_120000) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_28_130000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -536,13 +536,17 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_26_120000) do
 
   create_table "season_rosters", force: :cascade do |t|
     t.datetime "created_at", null: false
+    t.string "phase", default: "pre_game", null: false
+    t.bigint "recorded_by_user_id"
     t.date "registered_on", null: false
     t.bigint "season_id", null: false
     t.string "squad", null: false
     t.bigint "team_membership_id", null: false
     t.datetime "updated_at", null: false
+    t.index [ "recorded_by_user_id" ], name: "index_season_rosters_on_recorded_by_user_id"
     t.index [ "season_id" ], name: "index_season_rosters_on_season_id"
     t.index [ "team_membership_id" ], name: "index_season_rosters_on_team_membership_id"
+    t.check_constraint "phase::text = ANY (ARRAY['pre_game'::character varying, 'in_game'::character varying, 'post_game'::character varying]::text[])", name: "season_rosters_phase_check"
   end
 
   create_table "season_schedules", force: :cascade do |t|
@@ -741,6 +745,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_26_120000) do
   add_foreign_key "schedule_details", "schedules"
   add_foreign_key "season_rosters", "seasons"
   add_foreign_key "season_rosters", "team_memberships"
+  add_foreign_key "season_rosters", "users", column: "recorded_by_user_id", on_delete: :nullify
   add_foreign_key "season_schedules", "players", column: "losing_pitcher_id"
   add_foreign_key "season_schedules", "players", column: "save_pitcher_id"
   add_foreign_key "season_schedules", "players", column: "winning_pitcher_id"

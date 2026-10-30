@@ -800,10 +800,12 @@
 | team_membership_id | bigint | NO | — | team_memberships FK |
 | squad | string | NO | — | 軍種別 (first/second) |
 | registered_on | date | NO | — | 登録日 |
+| phase | string | NO | `pre_game` | 同じ日の中の区分（`pre_game` 試合前 / `in_game` 試合中 / `post_game` 試合後）。check 制約あり |
+| recorded_by_user_id | bigint | YES | — | 記録した利用者（users FK、削除時 NULL） |
 | created_at | datetime | NO | — | 作成日時 |
 | updated_at | datetime | NO | — | 更新日時 |
 
-**インデックス**: `season_id`, `team_membership_id`
+**インデックス**: `season_id`, `team_membership_id`, `recorded_by_user_id`
 
 ---
 

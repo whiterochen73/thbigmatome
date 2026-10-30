@@ -13,7 +13,8 @@ RSpec.describe "Api::V1::TeamRosters", type: :request do
       player: player,
       squad: squad,
       selected_cost_type: cost_type,
-      excluded_from_team_total: excluded
+      excluded_from_team_total: excluded,
+      first_since: (squad == "first" ? Date.new(2026, 4, 1) : nil)
     )
     create(:cost_player, cost: cost, player: player, normal_cost: cost_value)
     { player: player, membership: membership }
@@ -158,7 +159,7 @@ RSpec.describe "Api::V1::TeamRosters", type: :request do
       it "returns is_starter_pitcher=true when pitcher has player_card with starter_stamina >= 4" do
         player = create(:player, :pitcher)
         pc = create(:player_card, player: player, is_pitcher: true, starter_stamina: 5, is_relief_only: false)
-        create(:team_membership, team: team, player: player, player_card: pc, squad: "first", selected_cost_type: "normal_cost")
+        create(:team_membership, team: team, player: player, player_card: pc, squad: "first", selected_cost_type: "normal_cost", first_since: Date.new(2026, 4, 1))
         create(:cost_player, cost: cost, player: player, normal_cost: 5)
 
         get "/api/v1/teams/#{team.id}/roster", as: :json
@@ -171,7 +172,7 @@ RSpec.describe "Api::V1::TeamRosters", type: :request do
 
       it "returns is_starter_pitcher=false when pitcher has no player_card" do
         player = create(:player, :pitcher)
-        create(:team_membership, team: team, player: player, squad: "first", selected_cost_type: "normal_cost")
+        create(:team_membership, team: team, player: player, squad: "first", selected_cost_type: "normal_cost", first_since: Date.new(2026, 4, 1))
         create(:cost_player, cost: cost, player: player, normal_cost: 5)
         # no player_card created → player_cards.first == nil
 
@@ -185,7 +186,7 @@ RSpec.describe "Api::V1::TeamRosters", type: :request do
       it "returns is_relief_only=true when player_card.is_relief_only is true" do
         player = create(:player, :pitcher)
         pc = create(:player_card, player: player, is_pitcher: true, is_relief_only: true, starter_stamina: nil)
-        create(:team_membership, team: team, player: player, player_card: pc, squad: "first", selected_cost_type: "normal_cost")
+        create(:team_membership, team: team, player: player, player_card: pc, squad: "first", selected_cost_type: "normal_cost", first_since: Date.new(2026, 4, 1))
         create(:cost_player, cost: cost, player: player, normal_cost: 5)
 
         get "/api/v1/teams/#{team.id}/roster", as: :json
@@ -198,7 +199,7 @@ RSpec.describe "Api::V1::TeamRosters", type: :request do
 
       it "returns is_starter_pitcher=false and is_relief_only=false for non-pitcher" do
         player = create(:player, :fielder)
-        create(:team_membership, team: team, player: player, squad: "first", selected_cost_type: "normal_cost")
+        create(:team_membership, team: team, player: player, squad: "first", selected_cost_type: "normal_cost", first_since: Date.new(2026, 4, 1))
         create(:cost_player, cost: cost, player: player, normal_cost: 5)
 
         get "/api/v1/teams/#{team.id}/roster", as: :json
@@ -590,7 +591,7 @@ RSpec.describe "Api::V1::TeamRosters", type: :request do
           outside_player = create(:player, number: (60 + idx).to_s, series: "hachinai")
           outside_card = create(:player_card, player: outside_player, card_set: hachinai_card_set, card_type: "batter", is_pitcher: false)
           outside_card.player_card_defenses.create!(position: "1B", range_value: 5, error_rank: "C")
-          create(:team_membership, team: team, player: outside_player, player_card: outside_card, squad: "first", selected_cost_type: "fielder_only_cost")
+          create(:team_membership, team: team, player: outside_player, player_card: outside_card, squad: "first", selected_cost_type: "fielder_only_cost", first_since: Date.new(2026, 4, 1))
           create(:cost_player, cost: cost, player: outside_player, fielder_only_cost: 4, pitcher_only_cost: 1, two_way_cost: 5)
         end
 
@@ -621,7 +622,7 @@ RSpec.describe "Api::V1::TeamRosters", type: :request do
     context "past target_date edits" do
       it "uses date-as-of squad state when saving a past target_date" do
         25.times { add_player_to_team(team: team, cost: cost, squad: "first", cost_value: 4) }
-        result = add_player_to_team(team: team, cost: cost, squad: "first", cost_value: 3)
+        result = add_player_to_team(team: team, cost: cost, squad: "second", cost_value: 3)
 
         create(:season_roster,
           season: season,
@@ -648,7 +649,7 @@ RSpec.describe "Api::V1::TeamRosters", type: :request do
 
       it "returns the saved target_date roster from the same date-as-of source" do
         25.times { add_player_to_team(team: team, cost: cost, squad: "first", cost_value: 4) }
-        result = add_player_to_team(team: team, cost: cost, squad: "first", cost_value: 3)
+        result = add_player_to_team(team: team, cost: cost, squad: "second", cost_value: 3)
 
         create(:season_roster,
           season: season,
@@ -815,7 +816,7 @@ RSpec.describe "Api::V1::TeamRosters", type: :request do
         21.times { add_player_to_team(team: team, cost: cost, squad: "first", cost_value: 3) }
         4.times do
           p = create(:player, series: "original")
-          tm = create(:team_membership, team: team, player: p, squad: "first", selected_cost_type: "normal_cost")
+          tm = create(:team_membership, team: team, player: p, squad: "first", selected_cost_type: "normal_cost", first_since: Date.new(2026, 4, 1))
           create(:cost_player, cost: cost, player: p, normal_cost: 3)
         end
         # 5th outside-world player in second squad → promote

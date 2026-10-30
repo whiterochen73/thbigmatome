@@ -44,6 +44,40 @@ RSpec.describe SeasonRoster, type: :model do
     end
   end
 
+  describe 'phase' do
+    it { is_expected.to belong_to(:recorded_by_user).class_name('User').optional }
+
+    it '既定は pre_game（試合前）' do
+      expect(described_class.new.phase).to eq('pre_game')
+      expect(create(:season_roster).reload.phase).to eq('pre_game')
+    end
+
+    %w[pre_game in_game post_game].each do |phase|
+      it "#{phase} は有効" do
+        expect(build(:season_roster, phase: phase)).to be_valid
+      end
+    end
+
+    it '不正な区分はエラー（空文字・nil・未知の値）' do
+      [ '', nil, 'midnight', 'POST_GAME' ].each do |value|
+        roster = build(:season_roster, phase: value)
+        expect(roster).not_to be_valid
+        expect(roster.errors[:phase]).to be_present
+      end
+    end
+
+    it 'DB の制約も不正な区分を弾く' do
+      roster = build(:season_roster)
+      roster.phase = 'midnight'
+      expect { roster.save!(validate: false) }.to raise_error(ActiveRecord::StatementInvalid, /season_rosters_phase_check/)
+    end
+
+    it '区分の順は pre_game < in_game < post_game' do
+      expect(%w[post_game pre_game in_game].sort_by { |p| described_class.phase_rank(p) }).to eq(%w[pre_game in_game post_game])
+      expect { described_class.phase_rank('midnight') }.to raise_error(ArgumentError)
+    end
+  end
+
   describe 'ファクトリ' do
     it 'デフォルトファクトリが有効' do
       expect(build(:season_roster)).to be_valid

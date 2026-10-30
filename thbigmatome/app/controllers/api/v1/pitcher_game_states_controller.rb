@@ -65,22 +65,22 @@ module Api
       def fatigue_summary
         target_date = params[:date]&.to_date || Date.today
 
-        # season_rostersベースでtarget_date時点の1軍メンバーを取得（現在のsquadではなく登録履歴で判定）
+        # 1軍判定は昇降格の変更記録（RosterState）で target_date・phase 時点を導く。省略時は pre_game。記録が無い選手は 2軍
+        phase = begin
+          RosterState.parse_phase(params[:phase])
+        rescue ArgumentError
+          return render json: { error: "Invalid phase" }, status: :bad_request
+        end
         # 投手能力を持つカード（can_pitchスコープ）かつ野手専念契約でない選手のみ（#5 #6）
         all_pitcher_memberships = @team.team_memberships
           .where.not(selected_cost_type: "fielder_only_cost")
           .joins(:player_card)
           .merge(PlayerCard.can_pitch)
-          .includes(:player, player_card: { player_card_abilities: :ability_definition })
-          .distinct
+          .includes(:player, :season_rosters, player_card: { player_card_abilities: :ability_definition })
+          .distinct.to_a
 
-        pitcher_memberships = all_pitcher_memberships.select do |tm|
-          latest_roster = tm.season_rosters
-                            .where("registered_on <= ?", target_date)
-                            .order(registered_on: :desc, created_at: :desc)
-                            .first
-          latest_roster && latest_roster.squad == "first"
-        end
+        first_ids = RosterState.new(@team, memberships: all_pitcher_memberships).first_memberships(target_date, phase).map(&:id).to_set
+        pitcher_memberships = all_pitcher_memberships.select { |tm| first_ids.include?(tm.id) }
 
         pitcher_ids = pitcher_memberships.map(&:player_id)
         name_map = pitcher_memberships.each_with_object({}) { |tm, h| h[tm.player_id] = tm.player.name }

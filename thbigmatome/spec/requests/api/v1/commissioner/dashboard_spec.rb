@@ -101,7 +101,8 @@ RSpec.describe "Api::V1::Commissioner::Dashboard", type: :request do
         team = create(:team, is_active: true, team_type: :normal)
         player = create(:player)
         create(:cost_player, cost: cost, player: player, normal_cost: 10)
-        create(:team_membership, team: team, player: player, squad: "first", selected_cost_type: "normal_cost")
+        create(:season, team: team, current_date: Date.current)
+        create(:team_membership, team: team, player: player, squad: "first", selected_cost_type: "normal_cost", first_since: Date.current - 30)
 
         get "/api/v1/commissioner/dashboard/costs"
         json = JSON.parse(response.body)
@@ -131,7 +132,8 @@ RSpec.describe "Api::V1::Commissioner::Dashboard", type: :request do
 
         ur_player = create(:player, name: "リン・レイファ (UR)", number: "38", series: "original")
         ur_card = create(:player_card, player: ur_player, card_set: pm_card_set, card_type: "batter", is_pitcher: false)
-        create(:team_membership, team: team, player: ur_player, player_card: ur_card, squad: "first", selected_cost_type: "normal_cost")
+        create(:season, team: team, current_date: Date.current)
+        create(:team_membership, team: team, player: ur_player, player_card: ur_card, squad: "first", selected_cost_type: "normal_cost", first_since: Date.current - 30)
 
         get "/api/v1/commissioner/dashboard/costs"
 
@@ -145,7 +147,8 @@ RSpec.describe "Api::V1::Commissioner::Dashboard", type: :request do
         team = create(:team, is_active: false, team_type: :normal)
         player = create(:player)
         create(:cost_player, cost: cost, player: player, normal_cost: 5)
-        create(:team_membership, team: team, player: player, squad: "first", selected_cost_type: "normal_cost")
+        create(:season, team: team, current_date: Date.current)
+        create(:team_membership, team: team, player: player, squad: "first", selected_cost_type: "normal_cost", first_since: Date.current - 30)
 
         get "/api/v1/commissioner/dashboard/costs"
         json = JSON.parse(response.body)
@@ -265,7 +268,7 @@ RSpec.describe "Api::V1::Commissioner::Dashboard", type: :request do
         season = create(:season, team: team, current_date: Date.current)
         player = create(:player, series: "touhou")
         create(:cost_player, cost: cost, player: player, normal_cost: 12)
-        create(:team_membership, team: team, player: player, squad: "first", selected_cost_type: "normal_cost")
+        create(:team_membership, team: team, player: player, squad: "first", selected_cost_type: "normal_cost", first_since: Date.current - 30)
 
         get "/api/v1/commissioner/dashboard/roster_status"
         json = JSON.parse(response.body)
@@ -299,8 +302,8 @@ RSpec.describe "Api::V1::Commissioner::Dashboard", type: :request do
         create(:season, team: team, current_date: Date.current)
         native_player = create(:player, series: "touhou")
         outside_player = create(:player, series: "hachinai")
-        create(:team_membership, team: team, player: native_player, squad: "first", selected_cost_type: "normal_cost")
-        create(:team_membership, team: team, player: outside_player, squad: "first", selected_cost_type: "normal_cost")
+        create(:team_membership, team: team, player: native_player, squad: "first", selected_cost_type: "normal_cost", first_since: Date.current - 30)
+        create(:team_membership, team: team, player: outside_player, squad: "first", selected_cost_type: "normal_cost", first_since: Date.current - 30)
 
         get "/api/v1/commissioner/dashboard/roster_status"
         json = JSON.parse(response.body)
@@ -352,7 +355,7 @@ RSpec.describe "Api::V1::Commissioner::Dashboard", type: :request do
         team = create(:team, is_active: true, team_type: :normal)
         season = create(:season, team: team, current_date: Date.current)
         player = create(:player, series: "touhou")
-        create(:team_membership, team: team, player: player, squad: "first", selected_cost_type: "normal_cost")
+        create(:team_membership, team: team, player: player, squad: "first", selected_cost_type: "normal_cost", first_since: Date.current - 30)
 
         get "/api/v1/commissioner/dashboard/roster_status.csv"
         csv = CSV.parse(response.body.delete("\uFEFF"), headers: true)
@@ -368,7 +371,7 @@ RSpec.describe "Api::V1::Commissioner::Dashboard", type: :request do
         create(:season, team: team1, current_date: Date.current)
         create(:season, team: team2, current_date: Date.current)
         player = create(:player, series: "touhou")
-        create(:team_membership, team: team1, player: player, squad: "first", selected_cost_type: "normal_cost")
+        create(:team_membership, team: team1, player: player, squad: "first", selected_cost_type: "normal_cost", first_since: Date.current - 30)
 
         get "/api/v1/commissioner/dashboard/roster_status.csv", params: { team_id: team1.id }
         csv = CSV.parse(response.body.delete("\uFEFF"), headers: true)
@@ -380,7 +383,7 @@ RSpec.describe "Api::V1::Commissioner::Dashboard", type: :request do
         team = create(:team, is_active: true, team_type: :normal)
         create(:season, team: team, current_date: Date.current)
         player = create(:player, series: "touhou", short_name: nil)
-        create(:team_membership, team: team, player: player, squad: "first", selected_cost_type: "normal_cost")
+        create(:team_membership, team: team, player: player, squad: "first", selected_cost_type: "normal_cost", first_since: Date.current - 30)
 
         get "/api/v1/commissioner/dashboard/roster_status.csv"
         csv = CSV.parse(response.body.delete("\uFEFF"), headers: true)

@@ -23,6 +23,7 @@ Rails.application.routes.draw do
           patch "season_schedules/:id", to: "team_seasons#update_season_schedule"
         end
         resource :roster, only: [ :show, :create ], controller: "team_rosters"
+        resources :roster_entries, only: [ :destroy ]
         resource :key_player, only: [ :create ], controller: "team_key_players"
         resources :team_players, only: [ :index, :create ]
         resources :team_memberships, only: [ :index ]

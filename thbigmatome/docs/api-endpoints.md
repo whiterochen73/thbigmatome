@@ -178,6 +178,8 @@
 ### GET /api/v1/teams/:team_id/roster
 
 - **Controller**: `Api::V1::TeamRostersController#show`
+- **Query Params**: `target_date` (YYYY-MM-DD, 省略時は現在日カーソル), `phase` (`pre_game` | `in_game` | `post_game`, 省略時は `pre_game`。不正な値は 400)
+- **1軍/2軍の決め方**: 昇降格の変更記録（`season_rosters`）を `RosterState` で (日付, 区分) 時点まで畳んで導く。記録が無い選手は 2軍（`team_memberships.squad` の写しには倒さない）。クールダウンも同じ記録から求める（直前と同じ区分への記録は畳む）
 - **Response**:
   ```json
   {
@@ -213,10 +215,22 @@
 
 - **Controller**: `Api::V1::TeamRostersController#create`
 - **Body Params**:
-  - `roster_updates`: `[{ team_membership_id: int, squad: "first"|"second" }]`
-  - `target_date`: date string
+  - `roster_updates`: `[{ team_membership_id: int, squad: "first"|"second" }]`（`squad` が `first`/`second` 以外、同じ選手の重複は 422）
+  - `target_date`: date string（省略時は現在日カーソル。過去日・未来日どちらも保存できる）
+  - `phase`: `pre_game` | `in_game` | `post_game`（省略時は `pre_game`。同じ日の中の試合前・試合後の区分。不正な値は 422）
 - **バリデーション**: 1軍人数上限(29)、最小人数（game_rules.yaml#team_composition.first_squad_minimum_players）、コスト上限（game_rules.yaml#team_composition.team_total_max_cost: 200）、クールダウン(10日: game_rules.yaml#season.cooldown_days)、再調整中選手の昇格禁止
+- **書き込みの規則**（`RosterWriter` / `RosterConstraintChecker`。設計 `context/thbig-dugout-season-record-restructure-design.md` §4.4）:
+  - 書き込んだ時点そのもの（対象日・対象区分）は絶対の基準で検査する（試合日の試合前は最低人数、1軍上限 29、1軍コスト、外の世界枠）。再調整中の昇格と、直接の昇格のクールダウン（降格から 10 日未満。同日の昇降格は免除）は、コミッショナーでも 422
+  - それより後の各時点（記録のある時点と、日程の試合日の試合前）は、この保存で**新たに生じた、または悪化した**違反だけを検査する（保存の前から外れていた日は、悪化させない限り止めない）。昇格がクールダウンに掛かる場合も同じ
+  - 違反があればコミッショナー以外は保存せず 422 `{ error, violations: [{ date, phase, kind, message }] }`（`kind`: `first_squad_min` / `first_squad_max` / `first_squad_cost` / `outside_world_limit` / `outside_world_balance` / `cooldown`）。コミッショナーは保存し、`warnings` に `{ type: "commissioner_override", message, kind, date, phase }` を返す
+  - 保存のたびに `team_memberships.squad`（写し）を変更記録の最新の状態に作り直す（現在日カーソルとの一致で条件づけない）
 - **Response**: `{ message: "Roster updated successfully", warnings: [] }`
+
+### DELETE /api/v1/teams/:team_id/roster_entries/:id
+
+- **Controller**: `Api::V1::RosterEntriesController#destroy`
+- **説明**: 昇降格の変更記録（`season_rosters` の 1 行）を取り消す。そのチームの記録でなければ 404。消したあと、その時点以降の各時点を POST /roster と同じ規則で検査し直し、新たに生じた（悪化した）違反があればコミッショナー以外は 422（記録は残る）、コミッショナーは警告つきで消す。写しは作り直す
+- **Response**: `{ message: "Roster entry deleted successfully", warnings: [] }`
 
 ---
 
@@ -969,7 +983,8 @@
 ### GET /api/v1/teams/:team_id/pitcher_game_states/fatigue_summary
 
 - **Controller**: `Api::V1::PitcherGameStatesController#fatigue_summary`
-- **Query Params**: `date` (YYYY-MM-DD, default: 今日)
+- **Query Params**: `date` (YYYY-MM-DD, default: 今日), `phase` (`pre_game` | `in_game` | `post_game`, 省略時は `pre_game`。不正な値は 400)
+- **1軍の決め方**: 昇降格の変更記録を `RosterState` で (date, phase) 時点まで畳んで導く（記録が無い投手は 2軍）
 - **Response**: チーム1軍投手の登板時の状態。投手ごとに `last_role` / `rest_days`（先発明けのみ）/ `cumulative_innings`（リリーフ明けのみ）/ `is_injured` / `is_unavailable`（先発としては登板不可 = 中2日以内。前回の役割に依らない）と、次の 5 つを返す
   - `projected_status`: 前回と同じ役割で続ける場合の状態（旧来の値）
   - `as_starter` / `as_reliever`: 「先発なら」「リリーフなら」の登板時の状態 `{ status, notes: [] }`。省略する投手は `null`（理由は `as_starter_omitted_reason` / `as_reliever_omitted_reason`）
@@ -1059,7 +1074,7 @@
 
 - **Controller**: `Api::V1::Commissioner::DashboardController#roster_status`
 - **Query Params**: `team_id` (integer, optional — 指定時は対象チームのみ), `format` ("csv" でCSVダウンロード)
-- **Response**: 全アクティブチームのロスター状況（コスト・1軍/2軍人数・外の世界枠・警告等）
+- **Response**: 全アクティブチームのロスター状況（コスト・1軍/2軍人数・外の世界枠・警告等）。1軍/2軍・クールダウンは写しでなく、シーズンの現在日カーソル・試合前の時点の変更記録（`RosterState`）から求める（`/costs`・`/cooldowns` も同じ）
 - **CSV**: `format=csv` 指定時はCSVファイルをダウンロード
 
 ---

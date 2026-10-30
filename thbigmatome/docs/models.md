@@ -743,10 +743,14 @@ class SeasonRoster < ApplicationRecord
 **関連**:
 - `belongs_to :season`
 - `belongs_to :team_membership`
+- `belongs_to :recorded_by_user` (User, optional)
 
 **バリデーション**:
 - `squad`: presence
 - `registered_on`: presence
+- `phase`: inclusion in `pre_game` / `in_game` / `post_game`（DB にも check 制約 `season_rosters_phase_check`）
+
+**状態の導き方**: 1軍/2軍は `RosterState`（`app/services/roster_state.rb`）が (日付, 区分) 時点まで畳んで導く。記録が無い選手は 2軍。`team_memberships.squad` は最新の状態のキャッシュ（保存のたびに作り直す）
 
 ---
 

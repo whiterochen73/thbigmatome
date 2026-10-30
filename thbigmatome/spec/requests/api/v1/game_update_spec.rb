@@ -330,6 +330,38 @@ RSpec.describe "PUT /api/v1/game/:id（得点保存と投手判定の作り直�
       expect(schedule.reload.game_log.bytesize).to eq(1_048_575)
     end
 
+    # PostgreSQL の text は NUL を保存できず、そのまま渡すと 500 になる。ログは無加工で保存する方針なので、消して通さず 422 で断る
+    describe "NUL 文字（\\u0000）" do
+      it "NUL を含むログは 422 で弾き、保存済みのログを変えない（500 にしない）" do
+        schedule.update!(game_log: "元のログ")
+        put_game(game_log: "[21:30] 試合\u0000開始")
+
+        expect(response).to have_http_status(:unprocessable_content)
+        expect(response.parsed_body["errors"].join).to include("game_log").or include("NUL")
+        expect(schedule.reload.game_log).to eq("元のログ")
+      end
+
+      it "NUL だけのログも 422（空文字の null 正規化には当たらない）" do
+        put_game(game_log: "\u0000")
+        expect(response).to have_http_status(:unprocessable_content)
+        expect(schedule.reload.game_log).to be_nil
+      end
+
+      it "先頭・末尾の NUL も 422" do
+        [ "\u0000abc", "abc\u0000" ].each do |log|
+          put_game(game_log: log)
+          expect(response).to have_http_status(:unprocessable_content)
+        end
+      end
+
+      it "NUL 以外の制御文字・タブ・DEL は従来どおり通り、同じバイト列で返る" do
+        log = (1..31).map(&:chr).join + "\x7F" + "\tタブ\u0001"
+        put_game(game_log: log)
+        expect(response).to have_http_status(:ok)
+        expect(schedule.reload.game_log.b).to eq(log.b)
+      end
+    end
+
     it "ログの更新は投手の判定の作り直しを動かさない" do
       stub_rebuild_failure(RuntimeError.new("should not run"))
       put_game(game_log: "abc")

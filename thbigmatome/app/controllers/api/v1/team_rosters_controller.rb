@@ -218,14 +218,7 @@ module Api
 
       # Check if a team_membership has an active absence at the given date
       def absence_info_for(team_membership, target_date)
-        active_absence = team_membership.player_absences.find do |pa|
-          end_date = pa.effective_end_date
-          if end_date
-            target_date >= pa.start_date && target_date < end_date
-          else
-            target_date >= pa.start_date
-          end
-        end
+        active_absence = team_membership.player_absences.find { |pa| pa.active_on?(target_date) }
 
         if active_absence
           {
@@ -233,8 +226,10 @@ module Api
             absence_info: {
               absence_type: active_absence.absence_type,
               reason: active_absence.reason,
+              phase: active_absence.phase,
+              effective_start_date: active_absence.effective_start_date.to_s,
               effective_end_date: active_absence.effective_end_date&.to_s,
-              remaining_days: active_absence.effective_end_date ? (active_absence.effective_end_date - target_date).to_i : nil,
+              remaining_days: active_absence.remaining_days_on(target_date),
               duration_unit: active_absence.duration_unit
             }
           }

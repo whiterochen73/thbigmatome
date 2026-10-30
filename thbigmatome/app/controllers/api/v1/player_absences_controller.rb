@@ -67,7 +67,8 @@ module Api
           :reason,
           :start_date,
           :duration,
-          :duration_unit
+          :duration_unit,
+          :phase
         )
       end
     end

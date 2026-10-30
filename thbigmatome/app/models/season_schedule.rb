@@ -24,6 +24,7 @@ class SeasonSchedule < ApplicationRecord
   GAME_LOG_MAX_BYTES = 1_048_576
   normalizes :game_log, with: ->(value) { value.empty? ? nil : value }
   validate :game_log_within_limit
+  validate :game_log_without_nul
 
   # 得点が保存・変更されたら、その試合の自チーム先発の result_category を作り直す（E2）。
   # 区分は登板記録の保存時にだけ計算されていたため、得点を後から直しても長イニング敗戦・KO が残っていた。
@@ -72,6 +73,14 @@ class SeasonSchedule < ApplicationRecord
   end
 
   private
+
+  # PostgreSQL の text 列は NUL 文字（\u0000）を保存できず、そのまま渡すと 500 になる。
+  # ログは無加工で保存する方針なので NUL を取り除いて通さず、422 で断る（他の制御文字・タブは通す）。
+  def game_log_without_nul
+    return if game_log.nil? || !game_log.include?("\u0000")
+
+    errors.add(:game_log, "に NUL 文字（\\u0000）は含められません。取り除いてから保存してください")
+  end
 
   def game_log_within_limit
     return if game_log.nil? || game_log.bytesize <= GAME_LOG_MAX_BYTES

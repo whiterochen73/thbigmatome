@@ -214,12 +214,7 @@ module Api
 
         PlayerAbsence
           .where(team_membership_id: tm_map.keys)
-          .select { |pa|
-            start = pa.start_date&.to_date
-            end_d = pa.respond_to?(:effective_end_date) ? pa.effective_end_date&.to_date : pa.end_date&.to_date
-            next false unless start && start <= target_date
-            end_d.nil? || end_d > target_date
-          }
+          .select { |pa| pa.active_on?(target_date) }
           .map { |pa| tm_map[pa.team_membership_id] }
           .compact
           .to_set

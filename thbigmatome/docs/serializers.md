@@ -238,6 +238,8 @@
 | `start_date` | 開始日 |
 | `duration` | 欠場期間 |
 | `duration_unit` | 期間単位 |
+| `phase` | 試合前 / 試合中（`pre_game` / `in_game`） |
+| `effective_start_date` | 離脱が始まる最初の日（`in_game` は `start_date` の翌日） |
 | `player_name` | 選手名（computed） |
 | `player_id` | 選手ID（computed） |
 | `effective_end_date` | 実質終了日（computed、モデル側で計算） |

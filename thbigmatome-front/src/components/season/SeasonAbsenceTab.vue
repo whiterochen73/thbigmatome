@@ -29,6 +29,16 @@
           <template v-slot:item.start_date="{ item }">
             {{ formatDate(item.start_date) }}
           </template>
+          <template v-slot:item.phase="{ item }">
+            <v-chip
+              size="small"
+              variant="outlined"
+              :color="item.phase === 'in_game' ? 'deep-orange' : undefined"
+              :data-testid="`phase-${item.id}`"
+            >
+              {{ t(`enums.player_absence.phase.${item.phase}`) }}
+            </v-chip>
+          </template>
           <template v-slot:item.absence_type="{ item }">
             <v-chip
               :color="getAbsenceColor(item.absence_type)"
@@ -92,6 +102,11 @@
                 {{ t(`enums.player_absence.absence_type.${item.absence_type}`) }}
               </v-chip>
             </template>
+            <template v-slot:item.phase="{ item }">
+              <v-chip size="small" variant="outlined">
+                {{ t(`enums.player_absence.phase.${item.phase}`) }}
+              </v-chip>
+            </template>
             <template v-slot:item.effective_end_date="{ item }">
               {{
                 item.effective_end_date
@@ -113,6 +128,7 @@
       :season-id="season?.id || 0"
       :initial-absence="selectedAbsence"
       :initial-start-date="initialStartDateForDialog"
+      :initial-phase="defaultPhase"
       @saved="handleAbsenceSaved"
     />
   </div>
@@ -123,13 +139,18 @@ import { ref, onMounted, computed } from 'vue'
 import axios from 'axios'
 import { useI18n } from 'vue-i18n'
 import type { SeasonDetail } from '@/types/seasonDetail'
-import type { PlayerAbsence } from '@/types/playerAbsence'
+import type { AbsencePhase, PlayerAbsence } from '@/types/playerAbsence'
 import PlayerAbsenceFormDialog from '@/components/PlayerAbsenceFormDialog.vue'
 import PlayerNameLink from '@/components/shared/PlayerNameLink.vue'
 
-const props = defineProps<{
-  teamId: number
-}>()
+// defaultPhase: 新規登録ダイアログの区分の既定値。試合日ページの「試合中の負傷」段は in_game を渡す
+const props = withDefaults(
+  defineProps<{
+    teamId: number
+    defaultPhase?: AbsencePhase
+  }>(),
+  { defaultPhase: 'pre_game' },
+)
 
 const { t } = useI18n()
 
@@ -143,6 +164,7 @@ const activeHeaders = computed(() => [
   { title: t('playerAbsenceHistory.tableHeaders.absenceType'), key: 'absence_type' },
   { title: t('playerAbsenceHistory.tableHeaders.reason'), key: 'reason' },
   { title: t('playerAbsenceHistory.tableHeaders.startDate'), key: 'start_date' },
+  { title: t('playerAbsenceHistory.tableHeaders.phase'), key: 'phase' },
   { title: t('seasonAbsenceTab.headers.remaining'), key: 'remaining', sortable: false },
   { title: t('playerAbsenceHistory.tableHeaders.actions'), key: 'actions', sortable: false },
 ])
@@ -152,6 +174,7 @@ const pastHeaders = computed(() => [
   { title: t('playerAbsenceHistory.tableHeaders.absenceType'), key: 'absence_type' },
   { title: t('playerAbsenceHistory.tableHeaders.reason'), key: 'reason' },
   { title: t('playerAbsenceHistory.tableHeaders.startDate'), key: 'start_date' },
+  { title: t('playerAbsenceHistory.tableHeaders.phase'), key: 'phase' },
   { title: t('seasonAbsenceTab.headers.returnDate'), key: 'effective_end_date' },
   { title: t('seasonAbsenceTab.headers.duration'), key: 'duration' },
 ])
@@ -184,7 +207,12 @@ const pastAbsences = computed(() => {
 const getRemainingCount = (absence: PlayerAbsence): number | null => {
   if (!absence.effective_end_date) return null
   const endDate = new Date(absence.effective_end_date)
-  const diffMs = endDate.getTime() - currentSeasonDate.value.getTime()
+  // 試合中の離脱は、試合に出た日（start_date）を離脱に数えない。その日に見ても翌日（effective_start_date）から数える
+  let from = currentSeasonDate.value.getTime()
+  if (absence.phase === 'in_game' && absence.effective_start_date) {
+    from = Math.max(from, new Date(absence.effective_start_date).getTime())
+  }
+  const diffMs = endDate.getTime() - from
   return Math.max(0, Math.ceil(diffMs / (1000 * 60 * 60 * 24)))
 }
 

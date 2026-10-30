@@ -82,11 +82,11 @@ module PitcherRestStatus
   # 中日数の控除・減衰凍結に使う離脱（負傷のみ）。出場停止・再調整は含めない（AMB-04「出場停止と負傷は別枠」2026-09-12）。
   # 出場可否の表示（build_injured_set）はここを通さない。全種別の離脱を見る。
   # 戻り値: { team_membership_id => [{start_date:, end_date:}, ...] }（離脱が無い id は [] で引ける）
-  #   end_date は復帰可能日（排他的）。nil は無期限離脱。
+  #   start_date は離脱の最初の日（試合中の負傷は試合日の翌日。AMB-25）。end_date は復帰可能日（排他的）。nil は無期限離脱。
   def injury_absences(team_membership_ids)
     result = Hash.new { |_hash, _key| [] }
     PlayerAbsence.injury.where(team_membership_id: team_membership_ids).each do |pa|
-      result[pa.team_membership_id] += [ { start_date: pa.start_date.to_date, end_date: pa.effective_end_date&.to_date } ]
+      result[pa.team_membership_id] += [ { start_date: pa.effective_start_date.to_date, end_date: pa.effective_end_date&.to_date } ]
     end
     result
   end

@@ -30,6 +30,8 @@ class Api::V1::Commissioner::DashboardController < Api::V1::Commissioner::BaseCo
             absence_type: pa.absence_type,
             reason: pa.reason,
             start_date: pa.start_date,
+            phase: pa.phase,
+            effective_start_date: pa.effective_start_date,
             duration: pa.duration,
             duration_unit: pa.duration_unit,
             effective_end_date: end_date,
@@ -289,12 +291,12 @@ class Api::V1::Commissioner::DashboardController < Api::V1::Commissioner::BaseCo
     return { remaining_days: nil, remaining_games: nil } unless end_date
 
     if absence.duration_unit == "days"
-      remaining_days = (end_date.to_date - season.current_date.to_date).to_i
-      { remaining_days: [ remaining_days, 0 ].max, remaining_games: nil }
+      { remaining_days: [ absence.remaining_days_on(season.current_date), 0 ].max, remaining_games: nil }
     else
+      # 試合中の負傷は、その試合日の試合を残りに数えない（counting_from が翌日に寄せる）
       remaining_games = season.season_schedules
         .where(date_type: %w[game_day interleague_game_day])
-        .where("date >= ? AND date < ?", season.current_date, end_date)
+        .where("date >= ? AND date < ?", absence.counting_from(season.current_date), end_date)
         .count
       { remaining_days: nil, remaining_games: remaining_games }
     end

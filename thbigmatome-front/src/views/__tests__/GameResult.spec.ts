@@ -34,13 +34,17 @@ const { embedLog, embedStub } = vi.hoisted(() => {
     return {
       default: defineComponent({
         name,
-        props: { teamId: { type: Number, default: undefined } },
-        setup() {
+        props: {
+          teamId: { type: Number, default: undefined },
+          // SeasonAbsenceTab の区分の既定値（他の埋め込みは受け取らない）
+          defaultPhase: { type: String, default: undefined },
+        },
+        setup(props) {
           embedLog.mounts[name] = (embedLog.mounts[name] ?? 0) + 1
           onBeforeUnmount(() => {
             embedLog.unmounts[name] = (embedLog.unmounts[name] ?? 0) + 1
           })
-          return () => h('div', { 'data-embed': name })
+          return () => h('div', { 'data-embed': name, 'data-default-phase': props.defaultPhase })
         },
       }),
     }
@@ -488,13 +492,15 @@ describe.each(LAYOUTS)('GameResult 試合日ページ: $name', ({ width, kind })
         // 他の部品は描画されない
         expect(embedLog.mounts).toEqual({ [component]: 1 })
         // SeasonPortal.vue は `:team-id="teamId"`（数値）だけを渡す
-        expect(body(wrapper, slug).findComponent({ name: component }).props()).toEqual({
-          teamId: 1,
-        })
-        // team-id 以外の props・属性（asOfDate など）を足していない（scoped style の識別子は除く）
-        expect(Object.keys(embedded.attributes()).filter((k) => !k.startsWith('data-v-'))).toEqual([
-          'data-embed',
-        ])
+        // 試合中の負傷の段だけ、離脱の区分の既定値（default-phase）を足して渡す（AMB-25）
+        const inGame = slug === 'in-game-absences'
+        expect(body(wrapper, slug).findComponent({ name: component }).props()).toEqual(
+          inGame ? { teamId: 1, defaultPhase: 'in_game' } : { teamId: 1 },
+        )
+        // team-id（と上記の default-phase）以外の props・属性（asOfDate など）を足していない（scoped style の識別子は除く）
+        expect(Object.keys(embedded.attributes()).filter((k) => !k.startsWith('data-v-'))).toEqual(
+          inGame ? ['data-embed', 'data-default-phase'] : ['data-embed'],
+        )
         expect(isShown(wrapper, slug)).toBe(true)
       },
     )
@@ -521,6 +527,19 @@ describe.each(LAYOUTS)('GameResult 試合日ページ: $name', ({ width, kind })
       await openStep(wrapper, 'absences')
       expect(embedLog.mounts.SeasonAbsenceTab).toBe(3)
       expect(body(wrapper, 'absences').find('[data-embed]').exists()).toBe(true)
+    })
+
+    it('試合中の負傷の段だけ、離脱の区分の既定値が試合中になる（離脱者の段は既定のまま）', async () => {
+      const wrapper = await mountDay({ appearances: appearanceRows(1) })
+      await openStep(wrapper, 'absences')
+      expect(body(wrapper, 'absences').find('[data-embed]').attributes('data-default-phase')).toBe(
+        undefined,
+      )
+      await leaveStep(wrapper, 'absences')
+      await openStep(wrapper, 'in-game-absences')
+      expect(
+        body(wrapper, 'in-game-absences').find('[data-embed]').attributes('data-default-phase'),
+      ).toBe('in_game')
     })
 
     describe('現在日と試合日が違う時の注記', () => {
@@ -745,21 +764,69 @@ describe.each(LAYOUTS)('GameResult 試合日ページ: $name', ({ width, kind })
   // ───────── 実日付・開始時刻・開催球場（cmd_1783 subtask_1783j 要望 1） ─────────
   describe('実日付・開始時刻・開催球場', () => {
     const panelSetup = (wrapper: Wrapper) => body(wrapper, 'setup')
+    // ゲーム内の球場の入力欄。ラベル「球場」の完全一致で引く（「TLB球場」など他の欄の表示と取り違えない）
+    const stadiumInput = (wrapper: Wrapper) =>
+      panelSetup(wrapper)
+        .findAll('.v-input')
+        .find((e) => e.find('.v-field-label').text() === '球場')!
+        .find('input')
     const field = (wrapper: Wrapper, id: string) => wrapper.findComponent(`[data-testid="${id}"]`)
     const pick = async (wrapper: Wrapper, id: string, value: string | null) => {
       field(wrapper, id).vm.$emit('update:modelValue', value)
       await flushPromises()
     }
 
-    it('3 欄が出る。既存の欄は「球場（ゲーム内）」と見出しで区別される', async () => {
+    it('3 欄が出る。ゲーム内の球場は「球場」、リアルの開催は「チャンネル」で、名前がぶつからない', async () => {
       const wrapper = await mountDay()
       const setup = body(wrapper, 'setup')
       expect(setup.find('[data-testid="real-date"] input').attributes('type')).toBe('date')
       expect(setup.text()).toContain('試合日（リアルの日付）')
       expect(setup.text()).toContain('開始時刻（目安）')
-      expect(setup.text()).toContain('開催球場')
-      const labels = setup.findAll('.v-input').map((e) => e.text())
-      expect(labels.some((l) => l.includes('球場（ゲーム内）'))).toBe(true)
+      // ラベルは完全一致で見る（「TLB球場」などの選択肢の表示名とは別）
+      const labels = setup.findAll('.v-input').map((e) => e.find('.v-field-label').text())
+      expect(labels.filter((l) => l === '球場')).toHaveLength(1)
+      expect(labels.filter((l) => l === 'チャンネル')).toHaveLength(1)
+      expect(labels).not.toContain('球場（ゲーム内）')
+      expect(labels).not.toContain('開催球場')
+    })
+
+    // 要望（Operator 2026-10-31）: 1 行目は従来の欄だけ、その下の別の行に今回足した 3 欄
+    it('欄の並び: 1 行目は 予告先発 / 対戦相手 / H/A / 球場 / DH制、2 行目は 試合日 / 開始時刻 / チャンネル', async () => {
+      const wrapper = await mountDay()
+      const rowLabels = (testid: string) =>
+        body(wrapper, 'setup')
+          .findAll(`[data-testid="${testid}"] > .v-col`)
+          // TeamMemberSelect / TeamSelect はスタブなので、ラベルは属性から読む
+          .map((c) =>
+            c.find('.v-field-label').exists()
+              ? c.find('.v-field-label').text()
+              : (c.element.firstElementChild?.getAttribute('label') ?? ''),
+          )
+
+      const setup = body(wrapper, 'setup')
+      const rows = setup.findAll('.v-row')
+      expect(rows).toHaveLength(2)
+      expect(rows[0].attributes('data-testid')).toBe('setup-row-main')
+      expect(rows[1].attributes('data-testid')).toBe('setup-row-real')
+
+      expect(rowLabels('setup-row-main')).toEqual([
+        '予告先発',
+        '対戦相手',
+        'ホーム/ビジター',
+        '球場',
+        expect.stringContaining('DH'),
+      ])
+      expect(rowLabels('setup-row-real')).toEqual([
+        '試合日（リアルの日付）',
+        '開始時刻（目安）',
+        'チャンネル',
+      ])
+      // 各欄が属する行（取り違えを防ぐため testid でも確かめる）
+      expect(rows[0].find('[data-testid="stadium"]').exists()).toBe(true)
+      for (const id of ['real-date', 'real-start-time', 'venue']) {
+        expect(rows[1].find(`[data-testid="${id}"]`).exists()).toBe(true)
+        expect(rows[0].find(`[data-testid="${id}"]`).exists()).toBe(false)
+      }
     })
 
     it('開始時刻の選択肢は 00:00〜23:30 の 30 分刻み 48 個、開催球場は 6 択（表示名つき）', async () => {
@@ -806,7 +873,7 @@ describe.each(LAYOUTS)('GameResult 試合日ページ: $name', ({ width, kind })
         async (w: Wrapper) => w.find('[data-testid="real-date"] input').setValue('2026-11-03'),
       ],
       ['開始時刻', async (w: Wrapper) => pick(w, 'real-start-time', '21:30')],
-      ['開催球場', async (w: Wrapper) => pick(w, 'venue', 'ch3')],
+      ['チャンネル', async (w: Wrapper) => pick(w, 'venue', 'ch3')],
     ])('%sを選ぶと未保存（dirty）になり、保存で解除される', async (_name, act) => {
       const wrapper = await mountDay()
       expect(wrapper.vm.hasUnsavedChanges).toBe(false)
@@ -827,10 +894,7 @@ describe.each(LAYOUTS)('GameResult 試合日ページ: $name', ({ width, kind })
       await wrapper.find('[data-testid="real-date"] input').setValue('2026-11-03')
       await pick(wrapper, 'real-start-time', '00:00')
       await pick(wrapper, 'venue', 'tlb')
-      const stadium = panelSetup(wrapper)
-        .findAll('.v-input')
-        .find((e) => e.text().includes('球場（ゲーム内）'))!
-        .find('input')
+      const stadium = stadiumInput(wrapper)
       await stadium.setValue('甲子園')
 
       mockPut.mockResolvedValueOnce({ data: { id: 100, warnings: [] } })
@@ -851,10 +915,7 @@ describe.each(LAYOUTS)('GameResult 試合日ページ: $name', ({ width, kind })
       const wrapper = await mountDay({
         game: { real_date: '2026-11-03', real_start_time: '21:30', venue: 'ch2' },
       })
-      const stadium = panelSetup(wrapper)
-        .findAll('.v-input')
-        .find((e) => e.text().includes('球場（ゲーム内）'))!
-        .find('input')
+      const stadium = stadiumInput(wrapper)
       await stadium.setValue('神宮')
       expect(wrapper.vm.hasUnsavedChanges).toBe(true)
 
@@ -1778,7 +1839,7 @@ describe.each(LAYOUTS)('GameResult 試合日ページ: $name', ({ width, kind })
           await scoreInput().setValue(9)
           const stadium = wrapper
             .findAll('[data-testid="panel-setup"] .v-input')
-            .find((e) => e.text().includes('球場（ゲーム内）'))!
+            .find((e) => e.find('.v-field-label').text() === '球場')!
             .find('input')
           await stadium.setValue('東京ドーム')
           expect(wrapper.vm.hasUnsavedChanges).toBe(true)

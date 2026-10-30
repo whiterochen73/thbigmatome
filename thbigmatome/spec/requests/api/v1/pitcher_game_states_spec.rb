@@ -1042,6 +1042,88 @@ RSpec.describe "Api::V1::PitcherGameStatesController", type: :request do
       end
     end
 
+    describe "build_injured_set: 試合中の負傷（phase: in_game。AMB-25 / 設計書 S9）" do
+      let(:pitcher2) { create(:player, :pitcher) }
+      let!(:team_membership2) { create(:team_membership, team: team, player: pitcher2) }
+      let(:season) { create(:season, team: team) }
+
+      def injured?(date)
+        get_states(date: date, player_ids: [ pitcher2.id ])
+        response.parsed_body.find { |e| e["player_id"] == pitcher2.id }["is_injured"]
+      end
+
+      it "試合中に負傷した投手は、その日の登板には選べる（is_injured: false）。翌日は離脱中、D+N+1 に復帰" do
+        create(:player_absence, team_membership: team_membership2, season: season,
+          start_date: Date.new(2026, 3, 15), duration: 2, duration_unit: "days", phase: "in_game")
+
+        expect(injured?("2026-03-14")).to be false
+        expect(injured?("2026-03-15")).to be false
+        expect(injured?("2026-03-16")).to be true
+        expect(injured?("2026-03-17")).to be true
+        expect(injured?("2026-03-18")).to be false
+      end
+
+      it "同じ条件の試合前の負傷は、その日から離脱中（従来どおり）" do
+        create(:player_absence, team_membership: team_membership2, season: season,
+          start_date: Date.new(2026, 3, 15), duration: 2, duration_unit: "days", phase: "pre_game")
+
+        expect(injured?("2026-03-15")).to be true
+        expect(injured?("2026-03-16")).to be true
+        expect(injured?("2026-03-17")).to be false
+      end
+
+      it "試合数の離脱: 試合中は D の試合を数えず、翌日が移動日でも次の試合日まで離脱" do
+        [ [ 15, "game_day" ], [ 16, "off_day" ], [ 17, "game_day" ], [ 18, "game_day" ] ].each do |day, type|
+          create(:season_schedule, season: season, date: Date.new(2026, 3, day), date_type: type)
+        end
+        create(:player_absence, team_membership: team_membership2, season: season,
+          start_date: Date.new(2026, 3, 15), duration: 1, duration_unit: "games", phase: "in_game")
+
+        expect(injured?("2026-03-15")).to be false
+        expect(injured?("2026-03-16")).to be true
+        expect(injured?("2026-03-17")).to be true
+        expect(injured?("2026-03-18")).to be false
+      end
+
+      it "出場停止・調整の試合中区分も同じ数え方で、その日の登板には選べる" do
+        create(:player_absence, :suspension, team_membership: team_membership2, season: season,
+          start_date: Date.new(2026, 3, 15), duration: 1, duration_unit: "days", phase: "in_game")
+
+        expect(injured?("2026-03-15")).to be false
+        expect(injured?("2026-03-16")).to be true
+        expect(injured?("2026-03-17")).to be false
+      end
+    end
+
+    describe "負傷離脱中の休養日数凍結（試合中の負傷。AMB-25）" do
+      let(:pitcher3) { create(:player, :pitcher) }
+      let!(:tm3) { create(:team_membership, team: team, player: pitcher3) }
+      let(:season3) { create(:season, team: team) }
+
+      def create_pgs3(schedule_date:)
+        game = create(:game, competition: competition, home_team: team, visitor_team: create(:team))
+        create(:pitcher_game_state, pitcher: pitcher3, team: team, competition: competition, game: game,
+          role: "starter", schedule_date: schedule_date)
+      end
+
+      def rest_days_on(date)
+        get "/api/v1/teams/#{team.id}/pitcher_game_states", params: { date: date, player_ids: [ pitcher3.id ] }
+        response.parsed_body.find { |e| e["player_id"] == pitcher3.id }["rest_days"]
+      end
+
+      # 3/1 登板 → target 3/7: 休み日は 3/2〜3/6 の 5 日
+      it "試合中の負傷 3/1 に 3 日 → 離脱は 3/2〜3/4 の 3 日分を引く（中2日）。試合前なら 3/1〜3/3 のうち 3/2・3/3 の 2 日分しか引かない（中3日）" do
+        create_pgs3(schedule_date: "2026-03-01")
+        absence = create(:player_absence, team_membership: tm3, season: season3,
+          start_date: Date.new(2026, 3, 1), duration: 3, duration_unit: "days", phase: "in_game")
+
+        expect(rest_days_on("2026-03-07")).to eq(2)
+
+        absence.update!(phase: "pre_game")
+        expect(rest_days_on("2026-03-07")).to eq(3)
+      end
+    end
+
     describe "負傷離脱中の休養日数凍結・累積イニング減衰凍結・中10日全快" do
       let(:pitcher3) { create(:player, :pitcher) }
       let!(:tm3) { create(:team_membership, team: team, player: pitcher3) }

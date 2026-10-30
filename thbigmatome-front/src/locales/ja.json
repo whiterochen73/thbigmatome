@@ -140,6 +140,7 @@
       "absenceType": "離脱種別",
       "reason": "理由",
       "startDate": "開始日",
+      "phase": "区分",
       "duration": "期間",
       "durationUnit": "期間単位",
       "actions": "操作"
@@ -164,7 +165,13 @@
       "enterDuration": "期間を入力してください",
       "durationMin": "期間は1以上である必要があります",
       "durationUnit": "期間単位",
-      "selectDurationUnit": "期間単位を選択してください"
+      "selectDurationUnit": "期間単位を選択してください",
+      "phase": "区分",
+      "selectPhase": "区分を選択してください",
+      "phaseHint": {
+        "pre_game": "開始日の当日から数える（試合前の負傷）",
+        "in_game": "開始日の試合には出ていて、翌日から数える（試合中の負傷）"
+      }
     },
     "notifications": {
       "saveSuccess": "離脱情報を保存しました。",
@@ -266,11 +273,11 @@
       "home": "ホーム",
       "away": "ビジター"
     },
-    "stadium": "球場（ゲーム内）",
+    "stadium": "球場",
     "realDate": "試合日（リアルの日付）",
     "realStartTime": "開始時刻（目安）",
     "venue": {
-      "title": "開催球場",
+      "title": "チャンネル",
       "ch1": "チャンネル1",
       "ch2": "チャンネル2",
       "ch3": "チャンネル3",
@@ -1069,6 +1076,10 @@
       "duration_unit": {
         "days": "日間",
         "games": "試合"
+      },
+      "phase": {
+        "pre_game": "試合前",
+        "in_game": "試合中"
       }
     }
   },

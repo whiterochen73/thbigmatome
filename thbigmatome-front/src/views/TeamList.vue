@@ -2,7 +2,7 @@
   <v-container>
     <PageHeader :title="t('teamList.title')">
       <template #actions>
-        <v-btn color="accent" variant="flat" @click="openDialog()" prepend-icon="mdi-plus">
+        <v-btn color="action" variant="flat" @click="openDialog()" prepend-icon="mdi-plus">
           {{ t('teamList.addTeam') }}
         </v-btn>
       </template>
@@ -81,7 +81,7 @@
             <p class="text-caption text-disabled mb-4">
               「チーム追加」からチームを作成し、メンバーを登録してシーズンを開始できます
             </p>
-            <v-btn color="accent" variant="flat" prepend-icon="mdi-plus" @click="openDialog()">
+            <v-btn color="action" variant="flat" prepend-icon="mdi-plus" @click="openDialog()">
               {{ t('teamList.addTeam') }}
             </v-btn>
           </div>

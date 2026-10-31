@@ -2,7 +2,7 @@
   <v-container>
     <PageHeader :title="t('managerList.title')">
       <template #actions>
-        <v-btn color="accent" variant="flat" @click="openDialog()" prepend-icon="mdi-plus">
+        <v-btn color="action" variant="flat" @click="openDialog()" prepend-icon="mdi-plus">
           {{ t('managerList.addManager') }}
         </v-btn>
       </template>

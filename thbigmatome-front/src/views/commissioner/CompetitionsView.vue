@@ -20,7 +20,7 @@
       <v-col cols="12">
         <DataCard title="大会一覧">
           <template #title-actions>
-            <v-btn color="accent" variant="flat" @click="openCreateDialog">新規大会作成</v-btn>
+            <v-btn color="action" variant="flat" @click="openCreateDialog">新規大会作成</v-btn>
           </template>
           <v-alert
             v-if="errorMessage"
@@ -100,7 +100,7 @@
         <v-card-actions>
           <v-spacer></v-spacer>
           <v-btn variant="text" @click="closeCreateDialog">キャンセル</v-btn>
-          <v-btn color="accent" variant="flat" @click="createCompetition" :loading="creating"
+          <v-btn color="action" variant="flat" @click="createCompetition" :loading="creating"
             >作成</v-btn
           >
         </v-card-actions>
@@ -144,7 +144,7 @@
         <v-card-actions>
           <v-spacer></v-spacer>
           <v-btn variant="text" @click="closeEditDialog">キャンセル</v-btn>
-          <v-btn color="accent" variant="flat" @click="updateCompetition" :loading="updating"
+          <v-btn color="action" variant="flat" @click="updateCompetition" :loading="updating"
             >更新</v-btn
           >
         </v-card-actions>

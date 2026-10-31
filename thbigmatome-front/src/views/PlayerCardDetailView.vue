@@ -426,7 +426,7 @@
         <v-card-actions>
           <v-spacer></v-spacer>
           <v-btn @click="basicEditDialog = false">キャンセル</v-btn>
-          <v-btn color="accent" variant="flat" :loading="saving" @click="saveBasicInfo">保存</v-btn>
+          <v-btn color="action" variant="flat" :loading="saving" @click="saveBasicInfo">保存</v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
@@ -509,7 +509,7 @@
         <v-card-actions>
           <v-spacer></v-spacer>
           <v-btn @click="defenseEditDialog = false">キャンセル</v-btn>
-          <v-btn color="accent" variant="flat" :loading="saving" @click="saveDefenses">保存</v-btn>
+          <v-btn color="action" variant="flat" :loading="saving" @click="saveDefenses">保存</v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
@@ -624,7 +624,7 @@
         <v-card-actions>
           <v-spacer></v-spacer>
           <v-btn @click="traitEditDialog = false">キャンセル</v-btn>
-          <v-btn color="accent" variant="flat" :loading="saving" @click="saveTraits">保存</v-btn>
+          <v-btn color="action" variant="flat" :loading="saving" @click="saveTraits">保存</v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>

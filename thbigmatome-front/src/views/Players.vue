@@ -3,7 +3,7 @@
   <v-container fluid>
     <PageHeader :title="t('playerList.title')">
       <template #actions>
-        <v-btn color="accent" variant="flat" @click="openDialog">
+        <v-btn color="action" variant="flat" @click="openDialog">
           {{ t('playerList.addPlayer') }}
         </v-btn>
       </template>

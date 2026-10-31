@@ -170,7 +170,7 @@ const confirmDelete = async (item: T) => {
   const isConfirmed = await confirmDialog.value.open(
     t(`${props.i18nKey}.deleteConfirmTitle`),
     t(`${props.i18nKey}.deleteConfirmMessage`),
-    { color: 'error' },
+    { destructive: true },
   )
 
   if (isConfirmed) {

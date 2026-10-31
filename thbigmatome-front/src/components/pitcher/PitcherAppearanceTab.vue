@@ -3,7 +3,7 @@
     <!-- 試合結果 -->
     <div class="d-flex align-center mb-3">
       <span class="text-caption text-grey mr-2">試合結果:</span>
-      <v-chip :color="gameResultColor" size="small">{{ gameResultLabel }}</v-chip>
+      <v-chip :color="gameResultColor" variant="flat" size="small">{{ gameResultLabel }}</v-chip>
     </div>
 
     <template v-if="loadingPitchers">
@@ -17,7 +17,7 @@
         :key="idx"
         class="pitcher-row pa-2 mb-1 rounded"
         :class="[
-          idx === 0 ? 'bg-blue-lighten-5' : 'bg-grey-lighten-4',
+          idx === 0 ? 'bg-zone-game' : 'bg-surface-variant',
           dragSrcIdx === idx ? 'opacity-50' : '',
         ]"
         style="position: relative"
@@ -33,7 +33,7 @@
           icon
           size="x-small"
           variant="text"
-          color="error"
+          color="danger-ink"
           style="position: absolute; top: 4px; right: 4px; z-index: 1"
           @click="removeRow(idx)"
         >
@@ -47,7 +47,7 @@
             <v-icon
               v-if="idx > 0"
               size="small"
-              color="grey-lighten-1"
+              class="on-surface-variant"
               style="cursor: grab; margin-right: 2px; flex-shrink: 0"
             >
               mdi-drag-vertical
@@ -58,7 +58,7 @@
             />
             <span
               class="text-caption font-weight-bold"
-              :class="idx === 0 ? 'text-blue-darken-2' : 'text-medium-emphasis'"
+              :class="idx === 0 ? 'text-link' : 'text-medium-emphasis'"
               style="min-width: 42px; display: inline-block"
             >
               {{ idx === 0 ? '先発' : `${idx + 1}番手` }}
@@ -173,7 +173,7 @@
                 v-for="opt in getDecisionChipOptions(idx)"
                 :key="String(opt.value)"
                 :color="getChipColor(opt.value, row.decision)"
-                :variant="row.decision === opt.value ? 'elevated' : 'outlined'"
+                :variant="row.decision === opt.value ? 'flat' : 'outlined'"
                 :disabled="opt.disabled"
                 size="small"
                 style="cursor: pointer"
@@ -207,7 +207,11 @@
           <!-- 結果区分チップ -->
           <v-col cols="auto" class="ml-auto">
             <span class="text-caption text-medium-emphasis mr-1">結果区分:</span>
-            <v-chip size="x-small" :color="resultCategoryColor(computeResultCategory(idx))">
+            <v-chip
+              size="x-small"
+              :color="resultCategoryColor(computeResultCategory(idx))"
+              variant="flat"
+            >
               {{ resultCategoryLabel(computeResultCategory(idx)) }}
             </v-chip>
           </v-col>
@@ -456,10 +460,10 @@ const gameResultLabel = computed(() => {
 
 const gameResultColor = computed(() => {
   const map: Record<string, string> = {
-    win: 'success',
-    lose: 'error',
-    draw: 'grey',
-    no_game: 'grey',
+    win: 'result-win',
+    lose: 'result-loss',
+    draw: 'result-draw',
+    no_game: 'result-nogame',
   }
   return map[props.gameResult] ?? 'default'
 })
@@ -645,7 +649,12 @@ function getDecisionChipOptions(idx: number) {
 
 function getChipColor(value: PitcherDecision, current: PitcherDecision): string {
   if (value !== current) return 'default'
-  const map: Record<string, string> = { W: 'warning', L: 'primary', S: 'success', H: 'info' }
+  const map: Record<string, string> = {
+    W: 'result-win',
+    L: 'result-loss',
+    S: 'state-info',
+    H: 'state-neutral',
+  }
   return value ? (map[value] ?? 'default') : 'default'
 }
 
@@ -666,11 +675,11 @@ function resultCategoryLabel(cat: string | null): string {
 
 function resultCategoryColor(cat: string | null): string {
   const map: Record<string, string> = {
-    ko: 'error',
-    no_game: 'grey',
-    long_loss: 'warning',
-    normal: 'success',
-    pending: 'default',
+    ko: 'state-warn',
+    no_game: 'result-nogame',
+    long_loss: 'state-todo',
+    normal: 'state-done',
+    pending: 'state-neutral',
   }
   return cat ? (map[cat] ?? 'default') : 'default'
 }

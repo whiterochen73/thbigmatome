@@ -53,7 +53,14 @@
           density="compact"
         >
           <template v-slot:[`item.status`]="{ item }">
-            <v-chip :color="item.status === 'confirmed' ? 'green' : 'orange'" size="small">
+            <v-chip
+              :color="item.status === 'confirmed' ? 'state-done' : 'state-todo'"
+              size="small"
+              variant="flat"
+              :prepend-icon="
+                item.status === 'confirmed' ? 'mdi-check-circle' : 'mdi-circle-outline'
+              "
+            >
               {{ item.status }}
             </v-chip>
           </template>
@@ -62,7 +69,7 @@
               v-if="item.game_record_id"
               size="small"
               variant="text"
-              color="primary"
+              color="link"
               @click="router.push(`/game-records/${item.game_record_id}`)"
               >レビュー</v-btn
             >

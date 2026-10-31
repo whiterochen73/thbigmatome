@@ -160,7 +160,7 @@ const deleteTeam = async (id: number) => {
   const result = await confirmDialog.value.open(
     t('teamList.deleteConfirmTitle'),
     t('teamList.deleteConfirmMessage'),
-    { color: 'error' },
+    { destructive: true },
   )
   if (!result) {
     return

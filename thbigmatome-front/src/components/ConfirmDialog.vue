@@ -8,7 +8,12 @@
         <v-btn variant="text" @click="cancel">
           {{ t('actions.cancel') }}
         </v-btn>
-        <v-btn :color="color" variant="flat" @click="confirm">
+        <v-btn
+          :color="destructive ? 'danger-ink' : 'action'"
+          :variant="destructive ? 'outlined' : 'flat'"
+          :prepend-icon="destructive ? 'mdi-delete-outline' : undefined"
+          @click="confirm"
+        >
           {{ t('actions.ok') }}
         </v-btn>
       </v-card-actions>
@@ -25,14 +30,14 @@ const { t } = useI18n()
 const dialog = ref(false)
 const title = ref('')
 const message = ref<string | null>(null)
-const color = ref('primary')
+const destructive = ref(false)
 
 let resolvePromise: (value: boolean) => void
 
-const open = (newTitle: string, newMessage?: string, options?: { color?: string }) => {
+const open = (newTitle: string, newMessage?: string, options?: { destructive?: boolean }) => {
   title.value = newTitle
   message.value = newMessage ?? null
-  color.value = options?.color || 'primary'
+  destructive.value = options?.destructive ?? false
   dialog.value = true
   return new Promise<boolean>((resolve) => {
     resolvePromise = resolve

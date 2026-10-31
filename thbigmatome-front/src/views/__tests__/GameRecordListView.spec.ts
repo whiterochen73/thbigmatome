@@ -65,6 +65,27 @@ const mockGameRecords = [
 const mockPagination = { page: 1, per_page: 20, total: 2, total_pages: 1 }
 
 describe('GameRecordListView', () => {
+  // Test Basis: thbig-dugout-visual-stage5-mapping.md §7 b3-10〜b3-12
+  it('βと全ステータスの状態チップに役割色、flat、アイコンを付ける', async () => {
+    const router = createTestRouter()
+    const wrapper = mount(GameRecordListView, { global: { plugins: [vuetify, router] } })
+    await flushPromises()
+    for (const [label, color, icon] of [
+      ['β', 'state-neutral', 'mdi-flask-outline'],
+      ['未確定', 'state-todo', 'mdi-circle-outline'],
+      ['確定済み', 'state-done', 'mdi-check-circle'],
+    ]) {
+      const matching = wrapper
+        .findAllComponents(components.VChip)
+        .filter((chip) => chip.text() === label)
+      expect(matching.length, label).toBeGreaterThan(0)
+      for (const chip of matching) {
+        expect(chip.props('color')).toBe(color)
+        expect(chip.props('variant')).toBe('flat')
+        expect(chip.props('prependIcon')).toBe(icon)
+      }
+    }
+  })
   beforeEach(() => {
     vi.clearAllMocks()
     vi.mocked(axios.get).mockResolvedValue({

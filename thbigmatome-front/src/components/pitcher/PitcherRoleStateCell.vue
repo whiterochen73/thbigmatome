@@ -1,7 +1,7 @@
 <template>
   <div :data-testid="testId">
     <template v-if="state">
-      <v-chip :color="roleStatusColor(state.status)" size="x-small">
+      <v-chip :color="roleStatusColor(state.status)" variant="flat" size="x-small">
         {{ roleStatusLabel(state.status) }}
       </v-chip>
       <div

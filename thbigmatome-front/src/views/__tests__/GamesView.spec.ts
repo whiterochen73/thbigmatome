@@ -32,6 +32,31 @@ import axios from 'axios'
 const vuetify = createVuetify({ components, directives })
 
 describe('GamesView', () => {
+  // Test Basis: thbig-dugout-visual-stage5-mapping.md §7 b3-13
+  it('全ての確定・下書きチップに状態色と flat とアイコンを付ける', async () => {
+    ;(axios.get as ReturnType<typeof vi.fn>).mockResolvedValue({
+      data: [
+        { id: 1, real_date: '2026-01-01', status: 'confirmed' },
+        { id: 2, real_date: '2026-01-02', status: 'draft' },
+      ],
+    })
+    const wrapper = mount(GamesView, { global: { plugins: [vuetify] } })
+    await flushPromises()
+    for (const [status, color, icon] of [
+      ['confirmed', 'state-done', 'mdi-check-circle'],
+      ['draft', 'state-todo', 'mdi-circle-outline'],
+    ]) {
+      const matching = wrapper
+        .findAllComponents(components.VChip)
+        .filter((chip) => chip.text() === status)
+      expect(matching.length, status).toBeGreaterThan(0)
+      for (const chip of matching) {
+        expect(chip.props('color')).toBe(color)
+        expect(chip.props('variant')).toBe('flat')
+        expect(chip.props('prependIcon')).toBe(icon)
+      }
+    }
+  })
   beforeEach(() => {
     vi.clearAllMocks()
     ;(axios.get as ReturnType<typeof vi.fn>).mockResolvedValue({ data: [] })

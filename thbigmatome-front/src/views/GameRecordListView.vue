@@ -2,14 +2,21 @@
   <v-container>
     <PageHeader title="パーサー結果レビュー">
       <template #actions>
-        <v-chip color="amber-darken-2" size="small" label>β</v-chip>
+        <v-chip
+          color="state-neutral"
+          variant="flat"
+          prepend-icon="mdi-flask-outline"
+          size="small"
+          label
+          >β</v-chip
+        >
       </template>
     </PageHeader>
 
     <!-- フィルター -->
     <FilterBar>
       <template #filters>
-        <v-btn-toggle v-model="filterStatus" density="compact" rounded="sm" color="primary">
+        <v-btn-toggle v-model="filterStatus" density="compact" rounded="sm" color="link">
           <v-btn value="">全ステータス</v-btn>
           <v-btn value="draft">draft</v-btn>
           <v-btn value="confirmed">confirmed</v-btn>
@@ -57,9 +64,13 @@
 
           <template v-slot:[`item.status`]="{ item }">
             <v-chip
-              :color="item.status === 'confirmed' ? 'success' : 'amber-darken-2'"
+              :color="item.status === 'confirmed' ? 'state-done' : 'state-todo'"
               size="small"
               label
+              variant="flat"
+              :prepend-icon="
+                item.status === 'confirmed' ? 'mdi-check-circle' : 'mdi-circle-outline'
+              "
             >
               {{ item.status === 'confirmed' ? '確定済み' : '未確定' }}
             </v-chip>

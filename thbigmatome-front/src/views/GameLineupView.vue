@@ -49,7 +49,12 @@
                         :player-id="entry.player_id"
                         :player-name="entry.player_name"
                       />
-                      <v-chip v-if="entry.is_dh_pitcher" size="x-small" color="purple" class="ml-1"
+                      <v-chip
+                        v-if="entry.is_dh_pitcher"
+                        size="x-small"
+                        color="tag-pitcher"
+                        variant="flat"
+                        class="ml-1"
                         >P/DH</v-chip
                       >
                     </td>

@@ -124,6 +124,15 @@ describe('GameLineupView.vue', () => {
   it('is_dh_pitcher=trueの選手にP/DHチップが表示される', async () => {
     const wrapper = await mountView()
     expect(wrapper.text()).toContain('P/DH')
+    // Test Basis: thbig-dugout-visual-stage5-mapping.md §7 b3-15
+    const chips = wrapper
+      .findAllComponents(components.VChip)
+      .filter((chip) => chip.text() === 'P/DH')
+    expect(chips.length).toBeGreaterThan(0)
+    for (const chip of chips) {
+      expect(chip.props('color')).toBe('tag-pitcher')
+      expect(chip.props('variant')).toBe('flat')
+    }
   })
 
   it('ベンチ選手が表示される', async () => {

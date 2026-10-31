@@ -98,6 +98,7 @@ const i18n = createI18n({
       baseball: {
         positions: {
           pitcher: '投手',
+          fielder: '野手',
           catcher: '捕手',
           infielder: '内野手',
           outfielder: '外野手',
@@ -167,7 +168,10 @@ function makeTeamPlayer(overrides: Record<string, unknown> = {}) {
   }
 }
 
-function setupDefaultMocks(teamPlayers: Record<string, unknown>[] = []) {
+function setupDefaultMocks(
+  teamPlayers: Record<string, unknown>[] = [],
+  candidates: Record<string, unknown>[] = [],
+) {
   vi.mocked(axios.get).mockImplementation((url: string) => {
     if (url.includes('/teams/') && url.endsWith('/team_players')) {
       return Promise.resolve({ data: teamPlayers })
@@ -178,7 +182,7 @@ function setupDefaultMocks(teamPlayers: Record<string, unknown>[] = []) {
       })
     }
     if (url === '/team_registration_players') {
-      return Promise.resolve({ data: [] })
+      return Promise.resolve({ data: candidates })
     }
     if (url === '/player-types') {
       return Promise.resolve({
@@ -197,8 +201,11 @@ function setupDefaultMocks(teamPlayers: Record<string, unknown>[] = []) {
   })
 }
 
-async function mountTeamMembers(teamPlayers: Record<string, unknown>[] = []) {
-  setupDefaultMocks(teamPlayers)
+async function mountTeamMembers(
+  teamPlayers: Record<string, unknown>[] = [],
+  candidates: Record<string, unknown>[] = [],
+) {
+  setupDefaultMocks(teamPlayers, candidates)
   const router = createTestRouter()
   router.push('/teams/1/members')
   await router.isReady()
@@ -215,6 +222,39 @@ async function mountTeamMembers(teamPlayers: Record<string, unknown>[] = []) {
 }
 
 describe('TeamMembers.vue', () => {
+  // Test Basis: thbig-dugout-visual-stage5-mapping.md §7 b2-7〜b2-8, b2-12
+  it('候補の投手・野手チップは役割色の flat、人数チップは link', async () => {
+    const wrapper = await mountTeamMembers(
+      [makeTeamPlayer({ id: 3, position: 'pitcher' })],
+      [
+        makeTeamPlayer({ id: 1, position: 'pitcher' }),
+        makeTeamPlayer({ id: 2, position: 'fielder' }),
+      ],
+    )
+    const autocomplete = wrapper.findComponent(components.VAutocomplete)
+    expect(autocomplete.props('items')).toHaveLength(2)
+    ;(autocomplete.vm as unknown as { menu: boolean }).menu = true
+    await flushPromises()
+    for (const [label, color, icon] of [
+      ['投手', 'tag-pitcher', 'mdi-baseball'],
+      ['野手', 'tag-fielder', 'mdi-baseball-bat'],
+    ]) {
+      const matching = wrapper
+        .findAllComponents(components.VChip)
+        .filter((chip) => chip.text() === label)
+      expect(matching.length, label).toBeGreaterThan(0)
+      for (const chip of matching) {
+        expect(chip.props('color')).toBe(color)
+        expect(chip.props('variant')).toBe('flat')
+        expect(chip.props('prependIcon')).toBe(icon)
+      }
+    }
+    const counts = wrapper
+      .findAllComponents(components.VChip)
+      .filter((chip) => chip.text().includes(':'))
+    expect(counts.length).toBeGreaterThan(0)
+    for (const chip of counts) expect(chip.props('color')).toBe('link')
+  })
   beforeEach(() => {
     vi.clearAllMocks()
     mockShowSnackbar.mockClear()

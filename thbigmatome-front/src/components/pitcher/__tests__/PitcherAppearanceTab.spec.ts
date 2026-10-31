@@ -117,6 +117,57 @@ function getPitcherItem(wrapper: ReturnType<typeof mount>) {
 }
 
 describe('PitcherAppearanceTab', () => {
+  // Test Basis: thbig-dugout-visual-stage5-mapping.md §7 b4-10, b4-15〜b4-26
+  it('試合結果・責任投手・結果区分を役割色の flat チップで表示する', async () => {
+    for (const [result, color] of [
+      ['win', 'result-win'],
+      ['lose', 'result-loss'],
+      ['draw', 'result-draw'],
+      ['no_game', 'result-nogame'],
+    ] as const) {
+      mockPitcherRequests(null)
+      const wrapper = mount(PitcherAppearanceTab, {
+        props: { ...defaultProps, gameResult: result },
+        global: { plugins: [vuetify] },
+      })
+      await flushPromises()
+      const chip = wrapper.findAllComponents(components.VChip)[0]!
+      expect(chip.props('color')).toBe(color)
+      expect(chip.props('variant')).toBe('flat')
+      wrapper.unmount()
+    }
+    const wrapper = await mountComponent(null)
+    const row = wrapper.vm.pitcherRows[0]
+    for (const [decision, color] of [
+      ['W', 'result-win'],
+      ['L', 'result-loss'],
+      ['S', 'state-info'],
+      ['H', 'state-neutral'],
+    ] as const) {
+      row.decision = decision
+      await flushPromises()
+      const chips = wrapper
+        .findAllComponents(components.VChip)
+        .filter((chip) => chip.text() === decision)
+      expect(chips.length, decision).toBeGreaterThan(0)
+      for (const chip of chips) {
+        expect(chip.props('color')).toBe(color)
+        expect(chip.props('variant')).toBe('flat')
+      }
+    }
+    for (const [category, color] of [
+      ['ko', 'state-warn'],
+      ['no_game', 'result-nogame'],
+      ['long_loss', 'state-todo'],
+      ['normal', 'state-done'],
+      ['pending', 'state-neutral'],
+    ]) {
+      expect(wrapper.vm.resultCategoryColor(category), category).toBe(color)
+    }
+    expect(
+      wrapper.findAllComponents(components.VChip).some((chip) => chip.props('variant') === 'flat'),
+    ).toBe(true)
+  })
   beforeEach(() => {
     vi.clearAllMocks()
   })
@@ -349,6 +400,28 @@ describe('PitcherAppearanceTab', () => {
         result_category: resultCategory,
       }
     }
+
+    // Test Basis: thbig-dugout-visual-stage5-mapping.md §7 b4-21〜b4-26
+    it('保存済み結果区分の全チップを対応する役割色の flat で表示する', async () => {
+      for (const [category, label, color] of [
+        ['ko', 'KO', 'state-warn'],
+        ['no_game', 'ノーゲーム', 'result-nogame'],
+        ['long_loss', '長イニング敗戦', 'state-todo'],
+        ['normal', '通常', 'state-done'],
+        ['pending', '保存後に確定', 'state-neutral'],
+      ]) {
+        const wrapper = await mountWith('lose', [savedStarter(category!)])
+        const chips = wrapper
+          .findAllComponents(components.VChip)
+          .filter((chip) => chip.text() === label)
+        expect(chips.length, category).toBeGreaterThan(0)
+        for (const chip of chips) {
+          expect(chip.props('color')).toBe(color)
+          expect(chip.props('variant')).toBe('flat')
+        }
+        wrapper.unmount()
+      }
+    })
 
     it('保存済みの先発はサーバの result_category を表示する（画面の fatigue_p_used=0 に引きずられない）', async () => {
       const wrapper = await mountWith('lose', [savedStarter('long_loss')])

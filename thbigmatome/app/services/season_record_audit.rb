@@ -124,8 +124,10 @@ class SeasonRecordAudit
   def load_data
     teams_scope = Team.all
     teams_scope = teams_scope.where(id: @team_id) if @team_id
-    @season_by_team = Season.where(team_id: teams_scope.select(:id)).pluck(:team_id, :id, :current_date)
-                            .to_h { |team_id, season_id, current| [ team_id, { id: season_id, current_date: current } ] }
+    season_rows = Season.where(team_id: teams_scope.select(:id)).pluck(:team_id, :id, :current_date)
+    # 現在日は日程の結果から導く（SeasonCurrentRange）。日程の無いシーズンだけ列の値
+    ranges = SeasonCurrentRange.for_seasons(season_rows.map { |_, season_id, _| season_id })
+    @season_by_team = season_rows.to_h { |team_id, season_id, current| [ team_id, { id: season_id, current_date: ranges[season_id]&.current_date || current } ] }
     @team_by_season = @season_by_team.to_h { |team_id, s| [ s[:id], team_id ] }
 
     memberships = TeamMembership.where(team_id: @season_by_team.keys).pluck(:id, :team_id, :player_id, :squad)

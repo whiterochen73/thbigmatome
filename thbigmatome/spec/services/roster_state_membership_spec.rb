@@ -151,6 +151,47 @@ RSpec.describe RosterState, "チーム編成の変更記録（cmd_1784 段2）" 
     end
   end
 
+  describe "#on_team_memberships / #first_memberships（在籍の読み。subtask_1784i の生存変異 M08）" do
+    let(:state) { described_class.new(team) }
+    let!(:off_team_no_record) { create(:team_membership, team: team).tap { |tm| tm.update_columns(on_team: false) } }
+
+    it "記録が無い行は、行の今の値の在籍(on_team)で読む。在籍外(false)の行は出さない" do
+      ids = state.on_team_memberships(Date.new(2026, 5, 1)).map(&:id)
+
+      expect(ids).to eq([ membership.id ])
+      expect(ids).not_to include(off_team_no_record.id)
+    end
+
+    it "記録のある行は、最初の記録より前の日付では在籍外（記録が無い行の倒し先とは別）" do
+      change("join", Date.new(2026, 4, 1))
+
+      expect(described_class.new(team).on_team_memberships(Date.new(2026, 3, 31), "post_game").map(&:id)).to be_empty
+      expect(described_class.new(team).on_team_memberships(Date.new(2026, 4, 1)).map(&:id)).to eq([ membership.id ])
+    end
+
+    it "在籍外の行が 1軍の最後の記録を持っていても、1軍には数えない" do
+      create(:season_roster, season: season, team_membership: off_team_no_record, squad: "first", registered_on: Date.new(2026, 4, 1))
+
+      expect(described_class.new(team).first_memberships(Date.new(2026, 5, 1)).map(&:id)).to be_empty
+    end
+  end
+
+  describe "#view（契約・カード・除外が同じで表示名だけ違う時点。subtask_1784i の生存変異 M21）" do
+    it "行の今の値ではなく、その時点の表示名の view を返す" do
+      change("join", Date.new(2026, 4, 1), display_name: "旧")
+      change("contract", Date.new(2026, 5, 10), display_name: "新")
+      membership.update_columns(display_name: "新")
+      state = described_class.new(team)
+
+      past = state.view(membership.reload, state.entry(membership.id, Date.new(2026, 5, 1)))
+      now = state.view(membership, state.entry(membership.id, Date.new(2026, 5, 10)))
+
+      expect(past.display_name).to eq("旧")
+      expect(past).to be_readonly
+      expect(now).to equal(membership)
+    end
+  end
+
   describe "Team の関連" do
     it "team_memberships は在籍中だけ、all_team_memberships は放出済みも含む" do
       released = create(:team_membership, team: team)

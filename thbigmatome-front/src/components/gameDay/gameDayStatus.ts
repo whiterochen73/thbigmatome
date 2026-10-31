@@ -197,6 +197,23 @@ export function hasGameDayArrived(
   return game <= current
 }
 
+// 今の範囲（最後に結果が入った試合日の翌日〜次の試合日）。サーバが日程の結果から導く（GET /teams/:id/season の current_range）
+export interface CurrentRange {
+  start_date: string
+  end_date: string
+}
+
+// 登録・昇降格・負傷・出場停止（試合日ページの登録・離脱の 3 段）を操作できる日か。今の範囲の中の日だけ（両端を含む）。
+// 範囲が無い（最終試合日の後）・分からない時はどの日も操作できない（誤った日付での保存を避ける側に倒す）
+export function isInCurrentRange(
+  date: string | null | undefined,
+  range: CurrentRange | null | undefined,
+): boolean {
+  const day = dateKey(date)
+  if (!day || !range) return false
+  return dateKey(range.start_date) <= day && day <= dateKey(range.end_date)
+}
+
 // カレンダーのセルの印（試合日のセルだけ）。warn = 要確認（赤）、todo = 未入力（黄）、null = 印なし
 // ノーゲームは結果の入力は済だが、登板が 0 件と分かっている時は登板記録が未入力なので、試合日到来後は黄（登板記録の段と同じ結果）
 // シーズン画面は得点を「勝敗の印」（game_result）で持つ。得点が入っていれば game_result があり、ノーゲームは result が no_game。

@@ -31,6 +31,8 @@ RSpec.describe "Api::V1::TeamRosters", type: :request do
     let!(:season_schedule) do
       create(:season_schedule, season: season, date: Date.new(2026, 4, 1), date_type: "game_day")
     end
+    # 現在日 5/15（4/1 の結果の翌日〜次の試合日 5/15。現在日は日程の結果から導かれる）
+    before { pin_current_date(season, Date.new(2026, 5, 15)) }
 
     context "when the team has a season and roster" do
       let!(:first_squad_result) do
@@ -316,7 +318,7 @@ RSpec.describe "Api::V1::TeamRosters", type: :request do
     context "previous_game_date field" do
       it "returns the most recent schedule date before current_date" do
         # season_schedule at 2026-04-01 already exists from outer let!
-        create(:season_schedule, season: season, date: Date.new(2026, 5, 12), date_type: "game_day")
+        create(:season_schedule, season: season, date: Date.new(2026, 5, 12), date_type: "game_day", score: 2, opponent_score: 1)
         create(:season_schedule, season: season, date: Date.new(2026, 5, 20), date_type: "game_day")
 
         get "/api/v1/teams/#{team.id}/roster", as: :json
@@ -337,8 +339,9 @@ RSpec.describe "Api::V1::TeamRosters", type: :request do
       end
 
       it "returns nil when no schedules exist before current_date" do
-        # Override season with a current_date before any schedule
-        season.update!(current_date: Date.new(2026, 3, 1))
+        # 現在日（次の試合日）より前に日程が無いシーズンにする
+        season.season_schedules.destroy_all
+        create(:season_schedule, season: season, date: Date.new(2026, 5, 20), date_type: "game_day")
 
         get "/api/v1/teams/#{team.id}/roster", as: :json
 

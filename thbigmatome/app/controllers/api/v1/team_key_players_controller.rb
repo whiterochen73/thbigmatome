@@ -14,12 +14,11 @@ module Api
 
         key_player_id = params[:key_player_id] # Can be null for no key player
 
-        # Rule: Only one key player can be selected on the first day of the season.
-        # This implies a 'key_player_id' column on the Season model.
-        # Let's add it to the Season model first.
+        # Rule: キープレイヤーはシーズン初日にだけ設定できる。現在日が日程から導かれるようになったので（SeasonCurrentRange）、
+        # 「初日」は「まだ結果が 1 件も入っていない（今の範囲が日程の最初の日から始まっている）間」と読む
         start_date = season.season_schedules.minimum(:date)
 
-        if season.current_date != start_date # Assuming schedule is associated with season
+        if start_date.nil? || season.current_range&.start_date != start_date
           render json: { error: "キープレイヤーはシーズン初日のみ設定可能です。" }, status: :bad_request
           return
         end

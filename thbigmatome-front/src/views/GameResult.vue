@@ -149,28 +149,41 @@
       @update:active="pickStep"
       @update:open="setOpen"
     >
-      <!-- 埋め込んだ 4 つの画面は、シーズンポータルのタブと同じ部品を同じ props で置く（現在日基準の振る舞いも同じ） -->
+      <!-- 埋め込んだ 3 つの画面（登録・離脱）は、開いた日の日付で読み、同じ日付で保存する。操作できるのは今の範囲の日だけ。
+           範囲の外の日は見るだけにして、過去分の修正はシーズン画面へ案内する -->
       <template #body-members>
         <div class="mt-2">
-          <GameDayDateNote :game-date="gameData.game_date" :current-date="seasonCurrentDate" />
-          <TeamMembers :team-id="Number(teamId)" game-day-actions />
+          <GameDayRangeNote :message="registrationNote" :to="membersRoute" />
+          <TeamMembers
+            :team-id="Number(teamId)"
+            game-day-actions
+            :as-of-date="gameDateKey"
+            :readonly="!registrationOperable"
+          />
         </div>
       </template>
 
       <template #body-roster>
         <div class="mt-2">
-          <GameDayDateNote :game-date="gameData.game_date" :current-date="seasonCurrentDate" />
-          <SeasonRosterTab :team-id="Number(teamId)" game-day-actions />
+          <GameDayRangeNote :message="registrationNote" :to="rosterRoute" />
+          <SeasonRosterTab
+            :team-id="Number(teamId)"
+            game-day-actions
+            :as-of-date="gameDateKey"
+            :readonly="!registrationOperable"
+          />
         </div>
       </template>
 
       <template #body-absences>
         <div class="mt-2">
-          <GameDayDateNote :game-date="gameData.game_date" :current-date="seasonCurrentDate" />
+          <GameDayRangeNote :message="registrationNote" :to="absencesRoute" />
           <SeasonAbsenceTab
             :key="`absences-${embedKey.absences}`"
             :team-id="Number(teamId)"
             game-day-actions
+            :as-of-date="gameDateKey"
+            :readonly="!registrationOperable"
             @changed="fetchAbsenceState"
           />
         </div>
@@ -414,7 +427,7 @@ import SeasonRosterTab from '@/components/season/SeasonRosterTab.vue'
 import SeasonAbsenceTab from '@/components/season/SeasonAbsenceTab.vue'
 import GameDaySteps, { type GameDayStep } from '@/components/gameDay/GameDaySteps.vue'
 import GameDayStateChip from '@/components/gameDay/GameDayStateChip.vue'
-import GameDayDateNote from '@/components/gameDay/GameDayDateNote.vue'
+import GameDayRangeNote from '@/components/gameDay/GameDayRangeNote.vue'
 import { dateTypeAppearance } from '@/components/gameDay/dateTypeAppearance'
 import type { PlayerAbsence } from '@/types/playerAbsence'
 import { setAppBarBreadcrumbs, clearAppBarBreadcrumbs } from '@/composables/useAppBarBreadcrumbs'
@@ -427,6 +440,9 @@ import {
 import {
   detectRecordMismatch,
   hasGameDayArrived,
+  isInCurrentRange,
+  dateKey,
+  type CurrentRange,
   hasSavedScore,
   isGameType,
   mismatchMessageKey,
@@ -484,17 +500,20 @@ const seasonPortalRoute = computed(() => ({
 const membersRoute = computed(() => ({
   name: 'SeasonPortal',
   params: { teamId: teamId.value },
-  query: { tab: 'members' },
+  // 過去分の修正は、この試合日の日付でシーズン画面を開く
+  query: { tab: 'members', date: gameDateKey.value },
 }))
 const rosterRoute = computed(() => ({
   name: 'SeasonPortal',
   params: { teamId: teamId.value },
-  query: { tab: 'roster' },
+  // 過去分の修正は、この試合日の日付でシーズン画面を開く
+  query: { tab: 'roster', date: gameDateKey.value },
 }))
 const absencesRoute = computed(() => ({
   name: 'SeasonPortal',
   params: { teamId: teamId.value },
-  query: { tab: 'absences' },
+  // 過去分の修正は、この試合日の日付でシーズン画面を開く
+  query: { tab: 'absences', date: gameDateKey.value },
 }))
 
 const gameData = ref<GameData>(defaultGameData)
@@ -633,6 +652,10 @@ interface SeasonScheduleLite {
   date_type: string
 }
 const seasonCurrentDate = ref<string | null>(null)
+// 今の範囲（登録・離脱を操作できる日）。undefined = 取れていない／取得に失敗、null = 範囲なし（最終試合日の後）
+const currentRange = ref<CurrentRange | null | undefined>(undefined)
+// 範囲の取得が終わったか（取得中に「取れなかった」と案内しないため）
+const currentRangeLoaded = ref(false)
 const seasonSchedules = ref<SeasonScheduleLite[]>([])
 const currentDateType = ref('')
 const dateTypeSaving = ref(false)
@@ -664,6 +687,22 @@ const nextSchedule = computed(() =>
     ? (sortedSchedules.value[currentScheduleIndex.value + 1] ?? null)
     : null,
 )
+
+// 登録・昇降格・負傷・出場停止（登録・離脱の 3 段）を操作できるのは、開いた日が今の範囲の日の時だけ。
+// 操作はその日の日付で記録される（asOfDate に開いた日を渡す）。ほかの日は見るだけ
+const gameDateKey = computed(() => dateKey(gameData.value.game_date) || undefined)
+const registrationOperable = computed(() =>
+  isInCurrentRange(gameData.value.game_date, currentRange.value),
+)
+const registrationNote = computed(() => {
+  if (registrationOperable.value || !currentRangeLoaded.value) return ''
+  if (currentRange.value === undefined) return t('gameDay.rangeNote.unknown')
+  if (currentRange.value === null) return t('gameDay.rangeNote.seasonOver')
+  return t('gameDay.rangeNote.outside', {
+    start: formatScheduleDate(currentRange.value.start_date),
+    end: formatScheduleDate(currentRange.value.end_date),
+  })
+})
 
 // 試合日が来るまでは入力を急かさない（黄色にしない）。現在日が取れない時も来ていない扱い
 const arrived = computed(() => hasGameDayArrived(gameData.value.game_date, seasonCurrentDate.value))
@@ -1056,6 +1095,7 @@ const fetchSeasonInfo = async () => {
   try {
     const response = await axios.get(`/teams/${teamId.value}/season`)
     seasonCurrentDate.value = response?.data?.current_date ?? null
+    currentRange.value = response?.data?.current_range ?? null
     seasonSchedules.value = (response?.data?.season_schedules ?? []).map(
       (schedule: SeasonScheduleLite) => ({ ...schedule }),
     )
@@ -1063,9 +1103,12 @@ const fetchSeasonInfo = async () => {
       seasonSchedules.value.find((s) => String(s.id) === String(scheduleId.value))?.date_type ?? ''
   } catch (error) {
     seasonCurrentDate.value = null
+    currentRange.value = undefined
     seasonSchedules.value = []
     currentDateType.value = ''
     console.error('Failed to fetch season info:', error)
+  } finally {
+    currentRangeLoaded.value = true
   }
 }
 
@@ -1079,6 +1122,7 @@ const fetchAllTeams = async () => {
 }
 
 const loadAll = async () => {
+  currentRangeLoaded.value = false
   currentDateType.value = ''
   appearanceCount.value = null
   absences.value = null
@@ -1220,6 +1264,8 @@ const saveGame = async () => {
     takeBaseline()
     // 得点・ノーゲームの保存でサーバが登板記録の区分を作り直す。登板記録タブを開いていれば保存済みの区分を取り直す
     await pitcherTabRef.value?.refreshSavedResultCategories?.()
+    // 結果の保存で「今の範囲」が進む。取り直さないと、範囲を出た登録・昇降格・負傷・出場停止の 3 段が操作可能のまま残る
+    await fetchSeasonInfo()
     // 得点は保存できたが、投手の判定（result_category）の作り直しだけ失敗した時は警告で知らせる
     const warnings: string[] = response?.data?.warnings ?? []
     if (warnings.length > 0) {

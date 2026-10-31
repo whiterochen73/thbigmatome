@@ -8,13 +8,10 @@
         {{ t('seasonPortal.goToGameResult') }}
       </v-btn>
       <template #append>
-        <v-btn icon variant="text" @click="prevDay" :disabled="isPrevDayDisabled">
-          <v-icon>mdi-chevron-left</v-icon>
-        </v-btn>
-        <p class="text-h5">{{ t('seasonPortal.currentDate') }}: {{ currentDateStr }}</p>
-        <v-btn icon variant="text" @click="nextDay" :disabled="isNextDayDisabled">
-          <v-icon>mdi-chevron-right</v-icon>
-        </v-btn>
+        <!-- 現在日は日程の結果から自動で決まる（最後に結果が入った日の翌日〜次の試合日の、最後の試合日）。動かす操作は無い -->
+        <p class="text-h5 me-4" data-testid="current-date">
+          {{ t('seasonPortal.currentDate') }}: {{ currentDateStr }}
+        </p>
       </template>
     </v-toolbar>
 
@@ -479,14 +476,42 @@
       <!-- タブ2: チーム編成 -->
       <v-tabs-window-item value="members">
         <div class="mt-2">
-          <TeamMembers :team-id="teamId" />
+          <AsOfDateBar
+            v-if="asOfDate"
+            v-model:date="asOfDate"
+            v-model:phase="asOfPhase"
+            show-phase
+            :min="dateOnly(season.start_date)"
+            :max="dateOnly(season.end_date)"
+            :current-date="currentDateKey"
+          />
+          <TeamMembers
+            v-if="asOfDate"
+            :team-id="teamId"
+            :as-of-date="asOfDate"
+            :phase="asOfPhase"
+          />
         </div>
       </v-tabs-window-item>
 
       <!-- タブ3: ロスター -->
       <v-tabs-window-item value="roster">
         <div class="mt-2">
-          <SeasonRosterTab :team-id="teamId" />
+          <AsOfDateBar
+            v-if="asOfDate"
+            v-model:date="asOfDate"
+            v-model:phase="asOfPhase"
+            show-phase
+            :min="dateOnly(season.start_date)"
+            :max="dateOnly(season.end_date)"
+            :current-date="currentDateKey"
+          />
+          <SeasonRosterTab
+            v-if="asOfDate"
+            :team-id="teamId"
+            :as-of-date="asOfDate"
+            :phase="asOfPhase"
+          />
         </div>
       </v-tabs-window-item>
 
@@ -500,7 +525,14 @@
       <!-- タブ5: 離脱者 -->
       <v-tabs-window-item value="absences">
         <div class="mt-2">
-          <SeasonAbsenceTab :team-id="teamId" />
+          <AsOfDateBar
+            v-if="asOfDate"
+            v-model:date="asOfDate"
+            :min="dateOnly(season.start_date)"
+            :max="dateOnly(season.end_date)"
+            :current-date="currentDateKey"
+          />
+          <SeasonAbsenceTab v-if="asOfDate" :team-id="teamId" :as-of-date="asOfDate" />
         </div>
       </v-tabs-window-item>
 
@@ -678,6 +710,7 @@ import type { ScheduleList } from '@/types/scheduleList'
 import type { Team } from '@/types/team'
 import SeasonRosterTab from '@/components/season/SeasonRosterTab.vue'
 import SeasonAbsenceTab from '@/components/season/SeasonAbsenceTab.vue'
+import AsOfDateBar from '@/components/season/AsOfDateBar.vue'
 import PromotionHistoryTab from '@/components/season/PromotionHistoryTab.vue'
 import TeamMembers from '@/views/TeamMembers.vue'
 // リリース非表示: オーダータブ用コンポーネント（ポストリリースで復活予定）
@@ -701,7 +734,18 @@ const teamSelectionStore = useTeamSelectionStore()
 const { isCommissioner } = useAuth()
 const loading = ref(true)
 const season = ref<SeasonDetail | null>(null)
-const currentDate = ref(new Date())
+// 現在日 = 今の範囲の最後の試合日（サーバが日程の結果から導く。season.current_date）。カレンダーの表示月とは別に持つ
+const currentDate = computed(() =>
+  season.value?.current_date ? new Date(season.value.current_date) : new Date(),
+)
+// カレンダーに出す月（月送りで動く）。現在日の月で始まる
+const calendarCursor = ref(new Date())
+
+// 過去分の修正（チーム編成・ロスター・離脱者の各タブ）で読む日付と区分。GET と保存の POST に同じ値を渡す
+const asOfDate = ref('')
+const asOfPhase = ref('pre_game')
+const dateOnly = (value: string | null | undefined): string => (value ? value.slice(0, 10) : '')
+const currentDateKey = computed(() => dateOnly(season.value?.current_date))
 
 // シーズン初期化フォーム
 const schedules = ref<ScheduleList[]>([])
@@ -773,7 +817,12 @@ const fetchSeason = async () => {
     const response = await axios.get(`/teams/${teamId}/season`)
     season.value = response.data
     if (season.value) {
-      currentDate.value = new Date(season.value.current_date)
+      calendarCursor.value = new Date(season.value.current_date)
+      // 過去分の修正の既定の日付は現在日。試合日ページの「シーズン画面で修正する」リンクは ?date= で日付を渡す
+      const requested = typeof route.query.date === 'string' ? route.query.date : ''
+      asOfDate.value = /^\d{4}-\d{2}-\d{2}$/.test(requested)
+        ? requested
+        : dateOnly(season.value.current_date)
     }
   } catch (error) {
     console.error('Failed to fetch season data:', error)
@@ -834,52 +883,13 @@ const createSeason = async () => {
   }
 }
 
-const updateSeasonCurrentDate = async (date: Date) => {
-  try {
-    if (!season.value) return
-    const formattedDate = date.toISOString().split('T')[0]
-    await axios.patch(`/teams/${teamId}/season`, { season: { current_date: formattedDate } })
-    await fetchSeason()
-  } catch (error) {
-    console.error('Failed to update season current date:', error)
-  }
-}
-
 const currentDateStr = computed(() => {
   return currentDate.value.toLocaleDateString('ja-JP', { month: 'long', day: 'numeric' })
 })
 
 const monthStr = computed(() => {
-  return currentDate.value.toLocaleDateString('ja-JP', { year: 'numeric', month: 'long' })
+  return calendarCursor.value.toLocaleDateString('ja-JP', { year: 'numeric', month: 'long' })
 })
-
-const isPrevDayDisabled = computed(() => {
-  if (!season.value || !season.value.start_date) return true
-  const start = new Date(season.value.start_date)
-  const current = new Date(currentDate.value)
-  return current <= start
-})
-
-const isNextDayDisabled = computed(() => {
-  if (!season.value || !season.value.end_date) return true
-  const end = new Date(season.value.end_date)
-  const current = new Date(currentDate.value)
-  return current >= end
-})
-
-const prevDay = () => {
-  const newDate = new Date(currentDate.value)
-  newDate.setDate(newDate.getDate() - 1)
-  currentDate.value = newDate
-  updateSeasonCurrentDate(newDate)
-}
-
-const nextDay = () => {
-  const newDate = new Date(currentDate.value)
-  newDate.setDate(newDate.getDate() + 1)
-  currentDate.value = newDate
-  updateSeasonCurrentDate(newDate)
-}
 
 const weekdays = computed(() => {
   const format = new Intl.DateTimeFormat('ja-JP', { weekday: 'short' })
@@ -893,8 +903,8 @@ const weekdays = computed(() => {
 const calendarDays = computed(() => {
   if (!season.value) return []
 
-  const year = currentDate.value.getFullYear()
-  const month = currentDate.value.getMonth()
+  const year = calendarCursor.value.getFullYear()
+  const month = calendarCursor.value.getMonth()
   const startDate = new Date(year, month, 1)
   const endDate = new Date(year, month + 1, 0)
 
@@ -952,11 +962,13 @@ const calendarDays = computed(() => {
 })
 
 const prevMonth = () => {
-  currentDate.value = new Date(currentDate.value.setMonth(currentDate.value.getMonth() - 1))
+  const cursor = calendarCursor.value
+  calendarCursor.value = new Date(cursor.getFullYear(), cursor.getMonth() - 1, 1)
 }
 
 const nextMonth = () => {
-  currentDate.value = new Date(currentDate.value.setMonth(currentDate.value.getMonth() + 1))
+  const cursor = calendarCursor.value
+  calendarCursor.value = new Date(cursor.getFullYear(), cursor.getMonth() + 1, 1)
 }
 
 const dateTypes = SCHEDULE_DATE_TYPES

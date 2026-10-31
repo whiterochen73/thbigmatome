@@ -5,6 +5,7 @@ import {
   detectRecordMismatch,
   hasGameDayArrived,
   hasSavedScore,
+  isInCurrentRange,
   mismatchMessageKey,
   pitcherStageState,
   progressMarks,
@@ -324,5 +325,45 @@ describe('progressMarks / mismatchMessageKey', () => {
       'gameDay.mismatch.appearancesWithoutScore',
     )
     expect(mismatchMessageKey(null)).toBeNull()
+  })
+})
+
+// 今の範囲（最後に結果が入った試合日の翌日〜次の試合日）。登録・昇降格・負傷・出場停止を操作できる日の判定
+// Test Basis: context/thbig-dugout-season-record-restructure-design.md の 2026-11-01 の追記 2 本（5/7 試合 → 5/8 移動日 → 5/9 試合なら 5/8 と 5/9 の両方で操作できる）
+describe('isInCurrentRange', () => {
+  const range = { start_date: '2026-05-08', end_date: '2026-05-09' }
+
+  it('範囲の両端を含む（移動日 5/8 も、次の試合日 5/9 も操作できる）', () => {
+    expect(isInCurrentRange('2026-05-08', range)).toBe(true)
+    expect(isInCurrentRange('2026-05-09', range)).toBe(true)
+  })
+
+  it('範囲の外は操作できない（結果が入った 5/7 も、その次の試合日の後の 5/10 も）', () => {
+    expect(isInCurrentRange('2026-05-07', range)).toBe(false)
+    expect(isInCurrentRange('2026-05-10', range)).toBe(false)
+  })
+
+  it('1 日だけの範囲（連続する試合日）', () => {
+    const single = { start_date: '2026-05-08', end_date: '2026-05-08' }
+    expect(isInCurrentRange('2026-05-08', single)).toBe(true)
+    expect(isInCurrentRange('2026-05-09', single)).toBe(false)
+  })
+
+  it('時刻つきの日付でも日付部分で比べる', () => {
+    expect(isInCurrentRange('2026-05-09T00:00:00.000Z', range)).toBe(true)
+    expect(isInCurrentRange('2026-05-10T00:00:00.000Z', range)).toBe(false)
+    expect(
+      isInCurrentRange('2026-05-09', {
+        start_date: '2026-05-08T00:00:00.000Z',
+        end_date: '2026-05-09T00:00:00.000Z',
+      }),
+    ).toBe(true)
+  })
+
+  it('範囲が無い（最終試合日の後）・分からない・日付が無い時は、どの日も操作できない', () => {
+    expect(isInCurrentRange('2026-05-08', null)).toBe(false)
+    expect(isInCurrentRange('2026-05-08', undefined)).toBe(false)
+    expect(isInCurrentRange(null, range)).toBe(false)
+    expect(isInCurrentRange('', range)).toBe(false)
   })
 })

@@ -18,7 +18,7 @@ class Api::V1::Commissioner::DashboardController < Api::V1::Commissioner::BaseCo
         tm.player_absences.each do |pa|
           next unless pa.season_id == season.id
           end_date = pa.effective_end_date
-          next if end_date && end_date < season.current_date
+          next if end_date && end_date < current_date_of(season)
 
           remaining = calculate_remaining(pa, season)
           absences << {
@@ -35,7 +35,7 @@ class Api::V1::Commissioner::DashboardController < Api::V1::Commissioner::BaseCo
             duration: pa.duration,
             duration_unit: pa.duration_unit,
             effective_end_date: end_date,
-            season_current_date: season.current_date,
+            season_current_date: current_date_of(season),
             **remaining
           }
         end
@@ -96,10 +96,10 @@ class Api::V1::Commissioner::DashboardController < Api::V1::Commissioner::BaseCo
         next unless entries.fetch(tm.id).squad == "second"
         next if tm.player.nil?
 
-        info = calculate_cooldown_info(tm, season.current_date)
+        info = calculate_cooldown_info(tm, current_date_of(season))
         next unless info[:cooldown_until]
 
-        remaining_days = (info[:cooldown_until].to_date - season.current_date.to_date).to_i
+        remaining_days = (info[:cooldown_until].to_date - current_date_of(season).to_date).to_i
         cooldowns << {
           team_name: team.name,
           team_id: team.id,
@@ -142,11 +142,11 @@ class Api::V1::Commissioner::DashboardController < Api::V1::Commissioner::BaseCo
 
   private
 
-  # 1軍/2軍・在籍・契約・カードは、昇降格とチーム編成の変更記録から、シーズンの現在日カーソル（シーズンが無ければ今日）・試合前の時点で導く
+  # 1軍/2軍・在籍・契約・カードは、昇降格とチーム編成の変更記録から、シーズンの現在日（今の範囲の最後の日。シーズンが無ければ今日）・試合前の時点で導く
   # （RosterState）。写し（team_memberships の squad・契約の列）は読まない。
   def squad_entries(team)
     @squad_entries ||= {}
-    @squad_entries[team.id] ||= roster_state_for_team(team).at(team.season&.current_date || Date.current)
+    @squad_entries[team.id] ||= roster_state_for_team(team).at((team.season && current_date_of(team.season)) || Date.current)
   end
 
   # 基準日に在籍している選手の行（team_memberships）
@@ -193,7 +193,7 @@ class Api::V1::Commissioner::DashboardController < Api::V1::Commissioner::BaseCo
       team_id: team.id,
       team_name: team.name,
       team_type: team.team_type,
-      game_date: season&.current_date,
+      game_date: (season && current_date_of(season)),
       first_count: first_squad.count,
       second_count: second_squad.count,
       first_cost: first_cost,
@@ -202,6 +202,12 @@ class Api::V1::Commissioner::DashboardController < Api::V1::Commissioner::BaseCo
       outside_world_limit: Team::OUTSIDE_WORLD_LIMIT,
       warnings: warnings
     }
+  end
+
+  # 現在日（今の範囲の最後の日）。日程から導くので、ループの中で何度も呼ばないよう、シーズンごとに 1 回だけ求める
+  def current_date_of(season)
+    @current_dates ||= {}
+    @current_dates[season.id] ||= season.current_date
   end
 
   def build_roster_csv(teams, current_cost)
@@ -213,7 +219,7 @@ class Api::V1::Commissioner::DashboardController < Api::V1::Commissioner::BaseCo
       teams.each do |team|
         season = team.season
         native_series = Team::NATIVE_SERIES[team.team_type] || Team::NATIVE_SERIES["normal"]
-        game_date = season&.current_date
+        game_date = (season && current_date_of(season))
 
         entries = squad_entries(team)
         memberships = member_views(team).sort_by do |tm|
@@ -235,11 +241,11 @@ class Api::V1::Commissioner::DashboardController < Api::V1::Commissioner::BaseCo
             active_absence = tm.player_absences.find do |pa|
               next false unless pa.season_id == season.id
               end_date = pa.effective_end_date
-              end_date.nil? || end_date >= season.current_date
+              end_date.nil? || end_date >= current_date_of(season)
             end
             absence_type = active_absence&.absence_type
 
-            cooldown_info = calculate_cooldown_info(tm, season.current_date)
+            cooldown_info = calculate_cooldown_info(tm, current_date_of(season))
             cooldown_until = cooldown_info[:cooldown_until]
           end
 
@@ -305,12 +311,12 @@ class Api::V1::Commissioner::DashboardController < Api::V1::Commissioner::BaseCo
     return { remaining_days: nil, remaining_games: nil } unless end_date
 
     if absence.duration_unit == "days"
-      { remaining_days: [ absence.remaining_days_on(season.current_date), 0 ].max, remaining_games: nil }
+      { remaining_days: [ absence.remaining_days_on(current_date_of(season)), 0 ].max, remaining_games: nil }
     else
       # 試合中の負傷は、その試合日の試合を残りに数えない（counting_from が翌日に寄せる）
       remaining_games = season.season_schedules
         .where(date_type: %w[game_day interleague_game_day])
-        .where("date >= ? AND date < ?", absence.counting_from(season.current_date), end_date)
+        .where("date >= ? AND date < ?", absence.counting_from(current_date_of(season)), end_date)
         .count
       { remaining_days: nil, remaining_games: remaining_games }
     end

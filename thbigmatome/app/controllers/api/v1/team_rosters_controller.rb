@@ -68,6 +68,8 @@ module Api
           season_id: season.id,
           current_date: target_date,
           season_start_date: start_date, # Assuming season has schedule association
+          # キープレイヤーを設定できるか（まだ結果が 1 件も入っていない間。TeamKeyPlayersController と同じ条件）
+          key_player_selectable: !start_date.nil? && season.current_range&.start_date == start_date,
           key_player_id: season.key_player_id,
           previous_game_date: previous_game_date,
           roster: roster_data

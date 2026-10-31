@@ -18,6 +18,9 @@ class TeamSerializer < ActiveModel::Serializer
   end
 
   def season_current_date
+    dates = instance_options[:season_current_dates]
+    return dates[object.id] if dates
+
     object.respond_to?(:season_current_date) ? object.season_current_date : nil
   end
 end

@@ -281,4 +281,85 @@ describe('SeasonAbsenceTab', () => {
       expect(await remaining(mid, '2026-04-14')).toBe('1')
     })
   })
+
+  // 過去分の修正・操作範囲（cmd_1784 段2b）と、変更の通知（emit('changed')。試合日ページの段の件数が取り直す）
+  // Test Basis: context/thbig-dugout-season-record-restructure-design.md の 2026-11-01 の追記 2 本、queue/reviews/subtask_1783v.yaml（M15）
+  describe('日付の指定・読み取り専用・変更の通知', () => {
+    const dialogProps = (wrapper: Awaited<ReturnType<typeof mountComponent>>) =>
+      wrapper.findComponent({ name: 'PlayerAbsenceFormDialog' }).props() as Record<string, unknown>
+
+    it('asOfDate の日に有効な離脱を「現在の離脱者」に出す（シーズンの現在日ではない）', async () => {
+      // 4/12 が復帰日の離脱: 現在日(4/11)なら現在の離脱者、4/12 以降なら過去の履歴
+      const wrapper = await mountComponent([injured], { asOfDate: '2026-04-12' })
+      expect(tableText(wrapper, 0)).not.toContain('怪我中')
+      const earlier = await mountComponent([injured], { asOfDate: '2026-04-05' })
+      expect(tableText(earlier, 0)).toContain('怪我中')
+    })
+
+    it('新規登録の開始日の既定は asOfDate（無ければシーズンの現在日）', async () => {
+      const withDate = await mountComponent([], { asOfDate: '2026-04-05' })
+      expect(dialogProps(withDate).initialStartDate).toBe('2026-04-05')
+      const withoutDate = await mountComponent([])
+      expect(dialogProps(withoutDate).initialStartDate).toBe('2026-04-11')
+    })
+
+    it('readonly: 追加・編集・削除のボタンを出さず、離脱者の一覧は見える', async () => {
+      const wrapper = await mountComponent([injured], { readonly: true })
+      expect(wrapper.find('[data-testid="add-absence"]').exists()).toBe(false)
+      expect(wrapper.find('[data-testid="edit-absence"]').exists()).toBe(false)
+      expect(wrapper.find('[data-testid="delete-absence"]').exists()).toBe(false)
+      expect(tableText(wrapper, 0)).toContain('怪我中')
+    })
+
+    it('readonly でなければ、追加・編集・削除のボタンがある（対照）', async () => {
+      const wrapper = await mountComponent([injured])
+      expect(wrapper.find('[data-testid="add-absence"]').exists()).toBe(true)
+      expect(wrapper.find('[data-testid="edit-absence"]').exists()).toBe(true)
+      expect(wrapper.find('[data-testid="delete-absence"]').exists()).toBe(true)
+    })
+
+    it('離脱を削除したら changed を出し、離脱の一覧を取り直す', async () => {
+      vi.stubGlobal(
+        'confirm',
+        vi.fn(() => true),
+      )
+      vi.mocked(axios.delete).mockResolvedValue({ data: {} })
+      const wrapper = await mountComponent([injured])
+      const listCalls = () =>
+        vi.mocked(axios.get).mock.calls.filter(([url]) => url === '/player_absences').length
+      const before = listCalls()
+
+      await wrapper.find('[data-testid="delete-absence"]').trigger('click')
+      await flushPromises()
+
+      expect(axios.delete).toHaveBeenCalledWith('/player_absences/1')
+      expect(wrapper.emitted('changed')).toHaveLength(1)
+      expect(listCalls()).toBe(before + 1)
+      vi.unstubAllGlobals()
+    })
+
+    it('削除の確認で取り消したら、何も消さず changed も出さない', async () => {
+      vi.stubGlobal(
+        'confirm',
+        vi.fn(() => false),
+      )
+      const wrapper = await mountComponent([injured])
+
+      await wrapper.find('[data-testid="delete-absence"]').trigger('click')
+      await flushPromises()
+
+      expect(axios.delete).not.toHaveBeenCalled()
+      expect(wrapper.emitted('changed')).toBeUndefined()
+      vi.unstubAllGlobals()
+    })
+
+    it('離脱の保存（ダイアログの saved）でも changed を出す', async () => {
+      const wrapper = await mountComponent([injured])
+
+      wrapper.findComponent({ name: 'PlayerAbsenceFormDialog' }).vm.$emit('saved')
+      await flushPromises()
+
+      expect(wrapper.emitted('changed')).toHaveLength(1)
+    })
+  })
 })

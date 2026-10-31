@@ -19,7 +19,7 @@ Rails.application.routes.draw do
       resources :managers
       # チーム一覧
       resources :teams, only: [ :index, :show, :update, :create, :destroy ] do
-        resource :season, only: [ :show, :update ], controller: "team_seasons" do
+        resource :season, only: [ :show ], controller: "team_seasons" do
           patch "season_schedules/:id", to: "team_seasons#update_season_schedule"
         end
         resource :roster, only: [ :show, :create ], controller: "team_rosters"

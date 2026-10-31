@@ -7,6 +7,7 @@ import { createI18n } from 'vue-i18n'
 import { createRouter, createMemoryHistory } from 'vue-router'
 import { createPinia, setActivePinia } from 'pinia'
 import SeasonPortal from '../SeasonPortal.vue'
+import realJa from '@/locales/ja.json'
 
 // Mock axios using vi.hoisted to avoid hoisting issues
 const { mockGet, mockPost, mockPatch } = vi.hoisted(() => ({
@@ -29,14 +30,28 @@ vi.mock('axios', () => ({
 }))
 
 // Stub heavy child components
+// 過去分の修正の 3 タブ。渡された日付・区分を data 属性で見えるようにする
 vi.mock('@/components/season/SeasonRosterTab.vue', () => ({
-  default: { name: 'SeasonRosterTab', template: '<div />' },
+  default: {
+    name: 'SeasonRosterTab',
+    props: ['teamId', 'asOfDate', 'phase', 'readonly'],
+    template:
+      '<div data-stub="roster" :data-as-of="asOfDate" :data-phase="phase" :data-readonly="String(!!readonly)" />',
+  },
 }))
 vi.mock('@/components/season/SeasonAbsenceTab.vue', () => ({
-  default: { name: 'SeasonAbsenceTab', template: '<div />' },
+  default: {
+    name: 'SeasonAbsenceTab',
+    props: ['teamId', 'asOfDate', 'phase', 'readonly'],
+    template: '<div data-stub="absences" :data-as-of="asOfDate" :data-phase="phase" />',
+  },
 }))
 vi.mock('@/views/TeamMembers.vue', () => ({
-  default: { name: 'TeamMembers', template: '<div />' },
+  default: {
+    name: 'TeamMembers',
+    props: ['teamId', 'asOfDate', 'phase', 'readonly'],
+    template: '<div data-stub="members" :data-as-of="asOfDate" :data-phase="phase" />',
+  },
 }))
 vi.mock('@/components/squad/LineupTemplateEditor.vue', () => ({
   default: { name: 'LineupTemplateEditor', template: '<div />' },
@@ -55,6 +70,7 @@ const i18n = createI18n({
   locale: 'ja',
   messages: {
     ja: {
+      asOfBar: realJa.asOfBar,
       seasonPortal: {
         goToGameResult: '今日の試合へ',
         gameResultInput: '試合結果入力',
@@ -112,8 +128,10 @@ function createTestRouter() {
 // 日付詳細ダイアログは body に出るので、テストごとに外して前のテストの残りと混ざらないようにする
 const mountedWrappers: Array<{ unmount: () => void }> = []
 
-async function mountSeasonPortal(options: { season?: object | null; schedules?: object[] } = {}) {
-  const { season = null, schedules = [] } = options
+async function mountSeasonPortal(
+  options: { season?: object | null; schedules?: object[]; query?: string } = {},
+) {
+  const { season = null, schedules = [], query = '' } = options
 
   mockGet.mockImplementation((url: string) => {
     if (url.includes('/season')) return Promise.resolve({ data: season })
@@ -123,7 +141,7 @@ async function mountSeasonPortal(options: { season?: object | null; schedules?: 
   })
 
   const router = createTestRouter()
-  await router.push('/teams/1/season')
+  await router.push(`/teams/1/season${query}`)
 
   setActivePinia(createPinia())
 
@@ -479,6 +497,111 @@ describe('SeasonPortal', () => {
       await flushPromises()
       expect(document.body.querySelector('[data-testid="detail-day-mark"]')).toBeNull()
       expect(document.body.querySelector('[data-testid="detail-day-flow"]')).not.toBeNull()
+    })
+  })
+
+  // 現在日は日程の結果から自動で決まる（cmd_1784 段2b）。◀ ▶ はなく、動かす API は呼ばない
+  // Test Basis: context/thbig-dugout-season-record-restructure-design.md の 2026-11-01 の追記（Operator 決定）
+  describe('現在日の自動化と過去分の修正', () => {
+    const season = {
+      id: 1,
+      name: '2026シーズン',
+      current_date: '2026-05-09',
+      current_range: { start_date: '2026-05-08', end_date: '2026-05-09' },
+      start_date: '2026-04-01',
+      end_date: '2026-10-31',
+      season_schedules: [],
+    }
+
+    afterEach(() => {
+      mountedWrappers.splice(0).forEach((w) => w.unmount())
+    })
+
+    it('ツールバーに現在日（範囲の最後の試合日）を出し、◀ ▶ のボタンは無い', async () => {
+      const wrapper = await mountSeasonPortal({ season })
+
+      expect(wrapper.find('[data-testid="current-date"]').text()).toBe('現在の日付: 5月9日')
+      const toolbar = wrapper.find('.v-toolbar')
+      expect(toolbar.find('.mdi-chevron-left').exists()).toBe(false)
+      expect(toolbar.find('.mdi-chevron-right').exists()).toBe(false)
+    })
+
+    it('現在日を動かす PATCH を呼ばない（月送りでも現在日は変わらない）', async () => {
+      const wrapper = await mountSeasonPortal({ season })
+
+      const monthNav = wrapper.findAll('.month-nav .v-btn')
+      await monthNav[1].trigger('click')
+      await monthNav[1].trigger('click')
+      await monthNav[0].trigger('click')
+      await flushPromises()
+
+      expect(mockPatch).not.toHaveBeenCalled()
+      expect(wrapper.find('[data-testid="current-date"]').text()).toBe('現在の日付: 5月9日')
+      expect(wrapper.find('.month-label').text()).toBe('2026年6月')
+    })
+
+    it('ロスターのタブ: 日付の既定は現在日、区分は試合前。部品へ同じ値を渡す', async () => {
+      const wrapper = await mountSeasonPortal({ season, query: '?tab=roster' })
+
+      const stub = wrapper.find('[data-stub="roster"]')
+      expect(stub.attributes('data-as-of')).toBe('2026-05-09')
+      expect(stub.attributes('data-phase')).toBe('pre_game')
+      expect(wrapper.find('[data-testid="as-of-date"] input').element).toHaveProperty(
+        'value',
+        '2026-05-09',
+      )
+    })
+
+    it('日付を選ぶと、部品へ渡す日付が変わる。区分も渡る。現在日に戻すボタンは日付が違う時だけ', async () => {
+      const wrapper = await mountSeasonPortal({ season, query: '?tab=roster' })
+      expect(wrapper.find('[data-testid="as-of-reset"]').exists()).toBe(false)
+
+      await wrapper.find('[data-testid="as-of-date"] input').setValue('2026-05-01')
+      await wrapper.find('[data-testid="as-of-phase-post"]').trigger('click')
+      await flushPromises()
+
+      const stub = wrapper.find('[data-stub="roster"]')
+      expect(stub.attributes('data-as-of')).toBe('2026-05-01')
+      expect(stub.attributes('data-phase')).toBe('post_game')
+
+      await wrapper.find('[data-testid="as-of-reset"]').trigger('click')
+      await flushPromises()
+      expect(wrapper.find('[data-stub="roster"]').attributes('data-as-of')).toBe('2026-05-09')
+    })
+
+    it('シーズンの外の日付や空の日付は取り込まない', async () => {
+      const wrapper = await mountSeasonPortal({ season, query: '?tab=roster' })
+      const input = wrapper.find('[data-testid="as-of-date"] input')
+
+      await input.setValue('2027-01-01')
+      await input.setValue('2026-03-31')
+      await input.setValue('')
+      await flushPromises()
+
+      expect(wrapper.find('[data-stub="roster"]').attributes('data-as-of')).toBe('2026-05-09')
+    })
+
+    it('チーム編成のタブも同じ日付と区分を渡す。離脱者のタブは日付だけ（区分の選択は出さない）', async () => {
+      const members = await mountSeasonPortal({ season, query: '?tab=members' })
+      expect(members.find('[data-stub="members"]').attributes('data-as-of')).toBe('2026-05-09')
+      expect(members.find('[data-stub="members"]').attributes('data-phase')).toBe('pre_game')
+      expect(members.find('[data-testid="as-of-phase"]').exists()).toBe(true)
+
+      const absences = await mountSeasonPortal({ season, query: '?tab=absences' })
+      expect(absences.find('[data-stub="absences"]').attributes('data-as-of')).toBe('2026-05-09')
+      expect(absences.find('[data-testid="as-of-phase"]').exists()).toBe(false)
+    })
+
+    it('試合日ページからのリンク（?date=）で、その日付から開く', async () => {
+      const wrapper = await mountSeasonPortal({ season, query: '?tab=roster&date=2026-05-03' })
+
+      expect(wrapper.find('[data-stub="roster"]').attributes('data-as-of')).toBe('2026-05-03')
+    })
+
+    it('?date= が日付の形でなければ現在日', async () => {
+      const wrapper = await mountSeasonPortal({ season, query: '?tab=roster&date=abc' })
+
+      expect(wrapper.find('[data-stub="roster"]').attributes('data-as-of')).toBe('2026-05-09')
     })
   })
 })

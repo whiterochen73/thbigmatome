@@ -6,7 +6,7 @@ require "rails_helper"
 RSpec.describe "昇降格の書き込みの規則（日付・区分・検査し直し）", type: :request do
   let(:team) { create(:team) }
   let(:cost) { create(:cost, end_date: nil) }
-  let(:season) { create(:season, team: team, current_date: Date.new(2026, 5, 15)) }
+  let(:season) { create(:season, team: team) }
   let(:start_day) { Date.new(2026, 4, 1) }
 
   # シーズン初日(4/1)・5/10・5/20 が試合日。5/5・5/12・5/15 は試合のない日
@@ -14,6 +14,8 @@ RSpec.describe "昇降格の書き込みの規則（日付・区分・検査し�
     [ "2026-04-01", "2026-05-10", "2026-05-20" ].each do |date|
       create(:season_schedule, season: season, date: date, date_type: "game_day")
     end
+    # 現在日(5/15): 5/10 の結果の翌日〜次の試合日(5/15 = playoff_day)。1軍人数の検査は game_day だけを見るので 5/15 は「試合のない日」のまま
+    pin_current_date(season, Date.new(2026, 5, 15))
   end
 
   # first_since を渡すとその日の試合前に昇格した記録を足す

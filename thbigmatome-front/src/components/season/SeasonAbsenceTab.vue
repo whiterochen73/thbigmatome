@@ -1,8 +1,9 @@
 <!-- eslint-disable vue/valid-v-slot -->
 <template>
   <div>
-    <div class="d-flex justify-end mb-2">
+    <div v-if="!readonly" class="d-flex justify-end mb-2">
       <v-btn
+        data-testid="add-absence"
         :color="gameDayActions ? 'action' : undefined"
         :variant="gameDayActions ? 'flat' : 'outlined'"
         :prepend-icon="gameDayActions ? 'mdi-plus' : undefined"
@@ -76,13 +77,22 @@
             }}</span>
           </template>
           <template v-slot:item.actions="{ item }">
-            <v-btn icon size="small" variant="text" @click="editAbsence(item)">
+            <v-btn
+              v-if="!readonly"
+              icon
+              size="small"
+              variant="text"
+              data-testid="edit-absence"
+              @click="editAbsence(item)"
+            >
               <v-icon size="small">mdi-pencil</v-icon>
             </v-btn>
             <v-btn
+              v-if="!readonly"
               icon
               size="small"
               :variant="gameDayActions ? 'outlined' : 'text'"
+              data-testid="delete-absence"
               color="danger-ink"
               :aria-label="t('teamList.actions.delete')"
               @click="deleteAbsence(item)"
@@ -178,11 +188,15 @@ import PlayerNameLink from '@/components/shared/PlayerNameLink.vue'
 import { ABSENCE_APPEARANCE, ABSENCE_PHASE_APPEARANCE } from '@/components/gameDay/gameDayStatus'
 
 // defaultPhase: 新規登録ダイアログの区分の既定値。
+// asOfDate: その日に有効な離脱を「現在の離脱者」として出し、新規登録の開始日の既定にする（省略時はシーズンの現在日）。
+// readonly: 操作できない日（試合日ページで「今の範囲」の外の日）。追加・編集・削除を出さない。
 const props = withDefaults(
   defineProps<{
     teamId: number
     defaultPhase?: AbsencePhase
     gameDayActions?: boolean
+    asOfDate?: string
+    readonly?: boolean
   }>(),
   { defaultPhase: 'pre_game' },
 )
@@ -216,11 +230,13 @@ const pastHeaders = computed(() => [
 ])
 
 const initialStartDateForDialog = computed(() => {
+  if (props.asOfDate) return props.asOfDate
   if (!season.value) return new Date().toISOString().split('T')[0]
   return new Date(season.value?.current_date).toISOString().split('T')[0]
 })
 
 const currentSeasonDate = computed(() => {
+  if (props.asOfDate) return new Date(props.asOfDate)
   return season.value?.current_date ? new Date(season.value.current_date) : new Date()
 })
 

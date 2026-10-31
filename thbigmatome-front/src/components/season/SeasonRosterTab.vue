@@ -1,7 +1,7 @@
 <!-- eslint-disable vue/valid-v-slot -->
 <template>
   <div>
-    <v-row v-if="isSeasonStartDate" class="mt-2">
+    <v-row v-if="keyPlayerSelectable && !readonly" class="mt-2" data-testid="key-player-card">
       <v-col cols="12">
         <v-card variant="outlined">
           <v-card-title class="d-flex">
@@ -320,59 +320,61 @@
                       </v-tooltip>
                     </td>
                     <td>
-                      <!-- 特例選手: 降格不可 -->
-                      <v-tooltip
-                        v-if="isKeyPlayer(item)"
-                        :text="t('activeRoster.keyPlayerLocked')"
-                        location="top"
-                      >
-                        <template #activator="{ props }">
-                          <span v-bind="props">
+                      <template v-if="!readonly">
+                        <!-- 特例選手: 降格不可 -->
+                        <v-tooltip
+                          v-if="isKeyPlayer(item)"
+                          :text="t('activeRoster.keyPlayerLocked')"
+                          location="top"
+                        >
+                          <template #activator="{ props }">
+                            <span v-bind="props">
+                              <v-btn
+                                size="x-small"
+                                variant="outlined"
+                                :style="{ borderColor: 'rgb(var(--v-theme-border-strong))' }"
+                                rounded
+                                disabled
+                                class="demote-btn"
+                              >
+                                <v-icon>mdi-arrow-down</v-icon>
+                              </v-btn>
+                            </span>
+                          </template>
+                        </v-tooltip>
+                        <!-- 離脱中: 降格ボタン有効+ツールチップ -->
+                        <v-tooltip
+                          v-else-if="item.is_absent && item.absence_info"
+                          :text="getAbsenceDetailTooltip(item)"
+                          location="top"
+                        >
+                          <template #activator="{ props }">
                             <v-btn
+                              v-bind="props"
                               size="x-small"
                               variant="outlined"
                               :style="{ borderColor: 'rgb(var(--v-theme-border-strong))' }"
                               rounded
-                              disabled
                               class="demote-btn"
+                              @click="movePlayer(item, 'second')"
                             >
-                              <v-icon>mdi-arrow-down</v-icon>
+                              <v-icon :class="'on-' + getAbsenceColor(item)">mdi-arrow-down</v-icon>
                             </v-btn>
-                          </span>
-                        </template>
-                      </v-tooltip>
-                      <!-- 離脱中: 降格ボタン有効+ツールチップ -->
-                      <v-tooltip
-                        v-else-if="item.is_absent && item.absence_info"
-                        :text="getAbsenceDetailTooltip(item)"
-                        location="top"
-                      >
-                        <template #activator="{ props }">
-                          <v-btn
-                            v-bind="props"
-                            size="x-small"
-                            variant="outlined"
-                            :style="{ borderColor: 'rgb(var(--v-theme-border-strong))' }"
-                            rounded
-                            class="demote-btn"
-                            @click="movePlayer(item, 'second')"
-                          >
-                            <v-icon :class="'on-' + getAbsenceColor(item)">mdi-arrow-down</v-icon>
-                          </v-btn>
-                        </template>
-                      </v-tooltip>
-                      <!-- 通常: 降格ボタン -->
-                      <v-btn
-                        v-else
-                        size="x-small"
-                        variant="outlined"
-                        :style="{ borderColor: 'rgb(var(--v-theme-border-strong))' }"
-                        rounded
-                        class="demote-btn"
-                        @click="movePlayer(item, 'second')"
-                      >
-                        <v-icon>mdi-arrow-down</v-icon>
-                      </v-btn>
+                          </template>
+                        </v-tooltip>
+                        <!-- 通常: 降格ボタン -->
+                        <v-btn
+                          v-else
+                          size="x-small"
+                          variant="outlined"
+                          :style="{ borderColor: 'rgb(var(--v-theme-border-strong))' }"
+                          rounded
+                          class="demote-btn"
+                          @click="movePlayer(item, 'second')"
+                        >
+                          <v-icon>mdi-arrow-down</v-icon>
+                        </v-btn>
+                      </template>
                     </td>
                   </tr>
                 </template>
@@ -416,78 +418,80 @@
                   :class="getSecondSquadRowClass(item)"
                 >
                   <td>
-                    <!-- 再調整中: 昇格不可 -->
-                    <v-tooltip
-                      v-if="
-                        item.is_absent &&
-                        item.absence_info &&
-                        item.absence_info.absence_type === 'reconditioning'
-                      "
-                      :text="t('activeRoster.reconditioningBlocked')"
-                      location="top"
-                    >
-                      <template #activator="{ props }">
-                        <v-chip
-                          v-bind="props"
-                          size="x-small"
-                          :color="ABSENCE_APPEARANCE.reconditioning.color"
-                          variant="flat"
-                          :prepend-icon="ABSENCE_APPEARANCE.reconditioning.icon"
-                        >
-                          {{ t('activeRoster.chip.reconditioning') }}
-                        </v-chip>
-                      </template>
-                    </v-tooltip>
-                    <!-- 昇格クールダウン中 -->
-                    <v-tooltip
-                      v-else-if="isPlayerOnCooldown(item)"
-                      :text="getCooldownTooltip(item)"
-                      location="top"
-                    >
-                      <template #activator="{ props }">
-                        <v-chip
-                          v-bind="props"
-                          size="x-small"
-                          :color="ABSENCE_APPEARANCE.cooldown.color"
-                          variant="flat"
-                          :prepend-icon="ABSENCE_APPEARANCE.cooldown.icon"
-                        >
-                          {{ t('activeRoster.chip.cooldown') }}
-                        </v-chip>
-                      </template>
-                    </v-tooltip>
-                    <!-- 離脱中(負傷/出場停止): 昇格ボタン有効+ツールチップ -->
-                    <v-tooltip
-                      v-else-if="item.is_absent && item.absence_info"
-                      :text="getAbsenceDetailTooltip(item)"
-                      location="top"
-                    >
-                      <template #activator="{ props }">
-                        <v-btn
-                          v-bind="props"
-                          size="x-small"
-                          variant="outlined"
-                          :style="{ borderColor: 'rgb(var(--v-theme-border-strong))' }"
-                          rounded
-                          class="promote-btn"
-                          @click="handlePromotePlayer(item)"
-                        >
-                          <v-icon :class="'on-' + getAbsenceColor(item)">mdi-arrow-up</v-icon>
-                        </v-btn>
-                      </template>
-                    </v-tooltip>
-                    <!-- 通常: 昇格ボタン -->
-                    <v-btn
-                      v-else
-                      size="x-small"
-                      color="primary"
-                      variant="elevated"
-                      rounded
-                      class="promote-btn"
-                      @click="handlePromotePlayer(item)"
-                    >
-                      <v-icon>mdi-arrow-up</v-icon>
-                    </v-btn>
+                    <template v-if="!readonly">
+                      <!-- 再調整中: 昇格不可 -->
+                      <v-tooltip
+                        v-if="
+                          item.is_absent &&
+                          item.absence_info &&
+                          item.absence_info.absence_type === 'reconditioning'
+                        "
+                        :text="t('activeRoster.reconditioningBlocked')"
+                        location="top"
+                      >
+                        <template #activator="{ props }">
+                          <v-chip
+                            v-bind="props"
+                            size="x-small"
+                            :color="ABSENCE_APPEARANCE.reconditioning.color"
+                            variant="flat"
+                            :prepend-icon="ABSENCE_APPEARANCE.reconditioning.icon"
+                          >
+                            {{ t('activeRoster.chip.reconditioning') }}
+                          </v-chip>
+                        </template>
+                      </v-tooltip>
+                      <!-- 昇格クールダウン中 -->
+                      <v-tooltip
+                        v-else-if="isPlayerOnCooldown(item)"
+                        :text="getCooldownTooltip(item)"
+                        location="top"
+                      >
+                        <template #activator="{ props }">
+                          <v-chip
+                            v-bind="props"
+                            size="x-small"
+                            :color="ABSENCE_APPEARANCE.cooldown.color"
+                            variant="flat"
+                            :prepend-icon="ABSENCE_APPEARANCE.cooldown.icon"
+                          >
+                            {{ t('activeRoster.chip.cooldown') }}
+                          </v-chip>
+                        </template>
+                      </v-tooltip>
+                      <!-- 離脱中(負傷/出場停止): 昇格ボタン有効+ツールチップ -->
+                      <v-tooltip
+                        v-else-if="item.is_absent && item.absence_info"
+                        :text="getAbsenceDetailTooltip(item)"
+                        location="top"
+                      >
+                        <template #activator="{ props }">
+                          <v-btn
+                            v-bind="props"
+                            size="x-small"
+                            variant="outlined"
+                            :style="{ borderColor: 'rgb(var(--v-theme-border-strong))' }"
+                            rounded
+                            class="promote-btn"
+                            @click="handlePromotePlayer(item)"
+                          >
+                            <v-icon :class="'on-' + getAbsenceColor(item)">mdi-arrow-up</v-icon>
+                          </v-btn>
+                        </template>
+                      </v-tooltip>
+                      <!-- 通常: 昇格ボタン -->
+                      <v-btn
+                        v-else
+                        size="x-small"
+                        color="primary"
+                        variant="elevated"
+                        rounded
+                        class="promote-btn"
+                        @click="handlePromotePlayer(item)"
+                      >
+                        <v-icon>mdi-arrow-up</v-icon>
+                      </v-btn>
+                    </template>
                   </td>
                   <td class="text-caption">{{ item.number }}</td>
                   <td>
@@ -566,12 +570,15 @@
       </v-col>
     </v-row>
 
-    <v-row class="mt-4">
+    <ViolationList :violations="violations" class="mt-4" />
+
+    <v-row v-if="!readonly" class="mt-4">
       <v-col>
         <v-btn
           color="action"
           variant="flat"
           :prepend-icon="gameDayActions ? 'mdi-content-save-outline' : undefined"
+          data-testid="save-roster"
           @click="saveRoster"
           >{{ t('activeRoster.saveRoster') }}</v-btn
         >
@@ -611,19 +618,26 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, computed, watch } from 'vue'
 import axios from 'axios'
 import { useI18n } from 'vue-i18n'
 import AbsenceInfo from '@/components/AbsenceInfo.vue'
 import PromotionCooldownInfo from '@/components/PromotionCooldownInfo.vue'
+import ViolationList from '@/components/season/ViolationList.vue'
+import type { RosterViolation } from '@/types/rosterViolation'
 import PlayerNameLink from '@/components/shared/PlayerNameLink.vue'
 import { useSnackbar } from '@/composables/useSnackbar'
 import type { RosterPlayer } from '@/types/rosterPlayer'
 import { ABSENCE_APPEARANCE } from '@/components/gameDay/gameDayStatus'
 
+// asOfDate / phase: 読む日付と区分。GET と POST の両方に同じ値を送る（省略時は GET の応答の current_date と pre_game を POST に送り返す）。
+// readonly: 操作できない日（試合日ページで「今の範囲」の外の日）。昇降格・保存の操作を出さない。
 const props = defineProps<{
   gameDayActions?: boolean
   teamId: number
+  asOfDate?: string
+  phase?: string
+  readonly?: boolean
 }>()
 
 const { t } = useI18n()
@@ -644,19 +658,27 @@ const rosterPlayers = ref<RosterPlayer[]>([])
 const currentDate = ref(new Date())
 const currentDateFormatted = computed(() => currentDate.value.toISOString().split('T')[0])
 
-const seasonStartDate = ref<Date | null>(null)
 const selectedKeyPlayerId = ref<number | null>(null)
+
+// 保存が後の日付の検査で止まった時の違反（422 の violations）
+const violations = ref<RosterViolation[]>([])
+// 保存に送る日付。読んだ日付（応答の current_date）をそのまま送り返す
+const targetDateKey = computed(() => currentDate.value.toISOString().split('T')[0])
+const targetPhase = computed(() => props.phase ?? 'pre_game')
+const keyPlayerSelectable = ref(false)
 
 const fetchRoster = async () => {
   try {
-    const response = await axios.get(`/teams/${props.teamId}/roster`)
+    const params: Record<string, string> = {}
+    if (props.asOfDate) params.target_date = props.asOfDate
+    if (props.asOfDate || props.phase) params.phase = targetPhase.value
+    const response = await axios.get(`/teams/${props.teamId}/roster`, { params })
+    violations.value = []
+    keyPlayerSelectable.value = !!response.data.key_player_selectable
     rosterPlayers.value = response.data.roster
     seasonId.value = response.data.season_id
     if (response.data.current_date) {
       currentDate.value = new Date(response.data.current_date)
-    }
-    if (response.data.season_start_date) {
-      seasonStartDate.value = new Date(response.data.season_start_date)
     }
     if (response.data.key_player_id) {
       selectedKeyPlayerId.value = response.data.key_player_id
@@ -783,11 +805,6 @@ const contractChipColor = (costType: string): string => {
   }
 }
 
-const isSeasonStartDate = computed(() => {
-  if (!seasonStartDate.value) return false
-  return currentDate.value.toDateString() === seasonStartDate.value.toDateString()
-})
-
 const availableKeyPlayers = computed(() => {
   return firstSquadPlayers.value
 })
@@ -887,13 +904,18 @@ const saveRoster = async () => {
     }))
     await axios.post(`/teams/${props.teamId}/roster`, {
       roster_updates: updates,
-      target_date: currentDate.value.toISOString().split('T')[0],
+      target_date: targetDateKey.value,
+      phase: targetPhase.value,
     })
     showSnackbar(t('activeRoster.saveSuccess'), 'success')
     fetchRoster()
   } catch (error: unknown) {
     console.error('Failed to save roster:', error)
-    const axiosError = error as { response?: { data?: { error?: string } }; message?: string }
+    const axiosError = error as {
+      response?: { data?: { error?: string; violations?: RosterViolation[] } }
+      message?: string
+    }
+    violations.value = axiosError.response?.data?.violations ?? []
     showSnackbar(
       `${t('activeRoster.saveFailed')}: ${axiosError.response?.data?.error || axiosError.message}`,
       'error',
@@ -918,6 +940,7 @@ const saveKeyPlayer = async () => {
 }
 
 onMounted(fetchRoster)
+watch(() => [props.asOfDate, props.phase], fetchRoster)
 </script>
 
 <style scoped>

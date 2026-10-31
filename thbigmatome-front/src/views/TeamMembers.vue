@@ -6,8 +6,10 @@
       チームが選択されていません。ホーム画面でチームを選択してください。
     </v-alert>
     <template v-if="isTeamIdValid">
+      <ViolationList :violations="violations" class="mt-4" />
+
       <!-- Player Selection -->
-      <v-row class="mb-4">
+      <v-row v-if="!readonly" class="mb-4" data-testid="add-player-row">
         <v-col cols="12">
           <!-- ポジションフィルタ（追加候補） -->
           <div class="d-flex flex-wrap ga-2 mb-2 align-center">
@@ -273,6 +275,7 @@
                     density="compact"
                     hide-details
                     variant="plain"
+                    :readonly="readonly"
                   />
                 </template>
                 <template #item.player_type_ids="{ item }">
@@ -320,6 +323,7 @@
                       item-value="value"
                       density="compact"
                       hide-details
+                      :readonly="readonly"
                       @update:modelValue="updatePlayerCost(item)"
                     ></v-select>
                   </div>
@@ -329,10 +333,11 @@
                     v-model="item.excluded_from_team_total"
                     hide-details
                     density="compact"
+                    :disabled="readonly"
                   />
                 </template>
                 <template #item.actions="{ item }">
-                  <v-tooltip text="チームから除外" location="top">
+                  <v-tooltip v-if="!readonly" text="チームから除外" location="top">
                     <template #activator="{ props }">
                       <v-btn
                         v-bind="props"
@@ -352,7 +357,7 @@
       </v-row>
 
       <!-- Actions -->
-      <v-row>
+      <v-row v-if="!readonly">
         <v-col class="d-flex justify-end mt-4">
           <v-btn
             variant="outlined"
@@ -389,6 +394,8 @@ import type { PlayerType } from '@/types/playerType'
 import FilterBar from '@/components/shared/FilterBar.vue'
 import PageHeader from '@/components/shared/PageHeader.vue'
 import PlayerNameLink from '@/components/shared/PlayerNameLink.vue'
+import ViolationList from '@/components/season/ViolationList.vue'
+import type { RosterViolation } from '@/types/rosterViolation'
 
 type CostType =
   | 'normal_cost'
@@ -432,7 +439,15 @@ interface TeamPlayersSaveResponse {
   warnings?: string[]
 }
 
-const props = defineProps<{ teamId?: number; gameDayActions?: boolean }>()
+// asOfDate / phase: 読む日付と区分。GET と POST の両方に同じ値を送る。省略時は、シーズンの現在日（GET /teams/:id/season の current_date）と pre_game を両方に送る。
+// readonly: 操作できない日（試合日ページで「今の範囲」の外の日）。追加・削除・保存を出さない。
+const props = defineProps<{
+  teamId?: number
+  gameDayActions?: boolean
+  asOfDate?: string
+  phase?: string
+  readonly?: boolean
+}>()
 
 const { t } = useI18n()
 const route = useRoute()
@@ -672,10 +687,34 @@ const fetchAllPlayers = async () => {
   }
 }
 
+// 読む日付と区分は、GET と POST の両方に同じ値を送る。GET を日付なしで呼ぶと最新の写し、POST を日付なしで呼ぶと現在日の状態と比べるので、
+// 読んだ値を送り直すだけで余計な変更記録が増えることがある。asOfDate が無い時は、シーズンの現在日を GET /teams/:id/season で読んで使う
+const seasonCurrentDate = ref<string | null>(null)
+const dateParams = computed<{ target_date?: string; phase?: string }>(() => {
+  const date = props.asOfDate ?? seasonCurrentDate.value
+  return date ? { target_date: date, phase: props.phase ?? 'pre_game' } : {}
+})
+// 保存が後の日付の検査で止まった時の違反（422 の violations）
+const violations = ref<RosterViolation[]>([])
+
+const fetchSeasonCurrentDate = async () => {
+  if (props.asOfDate) return
+  try {
+    const response = await axios.get<{ current_date?: string }>(`/teams/${teamId.value}/season`)
+    seasonCurrentDate.value = response.data?.current_date?.slice(0, 10) ?? null
+  } catch {
+    // シーズンが無いチームは日付なし（サーバが行を直接書く）
+    seasonCurrentDate.value = null
+  }
+}
+
 const fetchTeamPlayers = async () => {
   if (!selectedCostListId.value) return
   try {
-    const response = await axios.get<TeamPlayer[]>(`/teams/${teamId.value}/team_players`)
+    const response = await axios.get<TeamPlayer[]>(`/teams/${teamId.value}/team_players`, {
+      params: dateParams.value,
+    })
+    violations.value = []
     teamPlayers.value = response.data.map((player) => {
       let initialSelectedCostType: CostType = 'normal_cost' // Default to normal_cost
 
@@ -921,20 +960,30 @@ const saveTeamMembers = async () => {
         display_name: p.display_name || null,
         player_card_id: p.player_card_id ?? null,
       })),
+      ...dateParams.value,
     }
     const response = await axios.post<TeamPlayersSaveResponse>(
       `/teams/${teamId.value}/team_players`,
       payload,
     )
     showSnackbar(t('teamMembers.notifications.saveSuccess'), 'success')
+    violations.value = []
     const warnings = response.data?.warnings ?? []
     for (const warning of warnings) {
       showSnackbar(`警告: ${warning}`, 'warning')
     }
   } catch (error: unknown) {
     const axiosError = error as {
-      response?: { data?: { errors?: { player_id?: string[] }; message?: string; error?: string } }
+      response?: {
+        data?: {
+          errors?: { player_id?: string[] }
+          message?: string
+          error?: string
+          violations?: RosterViolation[]
+        }
+      }
     }
+    violations.value = axiosError.response?.data?.violations ?? []
     const errorMsg =
       axiosError.response?.data?.errors?.player_id?.[0] ||
       axiosError.response?.data?.error ||
@@ -949,8 +998,16 @@ const goBack = () => {
   router.back()
 }
 
+watch(
+  () => [props.asOfDate, props.phase],
+  () => {
+    void fetchTeamPlayers()
+  },
+)
+
 onMounted(async () => {
   if (!isTeamIdValid.value) return
+  await fetchSeasonCurrentDate()
   // コスト表を自動選択（選択UIなし: 現在日時に対応するコスト表 or 最初の1件）
   try {
     const response = await axios.get<CostList[]>('/costs')

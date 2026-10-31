@@ -159,12 +159,9 @@
 - **Controller**: `Api::V1::TeamSeasonsController#show`
 - **Response**: `SeasonDetailSerializer`
 - 各 `season_schedules[]` に `pitcher_appearance_count`（その試合日の自チームの登板記録の件数）を含む。シーズンポータルのカレンダーが「得点だけ保存済みで登板記録が無い」「登板記録だけあって得点が無い」といった入力漏れの印を出すために使う（cmd_1783）
+- **現在日は日程の結果から導く**（cmd_1784 段2b。`SeasonCurrentRange`）。`current_date` = 今の範囲の最後の日（次の試合日）。`current_range` = `{ start_date, end_date }`（最後に結果が入った日の翌日〜次の試合日）。範囲が無い時（最終試合日の後など）は `null` で、その時の `current_date` は最後に結果が入った日。「結果が入った」= 得点（自軍・相手とも）が保存済み、または `no_game`。試合日 = `game_day` / `interleague_game_day` / `playoff_day` / `no_game`（種別）。登録・昇降格・負傷・出場停止を試合日ページで操作できるのは、この範囲の日だけ（画面側の規則。API は日付を指定すれば過去日も書ける）
 
-### PATCH/PUT /api/v1/teams/:team_id/season
-
-- **Controller**: `Api::V1::TeamSeasonsController#update`
-- **Body Params**: `season: { current_date }`
-- **Response**: `{ season: ... }`
+> **廃止**: `PATCH/PUT /api/v1/teams/:team_id/season`（現在日カーソルを動かす API）は cmd_1784 段2b で廃止した。ルートが無い。`seasons.current_date` の列は日程の無いシーズンの初期値としてだけ読む。
 
 ### PATCH /api/v1/teams/:team_id/season/season_schedules/:id
 
@@ -190,6 +187,7 @@
     "current_date": date,
     "season_start_date": date,
     "key_player_id": int|null,
+    "key_player_selectable": bool,
     "previous_game_date": date|null,
     "roster": [
       {

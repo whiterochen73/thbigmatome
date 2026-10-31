@@ -6,7 +6,7 @@ require "rails_helper"
 RSpec.describe "チーム編成の変更記録を読む側（ロスター・疲労一覧・ダッシュボード・昇降格の検査）", type: :request do
   let(:team) { create(:team, is_active: true, team_type: :normal) }
   let(:cost) { create(:cost, end_date: nil) }
-  let!(:season) { create(:season, team: team, current_date: Date.new(2026, 5, 15)) }
+  let!(:season) { create(:season, team: team) }
   let(:card_set) { create(:card_set) }
   let(:pitcher) { create(:player, :pitcher, series: "touhou") }
   let(:pitcher_card) { create(:player_card, player: pitcher, card_set: card_set, card_type: "pitcher", is_pitcher: true) }
@@ -15,6 +15,7 @@ RSpec.describe "チーム編成の変更記録を読む側（ロスター・疲�
   before do
     create(:cost_player, cost: cost, player: pitcher, normal_cost: 9, relief_only_cost: 3)
     create(:season_schedule, season: season, date: "2026-04-01", date_type: "game_day")
+    pin_current_date(season, Date.new(2026, 5, 15)) # 現在日 5/15（4/1 の結果の翌日〜次の試合日 5/15）
     create(:season_roster, season: season, team_membership: membership, squad: "first", registered_on: Date.new(2026, 4, 1))
     # 4/1 から救援専任契約(コスト 3)、5/10 の試合前から通常契約(コスト 9)に切り替え。5/20 の試合後に野手専念契約
     create(:team_membership_change, team_membership: membership, season: season, kind: "join", effective_on: Date.new(2026, 4, 1),
@@ -137,7 +138,9 @@ RSpec.describe "チーム編成の変更記録を読む側（ロスター・疲�
     end
 
     it "基準日を 5/9 に戻すと、旧契約(救援専任)のコスト 3 で数える" do
-      season.update!(current_date: Date.new(2026, 5, 9))
+      season.season_schedules.destroy_all
+      create(:season_schedule, season: season, date: "2026-04-01", date_type: "game_day")
+      pin_current_date(season, Date.new(2026, 5, 9)) # 現在日(基準日)を 5/9 にする
       get "/api/v1/commissioner/dashboard/costs"
       row = response.parsed_body.find { |r| r["team_id"] == team.id }
       expect(row).to include("total_cost" => 3, "first_squad_cost" => 3)

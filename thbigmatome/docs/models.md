@@ -737,6 +737,8 @@ class Season < ApplicationRecord
 - `name`: presence
 - `team_id`: uniqueness (message: :season_already_started)
 
+**現在日**（cmd_1784 段2b）: `current_date` は列の値ではなく日程の結果から導く（`SeasonCurrentRange`）。`current_range` が今の範囲（最後に結果が入った日の翌日〜次の試合日）を返し、`current_date` はその最後の日。日程が 1 行も無いシーズンだけ列の値を返す。呼ぶたびに日程を引くので、ループの中では 1 度ローカルに取ってから使う。
+
 ---
 
 ### SeasonRoster

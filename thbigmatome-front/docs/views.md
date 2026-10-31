@@ -209,7 +209,6 @@
 - **主要機能・目的**: チームのシーズン管理ハブ。6つのタブでカレンダー・ロスター・欠場履歴・メンバー・オーダー・成績を管理
 - **使用APIエンドポイント**:
   - GET `/teams/:id/season`
-  - PATCH `/teams/:id/season`
   - PATCH `/teams/:id/season/season_schedules/:id`（試合日程更新）
   - GET `/teams/:id`
 - **主要なcomposable/store**: `useTeamSelectionStore`（Pinia）

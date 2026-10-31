@@ -187,3 +187,207 @@ describe('SeasonRosterTab 保存結果の通知', () => {
     expect((wrapper.vm as unknown as { costBarColor: string }).costBarColor).toBe('border-strong')
   })
 })
+
+// 過去分の修正（cmd_1784 段2b）: 読む GET と保存する POST の両方に、同じ target_date と phase を渡す。
+// GET を日付なしで呼ぶと最新の写し、POST を日付なしで呼ぶとカーソル時点の状態と比べるので、読んだ値を送り直すだけで余計な変更記録が増える。
+// Test Basis: queue/reviews/subtask_1784i.yaml の warning、context/thbig-dugout-season-record-restructure-design.md の 2026-11-01 の追記
+describe('SeasonRosterTab 日付つきの読み書きと操作範囲', () => {
+  const player = (id: number, squad: 'first' | 'second'): RosterPlayer => ({
+    team_membership_id: id,
+    player_id: id,
+    player_name: `選手${id}`,
+    number: `${id}`,
+    squad,
+    cost: 3,
+    selected_cost_type: 'normal_cost',
+    handedness: null,
+    position: null,
+    player_types: [],
+    is_outside_world: false,
+  })
+
+  const rosterResponse = (extra: Record<string, unknown> = {}) => ({
+    data: {
+      roster: [player(1, 'first'), player(2, 'second')],
+      season_id: 1,
+      current_date: '2026-05-07',
+      season_start_date: '2026-04-01',
+      key_player_id: null,
+      key_player_selectable: false,
+      ...extra,
+    },
+  })
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mockGet.mockImplementation((url: string) =>
+      url === '/teams/1/roster' ? Promise.resolve(rosterResponse()) : Promise.resolve({ data: [] }),
+    )
+    mockPost.mockResolvedValue({ data: {} })
+  })
+
+  async function mountTab(props: Record<string, unknown> = {}) {
+    const wrapper = mount(SeasonRosterTab, {
+      props: { teamId: 1, ...props },
+      global: {
+        plugins: [vuetify, i18n],
+        stubs: {
+          AbsenceInfo: true,
+          PromotionCooldownInfo: true,
+          PlayerNameLink: { props: ['playerName'], template: '<span>{{ playerName }}</span>' },
+        },
+      },
+    })
+    await flushPromises()
+    return wrapper
+  }
+
+  const rosterGets = () => mockGet.mock.calls.filter(([url]) => url === '/teams/1/roster')
+
+  it('asOfDate と phase を渡すと、GET も POST も同じ target_date と phase を送る', async () => {
+    const wrapper = await mountTab({ asOfDate: '2026-05-07', phase: 'post_game' })
+
+    expect(rosterGets()[0][1]).toEqual({
+      params: { target_date: '2026-05-07', phase: 'post_game' },
+    })
+
+    await wrapper.vm.saveRoster()
+
+    expect(mockPost).toHaveBeenCalledWith('/teams/1/roster', {
+      roster_updates: [
+        { team_membership_id: 1, squad: 'first' },
+        { team_membership_id: 2, squad: 'second' },
+      ],
+      target_date: '2026-05-07',
+      phase: 'post_game',
+    })
+  })
+
+  it('asOfDate だけなら phase は pre_game を GET と POST の両方に送る', async () => {
+    const wrapper = await mountTab({ asOfDate: '2026-05-07' })
+    await wrapper.vm.saveRoster()
+
+    expect(rosterGets()[0][1]).toEqual({ params: { target_date: '2026-05-07', phase: 'pre_game' } })
+    expect(mockPost.mock.calls[0][1]).toMatchObject({
+      target_date: '2026-05-07',
+      phase: 'pre_game',
+    })
+  })
+
+  it('asOfDate が無い時は、GET を日付なしで呼び、応答の current_date と pre_game を POST に送る', async () => {
+    const wrapper = await mountTab()
+    await wrapper.vm.saveRoster()
+
+    expect(rosterGets()[0][1]).toEqual({ params: {} })
+    expect(mockPost.mock.calls[0][1]).toMatchObject({
+      target_date: '2026-05-07',
+      phase: 'pre_game',
+    })
+  })
+
+  it('asOfDate や phase が変わると、新しい日付で読み直す', async () => {
+    const wrapper = await mountTab({ asOfDate: '2026-05-07' })
+
+    await wrapper.setProps({ asOfDate: '2026-05-08', phase: 'post_game' })
+    await flushPromises()
+
+    expect(rosterGets()).toHaveLength(2)
+    expect(rosterGets()[1][1]).toEqual({
+      params: { target_date: '2026-05-08', phase: 'post_game' },
+    })
+  })
+
+  it('後の日付の検査で止まった時（422 の violations）は、違反した日付・区分・内容を画面に出す', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+    const wrapper = await mountTab({ asOfDate: '2026-05-07' })
+    mockPost.mockRejectedValueOnce({
+      response: {
+        data: {
+          error: '保存できません',
+          violations: [
+            {
+              date: '2026-05-10',
+              phase: 'pre_game',
+              kind: 'first_squad_min',
+              message: '1軍が 24 人です',
+              severity: 'error',
+              player_id: null,
+            },
+            {
+              date: '2026-05-20',
+              phase: 'post_game',
+              kind: 'first_squad_cost',
+              message: '1軍のコストが上限を超えます',
+              severity: 'error',
+              player_id: null,
+            },
+          ],
+        },
+      },
+    })
+
+    await wrapper.vm.saveRoster()
+    await flushPromises()
+
+    const list = wrapper.find('[data-testid="violation-list"]')
+    expect(list.findAll('li')).toHaveLength(2)
+    expect(list.text()).toContain('5/10（試合前）')
+    expect(list.text()).toContain('1軍が 24 人です')
+    expect(list.text()).toContain('5/20（試合後）')
+    expect(list.text()).toContain('1軍のコストが上限を超えます')
+  })
+
+  it('違反の無い失敗では、違反の欄を出さない。次に読み直したら消える', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+    const wrapper = await mountTab({ asOfDate: '2026-05-07' })
+    mockPost.mockRejectedValueOnce({
+      response: {
+        data: { violations: [{ date: '2026-05-10', phase: 'pre_game', kind: 'x', message: 'm' }] },
+      },
+    })
+    await wrapper.vm.saveRoster()
+    await flushPromises()
+    expect(wrapper.find('[data-testid="violation-list"]').exists()).toBe(true)
+
+    await wrapper.setProps({ asOfDate: '2026-05-08' })
+    await flushPromises()
+    expect(wrapper.find('[data-testid="violation-list"]').exists()).toBe(false)
+
+    mockPost.mockRejectedValueOnce({ response: { data: { error: '失敗' } } })
+    await wrapper.vm.saveRoster()
+    await flushPromises()
+    expect(wrapper.find('[data-testid="violation-list"]').exists()).toBe(false)
+  })
+
+  it('操作できる日: 昇格・降格のボタンと保存がある', async () => {
+    const wrapper = await mountTab({ asOfDate: '2026-05-07' })
+
+    expect(wrapper.find('.promote-btn').exists()).toBe(true)
+    expect(wrapper.find('.demote-btn').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="save-roster"]').exists()).toBe(true)
+  })
+
+  it('readonly（操作できない日）: 昇格・降格・保存を出さず、選手の並びは見える', async () => {
+    const wrapper = await mountTab({ asOfDate: '2026-05-07', readonly: true })
+
+    expect(wrapper.find('.promote-btn').exists()).toBe(false)
+    expect(wrapper.find('.demote-btn').exists()).toBe(false)
+    expect(wrapper.find('[data-testid="save-roster"]').exists()).toBe(false)
+    expect(wrapper.text()).toContain('選手1')
+    expect(wrapper.text()).toContain('選手2')
+  })
+
+  it('特例選手の欄は、サーバが設定できると返した時だけ。readonly では出さない', async () => {
+    const selectable = async (flag: boolean, props: Record<string, unknown> = {}) => {
+      mockGet.mockImplementation((url: string) =>
+        url === '/teams/1/roster'
+          ? Promise.resolve(rosterResponse({ key_player_selectable: flag }))
+          : Promise.resolve({ data: [] }),
+      )
+      return (await mountTab(props)).find('[data-testid="key-player-card"]').exists()
+    }
+    expect(await selectable(true)).toBe(true)
+    expect(await selectable(false)).toBe(false)
+    expect(await selectable(true, { readonly: true })).toBe(false)
+  })
+})

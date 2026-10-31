@@ -112,7 +112,7 @@ it('四つのトグル群は border-strong の枠を持つ', () => {
 })
 
 // Test Basis: subtask_1790a §2 / thbig-dugout-local-test-recipe.md v-btn-toggle の枠
-it('七つのトグル群は outlined の border-strong 枠を持つ', () => {
+it('八つのトグル群は outlined の border-strong 枠を持つ', () => {
   const toggles = vueFiles(srcDir).flatMap((file) => {
     const source = readFileSync(file, 'utf8')
     const path = relative(srcDir, file).split(sep).join('/')
@@ -121,7 +121,8 @@ it('七つのトグル群は outlined の border-strong 枠を持つ', () => {
       location: `${path}:${source.slice(0, match.index).split('\n').length}`,
     }))
   })
-  expect(toggles).toHaveLength(7)
+  // 7 → 8: cmd_1784 段2b の AsOfDateBar（過去分の修正の試合前／試合後の切り替え）
+  expect(toggles).toHaveLength(8)
   const violations = toggles
     .filter(
       ({ tag }) =>

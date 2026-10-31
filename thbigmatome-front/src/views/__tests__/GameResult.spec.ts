@@ -38,6 +38,9 @@ const { embedLog, embedStub } = vi.hoisted(() => {
         props: {
           teamId: { type: Number, default: undefined },
           gameDayActions: { type: Boolean, default: false },
+          // 開いた日の日付で読み書きする（asOfDate）。操作できない日は readonly
+          asOfDate: { type: String, default: undefined },
+          readonly: { type: Boolean, default: false },
           // SeasonAbsenceTab の区分の既定値（他の埋め込みは受け取らない）
           defaultPhase: { type: String, default: undefined },
         },
@@ -46,7 +49,13 @@ const { embedLog, embedStub } = vi.hoisted(() => {
           onBeforeUnmount(() => {
             embedLog.unmounts[name] = (embedLog.unmounts[name] ?? 0) + 1
           })
-          return () => h('div', { 'data-embed': name, 'data-default-phase': props.defaultPhase })
+          return () =>
+            h('div', {
+              'data-embed': name,
+              'data-default-phase': props.defaultPhase,
+              'data-as-of': props.asOfDate,
+              'data-readonly': String(props.readonly),
+            })
         },
       }),
     }
@@ -100,6 +109,8 @@ const gameResponse = {
 
 const seasonResponse = {
   current_date: '2026-06-10',
+  // 今の範囲: 6/9 の結果の翌日〜次の試合日(6/10)。登録・離脱を操作できるのは 6/10 だけ
+  current_range: { start_date: '2026-06-10', end_date: '2026-06-10' },
   season_schedules: [
     { id: 99, date: '2026-06-09', date_type: 'game_day' },
     { id: 100, date: '2026-06-10', date_type: 'game_day' },
@@ -493,6 +504,20 @@ describe.each(LAYOUTS)('GameResult 試合日ページ: $name', ({ width, kind })
     expect(body(absent, 'absences').text()).toContain('試合前 0 件・試合中 0 件')
   })
 
+  // subtask_1783v の生存変異 M10: 段の件数は「開始日がこの試合日」の行だけを数える。別の日が開始日の行は数えない
+  it('離脱の件数は、開始日がこの試合日の行だけを区分別に数える（別の日が開始日の行は数えない）', async () => {
+    const wrapper = await mountDay({
+      absences: [
+        { start_date: '2026-06-09', phase: 'pre_game' },
+        { start_date: '2026-06-09', phase: 'in_game' },
+        { start_date: '2026-06-11', phase: 'pre_game' },
+        { start_date: '2026-06-10', phase: 'in_game' },
+        { start_date: '2026-06-10T00:00:00.000Z', phase: 'in_game' },
+      ],
+    })
+    expect(body(wrapper, 'absences').text()).toContain('試合前 0 件・試合中 2 件')
+  })
+
   // Test Basis: subtask_1783t Operator 指摘 1（旧 URL のまとめ先）
   it('?tab=in-game-absences は統合した離脱段を開く', async () => {
     const wrapper = await mountDay({ query: { tab: 'in-game-absences' } })
@@ -566,13 +591,14 @@ describe.each(LAYOUTS)('GameResult 試合日ページ: $name', ({ width, kind })
 
   it('補助として、シーズンポータルの該当タブへのリンクも残す', async () => {
     const wrapper = await mountDay()
+    // 過去分の修正は、この試合日の日付でシーズン画面を開く（?date=）
     expect(wrapper.vm.membersRoute).toEqual({
       name: 'SeasonPortal',
       params: { teamId: '1' },
-      query: { tab: 'members' },
+      query: { tab: 'members', date: '2026-06-10' },
     })
-    expect(wrapper.vm.rosterRoute.query).toEqual({ tab: 'roster' })
-    expect(wrapper.vm.absencesRoute.query).toEqual({ tab: 'absences' })
+    expect(wrapper.vm.rosterRoute.query).toEqual({ tab: 'roster', date: '2026-06-10' })
+    expect(wrapper.vm.absencesRoute.query).toEqual({ tab: 'absences', date: '2026-06-10' })
     expect(wrapper.find('[data-testid="link-members"]').text()).toBe('シーズンポータルで開く')
     expect(wrapper.find('[data-testid="link-roster"]').exists()).toBe(true)
     expect(wrapper.find('[data-testid="link-absences"]').exists()).toBe(true)
@@ -625,13 +651,18 @@ describe.each(LAYOUTS)('GameResult 試合日ページ: $name', ({ width, kind })
         expect(embedLog.mounts).toEqual({ [component]: 1 })
         // Test Basis: thbig-dugout-visual-refresh-design.md §7 段2。
         // 試合日だけ action を使う。離脱の既定区分は試合前（AMB-25）。
+        // 開いた日の日付で読み書きし（asOfDate）、今の範囲の日なので readonly ではない
         expect(body(wrapper, slug).findComponent({ name: component }).props()).toEqual({
           teamId: 1,
           gameDayActions: true,
+          asOfDate: '2026-06-10',
+          readonly: false,
         })
-        // team-id 以外の props・属性（asOfDate など）を足していない（scoped style の識別子は除く）
+        // props 以外の属性を足していない（scoped style の識別子は除く。data-* はこの差し替えが出すもの）
         expect(Object.keys(embedded.attributes()).filter((k) => !k.startsWith('data-v-'))).toEqual([
           'data-embed',
+          'data-as-of',
+          'data-readonly',
         ])
         expect(isShown(wrapper, slug)).toBe(true)
       },
@@ -661,63 +692,59 @@ describe.each(LAYOUTS)('GameResult 試合日ページ: $name', ({ width, kind })
       expect(body(wrapper, 'absences').find('[data-embed]').exists()).toBe(true)
     })
 
+    // subtask_1783v の生存変異 M13: 離脱の段を開くたびに、離脱の一覧を取り直して件数を更新する
+    it('離脱の段を開くたびに、離脱の一覧を取り直す（開いて閉じてもう一度開くと、もう一度取る）', async () => {
+      const absenceGets = () =>
+        mockGet.mock.calls.filter(([url]) => url === '/player_absences').length
+      const wrapper = await mountDay({ appearances: appearanceRows(1) })
+      const afterLoad = absenceGets()
+      expect(afterLoad).toBeGreaterThanOrEqual(1)
+
+      await openStep(wrapper, 'absences')
+      expect(absenceGets()).toBe(afterLoad + 1)
+      await leaveStep(wrapper, 'absences')
+      await openStep(wrapper, 'absences')
+      expect(absenceGets()).toBe(afterLoad + 2)
+      // 離脱以外の段を開いても取り直さない
+      await openStep(wrapper, 'setup')
+      expect(absenceGets()).toBe(afterLoad + 2)
+    })
+
+    // subtask_1783v の生存変異 M8: 離脱の保存・削除で部品が changed を出したら、段の件数（試合前 N 件・試合中 M 件）を取り直す
+    it('離脱の部品が changed を出したら、離脱の一覧を取り直して段の件数を更新する', async () => {
+      const wrapper = await mountDay({
+        appearances: appearanceRows(1),
+        absences: [{ start_date: '2026-06-10', phase: 'pre_game' }],
+      })
+      await openStep(wrapper, 'absences')
+      expect(body(wrapper, 'absences').text()).toContain('試合前 1 件・試合中 0 件')
+      const absenceGets = () =>
+        mockGet.mock.calls.filter(([url]) => url === '/player_absences').length
+      const before = absenceGets()
+      mockGet.mockImplementation((url: string) =>
+        url === '/player_absences'
+          ? Promise.resolve({
+              data: [
+                { start_date: '2026-06-10', phase: 'pre_game' },
+                { start_date: '2026-06-10', phase: 'in_game' },
+              ],
+            })
+          : Promise.resolve({ data: [] }),
+      )
+
+      body(wrapper, 'absences').findComponent({ name: 'SeasonAbsenceTab' }).vm.$emit('changed')
+      await flushPromises()
+
+      expect(absenceGets()).toBe(before + 1)
+      expect(body(wrapper, 'absences').text()).toContain('試合前 1 件・試合中 1 件')
+    })
+
     it('離脱の区分の既定値は試合前のまま', async () => {
       const wrapper = await mountDay({ appearances: appearanceRows(1) })
       await openStep(wrapper, 'absences')
       expect(body(wrapper, 'absences').find('[data-embed]').attributes('data-default-phase')).toBe(
         undefined,
       )
-    })
-
-    describe('現在日と試合日が違う時の注記', () => {
-      const NOTE = 'この画面の操作は現在日（6/8）として記録されます。試合日は 6/10 です'
-      const withCurrent = (current: string) => ({ ...seasonResponse, current_date: current })
-
-      it.each(EMBEDS)('$slug: 現在日が試合日と違えば、画面の上に注記を出す', async ({ slug }) => {
-        const wrapper = await mountDay({ season: withCurrent('2026-06-08') })
-        await openStep(wrapper, slug)
-        const panel = body(wrapper, slug)
-        expect(panel.find('[data-testid="date-note"]').text()).toBe(NOTE)
-        const html = panel.element.innerHTML
-        expect(html.indexOf('data-testid="date-note"')).toBeGreaterThan(-1)
-        expect(html.indexOf('data-testid="date-note"')).toBeLessThan(html.indexOf('data-embed'))
-      })
-
-      it.each(EMBEDS)('$slug: 同じ日なら注記を出さない', async ({ slug }) => {
-        const wrapper = await mountDay()
-        await openStep(wrapper, slug)
-        expect(body(wrapper, slug).find('[data-embed]').exists()).toBe(true)
-        expect(wrapper.find('[data-testid="date-note"]').exists()).toBe(false)
-      })
-
-      it('時刻つきの現在日（同じ日）でも出さない。1 日でも違えば出す（現在日が試合日より後でも）', async () => {
-        const same = await mountDay({ season: withCurrent('2026-06-10T00:00:00.000Z') })
-        await openStep(same, 'roster')
-        expect(same.find('[data-testid="date-note"]').exists()).toBe(false)
-
-        const after = await mountDay({ season: withCurrent('2026-06-11') })
-        await openStep(after, 'roster')
-        expect(after.find('[data-testid="date-note"]').text()).toBe(
-          'この画面の操作は現在日（6/11）として記録されます。試合日は 6/10 です',
-        )
-      })
-
-      it('現在日が取れない時は、何も出さない（日付の食い違いを断定しない）', async () => {
-        const wrapper = await mountDay({ season: new Error('500') })
-        await openStep(wrapper, 'members')
-        expect(wrapper.find('[data-testid="date-note"]').exists()).toBe(false)
-      })
-
-      it('埋め込んだ画面以外（予告先発・結果・登板記録）には出さない', async () => {
-        const wrapper = await mountDay({
-          season: withCurrent('2026-06-08'),
-          appearances: appearanceRows(1),
-        })
-        await openStep(wrapper, 'setup')
-        await openStep(wrapper, 'result')
-        expect(body(wrapper, 'setup').find('[data-testid="date-note"]').exists()).toBe(false)
-        expect(body(wrapper, 'result').find('[data-testid="date-note"]').exists()).toBe(false)
-      })
     })
   })
 
@@ -767,7 +794,7 @@ describe.each(LAYOUTS)('GameResult 試合日ページ: $name', ({ width, kind })
     expect(wrapper.find('[data-testid="mismatch-banner"]').exists()).toBe(false)
     expect(state(wrapper, 'result')).toBe('done')
     expect(state(wrapper, 'pitchers')).toBe('done')
-    if (kind === 'section') expect(body(wrapper, 'pitchers').text()).toContain('登板 3 人')
+    expect(body(wrapper, 'pitchers').text()).toContain('登板 3 人')
     // 予告先発・対戦設定は未設定だが、結果が保存済みなので「なし」（急かさない）
     expect(state(wrapper, 'setup')).toBe('none')
     expect(wrapper.find('[data-testid="game-day-progress-text"]').text()).toBe('3 / 3 済')

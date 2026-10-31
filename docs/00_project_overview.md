@@ -139,7 +139,7 @@
 | メソッド | パス | 説明 |
 |---------|------|------|
 | POST | `/api/v1/seasons` | シーズン作成 |
-| GET/PATCH | `/api/v1/teams/:team_id/season` | シーズン詳細 / 現在日付更新 |
+| GET | `/api/v1/teams/:team_id/season` | シーズン詳細（現在日 `current_date` と今の範囲 `current_range` は日程の結果から導く。現在日を動かす PATCH は廃止） |
 | PATCH | `/api/v1/teams/:team_id/season/season_schedules/:id` | シーズン日程更新 |
 | GET/POST | `/api/v1/teams/:team_id/roster` | ロースター取得 / 更新 |
 | POST | `/api/v1/teams/:team_id/key_player` | キープレイヤー設定 |

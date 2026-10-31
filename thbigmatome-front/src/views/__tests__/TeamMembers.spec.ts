@@ -6,6 +6,7 @@ import * as directives from 'vuetify/directives'
 import { createI18n } from 'vue-i18n'
 import { createRouter, createMemoryHistory } from 'vue-router'
 import TeamMembers from '../TeamMembers.vue'
+import realJa from '@/locales/ja.json'
 
 const { mockShowSnackbar } = vi.hoisted(() => ({
   mockShowSnackbar: vi.fn(),
@@ -52,6 +53,9 @@ const i18n = createI18n({
   locale: 'ja',
   messages: {
     ja: {
+      // 違反の欄（ViolationList）は実際の文言で見る
+      violationList: realJa.violationList,
+      asOfBar: realJa.asOfBar,
       teamMembers: {
         title: 'チーム「{teamName}」の選手登録',
         selectCostList: 'コスト一覧表を選択',
@@ -422,6 +426,7 @@ describe('TeamMembers.vue', () => {
 
     expect(vi.mocked(axios.get)).toHaveBeenCalledWith(
       expect.stringContaining('/teams/42/team_players'),
+      expect.anything(),
     )
   })
 
@@ -589,5 +594,192 @@ describe('TeamMembers.vue', () => {
     expect(wrapper.text()).toContain('PM2026 / 湘南')
     expect(wrapper.text()).toContain('PM2026 / 町田')
     expect(wrapper.text()).toContain('PM2026 / UR')
+  })
+})
+
+// 過去分の修正（cmd_1784 段2b）: 読む GET と保存する POST の両方に、同じ target_date と phase を渡す。
+// GET を日付なしで呼ぶと最新の写し、POST を日付なしで呼ぶとカーソル時点の状態と比べるので、読んだ値を送り直すだけで余計な変更記録が増える（subtask_1784i の警告）。
+// Test Basis: queue/reviews/subtask_1784i.yaml の warning（GET と POST の既定の食い違い）、
+//   context/thbig-dugout-season-record-restructure-design.md の 2026-11-01 の追記 2 本
+describe('TeamMembers.vue 日付つきの読み書き', () => {
+  type Props = { teamId: number; asOfDate?: string; phase?: string; readonly?: boolean }
+
+  async function mountWith(
+    props: Props,
+    opts: {
+      season?: 'ok' | 'none'
+      currentDate?: string
+      teamPlayers?: Record<string, unknown>[]
+    } = {},
+  ) {
+    const {
+      season = 'ok',
+      currentDate = '2026-05-09T00:00:00.000Z',
+      teamPlayers = [makeTeamPlayer()],
+    } = opts
+    setupDefaultMocks(teamPlayers)
+    const base = vi.mocked(axios.get).getMockImplementation()!
+    vi.mocked(axios.get).mockImplementation((url: string, config?: unknown) => {
+      if (url === `/teams/${props.teamId}/season`) {
+        return season === 'ok'
+          ? Promise.resolve({ data: { id: 5, current_date: currentDate } })
+          : Promise.reject(new Error('404'))
+      }
+      return base(url, config as never)
+    })
+    vi.mocked(axios.post).mockResolvedValue({ data: { message: 'ok', warnings: [] } })
+    const router = createTestRouter()
+    router.push('/menu')
+    await router.isReady()
+    const wrapper = mount(TeamMembers, {
+      props,
+      global: { plugins: [vuetify, i18n, router], stubs: { TeamNavigation: TeamNavigationStub } },
+    })
+    await flushPromises()
+    return wrapper
+  }
+
+  const getsOf = (suffix: string) =>
+    vi.mocked(axios.get).mock.calls.filter(([url]) => String(url).endsWith(suffix))
+
+  const clickSave = async (wrapper: Awaited<ReturnType<typeof mountWith>>) => {
+    await wrapper
+      .findAll('.v-btn')
+      .find((b) => b.text().includes('保存'))!
+      .trigger('click')
+    await flushPromises()
+  }
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('asOfDate を渡すと、GET も POST も同じ target_date と phase を送る（シーズンの現在日は読まない）', async () => {
+    const wrapper = await mountWith({ teamId: 1, asOfDate: '2026-05-07', phase: 'post_game' })
+
+    expect(getsOf('/teams/1/season')).toHaveLength(0)
+    expect(getsOf('/teams/1/team_players')[0][1]).toEqual({
+      params: { target_date: '2026-05-07', phase: 'post_game' },
+    })
+
+    await clickSave(wrapper)
+
+    const [url, payload] = vi.mocked(axios.post).mock.calls[0]
+    expect(url).toBe('/teams/1/team_players')
+    expect(payload).toMatchObject({ target_date: '2026-05-07', phase: 'post_game' })
+  })
+
+  it('phase を渡さなければ pre_game を GET と POST の両方に送る', async () => {
+    const wrapper = await mountWith({ teamId: 1, asOfDate: '2026-05-07' })
+    await clickSave(wrapper)
+
+    expect(getsOf('/teams/1/team_players')[0][1]).toEqual({
+      params: { target_date: '2026-05-07', phase: 'pre_game' },
+    })
+    expect(vi.mocked(axios.post).mock.calls[0][1]).toMatchObject({ phase: 'pre_game' })
+  })
+
+  it('asOfDate が無ければ、シーズンの現在日を読み、その日付を GET と POST の両方に送る', async () => {
+    const wrapper = await mountWith({ teamId: 1 })
+
+    expect(getsOf('/teams/1/season')).toHaveLength(1)
+    expect(getsOf('/teams/1/team_players')[0][1]).toEqual({
+      params: { target_date: '2026-05-09', phase: 'pre_game' },
+    })
+
+    await clickSave(wrapper)
+
+    expect(vi.mocked(axios.post).mock.calls[0][1]).toMatchObject({
+      target_date: '2026-05-09',
+      phase: 'pre_game',
+    })
+  })
+
+  it('シーズンの無いチームは日付を送らない（サーバが行を直接書く）', async () => {
+    const wrapper = await mountWith({ teamId: 1 }, { season: 'none' })
+
+    expect(getsOf('/teams/1/team_players')[0][1]).toEqual({ params: {} })
+
+    await clickSave(wrapper)
+
+    const payload = vi.mocked(axios.post).mock.calls[0][1] as Record<string, unknown>
+    expect(payload).not.toHaveProperty('target_date')
+    expect(payload).not.toHaveProperty('phase')
+  })
+
+  it('asOfDate や phase が変わると、新しい日付で読み直す', async () => {
+    const wrapper = await mountWith({ teamId: 1, asOfDate: '2026-05-07' })
+
+    await wrapper.setProps({ asOfDate: '2026-05-08', phase: 'post_game' })
+    await flushPromises()
+
+    const gets = getsOf('/teams/1/team_players')
+    expect(gets).toHaveLength(2)
+    expect(gets[1][1]).toEqual({ params: { target_date: '2026-05-08', phase: 'post_game' } })
+  })
+
+  it('後の日付の検査で止まった時（422 の violations）は、違反した日付・区分・内容を画面に出す', async () => {
+    const wrapper = await mountWith({ teamId: 1, asOfDate: '2026-05-07' })
+    vi.mocked(axios.post).mockRejectedValue({
+      response: {
+        data: {
+          error: '保存できません',
+          violations: [
+            {
+              date: '2026-05-10',
+              phase: 'pre_game',
+              kind: 'first_squad_min',
+              message: '1軍が 24 人です',
+              severity: 'error',
+              player_id: null,
+            },
+          ],
+        },
+      },
+    })
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+
+    await clickSave(wrapper)
+
+    const list = wrapper.find('[data-testid="violation-list"]')
+    expect(list.exists()).toBe(true)
+    expect(list.text()).toContain('5/10')
+    expect(list.text()).toContain('試合前')
+    expect(list.text()).toContain('1軍が 24 人です')
+    expect(mockShowSnackbar).toHaveBeenCalledWith('保存できません', 'error')
+  })
+
+  it('違反の無い失敗（violations が無い 422）では、違反の欄を出さない', async () => {
+    const wrapper = await mountWith({ teamId: 1, asOfDate: '2026-05-07' })
+    vi.mocked(axios.post).mockRejectedValue({ response: { data: { error: '失敗' } } })
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+
+    await clickSave(wrapper)
+
+    expect(wrapper.find('[data-testid="violation-list"]').exists()).toBe(false)
+  })
+
+  it('readonly: 追加の欄・削除・保存を出さず、入力欄は読み取り専用', async () => {
+    const wrapper = await mountWith({ teamId: 1, asOfDate: '2026-05-07', readonly: true })
+
+    expect(wrapper.find('[data-testid="add-player-row"]').exists()).toBe(false)
+    expect(wrapper.findAll('.v-btn').some((b) => b.text().includes('保存'))).toBe(false)
+    expect(wrapper.find('.mdi-delete, .mdi-delete-outline').exists()).toBe(false)
+    expect(wrapper.text()).toContain('テスト選手')
+    // 表の入力欄（通称・契約・コスト除外）は、すべて読み取り専用か無効
+    const inputs = wrapper.findAll('tbody input')
+    expect(inputs.length).toBe(3)
+    inputs.forEach((input) => {
+      expect(
+        input.attributes('readonly') !== undefined || input.attributes('disabled') !== undefined,
+      ).toBe(true)
+    })
+  })
+
+  it('readonly でなければ、追加の欄と保存がある（対照）', async () => {
+    const wrapper = await mountWith({ teamId: 1, asOfDate: '2026-05-07' })
+
+    expect(wrapper.find('[data-testid="add-player-row"]').exists()).toBe(true)
+    expect(wrapper.findAll('.v-btn').some((b) => b.text().includes('保存'))).toBe(true)
   })
 })

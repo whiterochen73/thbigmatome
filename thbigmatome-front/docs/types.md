@@ -447,7 +447,8 @@
 |------|-----|------|------|
 | `id` | `number` | ✓ | シーズンID |
 | `name` | `string` | ✓ | シーズン名 |
-| `current_date` | `string` | ✓ | 現在日付 |
+| `current_date` | `string` | ✓ | 現在日付（今の範囲の最後の試合日。サーバが日程の結果から導く） |
+| `current_range` | `{ start_date: string; end_date: string } \| null` | ✓ | 今の範囲（最後に結果が入った日の翌日〜次の試合日）。登録・離脱を試合日ページで操作できるのはこの範囲の日だけ。最終試合日の後などで範囲が無い時は `null` |
 | `start_date` | `string` | ✓ | 開始日 |
 | `end_date` | `string` | ✓ | 終了日 |
 | `season_schedules` | `SeasonSchedule[]` | ✓ | スケジュール一覧 |

@@ -851,7 +851,7 @@
 | id | bigint | NO | (auto) | 主キー |
 | team_id | bigint | NO | — | teams FK（一意） |
 | name | string | NO | — | シーズン名 |
-| current_date | date | NO | — | シーズン内現在日 |
+| current_date | date | NO | — | シーズン内現在日（初期値）。読む側は `Season#current_date`（日程の結果から導く。日程が無いシーズンだけこの列）を使う |
 | team_type | string | YES | — | チーム種別 |
 | key_player_id | bigint | YES | — | team_memberships FK（キー選手） |
 | created_at | datetime | NO | — | 作成日時 |

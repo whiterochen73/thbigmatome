@@ -7,7 +7,7 @@ require "rails_helper"
 RSpec.describe "チーム編成の保存（変更記録の追加）", type: :request do
   let(:team) { create(:team) }
   let(:cost) { create(:cost, end_date: nil) }
-  let(:season) { create(:season, team: team, current_date: Date.new(2026, 5, 15)) }
+  let(:season) { create(:season, team: team) }
   let(:start_day) { Date.new(2026, 4, 1) }
 
   # 合計コストの超過文は ja の文面。テスト環境の既定ロケールは en なので ja に固定して文面を検査する
@@ -18,6 +18,8 @@ RSpec.describe "チーム編成の保存（変更記録の追加）", type: :req
     [ "2026-04-01", "2026-05-10", "2026-05-20" ].each do |date|
       create(:season_schedule, season: season, date: date, date_type: "game_day")
     end
+    # 現在日(5/15): 5/10 の結果の翌日〜次の試合日(5/15 = playoff_day)。1軍人数の検査は game_day だけを見るので 5/15 は「試合のない日」のまま
+    pin_current_date(season, Date.new(2026, 5, 15))
   end
 
   # 記録の無い（移行前の）行。first_since を渡すとその日の試合前に昇格した記録を足す

@@ -33,7 +33,13 @@
           </template>
           <template #[`item.name`]="{ item }">
             <span>{{ item.name }}</span>
-            <v-chip v-if="item.variant" size="x-small" color="secondary" class="ml-1">
+            <v-chip
+              v-if="item.variant"
+              size="x-small"
+              color="state-neutral"
+              variant="flat"
+              class="ml-1"
+            >
               {{ item.variant }}
             </v-chip>
           </template>

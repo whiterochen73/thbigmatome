@@ -228,27 +228,28 @@ function onSave() {
 /* ── 戻るボタン ── */
 .detail-back-btn {
   background: none;
-  border: 1px solid #bbb;
+  border: 1px solid rgb(var(--v-theme-border-strong));
   padding: 3px 10px;
   border-radius: 3px;
   cursor: pointer;
   font-size: 0.79em;
   margin-bottom: 8px;
-  color: #555;
+  color: rgb(var(--v-theme-on-surface));
   display: inline-flex;
   align-items: center;
   gap: 4px;
 }
 
 .detail-back-btn:hover {
-  background: #e8e0d4;
-  border-color: #999;
+  background: rgb(var(--v-theme-surface-variant));
+  border-color: rgb(var(--v-theme-border-strong));
 }
 
 /* ── 詳細ラッパー ── */
 .detail-wrap {
-  background: white;
-  border: 1px solid #ddd;
+  background: rgb(var(--v-theme-surface));
+  color: rgb(var(--v-theme-on-surface));
+  border: 1px solid rgb(var(--v-theme-border-strong));
   border-radius: 6px;
   overflow: hidden;
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
@@ -296,8 +297,8 @@ function onSave() {
 .section-header-title {
   font-size: 0.85em;
   font-weight: bold;
-  color: #5a3e20;
-  background: #ece4d8;
+  color: rgb(var(--v-theme-on-surface-variant));
+  background: rgb(var(--v-theme-surface-variant));
   padding: 3px 10px;
   border-radius: 3px;
 }
@@ -314,19 +315,19 @@ function onSave() {
 
 .info-label {
   font-size: 0.68em;
-  color: #999;
+  color: rgb(var(--v-theme-on-surface-variant));
   line-height: 1.2;
 }
 
 .info-val {
   font-size: 0.9em;
   font-weight: bold;
-  color: #222;
+  color: rgb(var(--v-theme-on-surface));
 }
 
 /* ── カードテーブル ── */
 .section-box {
-  border: 1px solid #e0d8cc;
+  border: 1px solid rgb(var(--v-theme-border-strong));
   border-radius: 4px;
   overflow: hidden;
 }
@@ -340,17 +341,17 @@ function onSave() {
 .card-table th {
   padding: 4px 8px;
   text-align: left;
-  color: #999;
+  color: rgb(var(--v-theme-on-surface-variant));
   font-size: 0.8em;
   font-weight: normal;
-  background: #ece4d8;
-  border-bottom: 1px solid #d4c5a9;
+  background: rgb(var(--v-theme-surface-variant));
+  border-bottom: 1px solid rgb(var(--v-theme-border-strong));
   white-space: nowrap;
 }
 
 .card-table td {
   padding: 5px 8px;
-  border-bottom: 1px solid #f4f0ea;
+  border-bottom: 1px solid rgb(var(--v-theme-border-strong));
 }
 
 .card-table tr:last-child td {
@@ -362,7 +363,7 @@ function onSave() {
 }
 
 .card-row:hover td {
-  background: #faf5ec;
+  background: rgb(var(--v-theme-surface-variant));
 }
 
 /* ── タイプチップ ── */
@@ -375,20 +376,20 @@ function onSave() {
 }
 
 .type-chip.pitcher {
-  background: rgba(219, 234, 254, 0.85);
-  color: #1e40af;
-  border: 1px solid #93c5fd;
+  background: rgb(var(--v-theme-tag-pitcher));
+  color: rgb(var(--v-theme-on-tag-pitcher));
+  border: 1px solid rgb(var(--v-theme-border-strong));
 }
 
 .type-chip.batter {
-  background: rgba(220, 252, 231, 0.85);
-  color: #166534;
-  border: 1px solid #6ee7b7;
+  background: rgb(var(--v-theme-tag-fielder));
+  color: rgb(var(--v-theme-on-tag-fielder));
+  border: 1px solid rgb(var(--v-theme-border-strong));
 }
 
 /* ── 詳細リンク ── */
 .detail-link {
-  color: #5a3e20;
+  color: rgb(var(--v-theme-link));
   font-size: 0.78em;
   text-decoration: none;
 }

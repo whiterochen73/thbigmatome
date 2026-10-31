@@ -156,6 +156,7 @@
                   density="compact"
                   variant="outlined"
                   color="link"
+                  :style="{ borderColor: 'rgb(var(--v-theme-border-strong))' }"
                 >
                   <v-btn value="calendar" title="カレンダー表示">
                     <v-icon>mdi-calendar-month</v-icon>
@@ -343,6 +344,7 @@
                     density="compact"
                     variant="outlined"
                     size="small"
+                    :style="{ borderColor: 'rgb(var(--v-theme-border-strong))' }"
                   >
                     <v-btn value="all">{{ t('seasonPortal.viewAll') }}</v-btn>
                     <v-btn value="game">{{ t('seasonPortal.viewGameOnly') }}</v-btn>

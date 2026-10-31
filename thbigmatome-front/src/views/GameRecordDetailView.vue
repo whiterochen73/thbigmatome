@@ -384,15 +384,16 @@ onMounted(async () => {
 
 /* ── レビュー進捗バー ── */
 .review-progress {
-  background: #f8f8f6;
-  border: 1px solid #e0e0e0;
+  background: rgb(var(--v-theme-surface-variant));
+  color: rgb(var(--v-theme-on-surface-variant));
+  border: 1px solid rgb(var(--v-theme-border-strong));
   border-radius: 6px;
   padding: 10px 14px;
 }
 
 /* ── イニングセクション ── */
 .inning-section {
-  border: 1px solid #ccc;
+  border: 1px solid rgb(var(--v-theme-border-strong));
   border-radius: 6px;
   overflow: hidden;
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.07);
@@ -417,6 +418,7 @@ onMounted(async () => {
 }
 
 .inning-body {
-  background: #fafaf8;
+  background: rgb(var(--v-theme-surface));
+  color: rgb(var(--v-theme-on-surface));
 }
 </style>

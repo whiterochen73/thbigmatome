@@ -498,51 +498,51 @@ function formatAutoEvent(ev: SourceEvent): string {
 
 .v-card,
 .ab-card {
-  --moegi: #5a8a00;
-  --kohaku: #c87a10;
-  --decl-bg: #eeeef0;
-  --decl-border: #888899;
-  --dice-bg: #eef2ff;
-  --dice-border: #3a6bd8;
-  --auto-bg: #efffee;
-  --auto-border: #4a9e4a;
-  --skip-bg: #fff8e6;
-  --skip-border: #c87a10;
-  --disc-bg: #fff0f0;
-  --disc-border: #b33333;
+  --decl-bg: rgb(var(--v-theme-surface-variant));
+  --dice-bg: rgb(var(--v-theme-state-info));
+  --dice-border: rgb(var(--v-theme-border-strong));
+  --auto-bg: rgb(var(--v-theme-state-done));
+  --auto-border: rgb(var(--v-theme-border-strong));
+  --skip-bg: rgb(var(--v-theme-state-todo));
+  --skip-border: rgb(var(--v-theme-border-strong));
+  --disc-bg: rgb(var(--v-theme-state-warn));
+  --disc-border: rgb(var(--v-theme-border-strong));
 }
 
 .ab-card {
-  border: 1px solid #ddd;
+  border: 1px solid rgb(var(--v-theme-border-strong));
   border-radius: 5px;
   overflow: hidden;
-  background: white;
+  background: rgb(var(--v-theme-surface));
+  color: rgb(var(--v-theme-on-surface));
 }
 
 .ab-card--modified {
-  background: #fffbf0;
+  background: rgb(var(--v-theme-surface));
 }
 
 .ab-card--reviewed {
-  border-color: #4a9e4a;
+  border-color: rgb(var(--v-theme-on-state-done));
 }
 
 .ab-card--disc {
-  border-color: #b33333;
+  border-color: rgb(var(--v-theme-on-state-warn));
 }
 
 .ab-card-header {
-  background: #f8f8f8;
-  border-bottom: 1px solid #eee;
+  background: rgb(var(--v-theme-surface-variant));
+  border-bottom: 1px solid rgb(var(--v-theme-border-strong));
   user-select: none;
 }
 
 .ab-card--modified .ab-card-header {
-  background: #fff5e0;
+  background: rgb(var(--v-theme-state-todo));
+  color: rgb(var(--v-theme-on-state-todo));
 }
 
 .ab-card--disc .ab-card-header {
-  background: #fff5f5;
+  background: rgb(var(--v-theme-state-warn));
+  color: rgb(var(--v-theme-on-state-warn));
 }
 
 .ab-num-badge {
@@ -577,57 +577,60 @@ function formatAutoEvent(ev: SourceEvent): string {
 }
 
 .sec-decl .ev-section-title {
-  background: #e0e0e4;
-  color: #556;
-  border-bottom: 1px solid #bbb;
+  background: rgb(var(--v-theme-surface-variant));
+  color: rgb(var(--v-theme-on-surface-variant));
+  border-bottom: 1px solid rgb(var(--v-theme-border-strong));
 }
 .sec-decl .ev-body {
   background: var(--decl-bg);
 }
 
 .sec-dice .ev-section-title {
-  background: #dce6ff;
-  color: #3a6bd8;
-  border-bottom: 1px solid #9ab;
+  background: rgb(var(--v-theme-state-info));
+  color: rgb(var(--v-theme-on-state-info));
+  border-bottom: 1px solid rgb(var(--v-theme-border-strong));
 }
 .sec-dice .ev-body {
   background: var(--dice-bg);
+  color: rgb(var(--v-theme-on-state-info));
   border-left: 3px solid var(--dice-border);
 }
 
 .sec-auto .ev-section-title {
-  background: #d8f0d8;
-  color: #5a8a00;
-  border-bottom: 1px solid #9c9;
+  background: rgb(var(--v-theme-state-done));
+  color: rgb(var(--v-theme-on-state-done));
+  border-bottom: 1px solid rgb(var(--v-theme-border-strong));
 }
 .sec-auto .ev-body {
   background: var(--auto-bg);
+  color: rgb(var(--v-theme-on-state-done));
   border-left: 3px solid var(--auto-border);
 }
 
 .skip-row {
   background: var(--skip-bg);
+  color: rgb(var(--v-theme-on-state-todo));
   border-left: 3px solid var(--skip-border);
   border-radius: 2px;
   padding: 5px 10px;
-  color: #8a5500;
 }
 
 .play-desc {
-  background: #fafaf5;
-  border: 1px solid #eee;
+  background: rgb(var(--v-theme-surface-variant));
+  border: 1px solid rgb(var(--v-theme-border-strong));
   border-radius: 3px;
   padding: 5px 10px;
-  color: #666;
+  color: rgb(var(--v-theme-on-surface-variant));
 }
 
 .ab-state {
-  background: #f8f8f6;
-  border-top: 1px solid #eee;
+  background: rgb(var(--v-theme-surface-variant));
+  border-top: 1px solid rgb(var(--v-theme-border-strong));
 }
 
 .disc-banner {
   background: var(--disc-bg);
+  color: rgb(var(--v-theme-on-state-warn));
   border: 1px solid var(--disc-border);
   border-radius: 4px;
   padding: 8px 12px;
@@ -636,7 +639,7 @@ function formatAutoEvent(ev: SourceEvent): string {
 
 .disc-banner-title {
   font-weight: bold;
-  color: #b33333;
+  color: rgb(var(--v-theme-on-state-warn));
   display: block;
   margin-bottom: 4px;
 }
@@ -652,30 +655,30 @@ function formatAutoEvent(ev: SourceEvent): string {
 .disc-field {
   font-family: monospace;
   font-weight: bold;
-  color: #444;
+  color: rgb(var(--v-theme-on-state-warn));
 }
 
 .disc-label {
-  color: #888;
+  color: rgb(var(--v-theme-on-state-warn));
   font-size: 0.9em;
 }
 
 .disc-val {
   font-family: monospace;
-  color: #333;
+  color: rgb(var(--v-theme-on-state-warn));
 }
 
 .disc-sep {
-  color: #aaa;
+  color: rgb(var(--v-theme-on-state-warn));
 }
 
 .edit-form {
-  background: #f0f4ff;
-  border: 1px solid #b0c0e8;
+  background: rgb(var(--v-theme-surface-variant));
+  border: 1px solid rgb(var(--v-theme-border-strong));
   border-radius: 4px;
 }
 
 .legacy-fields {
-  background: white;
+  background: rgb(var(--v-theme-surface));
 }
 </style>

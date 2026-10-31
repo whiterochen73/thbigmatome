@@ -107,8 +107,8 @@
                       <v-chip
                         v-if="getValidationStatus(entry.battingOrder) !== 'ok'"
                         size="x-small"
-                        color="warning"
-                        variant="tonal"
+                        color="state-todo"
+                        variant="flat"
                       >
                         {{ getValidationReason(entry.battingOrder) }}
                       </v-chip>

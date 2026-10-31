@@ -177,7 +177,7 @@ import PlayerAbsenceFormDialog from '@/components/PlayerAbsenceFormDialog.vue'
 import PlayerNameLink from '@/components/shared/PlayerNameLink.vue'
 import { ABSENCE_APPEARANCE, ABSENCE_PHASE_APPEARANCE } from '@/components/gameDay/gameDayStatus'
 
-// defaultPhase: 新規登録ダイアログの区分の既定値。試合日ページの「試合中の負傷」段は in_game を渡す
+// defaultPhase: 新規登録ダイアログの区分の既定値。
 const props = withDefaults(
   defineProps<{
     teamId: number
@@ -186,6 +186,7 @@ const props = withDefaults(
   }>(),
   { defaultPhase: 'pre_game' },
 )
+const emit = defineEmits<{ changed: [] }>()
 
 const { t } = useI18n()
 
@@ -291,6 +292,7 @@ const handleAbsenceSaved = () => {
   isDialogOpen.value = false
   selectedAbsence.value = null
   fetchPlayerAbsences()
+  emit('changed')
 }
 
 const editAbsence = (absence: PlayerAbsence | null) => {
@@ -303,6 +305,7 @@ const deleteAbsence = async (absence: PlayerAbsence) => {
     try {
       await axios.delete(`/player_absences/${absence.id}`)
       fetchPlayerAbsences()
+      emit('changed')
     } catch (error) {
       console.error('Failed to delete player absence:', error)
     }

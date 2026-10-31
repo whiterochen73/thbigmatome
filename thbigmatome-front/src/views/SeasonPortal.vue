@@ -667,6 +667,7 @@
 </template>
 
 <script setup lang="ts">
+import { dateTypeAppearance } from '@/components/gameDay/dateTypeAppearance'
 import { ref, onMounted, computed, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import axios from 'axios'
@@ -970,36 +971,12 @@ const legendItems = [
   { type: 'no_game' },
 ]
 
-// 日程種別カテゴリ (チップ/バッジのスタイルに使用)
-// 7カテゴリ: game / inter / reserve / inter-reserve / travel / off / no-game
-const getTypeCategory = (dateType?: string) => {
-  if (!dateType) return 'empty'
-  if (['game_day', 'playoff_day'].includes(dateType)) return 'game'
-  if (['interleague_game_day'].includes(dateType)) return 'inter'
-  if (['reserve_day'].includes(dateType)) return 'reserve'
-  if (['interleague_reserve_day'].includes(dateType)) return 'inter-reserve'
-  if (['travel_day'].includes(dateType)) return 'travel'
-  if (['no_game', 'postponed'].includes(dateType)) return 'no-game'
-  return 'off'
-}
-
-// Test Basis: thbig-dugout-visual-refresh-design.md §6.5, §7 段3
-const dateTypeIcon = (dateType?: string): string => {
-  if (dateType === 'playoff_day') return 'mdi-trophy'
-  if (dateType === 'game_day') return 'mdi-baseball-diamond'
-  if (dateType === 'interleague_game_day' || dateType === 'interleague_reserve_day')
-    return 'mdi-swap-horizontal'
-  if (dateType === 'reserve_day') return 'mdi-calendar-clock'
-  if (dateType === 'travel_day') return 'mdi-bus'
-  if (dateType === 'no_game' || dateType === 'postponed') return 'mdi-weather-pouring'
-  return 'mdi-minus-circle-outline'
-}
+const getTypeCategory = (dateType?: string) =>
+  dateType ? dateTypeAppearance(dateType).category : 'empty'
+const dateTypeIcon = (dateType?: string) => dateTypeAppearance(dateType).icon
 
 // 雨天中止等のキャンセル系date_typeか判定
-const isCancelledType = (dateType?: string) => {
-  if (!dateType) return false
-  return ['no_game', 'postponed'].includes(dateType)
-}
+const isCancelledType = (dateType?: string) => dateTypeAppearance(dateType).cancelled
 
 // 試合日のセルの印: 得点と登板記録の食い違い（要確認・赤）、試合日が来ているのに結果が未入力（黄）
 const dayMark = (schedule?: SeasonSchedule | null): 'warn' | 'todo' | null => {

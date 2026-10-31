@@ -125,8 +125,7 @@
           :data-testid="`panel-${step.slug}`"
           :data-state="step.state"
         >
-          <div class="d-flex flex-wrap align-center ga-2 mb-2">
-            <h2 class="text-subtitle-1 font-weight-bold">{{ step.no }}. {{ step.title }}</h2>
+          <div v-if="step.link || step.summary" class="d-flex flex-wrap align-center ga-2 mb-2">
             <span v-if="step.summary" class="text-body-2 text-medium-emphasis">{{
               step.summary
             }}</span>

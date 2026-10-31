@@ -351,14 +351,13 @@
       "setup": "予告先発・対戦設定",
       "result": "試合結果",
       "pitchers": "登板記録",
-      "pitcherStatus": "投手状態",
-      "inGameAbsences": "試合中の負傷・出場停止"
+      "pitcherStatus": "投手状態"
     },
     "summary": {
       "members": "新規登録・契約変更",
       "roster": "1軍・2軍の入れ替え",
       "absences": "負傷・出場停止の登録・編集",
-      "inGameAbsences": "試合中に出た負傷・出場停止も、同じ離脱者の画面で登録",
+      "absencesByPhase": "試合前 {pre} 件・試合中 {inGame} 件",
       "pitcherCount": "登板 {count} 人",
       "noGame": "ノーゲーム",
       "vsOpponent": "vs {name}"

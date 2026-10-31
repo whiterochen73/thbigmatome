@@ -40,19 +40,65 @@ export default createVuetify({
           // 背景・サーフェス
           background: '#F8F6F1', // 和紙色
           surface: '#FFFFFF', // カード背景
+          'on-surface': '#1A1A1A',
+          'surface-variant': '#F1EEE6',
+          'on-surface-variant': '#4A4A4A',
+          link: '#1B3A6B',
+          'border-strong': '#857F70',
+          'danger-ink': '#8a1420',
 
           // テキストカラー（Lightモード）
           'text-high': '#1A1A1A', // 本文（高重要）
           'text-medium': '#4A4A4A', // 本文（中重要）
-          'text-caption': '#777777', // キャプション
+          'text-caption': '#666666', // キャプション
           'text-disabled': '#BBBBBB', // 無効テキスト
 
           // ゲーム固有色
-          'game-home': '#2c5f2e', // ホームチーム色（緑）
-          'game-visitor': '#1B3A6B', // ビジターチーム色（藍）
-          'game-win': '#C0392B', // 勝利（朱）
-          'game-lose': '#1B3A6B', // 敗戦（藍）
-          'game-draw': '#777777', // 引分（灰）
+          'game-home': '#1B3A6B',
+          'game-visitor': '#46565F',
+
+          'state-done': '#ddefc9',
+          'on-state-done': '#2f5a12',
+          'state-todo': '#fbebc2',
+          'on-state-todo': '#6d4a00',
+          'state-edit': '#ffffff',
+          'on-state-edit': '#1A1A1A',
+          'state-warn': '#f7d9dc',
+          'on-state-warn': '#8a1420',
+          'state-info': '#d6e9f2',
+          'on-state-info': '#12506b',
+          'state-neutral': '#eeece7',
+          'on-state-neutral': '#4a4a4a',
+          'absence-out': '#f6dbe8',
+          'on-absence-out': '#8a1c55',
+          'absence-adjust': '#e3e7ea',
+          'on-absence-adjust': '#3b4a54',
+          'absence-cooldown': '#f9e0cf',
+          'on-absence-cooldown': '#8a3f0c',
+          'zone-roster': '#dcecef',
+          'on-zone-roster': '#1f5a68',
+          'zone-game': '#dfe4ee',
+          'on-zone-game': '#1B3A6B',
+          'date-game': '#dfe4ee',
+          'on-date-game': '#1B3A6B',
+          'date-interleague': '#d6e9f2',
+          'on-date-interleague': '#12506b',
+          'date-reserve': '#dcecef',
+          'on-date-reserve': '#1f5a68',
+          'date-travel': '#e3e7ea',
+          'on-date-travel': '#3b4a54',
+          'date-rain': '#e3e1db',
+          'on-date-rain': '#4a4a4a',
+          'result-win': '#ddefc9',
+          'on-result-win': '#2f5a12',
+          'result-loss': '#f7d9dc',
+          'on-result-loss': '#8a1420',
+          'result-draw': '#eeece7',
+          'on-result-draw': '#4a4a4a',
+          'result-nogame': '#e3e1db',
+          'on-result-nogame': '#4a4a4a',
+          action: '#2E7D32',
+          'on-action': '#FFFFFF',
         },
       },
       dark: {
@@ -70,19 +116,65 @@ export default createVuetify({
           // 背景・サーフェス
           background: '#1A1A2E', // 夜空色
           surface: '#252545', // カード背景
+          'on-surface': '#E8E8F2',
+          'surface-variant': '#2D2D50',
+          'on-surface-variant': '#B8B8D0',
+          link: '#9DBBF2',
+          'border-strong': '#7C7CB0',
+          'danger-ink': '#ffb3b8',
 
           // テキストカラー（Darkモード）
           'text-high': '#E8E8F2', // 本文（高重要）
           'text-medium': '#B8B8D0', // 本文（中重要）
-          'text-caption': '#888888', // キャプション
+          'text-caption': '#A0A0B8', // キャプション
           'text-disabled': '#555555', // 無効テキスト
 
           // ゲーム固有色
-          'game-home': '#2c5f2e', // ホームチーム色（緑）
-          'game-visitor': '#1B3A6B', // ビジターチーム色（藍）
-          'game-win': '#C0392B', // 勝利（朱）
-          'game-lose': '#1B3A6B', // 敗戦（藍）
-          'game-draw': '#777777', // 引分（灰）
+          'game-home': '#9DBBF2',
+          'game-visitor': '#B4C7D3',
+
+          'state-done': '#2c4a1c',
+          'on-state-done': '#bfe59a',
+          'state-todo': '#4d3a0c',
+          'on-state-todo': '#ffd777',
+          'state-edit': '#252545',
+          'on-state-edit': '#E8E8F2',
+          'state-warn': '#5a1a22',
+          'on-state-warn': '#ffb3b8',
+          'state-info': '#1f3f52',
+          'on-state-info': '#a9dbf2',
+          'state-neutral': '#33335a',
+          'on-state-neutral': '#b8b8d0',
+          'absence-out': '#5a1d3d',
+          'on-absence-out': '#ffb8d8',
+          'absence-adjust': '#2f3b44',
+          'on-absence-adjust': '#c5d3dc',
+          'absence-cooldown': '#5a2f10',
+          'on-absence-cooldown': '#ffc7a0',
+          'zone-roster': '#1d3b43',
+          'on-zone-roster': '#a8d3dd',
+          'zone-game': '#27345a',
+          'on-zone-game': '#bcd0f5',
+          'date-game': '#27345a',
+          'on-date-game': '#bcd0f5',
+          'date-interleague': '#1f3f52',
+          'on-date-interleague': '#a9dbf2',
+          'date-reserve': '#1d3b43',
+          'on-date-reserve': '#a8d3dd',
+          'date-travel': '#2f3b44',
+          'on-date-travel': '#c5d3dc',
+          'date-rain': '#33335a',
+          'on-date-rain': '#b8b8d0',
+          'result-win': '#2c4a1c',
+          'on-result-win': '#bfe59a',
+          'result-loss': '#5a1a22',
+          'on-result-loss': '#ffb3b8',
+          'result-draw': '#33335a',
+          'on-result-draw': '#b8b8d0',
+          'result-nogame': '#33335a',
+          'on-result-nogame': '#b8b8d0',
+          action: '#7CD08F',
+          'on-action': '#082414',
         },
       },
     },

@@ -5,11 +5,13 @@
       v-for="group in groups"
       :key="group.id"
       :data-testid="`step-group-${group.id}`"
+      class="game-day-stack__group"
       :class="`game-day-stack__group--${group.id}`"
       role="group"
       :aria-label="t(`gameDay.phase.${group.id}`)"
     >
       <div class="game-day-phase text-caption mb-1 mt-4">
+        <v-icon size="small" aria-hidden="true">{{ groupIcon(group.id) }}</v-icon>
         {{ t(`gameDay.phase.${group.id}`) }}
       </div>
       <div class="d-flex flex-column ga-2">
@@ -30,6 +32,7 @@
               <v-btn
                 size="small"
                 variant="outlined"
+                class="game-day-stepper__secondary"
                 :to="step.link.to"
                 :data-testid="step.link.testId"
               >
@@ -90,7 +93,17 @@
                 :data-state="step.state"
               >
                 <template #icon>
-                  <v-icon size="small" aria-hidden="true">{{ step.icon }}</v-icon>
+                  <span class="gd-step-icon" :style="stateIconStyle(step.state)">
+                    <v-icon size="small" aria-hidden="true">{{ step.icon }}</v-icon>
+                    <span
+                      v-if="hasStateBadge(step.state)"
+                      class="gd-step-icon__badge"
+                      data-testid="step-state-badge"
+                      aria-hidden="true"
+                    >
+                      <v-icon size="x-small">{{ STAGE_STATE_APPEARANCE[step.state].icon }}</v-icon>
+                    </span>
+                  </span>
                 </template>
                 <template #subtitle>
                   <GameDayStateChip v-if="step.state !== 'info'" :state="step.state" />
@@ -122,6 +135,7 @@
               v-if="step.link"
               size="small"
               variant="outlined"
+              class="game-day-stepper__secondary"
               :to="step.link.to"
               :data-testid="step.link.testId"
             >
@@ -157,7 +171,7 @@ import { useI18n } from 'vue-i18n'
 import type { RouteLocationRaw } from 'vue-router'
 import GameDaySection from './GameDaySection.vue'
 import GameDayStateChip from './GameDayStateChip.vue'
-import type { StageState } from './gameDayStatus'
+import { STAGE_STATE_APPEARANCE, type StageState } from './gameDayStatus'
 
 export interface GameDayStepSub {
   id: string
@@ -198,6 +212,17 @@ const emit = defineEmits<{
 }>()
 
 const { t } = useI18n()
+const groupIcon = (id: 'registration' | 'game') =>
+  id === 'registration' ? 'mdi-account-switch' : 'mdi-baseball-diamond'
+const hasStateBadge = (state: StageState) =>
+  state === 'done' || state === 'todo' || state === 'warn'
+const stateIconStyle = (state: StageState) => {
+  const color = STAGE_STATE_APPEARANCE[state].color
+  return {
+    '--gd-step-bg': `rgb(var(--v-theme-${color}))`,
+    '--gd-step-ink': `rgb(var(--v-theme-on-${color}))`,
+  }
+}
 
 const groups = computed(() =>
   (['registration', 'game'] as const)
@@ -223,23 +248,35 @@ const onSelect = (id: unknown) => {
 
 <style scoped>
 .game-day-phase {
-  color: rgba(var(--v-theme-on-surface), var(--v-medium-emphasis-opacity));
   font-weight: 700;
   letter-spacing: 0.08em;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.game-day-stack__group {
+  border-top: 3px solid;
+  padding-top: 2px;
+}
+.game-day-stack__group--registration {
+  border-color: rgb(var(--v-theme-on-zone-roster));
+}
+.game-day-stack__group--game {
+  border-color: rgb(var(--v-theme-on-zone-game));
+}
+.game-day-stack__group--registration .game-day-phase {
+  color: rgb(var(--v-theme-on-zone-roster));
+}
+.game-day-stack__group--game .game-day-phase {
+  color: rgb(var(--v-theme-on-zone-game));
 }
 .game-day-stack__section--registration {
-  background: rgba(var(--v-theme-secondary), 0.18);
+  background: rgb(var(--v-theme-zone-roster));
   color: rgb(var(--v-theme-on-surface));
 }
 .game-day-stack__section--game {
-  background: rgba(var(--v-theme-primary), 0.3);
+  background: rgb(var(--v-theme-zone-game));
   color: rgb(var(--v-theme-on-surface));
-}
-:global(.v-theme--dark .game-day-stack__section--registration) {
-  background: rgba(var(--v-theme-secondary), 0.38);
-}
-:global(.v-theme--dark .game-day-stack__section--game) {
-  background: rgba(var(--v-theme-primary), 0.42);
 }
 .game-day-stack :deep(.game-day-section__summary) {
   color: rgba(var(--v-theme-on-surface), 0.85);
@@ -261,19 +298,16 @@ const onSelect = (id: unknown) => {
   flex: 3 1 0;
   min-width: 0;
   border-radius: 6px;
+  border-top: 3px solid;
 }
 .game-day-stepper__group--registration {
-  background: rgba(var(--v-theme-secondary), 0.18);
+  background: rgb(var(--v-theme-zone-roster));
+  border-color: rgb(var(--v-theme-on-zone-roster));
 }
 .game-day-stepper__group--game {
   flex-grow: 4;
-  background: rgba(var(--v-theme-primary), 0.3);
-}
-:global(.v-theme--dark .game-day-stepper__group--registration) {
-  background: rgba(var(--v-theme-secondary), 0.38);
-}
-:global(.v-theme--dark .game-day-stepper__group--game) {
-  background: rgba(var(--v-theme-primary), 0.42);
+  background: rgb(var(--v-theme-zone-game));
+  border-color: rgb(var(--v-theme-on-zone-game));
 }
 .game-day-stepper__items {
   display: flex;
@@ -294,13 +328,37 @@ const onSelect = (id: unknown) => {
 .game-day-stepper :deep(.v-stepper-item__avatar.v-avatar) {
   margin-inline-end: 6px;
   background: rgb(var(--v-theme-surface));
-  color: rgb(var(--v-theme-on-surface));
+  overflow: visible;
 }
 .game-day-stepper :deep(.v-stepper-item--selected) {
   box-shadow:
-    inset 0 -3px 0 rgb(var(--v-theme-primary)),
-    inset 0 0 0 1px rgb(var(--v-theme-primary));
+    inset 0 -3px 0 rgb(var(--v-theme-link)),
+    inset 0 0 0 1px rgb(var(--v-theme-link));
   background: rgb(var(--v-theme-surface));
+}
+.gd-step-icon {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  background: var(--gd-step-bg);
+  color: var(--gd-step-ink);
+}
+.gd-step-icon__badge {
+  position: absolute;
+  right: -8px;
+  bottom: -7px;
+  display: grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  border: 2px solid rgb(var(--v-theme-surface));
+  border-radius: 50%;
+  background: var(--gd-step-bg);
+  color: var(--gd-step-ink);
 }
 .game-day-stepper :deep(.v-stepper-item__title) {
   line-height: 1.3;
@@ -314,5 +372,9 @@ const onSelect = (id: unknown) => {
 }
 .game-day-stepper__panels {
   padding: 16px;
+}
+.game-day-stepper__secondary {
+  border-color: rgb(var(--v-theme-border-strong));
+  color: rgb(var(--v-theme-on-surface));
 }
 </style>

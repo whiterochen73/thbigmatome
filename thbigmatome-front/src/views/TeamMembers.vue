@@ -94,8 +94,9 @@
             </v-col>
             <v-col cols="12" md="3">
               <v-btn
-                color="primary"
-                variant="outlined"
+                :color="gameDayActions ? 'action' : 'primary'"
+                :variant="gameDayActions ? 'flat' : 'outlined'"
+                :prepend-icon="gameDayActions ? 'mdi-plus' : undefined"
                 @click="addPlayer"
                 :disabled="!selectedPlayer || !selectedCostListId"
                 :loading="fetchingCards"
@@ -332,9 +333,10 @@
                     <template #activator="{ props }">
                       <v-btn
                         v-bind="props"
-                        icon="mdi-delete"
+                        :icon="gameDayActions ? 'mdi-delete-outline' : 'mdi-delete'"
                         size="small"
-                        variant="text"
+                        :variant="gameDayActions ? 'outlined' : 'text'"
+                        :color="gameDayActions ? 'danger-ink' : undefined"
                         @click="removePlayer(item)"
                       />
                     </template>
@@ -349,10 +351,22 @@
       <!-- Actions -->
       <v-row>
         <v-col class="d-flex justify-end mt-4">
-          <v-btn variant="outlined" @click="goBack" class="mr-4">{{ t('actions.cancel') }}</v-btn>
-          <v-btn color="accent" variant="flat" @click="saveTeamMembers">{{
-            t('actions.save')
-          }}</v-btn>
+          <v-btn
+            variant="outlined"
+            @click="goBack"
+            class="mr-4"
+            :style="
+              gameDayActions ? { borderColor: 'rgb(var(--v-theme-border-strong))' } : undefined
+            "
+            >{{ t('actions.cancel') }}</v-btn
+          >
+          <v-btn
+            :color="gameDayActions ? 'action' : 'accent'"
+            variant="flat"
+            :prepend-icon="gameDayActions ? 'mdi-content-save-outline' : undefined"
+            @click="saveTeamMembers"
+            >{{ t('actions.save') }}</v-btn
+          >
         </v-col>
       </v-row>
     </template>
@@ -415,7 +429,7 @@ interface TeamPlayersSaveResponse {
   warnings?: string[]
 }
 
-const props = defineProps<{ teamId?: number }>()
+const props = defineProps<{ teamId?: number; gameDayActions?: boolean }>()
 
 const { t } = useI18n()
 const route = useRoute()

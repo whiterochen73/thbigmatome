@@ -84,10 +84,19 @@
       </v-card-text>
       <v-card-actions>
         <v-spacer></v-spacer>
-        <v-btn variant="text" @click="isOpen = false">
+        <v-btn
+          :variant="gameDayActions ? 'outlined' : 'text'"
+          :style="gameDayActions ? { borderColor: 'rgb(var(--v-theme-border-strong))' } : undefined"
+          @click="isOpen = false"
+        >
           {{ t('actions.cancel') }}
         </v-btn>
-        <v-btn color="accent" variant="flat" @click="saveAbsence">
+        <v-btn
+          :color="gameDayActions ? 'action' : 'accent'"
+          variant="flat"
+          :prepend-icon="gameDayActions ? 'mdi-content-save-outline' : undefined"
+          @click="saveAbsence"
+        >
           {{ t('actions.save') }}
         </v-btn>
       </v-card-actions>
@@ -117,6 +126,7 @@ const props = defineProps<{
   initialAbsence?: PlayerAbsence | null // ADDED for editing
   // 新規登録時の区分の既定値。試合日ページの「試合中の負傷」段は in_game を渡す
   initialPhase?: AbsencePhase
+  gameDayActions?: boolean
 }>()
 
 const emit = defineEmits(['saved'])

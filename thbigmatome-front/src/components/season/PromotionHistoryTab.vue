@@ -23,8 +23,8 @@
           <td>
             <v-chip
               size="x-small"
-              :color="change.type === 'promote' ? 'primary' : 'blue-grey'"
-              variant="tonal"
+              :color="change.type === 'promote' ? 'zone-game' : 'state-neutral'"
+              variant="flat"
               :prepend-icon="change.type === 'promote' ? 'mdi-arrow-up' : 'mdi-arrow-down'"
             >
               {{

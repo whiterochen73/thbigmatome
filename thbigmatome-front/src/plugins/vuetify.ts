@@ -87,6 +87,10 @@ export default createVuetify({
           'on-zone-roster': '#1f5a68',
           'zone-game': '#dfe4ee',
           'on-zone-game': '#1B3A6B',
+          'tag-pitcher': '#dfe4ee',
+          'on-tag-pitcher': '#1B3A6B',
+          'tag-fielder': '#dcecef',
+          'on-tag-fielder': '#1f5a68',
           'date-game': '#dfe4ee',
           'on-date-game': '#1B3A6B',
           'date-interleague': '#d6e9f2',
@@ -170,6 +174,10 @@ export default createVuetify({
           'on-zone-roster': '#a8d3dd',
           'zone-game': '#27345a',
           'on-zone-game': '#bcd0f5',
+          'tag-pitcher': '#27345a',
+          'on-tag-pitcher': '#bcd0f5',
+          'tag-fielder': '#1d3b43',
+          'on-tag-fielder': '#a8d3dd',
           'date-game': '#27345a',
           'on-date-game': '#bcd0f5',
           'date-interleague': '#1f3f52',
@@ -218,6 +226,6 @@ export default createVuetify({
     // 追加: テキストエリア統一
     VTextarea: { density: 'compact', variant: 'outlined' },
     // 追加: タブ統一
-    VTabs: { color: 'primary' },
+    VTabs: { color: 'link' },
   },
 })

@@ -38,7 +38,11 @@ function mountComponent(props = {}) {
       stubs: {
         VProgressCircular: true,
         VTable: { template: '<table><slot /></table>' },
-        VChip: { template: '<span><slot /></span>' },
+        VChip: {
+          name: 'VChip',
+          props: ['color', 'variant', 'prependIcon'],
+          template: '<span><slot /></span>',
+        },
         PlayerNameLink: {
           props: ['playerName'],
           template: '<span>{{ playerName }}</span>',
@@ -78,6 +82,27 @@ describe('PromotionHistoryTab', () => {
     expect(text.indexOf('魔理沙')).toBeLessThan(text.indexOf('霊夢'))
     expect(text).toContain('昇格')
     expect(text).toContain('降格')
+  })
+
+  // Test Basis: thbig-dugout-visual-stage5-mapping.md §7 b1-26
+  it('昇格と降格の履歴チップは区分色と矢印を使う', async () => {
+    vi.mocked(axios.get).mockResolvedValueOnce({
+      data: {
+        changes: [
+          { type: 'promote', player_id: 1, player_name: '霊夢', number: '1', date: '2026-04-01' },
+          { type: 'demote', player_id: 2, player_name: '魔理沙', number: '2', date: '2026-04-02' },
+        ],
+      },
+    })
+    const wrapper = mountComponent()
+    await flushPromises()
+    const chips = wrapper.findAllComponents({ name: 'VChip' })
+    expect(chips.map((chip) => chip.props('color'))).toEqual(['state-neutral', 'zone-game'])
+    expect(chips.map((chip) => chip.props('variant'))).toEqual(['flat', 'flat'])
+    expect(chips.map((chip) => chip.props('prependIcon'))).toEqual([
+      'mdi-arrow-down',
+      'mdi-arrow-up',
+    ])
   })
 
   it('日付をmonth/day形式で表示する', async () => {

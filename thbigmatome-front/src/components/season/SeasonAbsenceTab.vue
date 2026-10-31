@@ -60,8 +60,11 @@
           <template v-slot:item.remaining="{ item }">
             <template v-if="getRemainingCount(item) !== null">
               <v-chip
-                :color="getRemainingCount(item)! <= 2 ? 'green-darken-1' : undefined"
-                :variant="getRemainingCount(item)! <= 2 ? 'tonal' : 'text'"
+                :color="getRemainingCount(item)! <= 2 ? 'state-done' : undefined"
+                :variant="getRemainingCount(item)! <= 2 ? 'flat' : 'text'"
+                :prepend-icon="
+                  getRemainingCount(item)! <= 2 ? 'mdi-clock-check-outline' : undefined
+                "
                 size="small"
               >
                 {{ getRemainingCount(item)
@@ -80,7 +83,7 @@
               icon
               size="small"
               :variant="gameDayActions ? 'outlined' : 'text'"
-              :color="gameDayActions ? 'danger-ink' : 'error'"
+              color="danger-ink"
               :aria-label="t('teamList.actions.delete')"
               @click="deleteAbsence(item)"
             >
@@ -251,7 +254,7 @@ const getRemainingCount = (absence: PlayerAbsence): number | null => {
 const getRowProps = ({ item }: { item: PlayerAbsence }) => {
   const remaining = getRemainingCount(item)
   if (remaining !== null && remaining <= 2) {
-    return { class: 'bg-green-lighten-4' }
+    return { class: 'bg-state-done' }
   }
   return {}
 }

@@ -8,7 +8,7 @@
             {{ t('activeRoster.keyPlayerSelection') }}
             <v-spacer></v-spacer>
             <v-btn
-              :color="gameDayActions ? 'action' : 'action'"
+              color="action"
               variant="flat"
               :prepend-icon="gameDayActions ? 'mdi-content-save-outline' : undefined"
               @click="saveKeyPlayer"
@@ -127,7 +127,9 @@
             </span>
             <v-tooltip location="top" max-width="260">
               <template #activator="{ props }">
-                <v-icon v-bind="props" size="x-small" color="grey">mdi-help-circle-outline</v-icon>
+                <v-icon v-bind="props" size="x-small" class="on-surface-variant"
+                  >mdi-help-circle-outline</v-icon
+                >
               </template>
               <span
                 >外の世界枠：チーム種別によって異なります。通常チームは東方以外（ハチナイ・球詠・オリジナル等）、ハチナイチームは東方・オリジナルの選手が外枠になります。1軍に最大4人まで登録できます。</span
@@ -149,7 +151,7 @@
     <v-row class="mb-2">
       <v-col cols="12">
         <div class="d-flex flex-wrap ga-2">
-          <v-chip size="small" variant="tonal" color="deep-purple" prepend-icon="mdi-lock">{{
+          <v-chip size="small" variant="flat" color="state-neutral" prepend-icon="mdi-lock">{{
             t('seasonRosterTab.specialLabel')
           }}</v-chip>
           <v-chip
@@ -184,7 +186,7 @@
           >
             {{ t('activeRoster.legend.cooldown') }}
           </v-chip>
-          <v-chip size="small" variant="tonal" color="purple">{{
+          <v-chip size="small" variant="flat" color="state-info" prepend-icon="mdi-earth">{{
             t('seasonRosterTab.outsideWorldLabel')
           }}</v-chip>
         </div>
@@ -238,14 +240,15 @@
                             :player-name="item.player_name"
                             :cost-type="item.selected_cost_type"
                           />
-                          <v-icon v-if="isKeyPlayer(item)" color="deep-purple" size="x-small"
+                          <v-icon v-if="isKeyPlayer(item)" color="link" size="x-small"
                             >mdi-star</v-icon
                           >
                           <v-chip
                             v-if="item.is_outside_world"
                             size="x-small"
-                            color="purple"
-                            variant="tonal"
+                            color="state-info"
+                            variant="flat"
+                            prepend-icon="mdi-earth"
                             >{{ t('seasonRosterTab.outsideWorldShort') }}</v-chip
                           >
                         </div>
@@ -271,7 +274,7 @@
                       <v-chip
                         v-if="item.selected_cost_type && item.selected_cost_type !== 'normal_cost'"
                         size="x-small"
-                        variant="tonal"
+                        variant="flat"
                         :color="contractChipColor(item.selected_cost_type)"
                       >
                         {{ t(`baseball.construction.${item.selected_cost_type}`) }}
@@ -288,8 +291,8 @@
                           <v-chip
                             v-bind="props"
                             size="x-small"
-                            color="deep-purple"
-                            variant="tonal"
+                            color="state-neutral"
+                            variant="flat"
                             prepend-icon="mdi-lock"
                           >
                             {{ t('activeRoster.chip.special') }}
@@ -327,8 +330,8 @@
                           <span v-bind="props">
                             <v-btn
                               size="x-small"
-                              color="blue-grey"
-                              variant="elevated"
+                              variant="outlined"
+                              :style="{ borderColor: 'rgb(var(--v-theme-border-strong))' }"
                               rounded
                               disabled
                               class="demote-btn"
@@ -362,8 +365,8 @@
                       <v-btn
                         v-else
                         size="x-small"
-                        color="blue-grey"
-                        variant="elevated"
+                        variant="outlined"
+                        :style="{ borderColor: 'rgb(var(--v-theme-border-strong))' }"
                         rounded
                         class="demote-btn"
                         @click="movePlayer(item, 'second')"
@@ -498,8 +501,9 @@
                         <v-chip
                           v-if="item.is_outside_world"
                           size="x-small"
-                          color="purple"
-                          variant="tonal"
+                          color="state-info"
+                          variant="flat"
+                          prepend-icon="mdi-earth"
                           >{{ t('seasonRosterTab.outsideWorldShort') }}</v-chip
                         >
                       </div>
@@ -525,7 +529,7 @@
                     <v-chip
                       v-if="item.selected_cost_type && item.selected_cost_type !== 'normal_cost'"
                       size="x-small"
-                      variant="tonal"
+                      variant="flat"
                       :color="contractChipColor(item.selected_cost_type)"
                     >
                       {{ t(`baseball.construction.${item.selected_cost_type}`) }}
@@ -565,7 +569,7 @@
     <v-row class="mt-4">
       <v-col>
         <v-btn
-          :color="gameDayActions ? 'action' : 'action'"
+          color="action"
           variant="flat"
           :prepend-icon="gameDayActions ? 'mdi-content-save-outline' : undefined"
           @click="saveRoster"
@@ -597,12 +601,9 @@
         <v-card-actions>
           <v-spacer />
           <v-btn @click="absenceConfirmDialog = false">{{ t('actions.cancel') }}</v-btn>
-          <v-btn
-            :color="gameDayActions ? 'action' : 'action'"
-            variant="flat"
-            @click="confirmPromoteAbsentPlayer"
-            >{{ t('actions.ok') }}</v-btn
-          >
+          <v-btn color="action" variant="flat" @click="confirmPromoteAbsentPlayer">{{
+            t('actions.ok')
+          }}</v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
@@ -722,7 +723,7 @@ const costBarValue = computed(() => {
 })
 
 const costBarColor = computed((): string => {
-  if (!firstSquadCostLimit.value) return 'grey'
+  if (!firstSquadCostLimit.value) return 'border-strong'
   const ratio = firstSquadTotalCost.value / firstSquadCostLimit.value
   if (ratio >= 1) return 'error'
   if (ratio >= 0.9) return 'warning'
@@ -731,7 +732,7 @@ const costBarColor = computed((): string => {
 
 // 行ハイライト (カスタムテーブル用)
 const getFirstSquadRowClass = (item: RosterPlayer): string => {
-  if (isKeyPlayer(item)) return 'bg-deep-purple-lighten-5'
+  if (isKeyPlayer(item)) return 'key-player-row'
   if (item.is_absent && item.absence_info) {
     return `absence-row--${ABSENCE_APPEARANCE[item.absence_info.absence_type]?.color ?? 'state-neutral'}`
   }
@@ -770,13 +771,13 @@ const absenceStatusLabel = (player: RosterPlayer): string => {
 const contractChipColor = (costType: string): string => {
   switch (costType) {
     case 'relief_only_cost':
-      return 'indigo'
+      return 'tag-pitcher'
     case 'pitcher_only_cost':
-      return 'blue'
+      return 'tag-pitcher'
     case 'fielder_only_cost':
-      return 'teal'
+      return 'tag-fielder'
     case 'two_way_cost':
-      return 'cyan'
+      return 'state-neutral'
     default:
       return ''
   }
@@ -929,6 +930,9 @@ onMounted(fetchRoster)
 .absence-row--absence-cooldown {
   background: rgba(var(--v-theme-absence-cooldown), 0.35);
 }
+.key-player-row {
+  background: rgba(var(--v-theme-zone-game), 0.35);
+}
 .promote-btn,
 .demote-btn {
   transition: box-shadow 0.2s ease;
@@ -941,8 +945,8 @@ onMounted(fetchRoster)
 
 /* 投手グループヘッダー行 */
 .group-header-row td {
-  background-color: #ede7f6 !important;
-  color: #7b1fa2;
+  background-color: rgb(var(--v-theme-surface-variant)) !important;
+  color: rgb(var(--v-theme-on-surface-variant));
   font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.03em;

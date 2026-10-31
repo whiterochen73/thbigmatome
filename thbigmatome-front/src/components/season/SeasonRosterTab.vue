@@ -7,7 +7,12 @@
           <v-card-title class="d-flex">
             {{ t('activeRoster.keyPlayerSelection') }}
             <v-spacer></v-spacer>
-            <v-btn color="accent" variant="flat" @click="saveKeyPlayer">
+            <v-btn
+              :color="gameDayActions ? 'action' : 'accent'"
+              variant="flat"
+              :prepend-icon="gameDayActions ? 'mdi-content-save-outline' : undefined"
+              @click="saveKeyPlayer"
+            >
               {{ t('activeRoster.saveKeyPlayer') }}
             </v-btn>
           </v-card-title>
@@ -533,9 +538,13 @@
 
     <v-row class="mt-4">
       <v-col>
-        <v-btn color="accent" variant="flat" @click="saveRoster">{{
-          t('activeRoster.saveRoster')
-        }}</v-btn>
+        <v-btn
+          :color="gameDayActions ? 'action' : 'accent'"
+          variant="flat"
+          :prepend-icon="gameDayActions ? 'mdi-content-save-outline' : undefined"
+          @click="saveRoster"
+          >{{ t('activeRoster.saveRoster') }}</v-btn
+        >
       </v-col>
     </v-row>
 
@@ -562,9 +571,12 @@
         <v-card-actions>
           <v-spacer />
           <v-btn @click="absenceConfirmDialog = false">{{ t('actions.cancel') }}</v-btn>
-          <v-btn color="accent" variant="flat" @click="confirmPromoteAbsentPlayer">{{
-            t('actions.ok')
-          }}</v-btn>
+          <v-btn
+            :color="gameDayActions ? 'action' : 'accent'"
+            variant="flat"
+            @click="confirmPromoteAbsentPlayer"
+            >{{ t('actions.ok') }}</v-btn
+          >
         </v-card-actions>
       </v-card>
     </v-dialog>
@@ -582,6 +594,7 @@ import { useSnackbar } from '@/composables/useSnackbar'
 import type { RosterPlayer } from '@/types/rosterPlayer'
 
 const props = defineProps<{
+  gameDayActions?: boolean
   teamId: number
 }>()
 

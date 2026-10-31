@@ -2,7 +2,12 @@
 <template>
   <div>
     <div class="d-flex justify-end mb-2">
-      <v-btn variant="outlined" @click="editAbsence(null)">
+      <v-btn
+        :color="gameDayActions ? 'action' : undefined"
+        :variant="gameDayActions ? 'flat' : 'outlined'"
+        :prepend-icon="gameDayActions ? 'mdi-plus' : undefined"
+        @click="editAbsence(null)"
+      >
         {{ t('playerAbsenceHistory.addAbsence') }}
       </v-btn>
     </div>
@@ -68,8 +73,17 @@
             <v-btn icon size="small" variant="text" @click="editAbsence(item)">
               <v-icon size="small">mdi-pencil</v-icon>
             </v-btn>
-            <v-btn icon size="small" variant="text" color="error" @click="deleteAbsence(item)">
-              <v-icon size="small">mdi-delete</v-icon>
+            <v-btn
+              icon
+              size="small"
+              :variant="gameDayActions ? 'outlined' : 'text'"
+              :color="gameDayActions ? 'danger-ink' : 'error'"
+              :aria-label="t('teamList.actions.delete')"
+              @click="deleteAbsence(item)"
+            >
+              <v-icon size="small">{{
+                gameDayActions ? 'mdi-delete-outline' : 'mdi-delete'
+              }}</v-icon>
             </v-btn>
           </template>
         </v-data-table>
@@ -129,6 +143,7 @@
       :initial-absence="selectedAbsence"
       :initial-start-date="initialStartDateForDialog"
       :initial-phase="defaultPhase"
+      :game-day-actions="gameDayActions"
       @saved="handleAbsenceSaved"
     />
   </div>
@@ -148,6 +163,7 @@ const props = withDefaults(
   defineProps<{
     teamId: number
     defaultPhase?: AbsencePhase
+    gameDayActions?: boolean
   }>(),
   { defaultPhase: 'pre_game' },
 )

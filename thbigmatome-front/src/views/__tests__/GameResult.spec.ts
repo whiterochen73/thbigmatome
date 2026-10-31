@@ -37,6 +37,7 @@ const { embedLog, embedStub } = vi.hoisted(() => {
         name,
         props: {
           teamId: { type: Number, default: undefined },
+          gameDayActions: { type: Boolean, default: false },
           // SeasonAbsenceTab の区分の既定値（他の埋め込みは受け取らない）
           defaultPhase: { type: String, default: undefined },
         },
@@ -480,7 +481,7 @@ describe.each(LAYOUTS)('GameResult 試合日ページ: $name', ({ width, kind })
     }
 
     it.each(EMBEDS)(
-      '$slug: 開くまで描画せず、開くと $component がシーズンポータルと同じ props（team-id だけ）で描画される',
+      '$slug: 開くまで描画せず、開くと $component が試合日用操作色の props で描画される',
       async ({ slug, component }) => {
         const wrapper = await mountDay({ appearances: appearanceRows(1) })
         expect(embedLog.mounts).toEqual({})
@@ -492,11 +493,13 @@ describe.each(LAYOUTS)('GameResult 試合日ページ: $name', ({ width, kind })
         expect(embedded.attributes('data-embed')).toBe(component)
         // 他の部品は描画されない
         expect(embedLog.mounts).toEqual({ [component]: 1 })
-        // SeasonPortal.vue は `:team-id="teamId"`（数値）だけを渡す
-        // 試合中の負傷の段だけ、離脱の区分の既定値（default-phase）を足して渡す（AMB-25）
+        // Test Basis: thbig-dugout-visual-refresh-design.md §7 段2。
+        // 試合日だけ action を使う。試合中の負傷だけ default-phase も渡す（AMB-25）。
         const inGame = slug === 'in-game-absences'
         expect(body(wrapper, slug).findComponent({ name: component }).props()).toEqual(
-          inGame ? { teamId: 1, defaultPhase: 'in_game' } : { teamId: 1 },
+          inGame
+            ? { teamId: 1, defaultPhase: 'in_game', gameDayActions: true }
+            : { teamId: 1, gameDayActions: true },
         )
         // team-id（と上記の default-phase）以外の props・属性（asOfDate など）を足していない（scoped style の識別子は除く）
         expect(Object.keys(embedded.attributes()).filter((k) => !k.startsWith('data-v-'))).toEqual(
@@ -1583,7 +1586,9 @@ describe.each(LAYOUTS)('GameResult 試合日ページ: $name', ({ width, kind })
       expect(first.attributes('aria-label')).toBe('登録・離脱')
       expect(second.attributes('aria-label')).toBe('試合日')
       const ids = (node: ReturnType<Wrapper['find']>) =>
-        node.findAll(`[data-testid^="${kind}-"]`).map((e) => e.attributes('data-testid'))
+        node
+          .findAll(kind === 'step' ? '.v-stepper-item' : `[data-testid^="${kind}-"]`)
+          .map((e) => e.attributes('data-testid'))
       if (kind === 'step') {
         expect(ids(first)).toEqual(['step-members', 'step-roster', 'step-absences'])
         expect(ids(second)).toEqual([
@@ -1781,6 +1786,27 @@ describe.each(LAYOUTS)('GameResult 試合日ページ: $name', ({ width, kind })
         )
         const todo = await mountDay({ game: { score: null, opponent_score: null } })
         expect(todo.find('[data-testid="step-setup"]').text()).toContain('未入力')
+      })
+
+      // Test Basis: thbig-dugout-visual-refresh-design.md §6.5, §7 段2 (subtask_1787d)
+      it('済・未入力・要確認だけに状態バッジを重ね、段アイコンは保つ', async () => {
+        const warning = await mountDay({ appearances: [] })
+        expect(
+          warning.find('[data-testid="step-result"] [data-testid="step-state-badge"]').html(),
+        ).toContain('mdi-check-circle')
+        expect(
+          warning.find('[data-testid="step-pitchers"] [data-testid="step-state-badge"]').html(),
+        ).toContain('mdi-alert')
+        expect(
+          warning.find('[data-testid="step-members"] [data-testid="step-state-badge"]').exists(),
+        ).toBe(false)
+        const todo = await mountDay({ game: { score: null, opponent_score: null } })
+        expect(
+          todo.find('[data-testid="step-result"] [data-testid="step-state-badge"]').html(),
+        ).toContain('mdi-circle-outline')
+        expect(todo.find('[data-testid="step-result"] .v-stepper-item__avatar').html()).toContain(
+          'mdi-scoreboard-outline',
+        )
       })
 
       describe('初期ステップ', () => {

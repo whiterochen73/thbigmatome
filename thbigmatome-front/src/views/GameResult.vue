@@ -32,8 +32,11 @@
           :aria-label="t('gameDay.progress.label')"
         >
           <span class="text-caption">{{ t('gameDay.progress.label') }}</span>
-          <span class="game-day-progress__bar" aria-hidden="true">
-            <i v-for="(mark, i) in progress" :key="i" :class="`game-day-progress__cell--${mark}`" />
+          <span class="game-day-progress__pills">
+            <span v-for="step in progressSteps" :key="step.id" class="game-day-progress__pill">
+              <GameDayStateChip :state="step.state" />
+              <span>{{ step.title }}</span>
+            </span>
           </span>
           <span class="text-caption" data-testid="game-day-progress-text">{{
             t('gameDay.progress.text', {
@@ -48,6 +51,7 @@
             v-if="prevSchedule"
             size="small"
             variant="outlined"
+            class="game-day-secondary"
             prepend-icon="mdi-chevron-left"
             data-testid="prev-game-day"
             @click="prevSchedule && goToGameDay(prevSchedule.id)"
@@ -60,6 +64,7 @@
             v-if="nextSchedule"
             size="small"
             variant="outlined"
+            class="game-day-secondary"
             append-icon="mdi-chevron-right"
             data-testid="next-game-day"
             @click="nextSchedule && goToGameDay(nextSchedule.id)"
@@ -76,15 +81,21 @@
     <v-alert
       v-if="mismatchMessage"
       type="error"
-      variant="tonal"
+      color="state-warn"
+      variant="flat"
       density="compact"
-      class="mt-3"
+      class="mt-3 game-day-mismatch"
       data-testid="mismatch-banner"
     >
       <div class="d-flex flex-wrap align-center ga-2">
         <span>{{ mismatchMessage }}</span>
         <v-spacer />
-        <v-btn size="small" variant="outlined" @click="openMismatchSection">
+        <v-btn
+          size="small"
+          variant="outlined"
+          class="game-day-mismatch__button"
+          @click="openMismatchSection"
+        >
           {{
             mismatch === 'score_without_appearances'
               ? t('gameDay.mismatch.openPitchers')
@@ -106,21 +117,25 @@
       <template #body-members>
         <div class="mt-2">
           <GameDayDateNote :game-date="gameData.game_date" :current-date="seasonCurrentDate" />
-          <TeamMembers :team-id="Number(teamId)" />
+          <TeamMembers :team-id="Number(teamId)" game-day-actions />
         </div>
       </template>
 
       <template #body-roster>
         <div class="mt-2">
           <GameDayDateNote :game-date="gameData.game_date" :current-date="seasonCurrentDate" />
-          <SeasonRosterTab :team-id="Number(teamId)" />
+          <SeasonRosterTab :team-id="Number(teamId)" game-day-actions />
         </div>
       </template>
 
       <template #body-absences>
         <div class="mt-2">
           <GameDayDateNote :game-date="gameData.game_date" :current-date="seasonCurrentDate" />
-          <SeasonAbsenceTab :key="`absences-${embedKey.absences}`" :team-id="Number(teamId)" />
+          <SeasonAbsenceTab
+            :key="`absences-${embedKey.absences}`"
+            :team-id="Number(teamId)"
+            game-day-actions
+          />
         </div>
       </template>
 
@@ -131,6 +146,7 @@
             :key="`in-game-absences-${embedKey.inGameAbsences}`"
             :team-id="Number(teamId)"
             default-phase="in_game"
+            game-day-actions
           />
         </div>
       </template>
@@ -213,7 +229,13 @@
           </v-col>
         </v-row>
         <div class="d-flex justify-end">
-          <v-btn color="primary" variant="elevated" data-testid="save-setup" @click="saveGame">
+          <v-btn
+            color="action"
+            variant="flat"
+            prepend-icon="mdi-content-save-outline"
+            data-testid="save-setup"
+            @click="saveGame"
+          >
             {{ t('gameDay.save') }}
           </v-btn>
         </div>
@@ -256,6 +278,7 @@
             <v-btn
               size="small"
               variant="outlined"
+              class="game-day-secondary"
               prepend-icon="mdi-file-upload-outline"
               data-testid="game-log-load"
               @click="gameLogFileInput?.click()"
@@ -292,7 +315,13 @@
           </v-textarea>
         </div>
         <div class="d-flex justify-end mt-2">
-          <v-btn color="primary" variant="elevated" data-testid="save-result" @click="saveGame">
+          <v-btn
+            color="action"
+            variant="flat"
+            prepend-icon="mdi-content-save-outline"
+            data-testid="save-result"
+            @click="saveGame"
+          >
             {{ t('gameDay.save') }}
           </v-btn>
         </div>
@@ -359,6 +388,7 @@ import TeamMembers from '@/views/TeamMembers.vue'
 import SeasonRosterTab from '@/components/season/SeasonRosterTab.vue'
 import SeasonAbsenceTab from '@/components/season/SeasonAbsenceTab.vue'
 import GameDaySteps, { type GameDayStep } from '@/components/gameDay/GameDaySteps.vue'
+import GameDayStateChip from '@/components/gameDay/GameDayStateChip.vue'
 import GameDayDateNote from '@/components/gameDay/GameDayDateNote.vue'
 import { setAppBarBreadcrumbs, clearAppBarBreadcrumbs } from '@/composables/useAppBarBreadcrumbs'
 import {
@@ -825,6 +855,9 @@ const steps = computed<GameDayStep[]>(() => {
   ]
   return allSteps.filter((step) => isGameDay.value || step.group === 'registration')
 })
+const progressSteps = computed(() =>
+  steps.value.filter((step) => ['setup', 'result', 'pitchers'].includes(step.id)),
+)
 
 // 選択中のステップ（PC 幅）と、開いている段（スマホ幅）。ステップを選ぶと同じ段も開くので、幅が変わっても選んでいた場所が開く
 // （PC 幅 → スマホ幅で段が開く。逆のスマホ幅 → PC 幅は、段の開閉からは選択中のステップを決めず、PC 幅で最後に選んだステップのまま）
@@ -1241,22 +1274,35 @@ onBeforeUnmount(() => {
   display: flex;
   align-items: center;
   gap: 8px;
+  flex-wrap: wrap;
 }
-.game-day-progress__bar {
+.game-day-progress__pills {
   display: flex;
-  gap: 3px;
+  flex-wrap: wrap;
+  gap: 6px;
 }
-.game-day-progress__bar i {
-  display: block;
-  width: 22px;
-  height: 6px;
-  border-radius: 3px;
-  background: rgba(var(--v-border-color), var(--v-border-opacity));
+.game-day-progress__pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 8px 2px 2px;
+  border: 1px solid rgb(var(--v-theme-border-strong));
+  border-radius: 20px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  white-space: nowrap;
 }
-.game-day-progress__bar i.game-day-progress__cell--on {
-  background: rgb(var(--v-theme-success));
+.game-day-mismatch {
+  border: 1px solid rgb(var(--v-theme-on-state-warn));
 }
-.game-day-progress__bar i.game-day-progress__cell--warn {
-  background: rgb(var(--v-theme-error));
+.game-day-mismatch__button {
+  border-color: rgb(var(--v-theme-on-state-warn));
+  color: rgb(var(--v-theme-on-state-warn));
+}
+.game-day-secondary :deep(.v-btn__content) {
+  color: rgb(var(--v-theme-on-surface));
+}
+.game-day-secondary {
+  border-color: rgb(var(--v-theme-border-strong));
 }
 </style>

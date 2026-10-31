@@ -129,15 +129,31 @@ export function mismatchMessageKey(mismatch: RecordMismatch): string | null {
   return null
 }
 
-// 状態チップの色・文字。色だけで状態を伝えないため、文字は必ず付ける
-export const STAGE_STATE_LABEL_KEY: Record<StageState, string> = {
-  done: 'gameDay.state.done',
-  none: 'gameDay.state.none',
-  editing: 'gameDay.state.editing',
-  todo: 'gameDay.state.todo',
-  warn: 'gameDay.state.warn',
-  upcoming: 'gameDay.state.upcoming',
-  info: 'gameDay.state.info',
+// Test Basis: thbig-dugout-visual-refresh-design.md §6.5。
+// チップ・タブバッジ・進み具合が同じ色、アイコン、ラベルを使う。
+export const STAGE_STATE_APPEARANCE: Record<
+  StageState,
+  {
+    color: string
+    icon: string
+    labelKey: string
+  }
+> = {
+  done: { color: 'state-done', icon: 'mdi-check-circle', labelKey: 'gameDay.state.done' },
+  none: {
+    color: 'state-neutral',
+    icon: 'mdi-minus-circle-outline',
+    labelKey: 'gameDay.state.none',
+  },
+  editing: { color: 'state-edit', icon: 'mdi-pencil', labelKey: 'gameDay.state.editing' },
+  todo: { color: 'state-todo', icon: 'mdi-circle-outline', labelKey: 'gameDay.state.todo' },
+  warn: { color: 'state-warn', icon: 'mdi-alert', labelKey: 'gameDay.state.warn' },
+  upcoming: {
+    color: 'state-neutral',
+    icon: 'mdi-clock-outline',
+    labelKey: 'gameDay.state.upcoming',
+  },
+  info: { color: 'state-info', icon: 'mdi-open-in-new', labelKey: 'gameDay.state.info' },
 }
 
 // 試合日ヘッダの進み具合。「予告先発・対戦設定」「結果」「登板記録」の 3 つだけが状態を持つ

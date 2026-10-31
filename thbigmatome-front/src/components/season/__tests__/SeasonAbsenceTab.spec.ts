@@ -111,6 +111,15 @@ describe('SeasonAbsenceTab', () => {
     vi.clearAllMocks()
   })
 
+  // Test Basis: subtask_1787d 差し戻し修正（r2） 3
+  it('試合日の新規登録ボタンは action の塗りと追加アイコンを持つ', async () => {
+    const wrapper = await mountComponent([], { gameDayActions: true })
+    const button = wrapper.find('.v-btn.bg-action')
+    expect(button.exists()).toBe(true)
+    expect(button.classes()).toContain('v-btn--variant-flat')
+    expect(button.find('.mdi-plus').exists()).toBe(true)
+  })
+
   it('怪我中はactiveに分類すること', async () => {
     const wrapper = await mountComponent([injured])
 

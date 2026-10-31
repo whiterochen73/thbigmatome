@@ -152,16 +152,36 @@
           <v-chip size="small" variant="tonal" color="deep-purple" prepend-icon="mdi-lock">{{
             t('seasonRosterTab.specialLabel')
           }}</v-chip>
-          <v-chip size="small" variant="tonal" color="red" prepend-icon="mdi-hospital-box">
+          <v-chip
+            size="small"
+            variant="flat"
+            :color="ABSENCE_APPEARANCE.injury.color"
+            :prepend-icon="ABSENCE_APPEARANCE.injury.icon"
+          >
             {{ t('activeRoster.legend.injury') }}
           </v-chip>
-          <v-chip size="small" variant="tonal" color="orange" prepend-icon="mdi-gavel">
+          <v-chip
+            size="small"
+            variant="flat"
+            :color="ABSENCE_APPEARANCE.suspension.color"
+            :prepend-icon="ABSENCE_APPEARANCE.suspension.icon"
+          >
             {{ t('activeRoster.legend.suspension') }}
           </v-chip>
-          <v-chip size="small" variant="tonal" color="blue-grey" prepend-icon="mdi-wrench">
+          <v-chip
+            size="small"
+            variant="flat"
+            :color="ABSENCE_APPEARANCE.reconditioning.color"
+            :prepend-icon="ABSENCE_APPEARANCE.reconditioning.icon"
+          >
             {{ t('activeRoster.legend.reconditioning') }}
           </v-chip>
-          <v-chip size="small" variant="tonal" color="amber" prepend-icon="mdi-timer-sand">
+          <v-chip
+            size="small"
+            variant="flat"
+            :color="ABSENCE_APPEARANCE.cooldown.color"
+            :prepend-icon="ABSENCE_APPEARANCE.cooldown.icon"
+          >
             {{ t('activeRoster.legend.cooldown') }}
           </v-chip>
           <v-chip size="small" variant="tonal" color="purple">{{
@@ -286,7 +306,10 @@
                             v-bind="props"
                             size="x-small"
                             :color="getAbsenceColor(item)"
-                            variant="tonal"
+                            :prepend-icon="
+                              ABSENCE_APPEARANCE[item.absence_info?.absence_type ?? '']?.icon
+                            "
+                            variant="flat"
                           >
                             {{ absenceStatusLabel(item) }}
                           </v-chip>
@@ -404,9 +427,9 @@
                         <v-chip
                           v-bind="props"
                           size="x-small"
-                          color="blue-grey"
-                          variant="tonal"
-                          prepend-icon="mdi-wrench"
+                          :color="ABSENCE_APPEARANCE.reconditioning.color"
+                          variant="flat"
+                          :prepend-icon="ABSENCE_APPEARANCE.reconditioning.icon"
                         >
                           {{ t('activeRoster.chip.reconditioning') }}
                         </v-chip>
@@ -422,9 +445,9 @@
                         <v-chip
                           v-bind="props"
                           size="x-small"
-                          color="amber"
-                          variant="tonal"
-                          prepend-icon="mdi-timer-sand"
+                          :color="ABSENCE_APPEARANCE.cooldown.color"
+                          variant="flat"
+                          :prepend-icon="ABSENCE_APPEARANCE.cooldown.icon"
                         >
                           {{ t('activeRoster.chip.cooldown') }}
                         </v-chip>
@@ -518,7 +541,10 @@
                       "
                       size="x-small"
                       :color="getAbsenceColor(item)"
-                      variant="tonal"
+                      :prepend-icon="
+                        ABSENCE_APPEARANCE[item.absence_info?.absence_type ?? '']?.icon
+                      "
+                      variant="flat"
                     >
                       {{ absenceStatusLabel(item) }}
                     </v-chip>
@@ -592,6 +618,7 @@ import PromotionCooldownInfo from '@/components/PromotionCooldownInfo.vue'
 import PlayerNameLink from '@/components/shared/PlayerNameLink.vue'
 import { useSnackbar } from '@/composables/useSnackbar'
 import type { RosterPlayer } from '@/types/rosterPlayer'
+import { ABSENCE_APPEARANCE } from '@/components/gameDay/gameDayStatus'
 
 const props = defineProps<{
   gameDayActions?: boolean
@@ -706,29 +733,15 @@ const costBarColor = computed((): string => {
 const getFirstSquadRowClass = (item: RosterPlayer): string => {
   if (isKeyPlayer(item)) return 'bg-deep-purple-lighten-5'
   if (item.is_absent && item.absence_info) {
-    switch (item.absence_info.absence_type) {
-      case 'injury':
-        return 'bg-red-lighten-5'
-      case 'suspension':
-        return 'bg-orange-lighten-5'
-      case 'reconditioning':
-        return 'bg-blue-grey-lighten-5'
-    }
+    return `absence-row--${ABSENCE_APPEARANCE[item.absence_info.absence_type]?.color ?? 'state-neutral'}`
   }
   return ''
 }
 
 const getSecondSquadRowClass = (item: RosterPlayer): string => {
-  if (isPlayerOnCooldown(item)) return 'bg-amber-lighten-5'
+  if (isPlayerOnCooldown(item)) return 'absence-row--absence-cooldown'
   if (item.is_absent && item.absence_info) {
-    switch (item.absence_info.absence_type) {
-      case 'injury':
-        return 'bg-red-lighten-5'
-      case 'suspension':
-        return 'bg-orange-lighten-5'
-      case 'reconditioning':
-        return 'bg-blue-grey-lighten-5'
-    }
+    return `absence-row--${ABSENCE_APPEARANCE[item.absence_info.absence_type]?.color ?? 'state-neutral'}`
   }
   return ''
 }
@@ -785,17 +798,7 @@ const isKeyPlayer = (player: RosterPlayer): boolean => {
 }
 
 const getAbsenceColor = (player: RosterPlayer): string => {
-  if (!player.absence_info) return 'blue-grey'
-  switch (player.absence_info.absence_type) {
-    case 'injury':
-      return 'red'
-    case 'suspension':
-      return 'orange'
-    case 'reconditioning':
-      return 'blue-grey'
-    default:
-      return 'blue-grey'
-  }
+  return ABSENCE_APPEARANCE[player.absence_info?.absence_type ?? '']?.color ?? 'state-neutral'
 }
 
 const getCooldownTooltip = (player: RosterPlayer): string => {
@@ -917,6 +920,15 @@ onMounted(fetchRoster)
 </script>
 
 <style scoped>
+.absence-row--absence-out {
+  background: rgba(var(--v-theme-absence-out), 0.35);
+}
+.absence-row--absence-adjust {
+  background: rgba(var(--v-theme-absence-adjust), 0.35);
+}
+.absence-row--absence-cooldown {
+  background: rgba(var(--v-theme-absence-cooldown), 0.35);
+}
 .promote-btn,
 .demote-btn {
   transition: box-shadow 0.2s ease;

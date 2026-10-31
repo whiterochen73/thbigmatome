@@ -111,6 +111,39 @@ describe('SeasonAbsenceTab', () => {
     vi.clearAllMocks()
   })
 
+  // Test Basis: thbig-dugout-visual-refresh-design.md §6.1, §6.5, §7 段3
+  it('離脱種別は共通の役割色と固有アイコン、時期は区分色で示す', async () => {
+    const entries = [
+      makeAbsence(1, '負傷', '2026-04-15'),
+      {
+        ...makeAbsence(2, '出場停止', '2026-04-15'),
+        absence_type: 'suspension' as const,
+        phase: 'in_game' as const,
+      },
+      { ...makeAbsence(3, '再調整', '2026-04-15'), absence_type: 'reconditioning' as const },
+    ]
+    const wrapper = await mountComponent(entries)
+    const chips = wrapper.findAll('.v-data-table')[0]!.findAll('.v-chip')
+    expect(
+      chips.some(
+        (chip) =>
+          chip.classes().includes('bg-absence-out') && chip.find('.mdi-hospital-box').exists(),
+      ),
+    ).toBe(true)
+    expect(
+      chips.some(
+        (chip) => chip.classes().includes('bg-absence-out') && chip.find('.mdi-gavel').exists(),
+      ),
+    ).toBe(true)
+    expect(
+      chips.some(
+        (chip) => chip.classes().includes('bg-absence-adjust') && chip.find('.mdi-wrench').exists(),
+      ),
+    ).toBe(true)
+    expect(wrapper.find('[data-testid="phase-1"]').classes()).toContain('bg-zone-roster')
+    expect(wrapper.find('[data-testid="phase-2"]').classes()).toContain('bg-zone-game')
+  })
+
   // Test Basis: subtask_1787d 差し戻し修正（r2） 3
   it('試合日の新規登録ボタンは action の塗りと追加アイコンを持つ', async () => {
     const wrapper = await mountComponent([], { gameDayActions: true })

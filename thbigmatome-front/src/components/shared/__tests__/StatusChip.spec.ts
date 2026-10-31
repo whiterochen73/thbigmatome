@@ -43,13 +43,26 @@ describe('StatusChip', () => {
     expect(chip.props('color')).toBe('default')
   })
 
-  it('injury→errorマッピングが正しいこと', () => {
+  // Test Basis: thbig-dugout-visual-refresh-design.md §6.1, §6.5, §7 段3
+  it('負傷と出場停止は同じ absence-out で、アイコンと文字で見分ける', () => {
     const wrapper = mount(StatusChip, {
       global: { plugins: [vuetify] },
       props: { status: 'injury', label: '負傷' },
     })
     const chip = wrapper.findComponent({ name: 'VChip' })
-    expect(chip.props('color')).toBe('error')
+    expect(chip.props('color')).toBe('absence-out')
+    expect(chip.props('prependIcon')).toBe('mdi-hospital-box')
+    expect(chip.props('variant')).toBe('flat')
+    expect(wrapper.text()).toContain('負傷')
+
+    const suspended = mount(StatusChip, {
+      global: { plugins: [vuetify] },
+      props: { status: 'suspension', label: '出場停止' },
+    })
+    const suspendedChip = suspended.findComponent({ name: 'VChip' })
+    expect(suspendedChip.props('color')).toBe('absence-out')
+    expect(suspendedChip.props('prependIcon')).toBe('mdi-gavel')
+    expect(suspended.text()).toContain('出場停止')
   })
 
   it('commissioner→primaryマッピングが正しいこと', () => {

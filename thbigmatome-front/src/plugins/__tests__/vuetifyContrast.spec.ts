@@ -191,6 +191,30 @@ function contrast(a: string, b: string): number {
 }
 
 describe('subtask_1787d: §6.1, §6.2, §6.4 のテーマと全コントラスト組', () => {
+  // Test Basis: cmd_1787 subtask_1787g dark ボタンの文字コントラスト
+  it('light/dark の基本ボタン色は on-X を明示し、文字比 4.5 以上', () => {
+    for (const name of ['light', 'dark'] as ThemeName[]) {
+      const colors = vuetify.theme.themes.value[name]!.colors
+      for (const key of ['primary', 'secondary', 'accent', 'success', 'warning', 'error', 'info']) {
+        expect(colors[`on-${key}`], `${name}/on-${key}`).toMatch(/^#[0-9a-f]{6}$/i)
+        expect(
+          contrast(colors[key]!, colors[`on-${key}`]!),
+          `${name}/${key}`,
+        ).toBeGreaterThanOrEqual(4.5)
+      }
+    }
+  })
+
+  // Test Basis: cmd_1787 subtask_1787g Operator 決定 2026-10-31 ボタン最小文字サイズ
+  it('x-small ボタンだけ 12px 以上、Vuetify の他のサイズ指定を保つ', () => {
+    const css = readFileSync(resolve(process.cwd(), 'src/assets/button-size.css'), 'utf8')
+    const plugin = readFileSync(resolve(process.cwd(), 'src/plugins/vuetify.ts'), 'utf8')
+    expect(plugin).toContain("import '@/assets/button-size.css'")
+    expect(css).toMatch(/\.v-btn--size-x-small\s*\{[^}]*--v-btn-size:\s*0\.75rem/s)
+    expect(css).toMatch(/\.v-btn--size-x-small\s*\{[^}]*--v-btn-height:\s*24px/s)
+    expect(css).toMatch(/\.v-btn--size-x-small\.v-btn--density-compact\s*\{[^}]*height:\s*20px/s)
+    expect(css).not.toMatch(/\.v-btn--size-(?:small|default|large|x-large)|\.v-tab|expansion-panel/)
+  })
   for (const name of ['light', 'dark'] as ThemeName[]) {
     it(`${name}: トークン値と全組の AA / 非文字 3:1`, () => {
       const colors = vuetify.theme.themes.value[name]!.colors

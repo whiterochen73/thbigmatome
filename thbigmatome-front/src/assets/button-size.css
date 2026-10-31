@@ -1,0 +1,9 @@
+/* Operator 決定 2026-10-31: x-small ボタンの文字を 12px に上げる。 */
+.v-btn--size-x-small {
+  --v-btn-size: 0.75rem;
+  --v-btn-height: 24px;
+}
+
+.v-btn--size-x-small.v-btn--density-compact {
+  height: 20px;
+}

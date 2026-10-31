@@ -169,6 +169,26 @@ describe('CommissionerDashboardView', () => {
     expect(wrapper.text()).toContain('博麗霊夢')
   })
 
+  // Test Basis: thbig-dugout-visual-refresh-design.md §6.1, §6.5, §7 段3
+  it('コミッショナー離脱一覧も負傷と出場停止を同色・別アイコンで示す', async () => {
+    ;(axios.get as ReturnType<typeof vi.fn>).mockImplementation((url: string) =>
+      Promise.resolve({ data: url.includes('absences') ? mockAbsences : [] }),
+    )
+    const wrapper = mount(CommissionerDashboardView, {
+      global: { plugins: [vuetify, pinia, i18n], stubs: { TeamDialog: true, ConfirmDialog: true } },
+    })
+    await flushPromises()
+    const dashboardVm = wrapper.findComponent(CommissionerDashboard).vm as unknown as {
+      activeTab: string
+    }
+    dashboardVm.activeTab = 'absences'
+    await wrapper.vm.$nextTick()
+    const chips = wrapper.findAll('.v-chip.bg-absence-out')
+    expect(chips).toHaveLength(2)
+    expect(chips.some((chip) => chip.find('.mdi-hospital-box').exists())).toBe(true)
+    expect(chips.some((chip) => chip.find('.mdi-gavel').exists())).toBe(true)
+  })
+
   it('displays absence list header', async () => {
     const wrapper = mount(CommissionerDashboardView, {
       global: { plugins: [vuetify, pinia, i18n], stubs: { TeamDialog: true, ConfirmDialog: true } },

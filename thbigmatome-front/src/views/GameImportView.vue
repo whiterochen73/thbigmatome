@@ -752,7 +752,8 @@ function resetAll() {
 }
 
 .game-settings-card {
-  background: #f8f8f6;
+  background: rgb(var(--v-theme-surface));
+  color: rgb(var(--v-theme-on-surface));
 }
 
 .team-card__header {

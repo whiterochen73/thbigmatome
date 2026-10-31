@@ -65,7 +65,7 @@
                 @click="imageDialog = true"
               ></v-img>
               <div v-else class="card-img-placeholder">
-                <v-icon size="36" color="#9a8060">mdi-card-account-details</v-icon>
+                <v-icon size="36" class="on-surface-variant">mdi-card-account-details</v-icon>
                 <span>カード画像</span>
               </div>
               <div v-if="card.image_url" class="card-img-hint">🔍 クリックで拡大</div>
@@ -1005,27 +1005,28 @@ function extractErrorMessage(error: unknown): string {
 /* ── 戻るボタン ── */
 .detail-back-btn {
   background: none;
-  border: 1px solid #bbb;
+  border: 1px solid rgb(var(--v-theme-border-strong));
   padding: 3px 10px;
   border-radius: 3px;
   cursor: pointer;
   font-size: 0.79em;
   margin-bottom: 8px;
-  color: #555;
+  color: rgb(var(--v-theme-on-surface-variant));
   display: inline-flex;
   align-items: center;
   gap: 4px;
 }
 
 .detail-back-btn:hover {
-  background: #e8e0d4;
-  border-color: #999;
+  background: rgb(var(--v-theme-surface-variant));
+  border-color: rgb(var(--v-theme-border-strong));
 }
 
 /* ── 詳細ラッパー ── */
 .detail-wrap {
-  background: white;
-  border: 1px solid #ddd;
+  color: rgb(var(--v-theme-on-surface));
+  background: rgb(var(--v-theme-surface));
+  border: 1px solid rgb(var(--v-theme-border-strong));
   border-radius: 6px;
   overflow: hidden;
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
@@ -1033,13 +1034,13 @@ function extractErrorMessage(error: unknown): string {
 
 /* ── カードヘッダー (藍色帯) ── */
 .detail-card-header {
-  background: #2a5298;
-  color: white;
+  background: rgb(var(--v-theme-primary));
+  color: rgb(var(--v-theme-on-primary));
   padding: 7px 14px;
   display: flex;
   align-items: center;
   gap: 10px;
-  border-top: 3px solid #4a7fd4;
+  border-top: 3px solid rgb(var(--v-theme-border-strong));
   box-shadow: 0 3px 6px rgba(0, 0, 0, 0.4);
 }
 
@@ -1050,13 +1051,11 @@ function extractErrorMessage(error: unknown): string {
 
 .detail-player-sub {
   font-size: 0.76em;
-  opacity: 0.75;
   margin-top: 1px;
 }
 
 .header-badge {
   font-size: 0.72em;
-  opacity: 0.6;
 }
 
 .type-chip-header {
@@ -1068,13 +1067,13 @@ function extractErrorMessage(error: unknown): string {
 }
 
 .type-chip-header.pitcher {
-  background: rgba(219, 234, 254, 0.85);
-  color: #1e40af;
+  background: rgb(var(--v-theme-tag-pitcher));
+  color: rgb(var(--v-theme-on-tag-pitcher));
 }
 
 .type-chip-header.batter {
-  background: rgba(220, 252, 231, 0.85);
-  color: #166534;
+  background: rgb(var(--v-theme-tag-fielder));
+  color: rgb(var(--v-theme-on-tag-fielder));
 }
 
 /* ── デタイルボディ ── */
@@ -1093,8 +1092,8 @@ function extractErrorMessage(error: unknown): string {
 .section-header-title {
   font-size: 0.85em;
   font-weight: bold;
-  color: #5a3e20;
-  background: #ece4d8;
+  color: rgb(var(--v-theme-on-surface-variant));
+  background: rgb(var(--v-theme-surface-variant));
   padding: 3px 10px;
   border-radius: 3px;
 }
@@ -1112,7 +1111,7 @@ function extractErrorMessage(error: unknown): string {
 }
 
 .card-img-clickable {
-  border: 1px solid #b0a090;
+  border: 1px solid rgb(var(--v-theme-border-strong));
   cursor: pointer;
   transition:
     box-shadow 0.15s ease,
@@ -1127,21 +1126,21 @@ function extractErrorMessage(error: unknown): string {
 .card-img-hint {
   text-align: center;
   font-size: 0.68em;
-  color: #9a8060;
+  color: rgb(var(--v-theme-on-surface-variant));
   margin-top: 3px;
 }
 
 .card-img-placeholder {
   width: 108px;
   height: 150px;
-  background: linear-gradient(160deg, #e8e0d4 0%, #d0c0a8 100%);
-  border: 2px solid var(--usuiro);
+  background: rgb(var(--v-theme-surface-variant));
+  border: 2px solid rgb(var(--v-theme-border-strong));
   border-radius: 4px;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  color: #9a8060;
+  color: rgb(var(--v-theme-on-surface-variant));
   font-size: 0.73em;
   text-align: center;
   gap: 4px;
@@ -1160,14 +1159,14 @@ function extractErrorMessage(error: unknown): string {
 
 .info-label {
   font-size: 0.68em;
-  color: #999;
+  color: rgb(var(--v-theme-on-surface-variant));
   line-height: 1.2;
 }
 
 .info-val {
   font-size: 0.9em;
   font-weight: bold;
-  color: #222;
+  color: rgb(var(--v-theme-on-surface));
 }
 
 .flag-row {
@@ -1186,27 +1185,27 @@ function extractErrorMessage(error: unknown): string {
 }
 
 .chip-closer {
-  background: #fed7aa;
-  color: #9a3412;
-  border: 1px solid #fdba74;
+  background: rgb(var(--v-theme-state-todo));
+  color: rgb(var(--v-theme-on-state-todo));
+  border: 1px solid rgb(var(--v-theme-border-strong));
 }
 
 .chip-relief {
-  background: #e9d5ff;
-  color: #6b21a8;
-  border: 1px solid #d8b4fe;
+  background: rgb(var(--v-theme-state-info));
+  color: rgb(var(--v-theme-on-state-info));
+  border: 1px solid rgb(var(--v-theme-border-strong));
 }
 
 .chip-switch {
-  background: #ccfbf1;
-  color: #0f766e;
-  border: 1px solid #99f6e4;
+  background: rgb(var(--v-theme-state-done));
+  color: rgb(var(--v-theme-on-state-done));
+  border: 1px solid rgb(var(--v-theme-border-strong));
 }
 
 .chip-dual {
-  background: #ffedd5;
-  color: #c2410c;
-  border: 1px solid #fed7aa;
+  background: rgb(var(--v-theme-state-neutral));
+  color: rgb(var(--v-theme-on-state-neutral));
+  border: 1px solid rgb(var(--v-theme-border-strong));
 }
 
 /* ── 中段: 守備値 + 特徴 ── */
@@ -1217,7 +1216,7 @@ function extractErrorMessage(error: unknown): string {
 }
 
 .section-box {
-  border: 1px solid #e0d8cc;
+  border: 1px solid rgb(var(--v-theme-border-strong));
   border-radius: 4px;
   overflow: hidden;
   flex: 1;
@@ -1228,13 +1227,13 @@ function extractErrorMessage(error: unknown): string {
 }
 
 .section-title-bar {
-  background: #ece4d8;
-  color: #5a3e20;
+  background: rgb(var(--v-theme-surface-variant));
+  color: rgb(var(--v-theme-on-surface-variant));
   padding: 4px 10px;
   font-size: 0.74em;
   font-weight: bold;
   letter-spacing: 0.04em;
-  border-bottom: 1px solid #d4c5a9;
+  border-bottom: 1px solid rgb(var(--v-theme-border-strong));
   display: flex;
   align-items: center;
 }
@@ -1253,10 +1252,10 @@ function extractErrorMessage(error: unknown): string {
 .def-table th {
   padding: 2px 6px;
   text-align: center;
-  color: #999;
+  color: rgb(var(--v-theme-on-surface-variant));
   font-size: 0.82em;
   font-weight: normal;
-  border-bottom: 1px solid #eee;
+  border-bottom: 1px solid rgb(var(--v-theme-border-strong));
   white-space: nowrap;
 }
 
@@ -1267,7 +1266,7 @@ function extractErrorMessage(error: unknown): string {
 .def-table td {
   padding: 2px 6px;
   text-align: center;
-  border-bottom: 1px solid #f4f0ea;
+  border-bottom: 1px solid rgb(var(--v-theme-border-strong));
 }
 
 .def-table td:first-child {
@@ -1287,40 +1286,40 @@ function extractErrorMessage(error: unknown): string {
 }
 
 .trait-chip {
-  background: #f0e8d8;
-  border: 1px solid var(--usuiro);
+  background: rgb(var(--v-theme-surface-variant));
+  border: 1px solid rgb(var(--v-theme-border-strong));
   padding: 2px 7px;
   border-radius: 3px;
   font-size: 0.75em;
-  color: #4a3010;
+  color: rgb(var(--v-theme-on-surface-variant));
   cursor: default;
 }
 
 .ability-chip {
-  background: #ede9f4;
-  border: 1px solid #c5b8d9;
+  background: rgb(var(--v-theme-surface-variant));
+  border: 1px solid rgb(var(--v-theme-border-strong));
   padding: 2px 7px;
   border-radius: 3px;
   font-size: 0.75em;
-  color: #4a2a6a;
+  color: rgb(var(--v-theme-on-surface-variant));
 }
 
 .chip-section-label {
   font-size: 0.67em;
-  color: #aaa;
+  color: rgb(var(--v-theme-on-surface-variant));
   display: block;
   margin: 4px 0 2px;
 }
 
 .condition-text {
-  color: #888;
+  color: rgb(var(--v-theme-on-surface-variant));
 }
 
 .unique-traits-box {
   font-size: 0.76em;
-  color: #6a4a20;
-  background: #faf5ec;
-  border: 1px solid #e0d4bc;
+  color: rgb(var(--v-theme-on-surface-variant));
+  background: rgb(var(--v-theme-surface-variant));
+  border: 1px solid rgb(var(--v-theme-border-strong));
   border-radius: 3px;
   padding: 4px 7px;
 }
@@ -1346,63 +1345,63 @@ function extractErrorMessage(error: unknown): string {
 
 .p-idx {
   font-size: 0.62em;
-  color: #aaa;
+  color: rgb(var(--v-theme-on-surface-variant));
   display: block;
   line-height: 1;
   margin-bottom: 1px;
 }
 
 .p-cell-1 {
-  background: #dbeafe;
-  border-color: #93c5fd;
-  color: #1e40af;
+  background: rgb(var(--v-theme-state-info));
+  border-color: rgb(var(--v-theme-border-strong));
+  color: rgb(var(--v-theme-on-state-info));
 }
 .p-cell-2 {
-  background: #d1fae5;
-  border-color: #6ee7b7;
-  color: #065f46;
+  background: rgb(var(--v-theme-state-done));
+  border-color: rgb(var(--v-theme-border-strong));
+  color: rgb(var(--v-theme-on-state-done));
 }
 .p-cell-3 {
-  background: #fef9c3;
-  border-color: #fde047;
-  color: #713f12;
+  background: rgb(var(--v-theme-state-todo));
+  border-color: rgb(var(--v-theme-border-strong));
+  color: rgb(var(--v-theme-on-state-todo));
 }
 .p-cell-4 {
-  background: #ffe4e6;
-  border-color: #fda4af;
-  color: #9f1239;
+  background: rgb(var(--v-theme-state-warn));
+  border-color: rgb(var(--v-theme-border-strong));
+  color: rgb(var(--v-theme-on-state-warn));
 }
 .p-cell-5 {
-  background: #f3e8ff;
-  border-color: #d8b4fe;
-  color: #6b21a8;
+  background: rgb(var(--v-theme-state-neutral));
+  border-color: rgb(var(--v-theme-border-strong));
+  color: rgb(var(--v-theme-on-state-neutral));
 }
 .p-cell-6 {
-  background: #ffedd5;
-  border-color: #fdba74;
-  color: #9a3412;
+  background: rgb(var(--v-theme-tag-fielder));
+  border-color: rgb(var(--v-theme-border-strong));
+  color: rgb(var(--v-theme-on-tag-fielder));
 }
 .p-cell-wp {
-  background: #fed7aa;
-  border-color: #fb923c;
-  color: #9a3412;
+  background: rgb(var(--v-theme-tag-pitcher));
+  border-color: rgb(var(--v-theme-border-strong));
+  color: rgb(var(--v-theme-on-tag-pitcher));
   font-style: italic;
 }
 
 /* ── 現行コスト強調 ── */
 .cost-row-current {
-  background: #fef9c3;
+  background: rgb(var(--v-theme-state-todo));
   font-weight: bold;
 }
 
 .cost-row-current td {
-  color: #713f12;
+  color: rgb(var(--v-theme-on-state-todo));
 }
 
 .cost-current-badge {
   display: inline-block;
-  background: #fde047;
-  color: #713f12;
+  background: rgb(var(--v-theme-state-todo));
+  color: rgb(var(--v-theme-on-state-todo));
   font-size: 0.65em;
   font-weight: bold;
   padding: 0px 5px;

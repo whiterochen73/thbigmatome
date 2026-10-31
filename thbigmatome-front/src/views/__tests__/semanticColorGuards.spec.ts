@@ -132,22 +132,57 @@ it('七つのトグル群は outlined の border-strong 枠を持つ', () => {
   expect(violations).toEqual([])
 })
 
-// Test Basis: subtask_1790a §3 / thbig-dugout-visual-refresh-design.md §6.2
-it('三つの scoped CSS に固定の明るい背景を残さない', () => {
+// Test Basis: subtask_1790c §1, §4 / thbig-dugout-visual-refresh-design.md §6.2
+it('対象の scoped CSS に固定の明るい背景を残さない', () => {
   const violations = [
     'components/AtBatCard.vue',
+    'components/PlayerCardItem.vue',
     'views/PlayerDetailView.vue',
+    'views/PlayerCardDetailView.vue',
     'views/GameRecordDetailView.vue',
+    'views/LoginForm.vue',
+    'views/GameImportView.vue',
   ].flatMap((path) => {
     const source = readFileSync(resolve(srcDir, path), 'utf8')
     const css = source.match(/<style scoped>([\s\S]*?)<\/style>/)?.[1] ?? ''
     return [
       ...css.matchAll(
-        /^\s*(?:background(?:-color)?|--[\w-]+-bg)\s*:\s*(#[\da-f]+|white\b|rgb\(\s*\d)/gim,
+        /^\s*(?:background(?:-color)?|--[\w-]+-bg)\s*:\s*[^;]*(?:#[\da-f]{3,8}\b|rgba?\(\s*\d|hsla?\(\s*\d|\b(?:white|ghostwhite|whitesmoke|snow)\b)[^;]*;/gim,
       ),
     ].map((match) => `${path} scoped CSS fixed light background: ${match[0].trim()}`)
   })
   expect(violations).toEqual([])
+})
+
+// Test Basis: subtask_1790c §3, §4 / thbig-dugout-visual-stage5-mapping.md §2 R3
+it('outlined の表示・絞り込みトグルは選択中の primary 塗りを持つ', () => {
+  const paths = [
+    'views/PlayerCardsView.vue',
+    'views/GameRecordListView.vue',
+    'views/SeasonPortal.vue',
+  ]
+  const violations = paths.flatMap((path) => {
+    const source = readFileSync(resolve(srcDir, path), 'utf8')
+    return [...source.matchAll(/<v-btn-toggle\b(?:"[^"]*"|'[^']*'|[^>"'])*>/g)]
+      .filter((match) => /\bvariant="outlined"/.test(match[0]))
+      .filter((match) => !/\bselected-class="bg-primary"/.test(match[0]))
+      .map(
+        (match) =>
+          `${path}:${source.slice(0, match.index).split('\n').length} outlined toggle requires selected-class="bg-primary"`,
+      )
+  })
+  expect(violations).toEqual([])
+})
+
+// Test Basis: subtask_1790c §2 / thbig-dugout-visual-refresh-design.md §6.2
+it('選手詳細の見出し帯は on-primary を透過させない', () => {
+  const source = readFileSync(resolve(srcDir, 'views/PlayerDetailView.vue'), 'utf8')
+  const css = source.match(/<style scoped>([\s\S]*?)<\/style>/)?.[1] ?? ''
+  for (const selector of ['.detail-player-sub', '.header-badge']) {
+    const block =
+      css.match(new RegExp(`${selector.replace('.', '\\.')}\\s*\\{([^}]*)\\}`))?.[1] ?? ''
+    expect(block, selector).not.toMatch(/\bopacity\s*:/)
+  }
 })
 
 // Test Basis: thbig-dugout-visual-stage5-mapping.md §6, §7 b9-1〜b9-7

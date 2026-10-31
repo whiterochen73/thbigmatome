@@ -20,8 +20,8 @@
           v-model="filterStatus"
           density="compact"
           rounded="sm"
-          color="link"
           variant="outlined"
+          selected-class="bg-primary"
           :style="{ borderColor: 'rgb(var(--v-theme-border-strong))' }"
         >
           <v-btn value="">全ステータス</v-btn>

@@ -35,8 +35,8 @@
             mandatory
             density="compact"
             rounded="sm"
-            color="link"
             variant="outlined"
+            selected-class="bg-primary"
             :style="{ borderColor: 'rgb(var(--v-theme-border-strong))' }"
           >
             <v-btn value="" size="small">全種</v-btn>
@@ -52,8 +52,8 @@
           mandatory
           density="compact"
           rounded="sm"
-          color="link"
           variant="outlined"
+          selected-class="bg-primary"
           :style="{ borderColor: 'rgb(var(--v-theme-border-strong))' }"
         >
           <v-btn value="table" size="small" title="テーブル表示">

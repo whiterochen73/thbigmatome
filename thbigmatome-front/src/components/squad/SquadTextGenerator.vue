@@ -135,7 +135,7 @@
                   <v-btn-toggle
                     :model-value="getHitterCategory(p.player_id)"
                     density="compact"
-                    color="primary"
+                    color="link"
                     variant="outlined"
                     @update:model-value="
                       (v: 'bench' | 'off' | null) => setHitterCategory(p.player_id, v)
@@ -159,7 +159,7 @@
                   <v-btn-toggle
                     :model-value="getPitcherCategory(p.player_id)"
                     density="compact"
-                    color="primary"
+                    color="link"
                     variant="outlined"
                     @update:model-value="
                       (v: 'relief' | 'starter_bench' | 'off' | null) =>
@@ -199,7 +199,7 @@
             <!-- リセットボタン -->
             <v-btn
               variant="text"
-              color="error"
+              color="danger-ink"
               size="small"
               prepend-icon="mdi-restart"
               @click="resetAndRestart"

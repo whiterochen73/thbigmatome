@@ -1,6 +1,6 @@
 <!-- eslint-disable vue/valid-v-slot -->
 <template>
-  <v-tabs v-model="activeTab" color="primary" class="mb-4">
+  <v-tabs v-model="activeTab" color="link" class="mb-4">
     <v-tab value="teams">全チーム管理</v-tab>
     <v-tab value="absences">離脱者一覧</v-tab>
     <v-tab value="costs">コスト状況</v-tab>
@@ -30,8 +30,9 @@
                 <v-chip
                   v-if="item.team_type === 'hachinai'"
                   size="small"
-                  color="purple"
-                  variant="tonal"
+                  color="state-info"
+                  variant="flat"
+                  prepend-icon="mdi-tag-outline"
                 >
                   ハチナイ
                 </v-chip>
@@ -155,13 +156,18 @@
                   <v-chip
                     :color="
                       getRemainingCount(item) !== null && getRemainingCount(item)! <= 2
-                        ? 'green-darken-1'
+                        ? 'state-done'
                         : undefined
                     "
                     :variant="
                       getRemainingCount(item) !== null && getRemainingCount(item)! <= 2
-                        ? 'tonal'
+                        ? 'flat'
                         : 'text'
+                    "
+                    :prepend-icon="
+                      getRemainingCount(item) !== null && getRemainingCount(item)! <= 2
+                        ? 'mdi-clock-check-outline'
+                        : undefined
                     "
                     size="small"
                   >
@@ -209,15 +215,21 @@
               </template>
               <template v-slot:item.remaining_days="{ item }">
                 <v-chip
-                  :color="item.remaining_days <= 2 ? 'green-darken-1' : undefined"
-                  :variant="item.remaining_days <= 2 ? 'tonal' : 'text'"
+                  :prepend-icon="item.remaining_days <= 2 ? 'mdi-clock-check-outline' : undefined"
+                  :color="item.remaining_days <= 2 ? 'state-done' : undefined"
+                  :variant="item.remaining_days <= 2 ? 'flat' : 'text'"
                   size="small"
                 >
                   {{ item.remaining_days }}日
                 </v-chip>
               </template>
               <template v-slot:item.same_day_exempt="{ item }">
-                <v-chip v-if="item.same_day_exempt" color="grey" variant="tonal" size="small">
+                <v-chip
+                  v-if="item.same_day_exempt"
+                  color="state-neutral"
+                  variant="flat"
+                  size="small"
+                >
                   同日免除
                 </v-chip>
               </template>
@@ -242,8 +254,9 @@
                 <v-chip
                   v-if="item.team_type === 'hachinai'"
                   size="small"
-                  color="purple"
-                  variant="tonal"
+                  color="state-info"
+                  variant="flat"
+                  prepend-icon="mdi-tag-outline"
                 >
                   ハチナイ
                 </v-chip>
@@ -473,7 +486,7 @@ const getRemainingDisplay = (absence: AbsenceRecord): string | null => {
 const getRowProps = ({ item }: { item: AbsenceRecord }) => {
   const count = getRemainingCount(item)
   if (count !== null && count <= 2) {
-    return { class: 'bg-green-lighten-4' }
+    return { class: 'bg-state-done' }
   }
   return {}
 }

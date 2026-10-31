@@ -169,6 +169,53 @@ describe('CommissionerDashboardView', () => {
     expect(wrapper.text()).toContain('博麗霊夢')
   })
 
+  // Test Basis: thbig-dugout-visual-stage5-mapping.md §7 b5-3〜b5-7
+  it('復帰間近と同日免除のチップを役割色で示す', async () => {
+    ;(axios.get as ReturnType<typeof vi.fn>).mockImplementation((url: string) =>
+      Promise.resolve({
+        data: url.includes('absences')
+          ? mockAbsences
+          : url.includes('cooldowns')
+            ? [
+                ...mockCooldowns,
+                { ...mockCooldowns[0], player_id: 21, remaining_days: 2, same_day_exempt: true },
+              ]
+            : [],
+      }),
+    )
+    const wrapper = mount(CommissionerDashboardView, {
+      global: { plugins: [vuetify, pinia, i18n], stubs: { TeamDialog: true, ConfirmDialog: true } },
+    })
+    await flushPromises()
+    const dashboardVm = wrapper.findComponent(CommissionerDashboard).vm as unknown as {
+      activeTab: string
+    }
+    dashboardVm.activeTab = 'absences'
+    await wrapper.vm.$nextTick()
+    const imminent = wrapper
+      .findAllComponents(components.VChip)
+      .filter((chip) => chip.text() === '2試合')
+    expect(imminent).toHaveLength(1)
+    expect(imminent[0]!.props('color')).toBe('state-done')
+    expect(imminent[0]!.props('variant')).toBe('flat')
+    expect(imminent[0]!.props('prependIcon')).toBe('mdi-clock-check-outline')
+    dashboardVm.activeTab = 'cooldowns'
+    await wrapper.vm.$nextTick()
+    const cooldown = wrapper
+      .findAllComponents(components.VChip)
+      .filter((chip) => chip.text() === '2日')
+    expect(cooldown).toHaveLength(1)
+    expect(cooldown[0]!.props('color')).toBe('state-done')
+    expect(cooldown[0]!.props('variant')).toBe('flat')
+    expect(cooldown[0]!.props('prependIcon')).toBe('mdi-clock-check-outline')
+    const exempt = wrapper
+      .findAllComponents(components.VChip)
+      .filter((chip) => chip.text() === '同日免除')
+    expect(exempt).toHaveLength(1)
+    expect(exempt[0]!.props('color')).toBe('state-neutral')
+    expect(exempt[0]!.props('variant')).toBe('flat')
+  })
+
   // Test Basis: thbig-dugout-visual-refresh-design.md §6.1, §6.5, §7 段3
   it('コミッショナー離脱一覧も負傷と出場停止を同色・別アイコンで示す', async () => {
     ;(axios.get as ReturnType<typeof vi.fn>).mockImplementation((url: string) =>

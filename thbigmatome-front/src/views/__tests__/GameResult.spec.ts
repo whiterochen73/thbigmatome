@@ -110,7 +110,7 @@ const seasonResponse = {
 
 async function mountView() {
   mockGet.mockImplementation((url: string) => {
-    if (url === '/game/100') return Promise.resolve({ data: gameResponse })
+    if (url === '/game/100') return Promise.resolve({ data: { ...gameResponse } })
     if (url === '/teams') return Promise.resolve({ data: [] })
     if (url === '/pitcher_appearances') return Promise.resolve({ data: [] })
     if (url === '/teams/1/season') return Promise.resolve({ data: seasonResponse })
@@ -131,6 +131,27 @@ async function mountView() {
   await flushPromises()
   return wrapper
 }
+
+// Test Basis: thbig-dugout-visual-stage5-mapping.md §5.5, §7 b2-20〜b2-23 / subtask_1787r 申し送り3
+it('GameResult の四種の確認は destructive を付けない', async () => {
+  const wrapper = await mountView()
+  const open = vi.spyOn(wrapper.vm.confirmDialog!, 'open').mockResolvedValue(false)
+  await wrapper.vm.updateDateType('travel_day')
+  wrapper.vm.gameLogText = '既存ログ'
+  const bytes = new TextEncoder().encode('新しいログ')
+  await wrapper.vm.onGameLogFileChange({
+    target: {
+      files: [{ size: bytes.byteLength, arrayBuffer: async () => bytes.buffer }],
+      value: 'x',
+    },
+  } as unknown as Event)
+  wrapper.vm.gameData.score = 9
+  await wrapper.vm.confirmDiscard()
+  await wrapper.vm.goToGameDay(101)
+  expect(open).toHaveBeenCalledTimes(4)
+  for (const call of open.mock.calls) expect(call[2]).toBeUndefined()
+  wrapper.unmount()
+})
 
 // cmd_1775 第1段 QC の残り(2): 得点は保存できたが投手の判定の作り直しに失敗した時、画面で分かるようにする
 describe('GameResult 得点の保存', () => {

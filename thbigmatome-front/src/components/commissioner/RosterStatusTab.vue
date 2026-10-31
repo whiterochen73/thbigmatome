@@ -5,7 +5,7 @@
       <DataCard title="1軍登録状況">
         <div class="d-flex align-center mb-4">
           <v-btn
-            color="primary"
+            color="link"
             variant="outlined"
             prepend-icon="mdi-download"
             :href="allCsvUrl"
@@ -26,14 +26,15 @@
           no-data-text="データなし"
         >
           <template #[`item.team_name`]="{ item }">
-            <span class="text-primary" style="cursor: pointer">{{ item.team_name }}</span>
+            <span class="text-link" style="cursor: pointer">{{ item.team_name }}</span>
           </template>
           <template #[`item.team_type`]="{ item }">
             <v-chip
               v-if="item.team_type === 'hachinai'"
               size="small"
-              color="purple"
-              variant="tonal"
+              color="state-info"
+              variant="flat"
+              prepend-icon="mdi-tag-outline"
             >
               ハチナイ
             </v-chip>
@@ -71,7 +72,7 @@
           <template #expanded-row="{ item }">
             <tr>
               <td :colspan="summaryHeaders.length + 1" class="pa-0">
-                <v-sheet class="pa-4 bg-grey-lighten-5">
+                <v-sheet class="pa-4 bg-surface-variant">
                   <div class="d-flex align-center justify-space-between mb-2">
                     <span class="text-subtitle-2 font-weight-bold">
                       {{ item.team_name }} — 1軍選手一覧
@@ -102,15 +103,20 @@
                   >
                     <template #[`item.squad`]="{ item: player }">
                       <v-chip
-                        :color="player.squad === 'first' ? 'blue' : 'grey'"
+                        :color="player.squad === 'first' ? 'zone-game' : 'state-neutral'"
                         size="small"
-                        variant="tonal"
+                        variant="flat"
+                        :prepend-icon="
+                          player.squad === 'first'
+                            ? 'mdi-numeric-1-box-outline'
+                            : 'mdi-numeric-2-box-outline'
+                        "
                       >
                         {{ player.squad === 'first' ? '1軍' : '2軍' }}
                       </v-chip>
                     </template>
                     <template #[`item.is_outside_world`]="{ item: player }">
-                      <v-icon v-if="player.is_outside_world" color="orange" size="small">
+                      <v-icon v-if="player.is_outside_world" class="on-state-info" size="small">
                         mdi-earth
                       </v-icon>
                     </template>

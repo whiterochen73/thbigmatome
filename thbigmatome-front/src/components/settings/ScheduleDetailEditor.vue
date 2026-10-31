@@ -18,7 +18,7 @@
                 :value="type.value"
               >
                 <template #label>
-                  <v-chip :color="type.color" text-color="white" class="mr-2">
+                  <v-chip :color="type.color" variant="flat" :prepend-icon="type.icon" class="mr-2">
                     {{ type.label }}
                   </v-chip>
                 </template>
@@ -45,7 +45,7 @@
                     )?.color || 'transparent'
                   "
                   block
-                  flat
+                  variant="flat"
                   :disabled="item.isDisabled"
                   :title="
                     dateTypes.find(
@@ -96,21 +96,48 @@ const selectedDateType = ref<string>('game_day')
 const calendarDate = ref<Date>(new Date())
 
 const dateTypes = computed(() => [
-  { label: t('settings.schedule.dateTypes.game_day'), value: 'game_day', color: 'blue' },
+  {
+    label: t('settings.schedule.dateTypes.game_day'),
+    value: 'game_day',
+    color: 'date-game',
+    icon: 'mdi-baseball-diamond',
+  },
   {
     label: t('settings.schedule.dateTypes.interleague_game_day'),
     value: 'interleague_game_day',
-    color: 'deep-purple',
+    color: 'date-interleague',
+    icon: 'mdi-swap-horizontal',
   },
-  { label: t('settings.schedule.dateTypes.playoff_day'), value: 'playoff_day', color: 'pink' },
-  { label: t('settings.schedule.dateTypes.travel_day'), value: 'travel_day', color: 'grey' },
-  { label: t('settings.schedule.dateTypes.reserve_day'), value: 'reserve_day', color: 'blue-grey' },
+  {
+    label: t('settings.schedule.dateTypes.playoff_day'),
+    value: 'playoff_day',
+    color: 'date-game',
+    icon: 'mdi-trophy',
+  },
+  {
+    label: t('settings.schedule.dateTypes.travel_day'),
+    value: 'travel_day',
+    color: 'date-travel',
+    icon: 'mdi-bus',
+  },
+  {
+    label: t('settings.schedule.dateTypes.reserve_day'),
+    value: 'reserve_day',
+    color: 'date-reserve',
+    icon: 'mdi-calendar-clock',
+  },
   {
     label: t('settings.schedule.dateTypes.interleague_reserve_day'),
     value: 'interleague_reserve_day',
-    color: 'brown',
+    color: 'date-interleague',
+    icon: 'mdi-swap-horizontal',
   },
-  { label: t('settings.schedule.dateTypes.no_game_day'), value: 'no_game_day', color: 'red' },
+  {
+    label: t('settings.schedule.dateTypes.no_game_day'),
+    value: 'no_game_day',
+    color: 'state-neutral',
+    icon: 'mdi-minus-circle-outline',
+  },
 ])
 
 const fetchScheduleDetails = async () => {

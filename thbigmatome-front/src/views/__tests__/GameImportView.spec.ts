@@ -124,7 +124,15 @@ describe('GameImportView', () => {
       .findAll('.v-expansion-panel-title')
       .filter((panel) => panel.text().includes('ベンチ'))
     for (const panel of benchPanels) await panel.trigger('click')
-    await flushPromises()
+    // Test Basis: subtask_1787r 申し送り4。展開内容が描画されるまで待つ。
+    for (let attempt = 0; attempt < 10; attempt++) {
+      const pitcherChips = wrapper
+        .findAllComponents(components.VChip)
+        .filter((chip) => chip.text() === '投手')
+      if (pitcherChips.length > 0) break
+      await flushPromises()
+      await wrapper.vm.$nextTick()
+    }
     for (const [label, color] of [
       ['投手', 'tag-pitcher'],
       ['野手', 'tag-fielder'],

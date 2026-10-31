@@ -21,7 +21,13 @@
         "
       >
         <template #[`item.team_type`]="{ item }">
-          <v-chip v-if="item.team_type === 'hachinai'" size="small" color="purple" variant="tonal">
+          <v-chip
+            v-if="item.team_type === 'hachinai'"
+            size="small"
+            color="state-info"
+            variant="flat"
+            prepend-icon="mdi-tag-outline"
+          >
             {{ t('teamList.teamTypes.hachinai') }}
           </v-chip>
           <span v-else class="text-caption text-medium-emphasis">{{

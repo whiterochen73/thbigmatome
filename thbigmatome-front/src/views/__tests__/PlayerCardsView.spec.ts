@@ -124,6 +124,27 @@ describe('PlayerCardsView', () => {
     expect(wrapper.text()).toContain('霧雨魔理沙')
   })
 
+  // Test Basis: thbig-dugout-visual-stage5-mapping.md §7 b5-19〜b5-21
+  it('カード種別の全チップを投手・野手トークンで区別する', async () => {
+    const wrapper = mount(PlayerCardsView, {
+      global: { plugins: [vuetify, createTestRouter(), createPinia()] },
+    })
+    await flushPromises()
+    const typeChips = wrapper
+      .findAllComponents(components.VChip)
+      .filter((chip) => ['投手', '野手'].includes(chip.text()))
+    expect(typeChips).toHaveLength(2)
+    expect(typeChips.map((chip) => chip.props('color'))).toEqual(['tag-pitcher', 'tag-fielder'])
+    expect(typeChips.map((chip) => chip.props('prependIcon'))).toEqual([
+      'mdi-baseball',
+      'mdi-baseball-bat',
+    ])
+    typeChips.forEach((chip) => expect(chip.props('variant')).toBe('flat'))
+    wrapper
+      .findAllComponents(components.VBtnToggle)
+      .forEach((toggle) => expect(toggle.props('color')).toBe('link'))
+  })
+
   it('合計件数が表示されること', async () => {
     const router = createTestRouter()
     const wrapper = mount(PlayerCardsView, {

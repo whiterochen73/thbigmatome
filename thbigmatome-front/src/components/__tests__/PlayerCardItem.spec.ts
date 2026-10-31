@@ -1,10 +1,12 @@
 import { describe, it, expect } from 'vitest'
 import { mount } from '@vue/test-utils'
 import { createVuetify } from 'vuetify'
+import * as components from 'vuetify/components'
+import * as directives from 'vuetify/directives'
 import PlayerCardItem from '../PlayerCardItem.vue'
 
 describe('PlayerCardItem.vue', () => {
-  const vuetify = createVuetify()
+  const vuetify = createVuetify({ components, directives })
 
   const mockCard = {
     id: 1,
@@ -68,7 +70,8 @@ describe('PlayerCardItem.vue', () => {
     expect(content).toContain('23')
   })
 
-  it('種別チップが表示される', () => {
+  // Test Basis: thbig-dugout-visual-stage5-mapping.md §7 b5-22〜b5-23
+  it('野手と守備位置の役割色をチップの props で表示する', () => {
     const wrapper = mount(PlayerCardItem, {
       props: {
         card: mockCard,
@@ -78,9 +81,16 @@ describe('PlayerCardItem.vue', () => {
       },
     })
 
-    const chip = wrapper.find('[color="green"]')
-    expect(chip.exists()).toBe(true)
+    const chip = wrapper.findAllComponents(components.VChip).find((item) => item.text() === '野手')!
+    expect(chip.props('color')).toBe('tag-fielder')
+    expect(chip.props('variant')).toBe('flat')
+    expect(chip.props('prependIcon')).toBe('mdi-baseball-bat')
     expect(chip.text()).toContain('野手')
+    const defenses = wrapper
+      .findAllComponents(components.VChip)
+      .filter((item) => ['SS', '2B'].includes(item.text()))
+    expect(defenses).toHaveLength(2)
+    defenses.forEach((item) => expect(item.props('color')).toBe('link'))
   })
 
   it('投手の場合、種別が投手と表示される', () => {
@@ -98,8 +108,10 @@ describe('PlayerCardItem.vue', () => {
       },
     })
 
-    const chip = wrapper.find('[color="blue"]')
-    expect(chip.exists()).toBe(true)
+    const chip = wrapper.findAllComponents(components.VChip).find((item) => item.text() === '投手')!
+    expect(chip.props('color')).toBe('tag-pitcher')
+    expect(chip.props('variant')).toBe('flat')
+    expect(chip.props('prependIcon')).toBe('mdi-baseball')
     expect(chip.text()).toContain('投手')
   })
 

@@ -9,12 +9,7 @@
   >
     <!-- eslint-disable-next-line vue/valid-v-slot -->
     <template #item.name="{ item }">
-      <v-chip
-        :color="getNameBackgroundColor(item.skill_type)"
-        text-color="black"
-        size="small"
-        label
-      >
+      <v-chip :color="getNameBackgroundColor(item.skill_type)" variant="flat" size="small" label>
         {{ item.name }}
       </v-chip>
     </template>
@@ -30,8 +25,8 @@ import type { SkillType } from '@/types/skill'
 const { t } = useI18n()
 
 const getNameBackgroundColor = (skillType: SkillType) => {
-  if (skillType === 'positive') return 'blue'
-  if (skillType === 'negative') return 'red'
-  return 'green'
+  if (skillType === 'positive') return 'state-info'
+  if (skillType === 'negative') return 'state-todo'
+  return 'state-neutral'
 }
 </script>

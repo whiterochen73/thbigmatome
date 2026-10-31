@@ -65,12 +65,20 @@ describe('StatusChip', () => {
     expect(suspended.text()).toContain('出場停止')
   })
 
-  it('commissioner→primaryマッピングが正しいこと', () => {
+  // Test Basis: thbig-dugout-visual-stage5-mapping.md §7 b5-15〜b5-18
+  it('commissioner は link、ハチナイは state-info flat とタグアイコン', () => {
     const wrapper = mount(StatusChip, {
       global: { plugins: [vuetify] },
       props: { status: 'commissioner', label: 'コミッショナー' },
     })
     const chip = wrapper.findComponent({ name: 'VChip' })
-    expect(chip.props('color')).toBe('primary')
+    expect(chip.props('color')).toBe('link')
+    const hachinai = mount(StatusChip, {
+      global: { plugins: [vuetify] },
+      props: { status: 'hachinai', label: 'ハチナイ' },
+    }).findComponent({ name: 'VChip' })
+    expect(hachinai.props('color')).toBe('state-info')
+    expect(hachinai.props('variant')).toBe('flat')
+    expect(hachinai.props('prependIcon')).toBe('mdi-tag-outline')
   })
 })

@@ -489,11 +489,11 @@
                   <v-btn
                     icon
                     size="x-small"
-                    color="error"
-                    variant="text"
+                    color="danger-ink"
+                    variant="outlined"
                     @click="removeDefenseRow(idx)"
                   >
-                    <v-icon>mdi-delete</v-icon>
+                    <v-icon>mdi-delete-outline</v-icon>
                   </v-btn>
                 </td>
               </tr>
@@ -577,8 +577,8 @@
               closable
               @click:close="removeAbility(idx)"
               size="small"
-              color="blue-grey"
-              variant="tonal"
+              color="state-neutral"
+              variant="flat"
             >
               <template v-if="a.condition_name">{{ a.condition_name }}/</template>{{ a.name }}
             </v-chip>

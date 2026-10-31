@@ -80,3 +80,75 @@ it('uses action for filled buttons while keeping identified navigation and row a
   }
   expect(violations).toEqual([])
 })
+
+// Test Basis: thbig-dugout-visual-stage5-mapping.md §2 R3, §7 b5-1〜b7-1 / subtask_1787r 申し送り1
+it('limits static primary on buttons, tabs, toggles and chips to identified filled buttons', () => {
+  const allowed = [
+    {
+      path: 'views/GamesView.vue',
+      marker: 'ログ取り込み',
+      variant: 'flat',
+      reason: '取り込み画面への遷移',
+    },
+    {
+      path: 'views/SeasonPortal.vue',
+      marker: 'detail-open-schedule',
+      variant: 'elevated',
+      reason: '試合結果入力画面への遷移',
+    },
+    {
+      path: 'components/season/SeasonRosterTab.vue',
+      marker: 'promote-btn',
+      variant: 'elevated',
+      reason: '通常の昇格操作',
+    },
+    {
+      path: 'components/squad/SquadTextGenerator.vue',
+      marker: 'テンプレートから始める',
+      variant: 'elevated',
+      reason: '並列の入口',
+    },
+    {
+      path: 'components/AtBatCard.vue',
+      marker: 'startEdit',
+      variant: 'outlined',
+      reason: 'b8 予定の枠付き編集ボタン',
+    },
+  ]
+  const seen = new Map<string, number>()
+  const violations: string[] = []
+  for (const file of [
+    ...vueFiles(resolve(srcDir, 'views')),
+    ...vueFiles(resolve(srcDir, 'components')),
+  ]) {
+    const source = readFileSync(file, 'utf8')
+    const path = relative(srcDir, file).split(sep).join('/')
+    if (/\btext-primary\b/.test(source)) violations.push(`${path} text-primary`)
+    for (const match of source.matchAll(
+      /<v-(?:btn|tabs|btn-toggle|chip)\b(?:"[^"]*"|'[^']*'|[^>"'])*>/g,
+    )) {
+      const tag = match[0]
+      if (!/(?<!:)\bcolor\s*=\s*["']primary["']/.test(tag)) continue
+      const element = tag.match(/^<v-([\w-]+)/)?.[1]
+      const closing = source.indexOf(`</v-${element}>`, match.index + tag.length)
+      const block = source.slice(match.index, closing < 0 ? match.index + tag.length : closing)
+      const matched = allowed.filter((item) => item.path === path && block.includes(item.marker))
+      if (
+        matched.length !== 1 ||
+        !new RegExp(`\\bvariant=["']${matched[0]?.variant}["']`).test(tag)
+      ) {
+        violations.push(
+          `${path}:${source.slice(0, match.index).split('\n').length} ${element} primary`,
+        )
+      } else {
+        const key = `${path}:${matched[0]!.marker}`
+        seen.set(key, (seen.get(key) ?? 0) + 1)
+      }
+    }
+  }
+  for (const item of allowed) {
+    const key = `${item.path}:${item.marker}`
+    if (seen.get(key) !== 1) violations.push(`${key} expected once (${item.reason})`)
+  }
+  expect(violations).toEqual([])
+})

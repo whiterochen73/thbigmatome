@@ -57,6 +57,7 @@
 | Team | teams | チームマスタ |
 | TeamManager | team_managers | チーム×監督・コーチ |
 | TeamMembership | team_memberships | チーム×選手所属 |
+| TeamMembershipChange | team_membership_changes | チーム編成の変更記録（登録・契約・放出） |
 | TraitCondition | trait_conditions | トレイト発動条件マスタ |
 | TraitDefinition | trait_definitions | トレイト定義マスタ |
 | User | users | ユーザー（認証・ロール） |
@@ -851,7 +852,8 @@ class Team < ApplicationRecord
 **関連**:
 - `belongs_to :user, optional: true`
 - `has_one :season, dependent: :restrict_with_error`
-- `has_many :team_memberships, dependent: :destroy`
+- `has_many :team_memberships, -> { where(on_team: true) }` — 在籍中のみ（放出済みの行は含めない）
+- `has_many :all_team_memberships, class_name: "TeamMembership", dependent: :destroy` — 放出済みを含む全行。過去の時点を導く時（`RosterState`・変更記録）に使う
 - `has_many :players, through: :team_memberships`
 - `has_many :competition_entries, dependent: :destroy`
 - `has_many :competitions, through: :competition_entries`
@@ -919,16 +921,42 @@ class TeamMembership < ApplicationRecord
 - `belongs_to :player`
 - `belongs_to :player_card, optional: true`
 - `has_many :season_rosters`
+- `has_many :team_membership_changes, dependent: :destroy`
 - `has_many :player_absences, dependent: :restrict_with_error`
 
 **スコープ**:
+- `active` — `on_team: true`（在籍中。放出されていない）
 - `included_in_team_total` — `excluded_from_team_total: false`
 - `excluded_from_team_total` — `excluded_from_team_total: true`
 
 **バリデーション**:
 - `squad`: inclusion in %w[first second]
 - `selected_cost_type`: presence, inclusion in %w[normal_cost relief_only_cost pitcher_only_cost fielder_only_cost two_way_cost]
-- カスタムvalidate: `player_not_in_director_sibling_team` (on: :create, unless: skip_commissioner_validation) — 同一監督の兄弟チーム間で選手重複を禁止（game_rules.yaml#team_composition.second_team.player_exclusivity）
+- カスタムvalidate: `player_not_in_director_sibling_team` (on: :create, unless: skip_commissioner_validation) — 同一監督の兄弟チーム間で選手重複を禁止（game_rules.yaml#team_composition.second_team.player_exclusivity）。兄弟チームで放出済み（`on_team: false`）の選手は重複とみなさない
+
+**写し**: `squad` / `on_team` / `selected_cost_type` / `player_card_id` / `excluded_from_team_total` / `display_name` は変更記録の最新の状態の写し（`RosterState#rebuild_cache!` が保存のたびに作り直す）。ある時点の値は `RosterState.at(team, 日付, 区分)` で導く。
+
+---
+
+### TeamMembershipChange
+
+チーム編成の変更記録 1 件（cmd_1784 段2）。設計: `context/thbig-dugout-season-record-restructure-design.md` §4.2。
+
+**定数**: `KINDS = %w[join contract release]`、`PHASES`（`SeasonRoster::PHASES`）、`COST_TYPES`
+
+**関連**:
+- `belongs_to :team_membership`
+- `belongs_to :season`
+- `belongs_to :player_card, optional: true`
+- `belongs_to :recorded_by_user, class_name: "User", optional: true`
+
+**バリデーション**:
+- `effective_on`: presence
+- `kind`: inclusion in `KINDS`
+- `phase`: inclusion in `PHASES`
+- `selected_cost_type`: presence, inclusion in `COST_TYPES`
+
+**クラスメソッド**: `initial_join_date(first_roster_date, season_start)` — 移行時の初期 join の日付（最初の昇降格の日とシーズン開始日の早い方）
 
 ---
 

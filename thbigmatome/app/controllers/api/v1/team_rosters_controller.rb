@@ -20,16 +20,18 @@ module Api
         target_date = params[:target_date].present? ? Date.parse(params[:target_date]) : season.current_date
         phase = RosterState.parse_phase(params[:phase])
 
-        # Fetch all team memberships for the team
-        team_memberships = team.team_memberships.preload(:season_rosters, :player_absences, player: [ :cost_players ], player_card: [ :card_set, :player_card_defenses ])
+        # Fetch all team memberships for the team（放出済みも含める。その時点で在籍していた選手がいる）
+        team_memberships = team.all_team_memberships.preload(:season_rosters, :team_membership_changes, :player_absences, player: [ :cost_players ], player_card: [ :card_set, :player_card_defenses ])
         start_date = season.season_schedules.minimum(:date)
 
         state = RosterState.new(team, memberships: team_memberships.to_a)
         entries = state.at(target_date, phase)
 
         native_series = Team::NATIVE_SERIES[team.team_type] || Team::NATIVE_SERIES["normal"]
-        roster_data = state.memberships.map do |tm|
-          entry = entries.fetch(tm.id)
+        # 在籍・契約・カードは、その時点のチーム編成の変更記録から導く（放出済み・まだ登録されていない選手は出さない）
+        roster_data = state.memberships.select { |tm| entries.fetch(tm.id).on_team }.map do |row|
+          entry = entries.fetch(row.id)
+          tm = state.view(row, entry)
 
           # 登録カード（player_card）を優先し、未設定の場合はplayer.seriesにフォールバック
           pc = tm.player_card
@@ -52,7 +54,7 @@ module Api
             is_pitcher: tm.pitcher_role?,
             is_starter_pitcher: tm.starter_pitcher_role?,
             is_relief_only: tm.relief_only_role?,
-            **absence_info_for(tm, target_date)
+            **absence_info_for(row, target_date)
           }
         end
 

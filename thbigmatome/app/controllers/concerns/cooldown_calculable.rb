@@ -17,6 +17,12 @@ module CooldownCalculable
   # チームごとの RosterState をリクエストの間だけ使い回す（記録の読み込みを 1 回にする）。書き込みの後は使わないこと
   def roster_state_for_team(team)
     @roster_states ||= {}
-    @roster_states[team.id] ||= RosterState.new(team)
+    @roster_states[team.id] ||= RosterState.new(
+      team,
+      memberships: team.all_team_memberships
+                       .preload(:season_rosters, :team_membership_changes, { player_absences: :season },
+                                { player: :cost_players }, { player_card: [ :card_set, :player_card_defenses ] })
+                       .to_a
+    )
   end
 end

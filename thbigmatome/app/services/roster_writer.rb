@@ -55,6 +55,11 @@ class RosterWriter
         current_squad = point.fetch(membership.id).squad
         next if current_squad == new_squad
 
+        # 放出済み・まだ登録されていない選手の昇降格は記録しない（チーム編成の変更記録で在籍を先に決める）
+        unless point.fetch(membership.id).on_team
+          raise Rejected, "#{membership.player.name}はその時点（#{date}）でチームに在籍していません。"
+        end
+
         if new_squad == "first"
           reject_if_not_promotable!(membership, point.fetch(membership.id), date)
         end
@@ -65,7 +70,7 @@ class RosterWriter
       checker = RosterConstraintChecker.new(team: @team, season: @season, cost_list: @cost_list)
       apply_target_point_check!(checker, after, date, phase, warnings)
       apply_later_point_check!(checker, before, after, [ date, phase ], warnings, after_target_only: true)
-      after.rebuild_squad_cache!
+      after.rebuild_cache!
     end
 
     Result.new(warnings: warnings, violations: [])
@@ -83,7 +88,7 @@ class RosterWriter
       after = load_state
       checker = RosterConstraintChecker.new(team: @team, season: @season, cost_list: @cost_list)
       apply_later_point_check!(checker, before, after, from_point, warnings, after_target_only: false)
-      after.rebuild_squad_cache!
+      after.rebuild_cache!
     end
 
     Result.new(warnings: warnings, violations: [])
@@ -93,8 +98,9 @@ class RosterWriter
 
   # 検査で使う関連（コスト・カード・離脱・変更記録）を 1 回で読み込んだ状態
   def load_state
-    memberships = @team.team_memberships
-                       .preload(:season_rosters, :player_absences, player: :cost_players, player_card: [ :card_set, :player_card_defenses ])
+    memberships = @team.all_team_memberships
+                       .preload(:season_rosters, :team_membership_changes, :player_absences,
+                                player: :cost_players, player_card: [ :card_set, :player_card_defenses ])
                        .to_a
     RosterState.new(@team, memberships: memberships)
   end

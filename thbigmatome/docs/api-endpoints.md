@@ -13,6 +13,7 @@
 - `app/controllers/api/v1/team_rosters_controller.rb`
 - `app/controllers/api/v1/team_players_controller.rb`
 - `app/controllers/api/v1/team_memberships_controller.rb`
+- `app/controllers/api/v1/team_membership_changes_controller.rb`
 - `app/controllers/api/v1/team_key_players_controller.rb`
 - `app/controllers/api/v1/lineup_templates_controller.rb`
 - `app/controllers/api/v1/game_lineups_controller.rb`
@@ -180,6 +181,7 @@
 - **Controller**: `Api::V1::TeamRostersController#show`
 - **Query Params**: `target_date` (YYYY-MM-DD, 省略時は現在日カーソル), `phase` (`pre_game` | `in_game` | `post_game`, 省略時は `pre_game`。不正な値は 400)
 - **1軍/2軍の決め方**: 昇降格の変更記録（`season_rosters`）を `RosterState` で (日付, 区分) 時点まで畳んで導く。記録が無い選手は 2軍（`team_memberships.squad` の写しには倒さない）。クールダウンも同じ記録から求める（直前と同じ区分への記録は畳む）
+- **在籍・契約の決め方**: 在籍・契約種別・カード・コストは、チーム編成の変更記録（`team_membership_changes`）を同じ時点まで畳んで導く。その時点にまだいない・放出済みの選手は `roster` に出さない。記録が無い行は `team_memberships` の今の値
 - **Response**:
   ```json
   {
@@ -250,17 +252,27 @@
 ### GET /api/v1/teams/:team_id/team_players
 
 - **Controller**: `Api::V1::TeamPlayersController#index`
-- **Query Params**: `cost_list_id` (integer, optional)
+- **Query Params**: `cost_list_id` (integer, optional), `target_date` (YYYY-MM-DD, optional), `phase` (`pre_game` / `in_game` / `post_game`, optional。既定 `pre_game`。`target_date` と組で使う)
+- **動き**: `target_date` を省くと今のチーム編成（在籍中の写し）。付けると、その時点（日付 + 区分）に在籍していた選手を、その時点の契約・カード・コスト除外・表示名で返す（チーム編成の変更記録から導く）。応答の形は同じ
+- **エラー**: 不正な日付・区分は 400
 - **Response**: `[...TeamPlayerSerializer]`
 
 ### POST /api/v1/teams/:team_id/team_players
 
 - **Controller**: `Api::V1::TeamPlayersController#create`
 - **Body Params**:
-  - `players`: `[{ player_id, selected_cost_type, excluded_from_team_total, display_name, player_card_id }]`
-  - `cost_list_id`: integer (optional, チーム合計コスト検証用)
-- **挙動**: 既存メンバーシップをupsert、リストにないプレイヤーを削除
-- **Response**: `{ message: "Team members updated successfully" }`
+  - `players`: `[{ player_id, selected_cost_type, excluded_from_team_total, display_name, player_card_id }]`（全員分）
+  - `cost_list_id`: integer (optional, チーム合計コスト検査用)
+  - `target_date`: YYYY-MM-DD (optional, 省略時は現在日カーソル)
+  - `phase`: `pre_game` / `in_game` / `post_game` (optional, 省略時は `pre_game`)
+- **動き（シーズンのあるチーム）**: 送られた値と `target_date`・`phase` 時点の状態の差を、チーム編成の変更記録（`team_membership_changes`）として足す（`TeamMembershipWriter`）。
+  - その時点にいない・放出済みの選手 → `join`（登録・再登録）／ 契約・カード・コスト除外・表示名が違う選手 → `contract` ／ 送られなかった在籍中の選手 → `release`（行は消さない。1軍なら同じ時点に 2軍への降格も足す）。値が同じ選手は記録しない
+  - 記録の無い行（移行前）に初めて書く時は、先にその行の今の値で初期の `join` を足す
+  - 足したあと、その時点以降の各時点・各試合日を検査し直す（1軍人数・1軍コスト・外の世界枠・クールダウン。書いた時点ではチーム合計コスト 200 も、`cost_list_id` がある時）。この保存で新たに生じた（悪化した）違反があれば、コミッショナー以外は保存を止める（422、`violations` に違反した日付）。コミッショナーは `warnings`（文字列）つきで保存する
+  - 保存のたびに `team_memberships` の写し（在籍・契約・squad）を作り直す
+- **動き（シーズンの無いチーム）**: 日付が無いのでこれまでどおり行を直接書き換え、送られなかった選手の行は削除する（変更記録は作らない）
+- **Response**: `{ message: "Team members updated successfully", warnings: [...] }`
+- **エラー**: 検証エラーは 422 `{ error }`、検査で止めた時は 422 `{ error, violations: [{ date, phase, kind, message }] }`、不正な日付・区分は 400
 
 ---
 
@@ -270,6 +282,15 @@
 
 - **Controller**: `Api::V1::TeamMembershipsController#index`
 - **Response**: `[{ id, name: "#{number} #{name}", player_id }]`
+
+### GET /api/v1/teams/:team_id/team_membership_changes
+
+- **Controller**: `Api::V1::TeamMembershipChangesController#index`
+- **説明**: チーム編成の変更記録（登録・契約の変更・放出）の一覧。試合日ページの「その日の登録・契約変更」などの表示用。書き込みは `POST /teams/:team_id/team_players`
+- **Query Params**: `date` (YYYY-MM-DD, optional。その日の記録だけ), `from` / `to` (YYYY-MM-DD, optional。`effective_on` の範囲。`date` があれば無視)。省略すると全件
+- **並び**: 時点順（`effective_on`、試合前 → 試合中 → 試合後、作成順）
+- **Response**: `[{ id, team_membership_id, player_id, player_name, number, kind, effective_on, phase, selected_cost_type, player_card_id, excluded_from_team_total, display_name, recorded_by_user_id, created_at }]`
+- **エラー**: 不正な日付は 400
 
 ---
 

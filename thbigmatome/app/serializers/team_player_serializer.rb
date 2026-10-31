@@ -3,7 +3,9 @@ class TeamPlayerSerializer < PlayerSerializer
              :player_card_id
 
   def membership
-    @membership ||= object.team_memberships.find_by(team_id: @instance_options[:team].id)
+    # membership_views: 時点の契約を反映した TeamMembership（player_id => view）。無ければ今の行（写し）
+    @membership ||= @instance_options[:membership_views]&.fetch(object.id, nil) ||
+                    object.team_memberships.find_by(team_id: @instance_options[:team].id)
   end
 
   def selected_cost_type

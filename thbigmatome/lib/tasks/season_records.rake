@@ -71,7 +71,7 @@ namespace :season_records do
     totals = Hash.new(0)
     ActiveRecord::Base.transaction do
       teams.find_each do |team|
-        state = RosterState.new(team, memberships: team.team_memberships.preload(:season_rosters, :player).to_a)
+        state = RosterState.new(team, memberships: team.all_team_memberships.preload(:season_rosters, :player).to_a)
         latest = state.latest_squads
         state.memberships.each do |tm|
           totals[:memberships] += 1
@@ -102,5 +102,86 @@ namespace :season_records do
     puts "# 写しが変わる: #{rows.size} 件（チーム #{rows.map(&:first).uniq.size} / 選手 #{rows.map { |r| r[3] }.uniq.size}）"
     puts "#   first→second: #{totals[:first_to_second]} / second→first: #{totals[:second_to_first]}"
     puts "#   記録が無いのに写しが first（second へ変わる）: #{totals[:no_record_first]}"
+  end
+
+  desc <<~DESC
+    チーム編成の変更記録（team_membership_changes）の初期記録を、既存の team_memberships から作る。cmd_1784 段2。
+    選手（team_memberships の行）ごとに join を 1 件。日付は最初の昇降格の日とシーズン開始日（日程の最初の日）の早い方、区分は pre_game、
+    値は移行時点の契約・カード・コスト除外・表示名。昇降格の記録もシーズン開始日もなければ現在日カーソルの日付。
+    移行前の契約変更・放出は記録が無く復元できない（移行前の日付の検査は今の契約で行う。設計書 §5.2 段2）。
+    すでに記録がある行・シーズンの無いチームの行は作らない（何度流しても同じ結果。シーズンの無いチームは記録が無い行を今の値で読む）。
+    既定は試運転（DB を書かない）。APPLY=1 の時だけ書く。
+      bundle exec rake season_records:backfill_membership_changes                 # 試運転（作る件数を標準出力へ）
+      OUT=/path/to/backfill.csv bundle exec rake season_records:backfill_membership_changes  # 作る記録の CSV もファイルへ
+      TEAM_ID=3 bundle exec rake season_records:backfill_membership_changes       # チームを絞る
+      APPLY=1 bundle exec rake season_records:backfill_membership_changes         # 実際に書く
+    CSV は team_id, team, team_membership_id, player_id, player, effective_on, phase, date_source（first_roster / season_start / current_date）、
+    first_roster_date, season_start, selected_cost_type, player_card_id, excluded_from_team_total, display_name の列。
+    戻す時は、この rake が作った記録（recorded_by_user_id が空の join）だけを消せば移行前に戻る（列と表は残してよい）。
+  DESC
+  task backfill_membership_changes: :environment do
+    apply = ENV["APPLY"] == "1"
+    teams = Team.order(:id)
+    teams = teams.where(id: ENV["TEAM_ID"]) if ENV["TEAM_ID"].present?
+
+    rows = []
+    totals = Hash.new(0)
+    by_source = Hash.new(0)
+    ActiveRecord::Base.transaction do
+      teams.find_each do |team|
+        memberships = team.all_team_memberships.preload(:season_rosters, :team_membership_changes, :player).to_a
+        season = team.season
+        unless season
+          totals[:no_season] += memberships.size
+          next
+        end
+
+        season_start = season.season_schedules.minimum(:date)
+        memberships.each do |tm|
+          totals[:memberships] += 1
+          if tm.team_membership_changes.any?
+            totals[:already] += 1
+            next
+          end
+
+          first_roster = tm.season_rosters.map(&:registered_on).min
+          joined_on = TeamMembershipChange.initial_join_date(first_roster, season_start)
+          source = if joined_on.nil? then "current_date"
+          elsif first_roster && (season_start.nil? || first_roster < season_start) then "first_roster"
+          else "season_start"
+          end
+          joined_on ||= season.current_date
+          by_source[source] += 1
+          totals[:later_first_roster] += 1 if first_roster && season_start && first_roster > season_start
+          rows << [ team.id, team.name, tm.id, tm.player_id, tm.player&.name, joined_on, SeasonRoster::DEFAULT_PHASE, source, first_roster,
+                    season_start, tm.selected_cost_type, tm.player_card_id, tm.excluded_from_team_total, tm.display_name ]
+          next unless apply
+
+          TeamMembershipChange.create!(
+            team_membership: tm, season: season, kind: "join", effective_on: joined_on, phase: SeasonRoster::DEFAULT_PHASE,
+            selected_cost_type: tm.selected_cost_type, player_card_id: tm.player_card_id,
+            excluded_from_team_total: tm.excluded_from_team_total, display_name: tm.display_name
+          )
+        end
+      end
+    end
+
+    csv = CSV.generate do |out|
+      out << %w[team_id team team_membership_id player_id player effective_on phase date_source first_roster_date season_start
+                selected_cost_type player_card_id excluded_from_team_total display_name]
+      rows.each { |row| out << row }
+    end
+    if ENV["OUT"].present?
+      File.write(ENV["OUT"], csv)
+      puts "# CSV written: #{ENV['OUT']}（#{rows.size} 行）"
+    else
+      puts csv
+    end
+    puts "# mode: #{apply ? 'APPLY (DB updated)' : 'DRY-RUN (DB unchanged)'}"
+    puts "# 対象: #{ENV['TEAM_ID'].present? ? "チーム #{ENV['TEAM_ID']}" : '全チーム'} / シーズンのあるチームの team_memberships #{totals[:memberships]} 件"
+    puts "# 初期記録を作る: #{rows.size} 件（チーム #{rows.map(&:first).uniq.size} / 選手 #{rows.map { |r| r[3] }.uniq.size}）"
+    puts "#   日付の出どころ: 最初の昇降格が開始日より前 #{by_source['first_roster']} / シーズン開始日 #{by_source['season_start']} / 現在日カーソル #{by_source['current_date']}"
+    puts "#   （参考）最初の昇降格がシーズン開始日より後の選手: #{totals[:later_first_roster]} 件（開始日に登録したものとして読む）"
+    puts "# 作らない: 記録あり #{totals[:already]} 件 / シーズンの無いチームの行 #{totals[:no_season]} 件"
   end
 end

@@ -27,6 +27,7 @@ Rails.application.routes.draw do
         resource :key_player, only: [ :create ], controller: "team_key_players"
         resources :team_players, only: [ :index, :create ]
         resources :team_memberships, only: [ :index ]
+        resources :team_membership_changes, only: [ :index ]
         resources :lineup_templates, only: [ :index, :show, :create, :update, :destroy ]
         resource :game_lineup, only: [ :show, :update ]
         resource :squad_text_settings, only: [ :show, :update ]

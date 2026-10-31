@@ -5,7 +5,10 @@ class Team < ApplicationRecord
   belongs_to :user, optional: true
 
   has_one :season, dependent: :restrict_with_error
-  has_many :team_memberships, dependent: :destroy
+  # 在籍中のチーム編成。放出された選手の行は残る（登板・離脱・昇降格の記録が指す先）が、ここには出さない。
+  # 過去の時点を導く時（RosterState・変更記録）は放出済みを含む all_team_memberships を使う（cmd_1784 段2）
+  has_many :team_memberships, -> { where(on_team: true) }, inverse_of: :team
+  has_many :all_team_memberships, class_name: "TeamMembership", dependent: :destroy, inverse_of: :team
   has_many :players, through: :team_memberships
 
   has_many :competition_entries, dependent: :destroy

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_28_130000) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_01_120000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -636,10 +636,33 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_28_130000) do
     t.index [ "team_id" ], name: "index_team_managers_on_team_id"
   end
 
+  create_table "team_membership_changes", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.string "display_name"
+    t.date "effective_on", null: false
+    t.boolean "excluded_from_team_total", default: false, null: false
+    t.string "kind", null: false
+    t.string "phase", default: "pre_game", null: false
+    t.bigint "player_card_id"
+    t.bigint "recorded_by_user_id"
+    t.bigint "season_id", null: false
+    t.string "selected_cost_type", null: false
+    t.bigint "team_membership_id", null: false
+    t.datetime "updated_at", null: false
+    t.index [ "player_card_id" ], name: "index_team_membership_changes_on_player_card_id"
+    t.index [ "recorded_by_user_id" ], name: "index_team_membership_changes_on_recorded_by_user_id"
+    t.index [ "season_id" ], name: "index_team_membership_changes_on_season_id"
+    t.index [ "team_membership_id", "effective_on" ], name: "index_team_membership_changes_on_tm_and_date"
+    t.index [ "team_membership_id" ], name: "index_team_membership_changes_on_team_membership_id"
+    t.check_constraint "kind::text = ANY (ARRAY['join'::character varying, 'contract'::character varying, 'release'::character varying]::text[])", name: "team_membership_changes_kind_check"
+    t.check_constraint "phase::text = ANY (ARRAY['pre_game'::character varying, 'in_game'::character varying, 'post_game'::character varying]::text[])", name: "team_membership_changes_phase_check"
+  end
+
   create_table "team_memberships", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.string "display_name"
     t.boolean "excluded_from_team_total", default: false, null: false
+    t.boolean "on_team", default: true, null: false
     t.bigint "player_card_id"
     t.bigint "player_id", null: false
     t.string "selected_cost_type", default: "normal_cost", null: false
@@ -757,6 +780,10 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_28_130000) do
   add_foreign_key "squad_text_settings", "teams"
   add_foreign_key "team_managers", "managers"
   add_foreign_key "team_managers", "teams"
+  add_foreign_key "team_membership_changes", "player_cards"
+  add_foreign_key "team_membership_changes", "seasons"
+  add_foreign_key "team_membership_changes", "team_memberships"
+  add_foreign_key "team_membership_changes", "users", column: "recorded_by_user_id", on_delete: :nullify
   add_foreign_key "team_memberships", "player_cards"
   add_foreign_key "team_memberships", "players"
   add_foreign_key "team_memberships", "teams"

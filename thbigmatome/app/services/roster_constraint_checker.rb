@@ -9,8 +9,11 @@
 #   outside_world_limit  1軍の外の世界枠は 4 人まで
 #   outside_world_balance  外の世界枠が 4 人なら投手・野手の両方を含む
 #   cooldown             降格から 10 日は再登録できない（同日の昇降格は免除）
+#   team_total_cost      チーム全体（コスト除外の選手を除く、在籍中の全員）の合計コストが 200 以下。team_total_cost_list を渡した時だけ検査する
+#                        （チーム編成の保存。昇降格の保存では見ない）
 #
-# 契約・コスト表は過去の値を復元できないので、どの時点も「今の契約・今のコスト表」で数える（設計書 §5.2・§8）。
+# 契約・カードは、時点ごとの変更記録（team_membership_changes。cmd_1784 段2）から導いた値で数える。記録が無い行（移行前）は行の今の値。
+# コスト表は過去の値を復元できないので、どの時点も「今のコスト表」で数える（設計書 §5.2・§8）。
 class RosterConstraintChecker
   FIRST_SQUAD_MAX = 29
   PHASE_LABELS = { "pre_game" => "試合前", "in_game" => "試合中", "post_game" => "試合後" }.freeze
@@ -28,11 +31,15 @@ class RosterConstraintChecker
 
   attr_reader :team, :season
 
+  TEAM_TOTAL_MAX_COST = Team::TEAM_TOTAL_MAX_COST
+
   # cost_list: 検査に使うコスト表（Cost.current_cost）
-  def initialize(team:, season:, cost_list:)
+  # team_total_cost_list: 渡すとチーム全体の合計コスト（上限 200）も検査する。Cost でもその id でもよい
+  def initialize(team:, season:, cost_list:, team_total_cost_list: nil)
     @team = team
     @season = season
     @cost_list = cost_list
+    @team_total_cost_list = team_total_cost_list
     @schedule_dates = season.season_schedules.pluck(:date, :date_type)
     @season_start = @schedule_dates.map(&:first).min
     @game_days = @schedule_dates.select { |_, type| type == "game_day" }.map(&:first).to_set
@@ -41,9 +48,10 @@ class RosterConstraintChecker
 
   # state の (date, phase) 時点の人数・コスト・外の世界枠の違反
   def point_violations(state, date, phase)
-    first = state.first_memberships(date, phase)
+    first = state.first_views(date, phase)
     count = first.size
     violations = []
+    violations.concat(team_total_violations(state, date, phase)) if @team_total_cost_list
 
     if @game_days.include?(date) && phase == "pre_game" && count < minimum_players && date != @season_start
       violations << violation(date, phase, "first_squad_min", "試合日には1軍に最低#{minimum_players}人を登録する必要があります。", minimum_players - count)
@@ -71,6 +79,22 @@ class RosterConstraintChecker
     end
 
     violations
+  end
+
+  # チーム全体の合計コストの超過（時点つき）。team_total_cost_list が無ければ空
+  def team_total_violations(state, date, phase)
+    return [] unless @team_total_cost_list
+
+    entries = state.at(date, phase)
+    total = state.on_team_memberships(date, phase).sum do |tm|
+      entry = entries.fetch(tm.id)
+      entry.excluded_from_team_total ? 0 : state.view(tm, entry).selected_cost_value(@team_total_cost_list)
+    end
+    return [] unless total > TEAM_TOTAL_MAX_COST
+
+    [ violation(date, phase, "team_total_cost",
+        I18n.t("activerecord.errors.models.team.cost_limit.cost_exceeds_limit", cost: total, limit: TEAM_TOTAL_MAX_COST),
+        total - TEAM_TOTAL_MAX_COST) ]
   end
 
   # from_point 以降（含む）の全時点の違反。時点は state の記録のある時点と、日程の試合日（試合前）
@@ -123,8 +147,9 @@ class RosterConstraintChecker
     end
   end
 
+  # tm: 時点の契約・カードを反映した TeamMembership（RosterState#first_views）。同じ契約・カードの行は結果を使い回す
   def info_for(tm)
-    @info[tm.id] ||= begin
+    @info[[ tm.id, tm.selected_cost_type, tm.player_card_id ]] ||= begin
       native = Team::NATIVE_SERIES[team.team_type] || Team::NATIVE_SERIES["normal"]
       series = tm.player_card&.card_set&.series.presence || tm.player.series
       {

@@ -2,8 +2,10 @@
   <v-chip
     :color="resolvedColor"
     :size="size"
-    :variant="absenceAppearance ? 'flat' : 'tonal'"
-    :prepend-icon="absenceAppearance?.icon"
+    :variant="absenceAppearance || status === 'hachinai' ? 'flat' : 'tonal'"
+    :prepend-icon="
+      absenceAppearance?.icon ?? (status === 'hachinai' ? 'mdi-tag-outline' : undefined)
+    "
   >
     <slot>{{ label }}</slot>
   </v-chip>
@@ -22,8 +24,8 @@ const props = defineProps<{
 const statusColorMap: Record<string, string> = {
   active: 'success',
   inactive: 'default',
-  commissioner: 'primary',
-  hachinai: 'purple',
+  commissioner: 'link',
+  hachinai: 'state-info',
   warning: 'warning',
 }
 

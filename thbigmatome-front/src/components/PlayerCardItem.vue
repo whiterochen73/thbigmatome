@@ -22,10 +22,11 @@
             <span class="text-grey">#</span>{{ card.player_number }}
           </span>
           <v-chip
-            :color="card.card_type === 'pitcher' ? 'blue' : 'green'"
+            :color="card.card_type === 'pitcher' ? 'tag-pitcher' : 'tag-fielder'"
             size="x-small"
             label
-            variant="tonal"
+            variant="flat"
+            :prepend-icon="card.card_type === 'pitcher' ? 'mdi-baseball' : 'mdi-baseball-bat'"
           >
             {{ card.card_type === 'pitcher' ? '投手' : '野手' }}
           </v-chip>
@@ -40,7 +41,7 @@
               :key="idx"
               size="x-small"
               variant="tonal"
-              color="primary"
+              color="link"
             >
               {{ def.position }}
             </v-chip>

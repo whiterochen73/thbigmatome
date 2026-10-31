@@ -19,11 +19,7 @@
       <!-- アクションボタン -->
       <v-row class="mb-2">
         <v-col cols="12" class="d-flex gap-2">
-          <v-btn
-            :to="{ name: 'GameLineup', params: { id: game.id } }"
-            color="primary"
-            variant="tonal"
-          >
+          <v-btn :to="{ name: 'GameLineup', params: { id: game.id } }" color="link" variant="tonal">
             オーダー確認
           </v-btn>
         </v-col>

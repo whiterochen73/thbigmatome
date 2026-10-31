@@ -8,7 +8,7 @@
     </v-row>
     <v-row>
       <v-col cols="12">
-        <v-tabs color="primary" slider-color="accent" v-model="selectedTab">
+        <v-tabs color="link" slider-color="link" v-model="selectedTab">
           <v-tab value="player">{{ $t('settings.tabs.player') }}</v-tab>
           <v-tab value="squad">{{ $t('settings.tabs.squad') }}</v-tab>
           <v-tab value="account">{{ $t('settings.tabs.account') }}</v-tab>

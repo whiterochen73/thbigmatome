@@ -466,13 +466,13 @@
                         <v-btn
                           v-bind="props"
                           size="x-small"
-                          :color="getAbsenceColor(item)"
-                          variant="elevated"
+                          variant="outlined"
+                          :style="{ borderColor: 'rgb(var(--v-theme-border-strong))' }"
                           rounded
                           class="promote-btn"
                           @click="handlePromotePlayer(item)"
                         >
-                          <v-icon>mdi-arrow-up</v-icon>
+                          <v-icon :class="'on-' + getAbsenceColor(item)">mdi-arrow-up</v-icon>
                         </v-btn>
                       </template>
                     </v-tooltip>

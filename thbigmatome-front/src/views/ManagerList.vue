@@ -44,13 +44,13 @@
         <template #expanded-row="{ columns, item }">
           <tr>
             <td :colspan="columns.length">
-              <div class="pa-4 bg-grey-lighten-5">
+              <div class="pa-4 bg-surface-variant">
                 <div class="d-flex align-center mb-2">
                   <h4 class="text-subtitle-1">{{ t('managerList.expanded.title') }}</h4>
                   <v-spacer></v-spacer>
                   <v-btn
                     size="small"
-                    color="primary"
+                    color="link"
                     @click="openTeamDialog(null, item.id)"
                     prepend-icon="mdi-plus"
                   >

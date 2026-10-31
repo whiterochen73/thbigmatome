@@ -12,7 +12,7 @@
     <template v-else-if="isCommissioner">
       <!-- リリース向けUI整理: 自チーム・全チーム管理タブは非表示、ダッシュボードのみ表示 -->
       <!--
-      <v-tabs v-model="activeTab" color="primary" class="mb-4">
+      <v-tabs v-model="activeTab" color="link" class="mb-4">
         <v-tab value="myTeams">自チーム</v-tab>
         <v-tab value="allTeams">全チーム管理</v-tab>
         <v-tab value="dashboard">ダッシュボード</v-tab>
@@ -36,7 +36,7 @@
             :team-id="myTeams[0].id"
           />
           <template v-else>
-            <v-tabs v-model="selectedTeamId" color="primary" class="mb-2">
+            <v-tabs v-model="selectedTeamId" color="link" class="mb-2">
               <v-tab v-for="team in myTeams" :key="team.id" :value="team.id">
                 {{ team.name }}
               </v-tab>
@@ -90,7 +90,7 @@
 
       <!-- チーム2件以上: タブ切り替え -->
       <template v-else>
-        <v-tabs v-model="selectedTeamId" color="primary" class="mb-2">
+        <v-tabs v-model="selectedTeamId" color="link" class="mb-2">
           <v-tab v-for="team in myTeams" :key="team.id" :value="team.id">
             {{ team.name }}
           </v-tab>

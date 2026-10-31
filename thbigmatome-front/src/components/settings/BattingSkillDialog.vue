@@ -86,11 +86,11 @@ const skillTypeBackgroundColor = computed(() => {
   if (!editableItem.value.skill_type) return undefined
   switch (editableItem.value.skill_type) {
     case 'positive':
-      return 'blue-lighten-5'
+      return 'state-info'
     case 'negative':
-      return 'red-lighten-5'
+      return 'state-todo'
     case 'neutral':
-      return 'green-lighten-5'
+      return 'state-neutral'
     default:
       return undefined
   }

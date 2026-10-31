@@ -88,7 +88,7 @@ const headers = ref([
 ])
 
 const rowProps = (item: { item: CostPlayer }) => {
-  return item.item.variant ? { class: 'bg-blue-grey-lighten-5' } : {}
+  return item.item.variant ? { class: 'bg-surface-variant' } : {}
 }
 
 const rules = {

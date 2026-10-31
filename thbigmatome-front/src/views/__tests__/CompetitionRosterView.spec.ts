@@ -122,6 +122,29 @@ describe('CompetitionRosterView.vue', () => {
     vi.clearAllMocks()
   })
 
+  // Test Basis: thbig-dugout-visual-stage5-mapping.md §7 b6-2〜b6-3, b6-7〜b6-15
+  it('両軍タブと追加・除外ボタンの役割色を props で示す', async () => {
+    const wrapper = await mountView()
+    const tabs = wrapper.findAllComponents(components.VTabs)
+    expect(tabs).toHaveLength(2)
+    tabs.forEach((tab) => expect(tab.props('color')).toBe('link'))
+    for (const squad of ['first_squad', 'second_squad']) {
+      wrapper.vm.activeTab = squad
+      await flushPromises()
+      const buttons = wrapper.findAllComponents(components.VBtn)
+      const add = buttons.filter((button) => button.text().includes('選手追加'))
+      expect(add.length, squad).toBeGreaterThan(0)
+      add.forEach((button) => expect(button.props('color')).toBe('link'))
+      const remove = buttons.filter((button) => button.attributes('data-testid') === 'remove-btn')
+      expect(remove.length, squad).toBeGreaterThan(0)
+      remove.forEach((button) => {
+        expect(button.props('color')).toBe('danger-ink')
+        expect(button.props('variant')).toBe('outlined')
+        expect(button.props('prependIcon')).toBe('mdi-delete-outline')
+      })
+    }
+  })
+
   it('コンポーネントがマウントできる', async () => {
     const wrapper = await mountView()
     expect(wrapper.exists()).toBe(true)

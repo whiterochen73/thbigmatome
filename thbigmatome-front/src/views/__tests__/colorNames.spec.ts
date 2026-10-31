@@ -20,39 +20,28 @@ function sourceFiles(dir: string): string[] {
   })
 }
 
-// Test Basis: thbig-dugout-visual-stage5-mapping.md §7 b0-5, b1-1〜b4-26 / subtask_1787o 申し送り1〜2
+// Test Basis: thbig-dugout-visual-stage5-mapping.md §7 b0-5, b1-1〜b7-23 / subtask_1787r 申し送り2
 it('keeps Material color names within the remaining batch allowance', () => {
-  // Counts are the remaining matches after batch 4. Later batches reduce them.
+  // Counts are the remaining matches after batch 7. Later batches reduce them.
   const allowed: Record<string, { count: number; batch: string }> = {
     'components/AtBatCard.vue': { count: 28, batch: 'b8, b10' },
     // b10 removes one text-grey; Q1 permits the other 20 batting outcome colors.
     'components/BattingTable.vue': { count: 21, batch: 'b10 (1), Q1 allowed (20)' },
-    'components/commissioner/CommissionerDashboard.vue': { count: 6, batch: 'b2, b5' },
-    'components/commissioner/RosterStatusTab.vue': { count: 5, batch: 'b5' },
     'components/EmptyState.vue': { count: 1, batch: 'b10' },
     'components/pitcher/PitcherAppearanceTab.vue': { count: 4, batch: 'b10' },
-    'components/pitcher/PitcherRoleStateCell.vue': { count: 1, batch: 'b4, b10' },
+    'components/pitcher/PitcherRoleStateCell.vue': { count: 1, batch: 'b10' },
     'components/pitcher/PitcherStatusTab.vue': { count: 4, batch: 'b10, b11' },
-    'components/PlayerCardItem.vue': { count: 9, batch: 'b5, b10' },
-    'components/settings/BattingSkillDialog.vue': { count: 3, batch: 'b7' },
-    'components/settings/BattingSkillSettings.vue': { count: 3, batch: 'b7' },
-    'components/settings/PitchingSkillDialog.vue': { count: 3, batch: 'b7' },
-    'components/settings/PitchingSkillSettings.vue': { count: 3, batch: 'b7' },
-    'components/settings/ScheduleDetailEditor.vue': { count: 7, batch: 'b7' },
+    'components/PlayerCardItem.vue': { count: 7, batch: 'b10' },
     'components/shared/PlayerNameLink.vue': { count: 3, batch: 'b11' },
-    'components/shared/StatusChip.vue': { count: 1, batch: 'b5' },
-    'views/CostAssignment.vue': { count: 1, batch: 'b5' },
-    'views/GameDetailView.vue': { count: 6, batch: 'b6, b11' },
+    'views/GameDetailView.vue': { count: 6, batch: 'b11' },
     'views/GameLineupView.vue': { count: 5, batch: 'b11' },
     'views/GameRecordDetailView.vue': { count: 5, batch: 'b11' },
     'views/GameRecordListView.vue': { count: 1, batch: 'b11' },
     'views/GamesView.vue': { count: 1, batch: 'b11' },
-    'views/ManagerList.vue': { count: 2, batch: 'b2, b5, b11' },
-    'views/PlayerCardDetailView.vue': { count: 3, batch: 'b5, b6, b11' },
-    'views/PlayerCardsView.vue': { count: 2, batch: 'b5' },
+    'views/ManagerList.vue': { count: 1, batch: 'b11' },
+    'views/PlayerCardDetailView.vue': { count: 2, batch: 'b11' },
     'views/PlayerDetailView.vue': { count: 2, batch: 'b9, b11' },
-    'views/Players.vue': { count: 1, batch: 'b2, b11' },
-    'views/TeamList.vue': { count: 1, batch: 'b2, b5' },
+    'views/Players.vue': { count: 1, batch: 'b11' },
   }
   const violations: string[] = []
 

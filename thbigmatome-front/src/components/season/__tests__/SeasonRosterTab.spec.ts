@@ -133,6 +133,8 @@ describe('SeasonRosterTab 保存結果の通知', () => {
       remaining_days: 3,
       duration_unit: 'days',
     }
+    roster[28]!.is_absent = true
+    roster[28]!.absence_info = { ...roster[4]!.absence_info }
     mockGet.mockImplementation((url: string) =>
       url === '/teams/1/roster'
         ? Promise.resolve({
@@ -170,6 +172,13 @@ describe('SeasonRosterTab 保存結果の通知', () => {
     expect(demote.props('variant')).toBe('outlined')
     expect(demote.attributes('style')).toContain('border-color')
     expect(demote.find('.on-absence-out').exists()).toBe(true)
+    // Test Basis: subtask_1787r 申し送り5
+    const absentSecondRow = wrapper.findAll('tr').find((row) => row.text().includes('選手29'))!
+    const promote = absentSecondRow.findComponent('.promote-btn')
+    expect(promote.props('color')).toBeUndefined()
+    expect(promote.props('variant')).toBe('outlined')
+    expect(promote.attributes('style')).toContain('border-color')
+    expect(promote.find('.on-absence-out').exists()).toBe(true)
   })
 
   // Test Basis: thbig-dugout-visual-stage5-mapping.md §7 b1-15

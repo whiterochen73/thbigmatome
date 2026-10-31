@@ -56,7 +56,7 @@
       </ul>
     </v-alert>
 
-    <v-tabs v-model="mainTab" color="primary" class="mb-2">
+    <v-tabs v-model="mainTab" color="link" class="mb-2">
       <v-tab value="roster">ロスター</v-tab>
       <v-tab value="history">昇降格履歴</v-tab>
     </v-tabs>
@@ -64,7 +64,7 @@
     <v-tabs-window v-model="mainTab">
       <v-tabs-window-item value="roster">
         <v-card>
-          <v-tabs v-model="activeTab" color="primary">
+          <v-tabs v-model="activeTab" color="link">
             <v-tab value="first_squad">1軍</v-tab>
             <v-tab value="second_squad">2軍</v-tab>
           </v-tabs>
@@ -75,7 +75,7 @@
               <v-tabs-window-item value="first_squad">
                 <div class="d-flex justify-end mb-2">
                   <v-btn
-                    color="primary"
+                    color="link"
                     variant="tonal"
                     prepend-icon="mdi-account-plus"
                     @click="openAddDialog('first_squad')"
@@ -105,7 +105,8 @@
                     <v-btn
                       size="small"
                       variant="outlined"
-                      color="error"
+                      color="danger-ink"
+                      prepend-icon="mdi-delete-outline"
                       @click="removePlayer(item.player_card_id)"
                       data-testid="remove-btn"
                     >
@@ -119,7 +120,7 @@
               <v-tabs-window-item value="second_squad">
                 <div class="d-flex justify-end mb-2">
                   <v-btn
-                    color="primary"
+                    color="link"
                     variant="tonal"
                     prepend-icon="mdi-account-plus"
                     @click="openAddDialog('second_squad')"
@@ -149,7 +150,8 @@
                     <v-btn
                       size="small"
                       variant="outlined"
-                      color="error"
+                      color="danger-ink"
+                      prepend-icon="mdi-delete-outline"
                       @click="removePlayer(item.player_card_id)"
                       data-testid="remove-btn"
                     >
@@ -187,7 +189,7 @@
                 <template v-slot:[`item.select`]="{ item }">
                   <v-btn
                     size="small"
-                    color="primary"
+                    color="link"
                     variant="tonal"
                     @click="addPlayer(item.id)"
                     :loading="adding"

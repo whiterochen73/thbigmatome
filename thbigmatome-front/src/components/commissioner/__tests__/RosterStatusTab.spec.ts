@@ -92,6 +92,35 @@ describe('RosterStatusTab', () => {
     expect(text).toContain('警告あり')
   })
 
+  // Test Basis: thbig-dugout-visual-stage5-mapping.md §7 b5-8〜b5-13
+  it('展開した一軍・二軍チップと外の世界の印を役割色で示す', async () => {
+    vi.mocked(axios.get).mockImplementation((url: string) =>
+      Promise.resolve({
+        data: url.includes('/teams/')
+          ? [
+              { player_name: '投手A', squad: 'first', is_outside_world: true },
+              { player_name: '野手B', squad: 'second', is_outside_world: false },
+            ]
+          : mockRosterStatus,
+      }),
+    )
+    const wrapper = mountComponent()
+    await flushPromises()
+    wrapper.vm.expanded = [2]
+    await flushPromises()
+    const chips = wrapper.findAllComponents(components.VChip)
+    const first = chips.filter((chip) => chip.text() === '1軍')
+    const second = chips.filter((chip) => chip.text() === '2軍')
+    expect(first).toHaveLength(1)
+    expect(second).toHaveLength(1)
+    expect(first[0]!.props('color')).toBe('zone-game')
+    expect(first[0]!.props('prependIcon')).toBe('mdi-numeric-1-box-outline')
+    expect(second[0]!.props('color')).toBe('state-neutral')
+    expect(second[0]!.props('prependIcon')).toBe('mdi-numeric-2-box-outline')
+    for (const chip of [...first, ...second]) expect(chip.props('variant')).toBe('flat')
+    expect(wrapper.find('.on-state-info.mdi-earth').exists()).toBe(true)
+  })
+
   it('APIエラー時にクラッシュしない', async () => {
     vi.mocked(axios.get).mockRejectedValueOnce(new Error('network error'))
     const wrapper = mountComponent()

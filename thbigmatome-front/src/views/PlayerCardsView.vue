@@ -35,7 +35,7 @@
             mandatory
             density="compact"
             rounded="sm"
-            color="primary"
+            color="link"
           >
             <v-btn value="" size="small">全種</v-btn>
             <v-btn value="pitcher" size="small">投手</v-btn>
@@ -45,7 +45,7 @@
         </div>
       </template>
       <template #toggles>
-        <v-btn-toggle v-model="viewMode" mandatory density="compact" rounded="sm" color="primary">
+        <v-btn-toggle v-model="viewMode" mandatory density="compact" rounded="sm" color="link">
           <v-btn value="table" size="small" title="テーブル表示">
             <v-icon size="small">mdi-table</v-icon>
           </v-btn>
@@ -92,9 +92,10 @@
           </template>
           <template v-slot:[`item.card_type`]="{ item }">
             <v-chip
-              :color="item.card_type === 'pitcher' ? 'blue' : 'green'"
+              :color="item.card_type === 'pitcher' ? 'tag-pitcher' : 'tag-fielder'"
               size="x-small"
-              variant="tonal"
+              variant="flat"
+              :prepend-icon="item.card_type === 'pitcher' ? 'mdi-baseball' : 'mdi-baseball-bat'"
             >
               {{ item.card_type === 'pitcher' ? '投手' : '野手' }}
             </v-chip>

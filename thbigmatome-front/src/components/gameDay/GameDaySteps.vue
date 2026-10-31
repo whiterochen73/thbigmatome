@@ -1,16 +1,21 @@
 <template>
   <!-- スマホ・狭い幅: 段を縦に積んで折りたたむ -->
-  <div v-if="mode === 'stack'" data-testid="game-day-stack">
-    <div v-for="group in groups" :key="group.id" :data-testid="`step-group-${group.id}`">
+  <div v-if="mode === 'stack'" class="game-day-stack" data-testid="game-day-stack">
+    <div
+      v-for="group in groups"
+      :key="group.id"
+      :data-testid="`step-group-${group.id}`"
+      :class="`game-day-stack__group--${group.id}`"
+      role="group"
+      :aria-label="t(`gameDay.phase.${group.id}`)"
+    >
       <div class="game-day-phase text-caption mb-1 mt-4">
         {{ t(`gameDay.phase.${group.id}`) }}
       </div>
       <div class="d-flex flex-column ga-2">
         <template v-for="step in group.steps" :key="step.id">
-          <div v-if="step.id === 'result'" class="game-day-divider text-caption my-3">
-            {{ t('gameDay.phase.gameDivider') }}
-          </div>
           <GameDaySection
+            :class="`game-day-stack__section--${group.id}`"
             :no="step.no"
             :title="step.title"
             :summary="step.summary"
@@ -37,6 +42,7 @@
           </GameDaySection>
           <GameDaySection
             v-if="step.sub"
+            :class="`game-day-stack__section--${group.id}`"
             no="–"
             :title="step.sub.title"
             state="info"
@@ -68,16 +74,13 @@
       <template v-for="group in groups" :key="group.id">
         <div
           class="game-day-stepper__group"
+          :class="`game-day-stepper__group--${group.id}`"
           role="group"
           :aria-label="t(`gameDay.phase.${group.id}`)"
           :data-testid="`step-group-${group.id}`"
         >
-          <div class="game-day-stepper__phase">{{ t(`gameDay.phase.${group.id}`) }}</div>
           <div class="game-day-stepper__items">
             <template v-for="step in group.steps" :key="step.id">
-              <div v-if="step.id === 'result'" class="game-day-stepper__game" aria-hidden="true">
-                {{ t('gameDay.phase.gameDivider') }}
-              </div>
               <v-stepper-item
                 :value="step.id"
                 :title="step.title"
@@ -224,12 +227,22 @@ const onSelect = (id: unknown) => {
   font-weight: 700;
   letter-spacing: 0.08em;
 }
-.game-day-divider {
-  text-align: center;
-  color: rgba(var(--v-theme-on-surface), var(--v-medium-emphasis-opacity));
-  border-top: 1px dashed rgba(var(--v-border-color), var(--v-border-opacity));
-  border-bottom: 1px dashed rgba(var(--v-border-color), var(--v-border-opacity));
-  padding: 6px 0;
+.game-day-stack__section--registration {
+  background: rgba(var(--v-theme-secondary), 0.18);
+  color: rgb(var(--v-theme-on-surface));
+}
+.game-day-stack__section--game {
+  background: rgba(var(--v-theme-primary), 0.3);
+  color: rgb(var(--v-theme-on-surface));
+}
+:global(.v-theme--dark .game-day-stack__section--registration) {
+  background: rgba(var(--v-theme-secondary), 0.38);
+}
+:global(.v-theme--dark .game-day-stack__section--game) {
+  background: rgba(var(--v-theme-primary), 0.42);
+}
+.game-day-stack :deep(.game-day-section__summary) {
+  color: rgba(var(--v-theme-on-surface), 0.85);
 }
 .game-day-stepper {
   border: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
@@ -237,53 +250,57 @@ const onSelect = (id: unknown) => {
 .game-day-stepper__header {
   box-shadow: none;
   align-items: stretch;
-  flex-direction: column;
-  gap: 8px;
+  flex-direction: row;
+  gap: 4px;
   padding: 4px 8px;
   border-bottom: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
 }
 .game-day-stepper__group {
   display: flex;
-  flex-direction: column;
-  flex: 1 1 auto;
+  flex-direction: row;
+  flex: 3 1 0;
   min-width: 0;
+  border-radius: 6px;
 }
-.game-day-stepper__phase {
-  padding: 2px 12px 0;
-  font-size: 0.75rem;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  color: rgba(var(--v-theme-on-surface), var(--v-medium-emphasis-opacity));
+.game-day-stepper__group--registration {
+  background: rgba(var(--v-theme-secondary), 0.18);
+}
+.game-day-stepper__group--game {
+  flex-grow: 4;
+  background: rgba(var(--v-theme-primary), 0.3);
+}
+:global(.v-theme--dark .game-day-stepper__group--registration) {
+  background: rgba(var(--v-theme-secondary), 0.38);
+}
+:global(.v-theme--dark .game-day-stepper__group--game) {
+  background: rgba(var(--v-theme-primary), 0.42);
 }
 .game-day-stepper__items {
   display: flex;
+  flex: 1 1 auto;
+  min-width: 0;
   align-items: stretch;
   gap: 2px;
 }
-.game-day-stepper__game {
-  display: flex;
-  align-items: center;
-  flex: none;
-  padding: 0 10px;
-  border-inline: 1px dashed rgba(var(--v-border-color), var(--v-border-opacity));
-  font-size: 0.75rem;
-  justify-content: center;
-  width: 4.5rem;
-  text-align: center;
-  line-height: 1.3;
-  color: rgba(var(--v-theme-on-surface), var(--v-medium-emphasis-opacity));
-}
 .game-day-stepper :deep(.v-stepper-item) {
-  flex: 0 1 auto;
+  flex: 1 1 0;
+  min-width: 0;
   padding: 8px 8px;
   border-radius: 6px;
   min-height: 56px;
+  opacity: 1;
+  color: rgb(var(--v-theme-on-surface));
 }
 .game-day-stepper :deep(.v-stepper-item__avatar.v-avatar) {
   margin-inline-end: 6px;
+  background: rgb(var(--v-theme-surface));
+  color: rgb(var(--v-theme-on-surface));
 }
 .game-day-stepper :deep(.v-stepper-item--selected) {
-  box-shadow: inset 0 -3px 0 rgb(var(--v-theme-primary));
+  box-shadow:
+    inset 0 -3px 0 rgb(var(--v-theme-primary)),
+    inset 0 0 0 1px rgb(var(--v-theme-primary));
+  background: rgb(var(--v-theme-surface));
 }
 .game-day-stepper :deep(.v-stepper-item__title) {
   line-height: 1.3;

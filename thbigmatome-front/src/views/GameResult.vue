@@ -1,49 +1,5 @@
 <template>
   <v-container>
-    <v-toolbar color="primary" density="compact">
-      <template #prepend>
-        <div class="d-flex align-center ml-2 flex-wrap">
-          <v-btn
-            variant="text"
-            size="small"
-            :to="seasonPortalRoute"
-            class="text-white pa-1 text-caption"
-            style="min-width: 0; text-decoration: underline; text-underline-offset: 2px"
-          >
-            {{ t('seasonPortal.title') }}
-          </v-btn>
-          <v-icon size="x-small" class="text-white mx-1" style="opacity: 0.7"
-            >mdi-chevron-right</v-icon
-          >
-          <span class="text-subtitle-2 font-weight-bold text-white mx-1">{{
-            gameData.team_name
-          }}</span>
-          <v-icon size="x-small" class="text-white mx-1" style="opacity: 0.7"
-            >mdi-chevron-right</v-icon
-          >
-          <span v-if="isGameDay" class="text-subtitle-2 text-white mx-1"
-            >Game {{ gameData.game_number }}</span
-          >
-          <span class="text-caption text-white mx-1" style="opacity: 0.9">{{
-            formattedGameDate
-          }}</span>
-        </div>
-      </template>
-      <template #append>
-        <v-btn
-          v-if="isGameDay"
-          @click="saveGame"
-          color="success"
-          variant="flat"
-          size="small"
-          prepend-icon="mdi-content-save-outline"
-          class="mr-2"
-        >
-          {{ t('gameResult.save') }}
-        </v-btn>
-      </template>
-    </v-toolbar>
-
     <!-- 日程ヘッダ: 日付・種類・前後の日への移動 -->
     <v-card variant="outlined" class="mt-2 pa-3" data-testid="game-day-head">
       <div class="d-flex flex-wrap align-center ga-4">
@@ -378,7 +334,16 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted, onBeforeUnmount, computed, watch, nextTick } from 'vue'
+import {
+  ref,
+  reactive,
+  onMounted,
+  onBeforeUnmount,
+  computed,
+  watch,
+  watchEffect,
+  nextTick,
+} from 'vue'
 import { useRoute, useRouter, onBeforeRouteLeave, onBeforeRouteUpdate } from 'vue-router'
 import axios from 'axios'
 import { useI18n } from 'vue-i18n'
@@ -395,6 +360,7 @@ import SeasonRosterTab from '@/components/season/SeasonRosterTab.vue'
 import SeasonAbsenceTab from '@/components/season/SeasonAbsenceTab.vue'
 import GameDaySteps, { type GameDayStep } from '@/components/gameDay/GameDaySteps.vue'
 import GameDayDateNote from '@/components/gameDay/GameDayDateNote.vue'
+import { setAppBarBreadcrumbs, clearAppBarBreadcrumbs } from '@/composables/useAppBarBreadcrumbs'
 import {
   GAME_LOG_MAX_BYTES,
   GAME_LOG_FILE_READ_MAX_BYTES,
@@ -1198,6 +1164,16 @@ const formattedGameDate = computed(() => {
   return t('gameResult.dateDisplay', { month, day, weekday })
 })
 
+const breadcrumbOwner = Symbol('game-day')
+watchEffect(() => {
+  setAppBarBreadcrumbs(breadcrumbOwner, {
+    seasonPortalRoute: seasonPortalRoute.value,
+    teamName: gameData.value.team_name,
+    gameNumber: isGameDay.value ? gameData.value.game_number : null,
+    date: formattedGameDate.value,
+  })
+})
+
 // ─────────────────────────────────────────
 // 離脱ガード・試合日の移動
 // ─────────────────────────────────────────
@@ -1251,6 +1227,7 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
   window.removeEventListener('beforeunload', onBeforeUnload)
+  clearAppBarBreadcrumbs(breadcrumbOwner)
 })
 </script>
 

@@ -66,7 +66,7 @@
             ></v-textarea>
             <v-row class="mt-2">
               <v-col>
-                <v-btn color="accent" variant="flat" :loading="loading" @click="analyzeLog"
+                <v-btn color="action" variant="flat" :loading="loading" @click="analyzeLog"
                   >解析する</v-btn
                 >
               </v-col>
@@ -427,7 +427,7 @@
                 <v-col>
                   <v-btn variant="outlined" class="mr-2" @click="backToStep1">戻る</v-btn>
                   <v-btn
-                    color="accent"
+                    color="action"
                     variant="flat"
                     :loading="loading"
                     :disabled="!canImport"

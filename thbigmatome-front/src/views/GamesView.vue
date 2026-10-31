@@ -29,7 +29,7 @@
           type="date"
           density="compact"
         ></v-text-field>
-        <v-btn color="accent" variant="flat" @click="fetchGames" :loading="loading">検索</v-btn>
+        <v-btn color="action" variant="flat" @click="fetchGames" :loading="loading">検索</v-btn>
       </template>
     </FilterBar>
 

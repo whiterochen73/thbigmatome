@@ -51,7 +51,7 @@
       <v-card-actions v-if="schedules.length > 0">
         <v-spacer />
         <v-btn
-          color="primary"
+          color="action"
           variant="flat"
           :disabled="!selectedScheduleId || !newSeasonName || creating"
           :loading="creating"
@@ -119,7 +119,7 @@
                 style="max-width: 280px"
               />
               <v-btn
-                color="primary"
+                color="action"
                 variant="flat"
                 size="small"
                 :loading="keyPlayerSaving"

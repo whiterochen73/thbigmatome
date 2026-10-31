@@ -8,7 +8,7 @@
             {{ t('activeRoster.keyPlayerSelection') }}
             <v-spacer></v-spacer>
             <v-btn
-              :color="gameDayActions ? 'action' : 'accent'"
+              :color="gameDayActions ? 'action' : 'action'"
               variant="flat"
               :prepend-icon="gameDayActions ? 'mdi-content-save-outline' : undefined"
               @click="saveKeyPlayer"
@@ -565,7 +565,7 @@
     <v-row class="mt-4">
       <v-col>
         <v-btn
-          :color="gameDayActions ? 'action' : 'accent'"
+          :color="gameDayActions ? 'action' : 'action'"
           variant="flat"
           :prepend-icon="gameDayActions ? 'mdi-content-save-outline' : undefined"
           @click="saveRoster"
@@ -598,7 +598,7 @@
           <v-spacer />
           <v-btn @click="absenceConfirmDialog = false">{{ t('actions.cancel') }}</v-btn>
           <v-btn
-            :color="gameDayActions ? 'action' : 'accent'"
+            :color="gameDayActions ? 'action' : 'action'"
             variant="flat"
             @click="confirmPromoteAbsentPlayer"
             >{{ t('actions.ok') }}</v-btn

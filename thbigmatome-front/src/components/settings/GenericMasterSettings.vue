@@ -8,7 +8,7 @@
             <v-spacer></v-spacer>
             <v-btn
               v-if="!readonly"
-              color="accent"
+              color="action"
               variant="flat"
               @click.stop="openNewDialog"
               size="small"

@@ -161,7 +161,7 @@
 
           <div class="d-flex gap-2 mt-3">
             <v-btn
-              color="primary"
+              color="action"
               size="small"
               variant="elevated"
               :loading="saving"

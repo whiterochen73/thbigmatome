@@ -2,7 +2,7 @@
   <v-container>
     <PageHeader title="試合記録">
       <template #actions>
-        <v-btn color="accent" variant="flat" @click="navigateToImport">ログ取り込み</v-btn>
+        <v-btn color="primary" variant="flat" @click="navigateToImport">ログ取り込み</v-btn>
       </template>
     </PageHeader>
 

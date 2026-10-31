@@ -124,7 +124,7 @@ describe('PlayerCardsView', () => {
     expect(wrapper.text()).toContain('霧雨魔理沙')
   })
 
-  // Test Basis: thbig-dugout-visual-stage5-mapping.md §7 b5-19〜b5-21
+  // Test Basis: thbig-dugout-visual-stage5-mapping.md §7 b5-19〜b5-21 / subtask_1790c §3
   it('カード種別の全チップを投手・野手トークンで区別する', async () => {
     const wrapper = mount(PlayerCardsView, {
       global: { plugins: [vuetify, createTestRouter(), createPinia()] },
@@ -140,9 +140,12 @@ describe('PlayerCardsView', () => {
       'mdi-baseball-bat',
     ])
     typeChips.forEach((chip) => expect(chip.props('variant')).toBe('flat'))
-    wrapper
-      .findAllComponents(components.VBtnToggle)
-      .forEach((toggle) => expect(toggle.props('color')).toBe('link'))
+    wrapper.findAllComponents(components.VBtnToggle).forEach((toggle) => {
+      expect(toggle.props('color')).toBeUndefined()
+      expect(toggle.props('selectedClass')).toBe('bg-primary')
+      expect(toggle.findAll('.v-btn--active.bg-primary')).toHaveLength(1)
+      expect(toggle.findAll('.v-btn:not(.v-btn--active).bg-primary')).toHaveLength(0)
+    })
   })
 
   it('合計件数が表示されること', async () => {

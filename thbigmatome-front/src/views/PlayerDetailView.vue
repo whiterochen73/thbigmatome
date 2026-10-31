@@ -272,13 +272,11 @@ function onSave() {
 
 .detail-player-sub {
   font-size: 0.76em;
-  opacity: 0.75;
   margin-top: 1px;
 }
 
 .header-badge {
   font-size: 0.72em;
-  opacity: 0.6;
 }
 
 /* ── デタイルボディ ── */

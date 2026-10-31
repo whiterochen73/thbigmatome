@@ -104,7 +104,7 @@ const emit = defineEmits<{
   width: 100%;
   aspect-ratio: 3 / 4;
   overflow: hidden;
-  background: #f5f5f5;
+  background: rgb(var(--v-theme-surface-variant));
   display: flex;
   align-items: center;
   justify-content: center;
@@ -121,7 +121,7 @@ const emit = defineEmits<{
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #ccc;
+  color: rgb(var(--v-theme-on-surface-variant));
 }
 
 .card-content {
@@ -130,6 +130,6 @@ const emit = defineEmits<{
 }
 
 .player-name {
-  color: #1a1a1a;
+  color: rgb(var(--v-theme-on-surface));
 }
 </style>

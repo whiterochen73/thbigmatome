@@ -155,7 +155,7 @@
                   mandatory
                   density="compact"
                   variant="outlined"
-                  color="link"
+                  selected-class="bg-primary"
                   :style="{ borderColor: 'rgb(var(--v-theme-border-strong))' }"
                 >
                   <v-btn value="calendar" title="カレンダー表示">
@@ -343,6 +343,7 @@
                     mandatory
                     density="compact"
                     variant="outlined"
+                    selected-class="bg-primary"
                     size="small"
                     :style="{ borderColor: 'rgb(var(--v-theme-border-strong))' }"
                   >

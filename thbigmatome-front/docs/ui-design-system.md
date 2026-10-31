@@ -4,6 +4,7 @@
 **作成日**: 2026-03-14
 **作成者**: 軍師マキノ (subtask_design_552a)
 **関連**: design-guide.md（カラー・タイポグラフィ・ワイヤーフレーム）、cmd_468承認済みUIルール
+**改訂**: 2026-10-31（見た目の方針転換に合わせ、§4-1 ボタン・§4-3 CSS変数・§4-5 色とアイコン・提案5 StatusChip・§5-1 ダイアログの値を更新。色の値の正は design-guide.md §1）
 
 ---
 
@@ -48,7 +49,7 @@
           {{ sectionTitle }}
           <v-spacer />
           <!-- フィルタ or 作成ボタン -->
-          <v-btn color="primary" prepend-icon="mdi-plus" @click="openCreate">
+          <v-btn color="action" variant="flat" prepend-icon="mdi-plus" @click="openCreate">
             {{ t('action.add') }}
           </v-btn>
         </v-card-title>
@@ -411,8 +412,9 @@
 <template>
   <v-chip
     :color="resolvedColor"
+    :prepend-icon="resolvedIcon"
     :size="size"
-    variant="tonal"
+    variant="flat"
   >
     <slot>{{ label }}</slot>
   </v-chip>
@@ -420,16 +422,20 @@
 ```
 
 **props**: `status: string`（定義済みステータス名）, `label?: string`, `size?: string`
-**ステータス→色マッピング**:
+**ステータス→色・アイコンのマッピング**（2026-10-31 改定。値は design-guide.md §1 のトークン。背景 `name` と文字 `on-name` の対で比を確保してあるため、`variant="flat"` を使う。`tonal` は色から tint を作るので比が保証されない）:
 ```ts
-const statusColorMap: Record<string, string> = {
-  active: 'success',
-  inactive: 'default',
-  commissioner: 'primary',
-  hachinai: 'purple',
-  warning: 'warning',
-  injury: 'error',
-  cooldown: 'info',
+const statusMap: Record<string, { color: string; icon: string }> = {
+  active: { color: 'state-done', icon: 'mdi-check-circle' },
+  inactive: { color: 'state-neutral', icon: 'mdi-minus-circle-outline' },
+  warning: { color: 'state-todo', icon: 'mdi-circle-outline' },
+  injury: { color: 'absence-out', icon: 'mdi-hospital-box' },
+  suspension: { color: 'absence-out', icon: 'mdi-gavel' },
+  adjustment: { color: 'absence-adjust', icon: 'mdi-wrench' },
+  cooldown: { color: 'absence-cooldown', icon: 'mdi-timer-sand' },
+  // commissioner / hachinai: 旧は primary / purple（Material 色名）。ユーザー種別は
+  // 役割トークンの外にあるため、使う画面を直すときに設計側と決める（暫定: 藍系 / 無彩色）
+  commissioner: { color: 'zone-game', icon: 'mdi-shield-account' },
+  hachinai: { color: 'state-neutral', icon: 'mdi-account' },
 }
 ```
 
@@ -455,11 +461,13 @@ const statusColorMap: Record<string, string> = {
 
 | アクション種別 | variant | color | 用例 |
 |--------------|---------|-------|------|
-| Primary（主操作） | `flat` | `accent` (#C0392B) | 保存、作成、インポート |
-| Secondary（副操作） | `tonal` | デフォルト | キャンセル、リセット |
-| Destructive（破壊的） | `flat` | `error` | 削除（ConfirmDialog経由） |
-| Navigation（遷移） | `text` | `primary` | 戻る、詳細を見る |
+| Primary（主操作） | `flat` | `action`（緑） | 保存、作成、インポート。アイコン＋動詞を添える |
+| Secondary（副操作） | `outlined`（枠は `border-strong`） | デフォルト | キャンセル、リセット。既存の `tonal` は触れる機会に合わせて移す |
+| Destructive（破壊的） | `outlined`（枠・文字・アイコンとも `danger-ink`） | — | 削除（ConfirmDialog経由）。`mdi-delete-outline` ＋ 動詞。塗りにしない（ダークの `error` は白文字で 4.5 に届かない） |
+| Navigation（遷移） | `text` | `link` | 戻る、詳細を見る（ダークの `primary` は面の上の文字で 3.07 のため使わない） |
 | Icon（アイコン操作） | `text` | — | テーブル内の編集/削除アイコン |
+
+> **2026-10-31 改定**: 旧ルールの Primary は `accent`（朱）だった。朱は要確認・負け・削除の赤と取り合うため、主ボタンは緑（`action`）に改めた。緑は状態「済」・勝敗の W とも同系だが、ボタンは濃い塗り＋アイコン＋動詞、チップは淡い丸角＋状態アイコン、勝敗は淡い角＋1 文字と、**形**で見分ける。
 
 **Vuetify defaults設定**:
 ```ts
@@ -481,10 +489,12 @@ defaults: {
 
 ```css
 :root {
-  --color-home: #1B3A6B;    /* 藍色 = primary */
-  --color-visitor: #C0392B;  /* 朱色 = accent */
+  --color-home: #1B3A6B;     /* 藍色（ダークは #9DBBF2 = game-home） */
+  --color-visitor: #46565F;  /* 鼠（ダークは #B4C7D3 = game-visitor） */
 }
 ```
+
+> **2026-10-31 改定**: ビジターを朱から鼠に改めた（朱は L・要確認・削除と取り合う）。実装（`src/assets/base.css`）は `--color-home: #2c5f2e`（緑）、`--color-visitor: #1b3a6b`（藍）で、ガイドとずれていた。ガイドを正として、実装をホーム=藍・ビジター=鼠に揃える。ダークは `game-home` / `game-visitor` のテーマ別の値を使う（値は design-guide.md §4「実装時に定義するもの」）。
 
 **適用箇所**: Scoreboard.vue、GameResult.vue、GameDetailView.vue のチーム色表示
 
@@ -496,6 +506,15 @@ defaults: {
 - `v-data-table` の `:items` が空の場合、テーブル内またはテーブル代替として `<EmptyState>` を表示
 - icon は画面コンテキストに合ったMDIアイコンを使用
 - message は「〜がありません」形式で統一
+
+### 4-5. 色とアイコンの使い方（2026-10-31 追加）
+
+- **状態・離脱・日付種類・勝敗は、役割トークン**（`state-*` / `absence-*` / `date-*` / `result-*`。値は design-guide.md §1）で表す。Material の色名（`purple` `amber` `blue-grey` `orange` など）を新しく書かない
+- **色だけに意味を背負わせない**: チップは先頭アイコン＋文字を必ず付ける。勝敗は W / L / D / NG の文字を付ける。編集中は破線、まだ=点線の線種も併用する
+- **1 つの色相に 1 つの意味**: 赤は「要確認」「負（L）」「削除」だけ。黄は「未入力」、緑は「済」「勝ち」「主ボタン」（形で見分ける）。負傷・出場停止は躑躅、昇格クールダウンは柿
+- アイコンの割り当ては design-guide.md の付録「アイコン体系」を正とする
+- トークンは背景と文字の対で定義してある。`variant="flat"` で使い、`tonal` / 手書きの tint（`rgba(...)`）を地として当てにしない
+- `surface-variant` / `on-surface-variant` は `vuetify.ts` で値を定義する（Vuetify の既定値が効くと読めなくなる）
 
 ---
 
@@ -523,7 +542,7 @@ defaults: {
     <v-card-actions>
       <v-spacer />
       <v-btn variant="text" @click="close">キャンセル</v-btn>
-      <v-btn color="accent" variant="flat" @click="save" :loading="saving">保存</v-btn>
+      <v-btn color="action" variant="flat" prepend-icon="mdi-check" @click="save" :loading="saving">保存</v-btn>
     </v-card-actions>
   </v-card>
 </v-dialog>
@@ -592,7 +611,7 @@ const headers = [
 **工数目安**: 足軽1名 × 2-3タスク（画面数が多いためバッチ処理）
 **影響**: 視覚的な変更あり。機能変更なし
 
-**対象**:
+**対象**（2026-10-31 に Primary を `action`（緑）へ改めた。対象の範囲は変わらず、主ボタンの `accent` / `primary` 指定を `action` に寄せる）:
 1. v-btn の variant/color を標準ルールに合わせる（約20箇所）
 2. v-toolbar の color を primary に統一（3箇所）
 3. CSS変数 --color-home / --color-visitor の適用（3箇所）

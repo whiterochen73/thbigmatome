@@ -137,6 +137,7 @@
                     density="compact"
                     color="link"
                     variant="outlined"
+                    :style="{ borderColor: 'rgb(var(--v-theme-border-strong))' }"
                     @update:model-value="
                       (v: 'bench' | 'off' | null) => setHitterCategory(p.player_id, v)
                     "
@@ -161,6 +162,7 @@
                     density="compact"
                     color="link"
                     variant="outlined"
+                    :style="{ borderColor: 'rgb(var(--v-theme-border-strong))' }"
                     @update:model-value="
                       (v: 'relief' | 'starter_bench' | 'off' | null) =>
                         setPitcherCategory(p.player_id, v)

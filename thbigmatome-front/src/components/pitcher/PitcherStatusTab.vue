@@ -53,7 +53,7 @@
               @drop="onDrop(idx, 'starters')"
               @dragend="onDragEnd"
             >
-              <td class="text-center text-grey" style="cursor: grab">☰</td>
+              <td class="text-center on-surface-variant" style="cursor: grab">☰</td>
               <td>
                 <PlayerNameLink
                   :player-id="pitcher.player_id"
@@ -85,7 +85,9 @@
               </td>
             </tr>
             <tr v-if="orderedStarters.length === 0">
-              <td colspan="7" class="text-center text-grey text-caption py-2">先発投手なし</td>
+              <td colspan="7" class="text-center on-surface-variant text-caption py-2">
+                先発投手なし
+              </td>
             </tr>
           </tbody>
         </v-table>
@@ -133,7 +135,7 @@
               @drop="onDrop(idx, 'relievers')"
               @dragend="onDragEnd"
             >
-              <td class="text-center text-grey" style="cursor: grab">☰</td>
+              <td class="text-center on-surface-variant" style="cursor: grab">☰</td>
               <td>
                 <PlayerNameLink
                   :player-id="pitcher.player_id"
@@ -167,7 +169,9 @@
               </td>
             </tr>
             <tr v-if="orderedRelievers.length === 0">
-              <td colspan="7" class="text-center text-grey text-caption py-2">リリーフ投手なし</td>
+              <td colspan="7" class="text-center on-surface-variant text-caption py-2">
+                リリーフ投手なし
+              </td>
             </tr>
           </tbody>
         </v-table>

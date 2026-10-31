@@ -1,10 +1,7 @@
 /* semantic color variables for this project */
 :root {
-  --color-home: #2c5f2e;
-  --color-visitor: #1b3a6b;
-
-  /* 和色パレット（既存 --color-visitor/--color-home も維持） */
-  --ai: #1B3A6B;       /* 藍色（--color-visitor と同値） */
+  /* 和色パレット */
+  --ai: #1B3A6B;       /* 藍色 */
   --shu: #C0392B;      /* 朱色 */
   --chigusa: #4A7A8A;  /* 千草色 */
   --moegi: #5D8A2F;    /* 萌黄 */

@@ -1,5 +1,5 @@
 <template>
-  <div class="d-flex flex-column align-center py-8 text-grey">
+  <div class="d-flex flex-column align-center py-8 on-surface-variant">
     <v-icon size="48" class="mb-2">{{ icon }}</v-icon>
     <span>{{ message }}</span>
   </div>

@@ -165,4 +165,119 @@ describe('AtBatCard', () => {
     })
     expect(wrapper.text()).toContain('確認済')
   })
+
+  // Test Basis: thbig-dugout-visual-stage5-mapping.md §7 b8-1〜b8-20
+  it.each([
+    [null, 'state-neutral'],
+    ['K', 'state-warn'],
+    ['K3', 'state-warn'],
+    ['BB', 'state-info'],
+    ['IBB', 'state-info'],
+    ['HR', 'zone-game'],
+    ['本塁打', 'zone-game'],
+    ['H', 'state-done'],
+    ['1B', 'state-done'],
+    ['2B', 'state-done'],
+    ['3B', 'state-done'],
+    ['GO', 'state-neutral'],
+  ])('結果 %s のヘッダーと展開部を %s flat で表示する', (result, color) => {
+    const wrapper = mount(AtBatCard, {
+      global: { plugins: [vuetify] },
+      props: { ab: { ...mockAb, result_code: result }, gameStatus: 'draft' },
+    })
+    const chips = wrapper
+      .findAllComponents(components.VChip)
+      .filter((chip) => chip.text() === (result || '-'))
+    expect(chips).toHaveLength(2)
+    chips.forEach((chip) => {
+      expect(chip.props('color')).toBe(color)
+      expect(chip.props('variant')).toBe('flat')
+    })
+  })
+
+  // Test Basis: thbig-dugout-visual-stage5-mapping.md §7 b8-1〜b8-8, b8-15〜b8-20
+  it.each([
+    ['parser_misread', 'state-todo'],
+    ['human_error', 'absence-cooldown'],
+    ['gsm_limitation', 'state-info'],
+    ['ambiguous', 'state-neutral'],
+    ['unknown', 'state-warn'],
+    ['other', 'state-neutral'],
+  ] as const)('差異原因 %s を %s flat で表示する', (cause, color) => {
+    const wrapper = mount(AtBatCard, {
+      global: { plugins: [vuetify] },
+      props: {
+        ab: {
+          ...mockAb,
+          is_reviewed: true,
+          is_modified: true,
+          discrepancies: [
+            { field: 'result_code', text_value: 'K', gsm_value: 'H', cause, resolution: null },
+          ],
+        },
+        gameStatus: 'draft',
+      },
+    })
+    const chips = wrapper.findAllComponents(components.VChip)
+    const discrepancy = chips.find((chip) =>
+      chip.text().includes(
+        cause === 'other'
+          ? 'other'
+          : {
+              parser_misread: 'パーサー誤読',
+              human_error: 'ヒューマンエラー',
+              gsm_limitation: 'GSM制限',
+              ambiguous: '判定不能',
+              unknown: '未分類',
+            }[cause],
+      ),
+    )
+    expect(discrepancy?.props('color')).toBe(color)
+    expect(discrepancy?.props('variant')).toBe('flat')
+    const warning = chips.find((chip) => chip.text().includes('差異あり'))
+    expect(warning?.props('color')).toBe('state-warn')
+    expect(warning?.props('variant')).toBe('flat')
+    const reviewed = chips.find((chip) => chip.text().includes('確認済'))
+    expect(reviewed?.props('color')).toBe('state-done')
+    expect(reviewed?.props('variant')).toBe('flat')
+    expect(
+      wrapper
+        .findAllComponents(components.VIcon)
+        .find((icon) => icon.attributes('title') === '修正済み')
+        ?.classes(),
+    ).toContain('on-state-info')
+    expect(
+      wrapper
+        .findAllComponents(components.VBtn)
+        .find((button) => button.text() === '編集')
+        ?.props('color'),
+    ).toBe('link')
+  })
+
+  // Test Basis: thbig-dugout-visual-stage5-mapping.md §7 b8-6〜b8-7
+  it('解決済み差異は state-info flat のチップを表示する', () => {
+    const wrapper = mount(AtBatCard, {
+      global: { plugins: [vuetify] },
+      props: {
+        ab: {
+          ...mockAb,
+          discrepancies: [
+            {
+              field: 'result_code',
+              text_value: 'K',
+              gsm_value: 'H',
+              cause: 'unknown' as const,
+              resolution: 'manual',
+            },
+          ],
+        },
+        gameStatus: 'draft',
+      },
+    })
+    const resolution = wrapper
+      .findAllComponents(components.VChip)
+      .find((chip) => chip.text() === '手動修正済')
+    expect(resolution?.props('color')).toBe('state-info')
+    expect(resolution?.props('variant')).toBe('flat')
+  })
 })

@@ -108,12 +108,6 @@ it('limits static primary on buttons, tabs, toggles and chips to identified fill
       variant: 'elevated',
       reason: '並列の入口',
     },
-    {
-      path: 'components/AtBatCard.vue',
-      marker: 'startEdit',
-      variant: 'outlined',
-      reason: 'b8 予定の枠付き編集ボタン',
-    },
   ]
   const seen = new Map<string, number>()
   const violations: string[] = []

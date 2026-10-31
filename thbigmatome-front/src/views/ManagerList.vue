@@ -81,7 +81,7 @@
                     </v-list-item>
                   </v-list>
                 </div>
-                <div v-else class="py-4 text-center text-grey">
+                <div v-else class="py-4 text-center on-surface-variant">
                   {{ t('managerList.expanded.noTeams') }}
                 </div>
               </div>

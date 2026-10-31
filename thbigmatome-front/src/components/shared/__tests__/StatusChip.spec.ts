@@ -25,13 +25,21 @@ describe('StatusChip', () => {
     expect(wrapper.text()).toContain('スロットテキスト')
   })
 
-  it('既知のstatusに対して正しいcolorが適用されること（active→success）', () => {
+  // Test Basis: subtask_1787u 申し送り1 / thbig-dugout-visual-stage5-mapping.md §2 R1
+  it('active と warning は読める状態色の flat チップになる', () => {
     const wrapper = mount(StatusChip, {
       global: { plugins: [vuetify] },
       props: { status: 'active', label: 'active' },
     })
     const chip = wrapper.findComponent({ name: 'VChip' })
-    expect(chip.props('color')).toBe('success')
+    expect(chip.props('color')).toBe('state-done')
+    expect(chip.props('variant')).toBe('flat')
+    const warning = mount(StatusChip, {
+      global: { plugins: [vuetify] },
+      props: { status: 'warning', label: 'warning' },
+    }).findComponent({ name: 'VChip' })
+    expect(warning.props('color')).toBe('state-todo')
+    expect(warning.props('variant')).toBe('flat')
   })
 
   it('未知のstatusはdefaultカラーになること', () => {

@@ -87,12 +87,14 @@
                         :player-id="entry.player_id"
                         :player-name="entry.player_name"
                       />
-                      <span v-if="entry.is_reliever" class="text-caption text-grey">（中継）</span>
+                      <span v-if="entry.is_reliever" class="text-caption on-surface-variant"
+                        >（中継）</span
+                      >
                     </td>
                     <td>{{ entry.position }}</td>
                   </tr>
                   <tr v-if="bench.length === 0">
-                    <td colspan="2" class="text-center text-grey">なし</td>
+                    <td colspan="2" class="text-center on-surface-variant">なし</td>
                   </tr>
                 </tbody>
               </v-table>
@@ -125,7 +127,7 @@
                     <td>{{ entry.position }}</td>
                   </tr>
                   <tr v-if="off.length === 0">
-                    <td colspan="2" class="text-center text-grey">なし</td>
+                    <td colspan="2" class="text-center on-surface-variant">なし</td>
                   </tr>
                 </tbody>
               </v-table>
@@ -154,12 +156,12 @@
                         :player-id="entry.player_id"
                         :player-name="entry.player_name"
                       />
-                      <span class="text-caption text-grey">（指定）</span>
+                      <span class="text-caption on-surface-variant">（指定）</span>
                     </td>
                     <td>{{ entry.position }}</td>
                   </tr>
                   <tr v-if="designated.length === 0">
-                    <td colspan="2" class="text-center text-grey">なし</td>
+                    <td colspan="2" class="text-center on-surface-variant">なし</td>
                   </tr>
                 </tbody>
               </v-table>

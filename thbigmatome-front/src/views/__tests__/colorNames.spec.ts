@@ -20,28 +20,10 @@ function sourceFiles(dir: string): string[] {
   })
 }
 
-// Test Basis: thbig-dugout-visual-stage5-mapping.md §7 b0-5, b1-1〜b7-23 / subtask_1787r 申し送り2
-it('keeps Material color names within the remaining batch allowance', () => {
-  // Counts are the remaining matches after batch 7. Later batches reduce them.
+// Test Basis: thbig-dugout-visual-stage5-mapping.md §7 b0-5, b8-1〜b11-29 / Q1
+it('keeps Material color names only in the permanent BattingTable allowance', () => {
   const allowed: Record<string, { count: number; batch: string }> = {
-    'components/AtBatCard.vue': { count: 28, batch: 'b8, b10' },
-    // b10 removes one text-grey; Q1 permits the other 20 batting outcome colors.
-    'components/BattingTable.vue': { count: 21, batch: 'b10 (1), Q1 allowed (20)' },
-    'components/EmptyState.vue': { count: 1, batch: 'b10' },
-    'components/pitcher/PitcherAppearanceTab.vue': { count: 4, batch: 'b10' },
-    'components/pitcher/PitcherRoleStateCell.vue': { count: 1, batch: 'b10' },
-    'components/pitcher/PitcherStatusTab.vue': { count: 4, batch: 'b10, b11' },
-    'components/PlayerCardItem.vue': { count: 7, batch: 'b10' },
-    'components/shared/PlayerNameLink.vue': { count: 3, batch: 'b11' },
-    'views/GameDetailView.vue': { count: 6, batch: 'b11' },
-    'views/GameLineupView.vue': { count: 5, batch: 'b11' },
-    'views/GameRecordDetailView.vue': { count: 5, batch: 'b11' },
-    'views/GameRecordListView.vue': { count: 1, batch: 'b11' },
-    'views/GamesView.vue': { count: 1, batch: 'b11' },
-    'views/ManagerList.vue': { count: 1, batch: 'b11' },
-    'views/PlayerCardDetailView.vue': { count: 2, batch: 'b11' },
-    'views/PlayerDetailView.vue': { count: 2, batch: 'b9, b11' },
-    'views/Players.vue': { count: 1, batch: 'b11' },
+    'components/BattingTable.vue': { count: 20, batch: 'Q1 permanent allowance: batting outcomes' },
   }
   const violations: string[] = []
 

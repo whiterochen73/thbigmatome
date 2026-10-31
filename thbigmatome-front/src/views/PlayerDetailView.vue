@@ -102,7 +102,7 @@
               </tbody>
             </table>
           </div>
-          <div v-else class="text-grey text-caption pa-2 mb-4">コストなし</div>
+          <div v-else class="on-surface-variant text-caption pa-2 mb-4">コストなし</div>
 
           <div v-if="player.player_cards && player.player_cards.length > 0" class="section-box">
             <table class="card-table">
@@ -143,7 +143,7 @@
               </tbody>
             </table>
           </div>
-          <div v-else class="text-grey text-caption pa-2">選手カードなし</div>
+          <div v-else class="on-surface-variant text-caption pa-2">選手カードなし</div>
         </div>
         <!-- /detail-body -->
       </div>
@@ -256,8 +256,8 @@ function onSave() {
 
 /* ── ヘッダー (藍色帯) ── */
 .detail-card-header {
-  background: var(--ai);
-  color: white;
+  background: rgb(var(--v-theme-primary));
+  color: rgb(var(--v-theme-on-primary));
   padding: 7px 14px;
   display: flex;
   align-items: center;

@@ -14,30 +14,32 @@
     >
       <div class="ab-num-badge">{{ ab.ab_num }}</div>
       <span class="font-weight-bold text-body-2">{{ ab.batter_name }}</span>
-      <span class="text-grey text-caption">vs</span>
+      <span class="on-surface-variant text-caption">vs</span>
       <span class="text-body-2">{{ ab.pitcher_name }}</span>
-      <v-chip v-if="ab.discrepancies?.length" color="error" size="x-small" label
+      <v-chip v-if="ab.discrepancies?.length" color="state-warn" variant="flat" size="x-small" label
         >⚠️ 差異あり</v-chip
       >
-      <v-chip v-if="ab.is_reviewed" color="success" size="x-small" label>✓ 確認済</v-chip>
+      <v-chip v-if="ab.is_reviewed" color="state-done" variant="flat" size="x-small" label
+        >✓ 確認済</v-chip
+      >
       <v-spacer />
-      <v-chip size="x-small" :color="resultColor(ab.result_code)" label>
+      <v-chip size="x-small" :color="resultColor(ab.result_code)" variant="flat" label>
         {{ ab.result_code || '-' }}
       </v-chip>
-      <v-icon v-if="ab.is_modified" size="x-small" color="amber-darken-3" title="修正済み">
+      <v-icon v-if="ab.is_modified" size="x-small" class="on-state-info" title="修正済み">
         mdi-pencil-circle
       </v-icon>
       <v-btn
         v-if="canEdit && !isEditing"
         size="x-small"
         variant="outlined"
-        color="primary"
+        color="link"
         class="ml-1"
         @click.stop="startEdit"
       >
         編集
       </v-btn>
-      <v-icon size="small" class="text-grey">
+      <v-icon size="small" class="on-surface-variant">
         {{ collapsed ? 'mdi-chevron-right' : 'mdi-chevron-down' }}
       </v-icon>
     </div>
@@ -59,10 +61,24 @@
           <span class="disc-val">{{ formatDiscValue(d.text_value) }}</span>
           <span class="disc-sep">→ GSM</span>
           <span class="disc-val">{{ formatDiscValue(d.gsm_value) }}</span>
-          <v-chip v-if="d.resolution" size="x-small" color="blue-lighten-2" class="ml-1" label>
+          <v-chip
+            v-if="d.resolution"
+            size="x-small"
+            color="state-info"
+            variant="flat"
+            class="ml-1"
+            label
+          >
             {{ resolutionLabel(d.resolution) }}
           </v-chip>
-          <v-chip v-else size="x-small" class="ml-2" :color="discrepancyChipColor(d.cause)" label>
+          <v-chip
+            v-else
+            size="x-small"
+            class="ml-2"
+            :color="discrepancyChipColor(d.cause)"
+            variant="flat"
+            label
+          >
             {{ discrepancyCauseLabel(d.cause) }}
           </v-chip>
         </div>
@@ -95,7 +111,7 @@
           </v-row>
 
           <div class="mt-2">
-            <div class="text-caption text-grey mb-1">走者前 (チェック=塁に走者あり)</div>
+            <div class="text-caption on-surface-variant mb-1">走者前 (チェック=塁に走者あり)</div>
             <div class="d-flex gap-2">
               <v-checkbox
                 v-model="editForm.runners_before"
@@ -122,7 +138,7 @@
           </div>
 
           <div class="mt-2">
-            <div class="text-caption text-grey mb-1">走者後 (チェック=塁に走者あり)</div>
+            <div class="text-caption on-surface-variant mb-1">走者後 (チェック=塁に走者あり)</div>
             <div class="d-flex gap-2">
               <v-checkbox
                 v-model="editForm.runners_after"
@@ -192,7 +208,7 @@
                   {{ ev.text || ev.action }}
                 </v-chip>
               </template>
-              <span v-else class="text-caption text-grey">（宣言なし）</span>
+              <span v-else class="text-caption on-surface-variant">（宣言なし）</span>
             </div>
           </div>
 
@@ -236,7 +252,7 @@
           </div>
 
           <div v-if="ab.play_description" class="play-desc mx-3 mt-2 mb-2">
-            <span class="text-caption text-grey mr-1">原文:</span>
+            <span class="text-caption on-surface-variant mr-1">原文:</span>
             <span class="text-caption font-italic">「{{ ab.play_description }}」</span>
           </div>
         </template>
@@ -246,25 +262,25 @@
           <div class="legacy-fields pa-3">
             <v-row density="compact" align="center">
               <v-col cols="auto" class="d-flex align-center gap-1">
-                <span class="text-caption text-grey">結果:</span>
-                <v-chip :color="resultColor(ab.result_code)" size="x-small" label>
+                <span class="text-caption on-surface-variant">結果:</span>
+                <v-chip :color="resultColor(ab.result_code)" size="x-small" variant="flat" label>
                   {{ ab.result_code || '-' }}
                 </v-chip>
               </v-col>
               <v-col cols="auto" class="d-flex align-center gap-1 ml-3">
-                <span class="text-caption text-grey">得点:</span>
+                <span class="text-caption on-surface-variant">得点:</span>
                 <span>{{ ab.runs_scored ?? 0 }}</span>
               </v-col>
               <v-col cols="auto" class="d-flex align-center gap-1 ml-3">
-                <span class="text-caption text-grey">走者前:</span>
+                <span class="text-caption on-surface-variant">走者前:</span>
                 <span class="text-caption text-mono">{{ displayRunners(ab.runners_before) }}</span>
               </v-col>
               <v-col cols="auto" class="d-flex align-center gap-1 ml-3">
-                <span class="text-caption text-grey">走者後:</span>
+                <span class="text-caption on-surface-variant">走者後:</span>
                 <span class="text-caption text-mono">{{ displayRunners(ab.runners_after) }}</span>
               </v-col>
             </v-row>
-            <div v-if="ab.review_notes" class="mt-1 text-caption text-grey">
+            <div v-if="ab.review_notes" class="mt-1 text-caption on-surface-variant">
               📝 {{ ab.review_notes }}
             </div>
           </div>
@@ -274,19 +290,19 @@
       <!-- 走者・アウト状態フッター -->
       <div class="ab-state px-3 py-2 d-flex gap-4 flex-wrap">
         <span>
-          <span class="text-grey text-caption">走者</span>
+          <span class="on-surface-variant text-caption">走者</span>
           <span class="font-weight-bold text-caption ml-1">
             {{ displayRunners(ab.runners_before) }} → {{ displayRunners(ab.runners_after) }}
           </span>
         </span>
         <span>
-          <span class="text-grey text-caption">OUT</span>
+          <span class="on-surface-variant text-caption">OUT</span>
           <span class="font-weight-bold text-caption ml-1">
             {{ ab.outs_before ?? '?' }} → {{ ab.outs_after ?? '?' }}
           </span>
         </span>
         <span>
-          <span class="text-grey text-caption">得点</span>
+          <span class="on-surface-variant text-caption">得点</span>
           <span class="font-weight-bold text-caption ml-1">{{ ab.runs_scored ?? 0 }}</span>
         </span>
       </div>
@@ -405,24 +421,24 @@ async function saveEdit() {
 }
 
 function resultColor(code: string | null): string {
-  if (!code) return 'grey'
+  if (!code) return 'state-neutral'
   const c = code.toUpperCase()
-  if (['K', 'K3'].includes(c)) return 'red-lighten-2'
-  if (['BB', 'IBB'].includes(c)) return 'blue-lighten-2'
-  if (['HR', '本塁打'].includes(c)) return 'purple-lighten-2'
-  if (['H', '1B', '2B', '3B'].includes(c)) return 'green-lighten-2'
-  return 'grey-lighten-1'
+  if (['K', 'K3'].includes(c)) return 'state-warn'
+  if (['BB', 'IBB'].includes(c)) return 'state-info'
+  if (['HR', '本塁打'].includes(c)) return 'zone-game'
+  if (['H', '1B', '2B', '3B'].includes(c)) return 'state-done'
+  return 'state-neutral'
 }
 
 function discrepancyChipColor(cause: Discrepancy['cause']): string {
   const map: Record<string, string> = {
-    parser_misread: 'yellow-darken-3',
-    human_error: 'orange-darken-2',
-    gsm_limitation: 'blue-darken-1',
-    ambiguous: 'grey-darken-1',
-    unknown: 'red-darken-1',
+    parser_misread: 'state-todo',
+    human_error: 'absence-cooldown',
+    gsm_limitation: 'state-info',
+    ambiguous: 'state-neutral',
+    unknown: 'state-warn',
   }
-  return map[cause] ?? 'grey'
+  return map[cause] ?? 'state-neutral'
 }
 
 function discrepancyCauseLabel(cause: Discrepancy['cause']): string {
@@ -482,7 +498,6 @@ function formatAutoEvent(ev: SourceEvent): string {
 
 .v-card,
 .ab-card {
-  --ai: var(--color-visitor);
   --moegi: #5a8a00;
   --kohaku: #c87a10;
   --decl-bg: #eeeef0;
@@ -531,8 +546,8 @@ function formatAutoEvent(ev: SourceEvent): string {
 }
 
 .ab-num-badge {
-  background: var(--color-visitor);
-  color: white;
+  background: rgb(var(--v-theme-primary));
+  color: rgb(var(--v-theme-on-primary));
   width: 22px;
   height: 22px;
   border-radius: 50%;

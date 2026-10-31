@@ -61,6 +61,21 @@ describe('UsersView', () => {
     expect(axios.get).toHaveBeenCalledWith('/users')
   })
 
+  // Test Basis: subtask_1787u 申し送り2 / thbig-dugout-visual-stage5-mapping.md §2 R3
+  it('コミッショナーの tonal チップには link を使う', async () => {
+    ;(axios.get as ReturnType<typeof vi.fn>).mockResolvedValue({
+      data: [{ id: 1, name: 'admin', display_name: '管理者', role: 'commissioner' }],
+    })
+    const wrapper = mount(UsersView, { global: { plugins: [vuetify] } })
+    await flushPromises()
+    const chips = wrapper
+      .findAllComponents(components.VChip)
+      .filter((chip) => chip.text() === 'コミッショナー')
+    expect(chips).toHaveLength(1)
+    expect(chips[0]!.props('color')).toBe('link')
+    expect(chips[0]!.props('variant')).toBe('tonal')
+  })
+
   describe('ロール変更', () => {
     const mockUser = { id: 2, name: 'user1', display_name: 'ユーザー1', role: 'player' as const }
 

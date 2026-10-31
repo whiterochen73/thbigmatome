@@ -59,7 +59,7 @@
             <span v-if="item.score_home !== null && item.score_away !== null">
               {{ item.score_away }} - {{ item.score_home }}
             </span>
-            <span v-else class="text-grey">-</span>
+            <span v-else class="on-surface-variant">-</span>
           </template>
 
           <template v-slot:[`item.status`]="{ item }">

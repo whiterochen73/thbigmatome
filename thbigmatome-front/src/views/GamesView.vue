@@ -73,7 +73,7 @@
               @click="router.push(`/game-records/${item.game_record_id}`)"
               >レビュー</v-btn
             >
-            <span v-else class="text-grey">-</span>
+            <span v-else class="on-surface-variant">-</span>
           </template>
           <template v-slot:[`item.actions`]="{ item }">
             <v-btn size="small" variant="text" @click="navigateToDetail(item.id)">詳細</v-btn>

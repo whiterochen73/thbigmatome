@@ -16,7 +16,14 @@
     <!-- フィルター -->
     <FilterBar>
       <template #filters>
-        <v-btn-toggle v-model="filterStatus" density="compact" rounded="sm" color="link">
+        <v-btn-toggle
+          v-model="filterStatus"
+          density="compact"
+          rounded="sm"
+          color="link"
+          variant="outlined"
+          :style="{ borderColor: 'rgb(var(--v-theme-border-strong))' }"
+        >
           <v-btn value="">全ステータス</v-btn>
           <v-btn value="draft">draft</v-btn>
           <v-btn value="confirmed">confirmed</v-btn>

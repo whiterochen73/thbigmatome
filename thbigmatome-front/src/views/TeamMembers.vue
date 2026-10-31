@@ -305,7 +305,7 @@
                 <template #item.player_card_info="{ item }">
                   <div v-if="item.player_card_info" class="d-flex align-center ga-1">
                     <span class="text-caption">{{ item.player_card_info.card_set_name }}</span>
-                    <v-chip size="x-small" variant="tonal" color="secondary">
+                    <v-chip size="x-small" variant="flat" color="state-neutral">
                       {{ item.player_card_info.card_type }}
                     </v-chip>
                   </div>

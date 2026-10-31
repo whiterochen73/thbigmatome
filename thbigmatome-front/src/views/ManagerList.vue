@@ -27,8 +27,8 @@
           <v-chip
             v-if="(item.active_director_team_count ?? 0) >= 2"
             size="x-small"
-            color="warning"
-            variant="tonal"
+            color="state-todo"
+            variant="flat"
             class="ml-1"
           >
             {{ t('managerList.atCapacity') }}
@@ -63,9 +63,9 @@
                     <v-list-item v-for="team in item.teams" :key="team.id" :title="team.name">
                       <template #append>
                         <v-chip
-                          :color="team.is_active ? 'success' : 'default'"
+                          :color="team.is_active ? 'state-done' : 'state-neutral'"
                           size="small"
-                          variant="tonal"
+                          variant="flat"
                           class="mr-4"
                         >
                           {{

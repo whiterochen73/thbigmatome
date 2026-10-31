@@ -50,7 +50,11 @@
                 </v-col>
                 <v-col cols="12" sm="6" md="3">
                   <div class="text-caption on-surface-variant">ステータス</div>
-                  <v-chip :color="game.status === 'confirmed' ? 'success' : 'warning'" size="small">
+                  <v-chip
+                    :color="game.status === 'confirmed' ? 'state-done' : 'state-todo'"
+                    size="small"
+                    variant="flat"
+                  >
                     {{ game.status === 'confirmed' ? '確定' : '下書き' }}
                   </v-chip>
                 </v-col>

@@ -86,7 +86,12 @@
               <span class="text-body-1 font-weight-medium">
                 {{ parsedAtBatCount }}打席 / {{ parsedInnings }}イニング検出
               </span>
-              <v-chip v-if="pregameData.rain_canceled" color="warning" size="small" variant="flat">
+              <v-chip
+                v-if="pregameData.rain_canceled"
+                color="state-todo"
+                size="small"
+                variant="flat"
+              >
                 雨天中止
               </v-chip>
             </v-card-text>

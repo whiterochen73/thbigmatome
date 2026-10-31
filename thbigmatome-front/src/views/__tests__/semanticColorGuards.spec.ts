@@ -36,6 +36,20 @@ it('v-btn と v-chip は error の塗りを使わない', () => {
   expect(violations).toEqual([])
 })
 
+// Test Basis: subtask_1790a §1 / thbig-dugout-visual-stage5-mapping.md §2 R1, §4
+it('v-chip の color にテーマの状態色リテラルを渡さない', () => {
+  const legacy =
+    /^(?:success|warning|secondary|info|error)$|['"](?:success|warning|secondary|info|error)['"]/
+  const violations = coloredTags()
+    .filter(({ tag }) => tag.startsWith('<v-chip'))
+    .filter(({ tag }) => {
+      const color = tag.match(/(?:^|\s):?color\s*=\s*(["'])(.*?)\1/)
+      return color && legacy.test(color[2])
+    })
+    .map(({ location }) => `${location} v-chip color uses a theme status literal`)
+  expect(violations).toEqual([])
+})
+
 // Test Basis: thbig-dugout-visual-stage5-mapping.md §2 R1 / subtask_1787u 申し送り4
 it('役割色を使う v-btn と v-chip は flat または明示した分岐を持つ', () => {
   const token =
@@ -95,6 +109,45 @@ it('四つのトグル群は border-strong の枠を持つ', () => {
       expect(tag, path).toContain("borderColor: 'rgb(var(--v-theme-border-strong))'"),
     )
   }
+})
+
+// Test Basis: subtask_1790a §2 / thbig-dugout-local-test-recipe.md v-btn-toggle の枠
+it('七つのトグル群は outlined の border-strong 枠を持つ', () => {
+  const toggles = vueFiles(srcDir).flatMap((file) => {
+    const source = readFileSync(file, 'utf8')
+    const path = relative(srcDir, file).split(sep).join('/')
+    return [...source.matchAll(/<v-btn-toggle\b(?:"[^"]*"|'[^']*'|[^>"'])*>/g)].map((match) => ({
+      tag: match[0],
+      location: `${path}:${source.slice(0, match.index).split('\n').length}`,
+    }))
+  })
+  expect(toggles).toHaveLength(7)
+  const violations = toggles
+    .filter(
+      ({ tag }) =>
+        !/\bvariant="outlined"/.test(tag) ||
+        !tag.includes("borderColor: 'rgb(var(--v-theme-border-strong))'"),
+    )
+    .map(({ location }) => `${location} v-btn-toggle requires outlined border-strong`)
+  expect(violations).toEqual([])
+})
+
+// Test Basis: subtask_1790a §3 / thbig-dugout-visual-refresh-design.md §6.2
+it('三つの scoped CSS に固定の明るい背景を残さない', () => {
+  const violations = [
+    'components/AtBatCard.vue',
+    'views/PlayerDetailView.vue',
+    'views/GameRecordDetailView.vue',
+  ].flatMap((path) => {
+    const source = readFileSync(resolve(srcDir, path), 'utf8')
+    const css = source.match(/<style scoped>([\s\S]*?)<\/style>/)?.[1] ?? ''
+    return [
+      ...css.matchAll(
+        /^\s*(?:background(?:-color)?|--[\w-]+-bg)\s*:\s*(#[\da-f]+|white\b|rgb\(\s*\d)/gim,
+      ),
+    ].map((match) => `${path} scoped CSS fixed light background: ${match[0].trim()}`)
+  })
+  expect(violations).toEqual([])
 })
 
 // Test Basis: thbig-dugout-visual-stage5-mapping.md §6, §7 b9-1〜b9-7

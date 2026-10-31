@@ -5,7 +5,21 @@
       <div class="d-flex flex-wrap align-center ga-4">
         <div>
           <div class="text-h6 font-weight-bold">{{ formattedGameDate }}</div>
-          <div class="text-body-2 text-medium-emphasis">{{ headLine }}</div>
+          <div class="d-flex flex-wrap align-center ga-2 text-body-2">
+            <v-chip
+              v-if="currentDateType"
+              data-testid="date-type-headline"
+              size="small"
+              variant="flat"
+              :color="dateTypeAppearance(currentDateType).color"
+              :prepend-icon="dateTypeAppearance(currentDateType).icon"
+              :class="{
+                'text-decoration-line-through': dateTypeAppearance(currentDateType).cancelled,
+              }"
+              >{{ dateTypeLabel(currentDateType) }}</v-chip
+            >
+            <span v-if="isGameDay" class="text-medium-emphasis">{{ headLine }}</span>
+          </div>
         </div>
         <div class="d-flex flex-column" style="min-width: 220px">
           <v-select
@@ -20,7 +34,30 @@
             hide-details
             data-testid="date-type-select"
             @update:model-value="updateDateType"
-          />
+          >
+            <template #selection="{ item }">
+              <v-chip
+                size="x-small"
+                variant="flat"
+                :color="item.color"
+                :prepend-icon="item.icon"
+                :class="{ 'text-decoration-line-through': item.cancelled }"
+                >{{ item.title }}</v-chip
+              >
+            </template>
+            <template #item="{ props: itemProps, item }">
+              <v-list-item v-bind="itemProps" :title="undefined">
+                <v-chip
+                  size="small"
+                  variant="flat"
+                  :color="item.color"
+                  :prepend-icon="item.icon"
+                  :class="{ 'text-decoration-line-through': item.cancelled }"
+                  >{{ item.title }}</v-chip
+                >
+              </v-list-item>
+            </template>
+          </v-select>
           <span v-if="hasUnsavedChanges" class="text-caption text-medium-emphasis">{{
             t('gameDay.dateType.saveFirst')
           }}</span>
@@ -45,8 +82,7 @@
             })
           }}</span>
         </div>
-        <v-spacer />
-        <div class="d-flex ga-2">
+        <div data-testid="game-day-nav" class="d-flex flex-wrap justify-end ga-2 ms-auto">
           <v-btn
             v-if="prevSchedule"
             size="small"
@@ -135,18 +171,7 @@
             :key="`absences-${embedKey.absences}`"
             :team-id="Number(teamId)"
             game-day-actions
-          />
-        </div>
-      </template>
-
-      <template #body-inGameAbsences>
-        <div class="mt-2">
-          <GameDayDateNote :game-date="gameData.game_date" :current-date="seasonCurrentDate" />
-          <SeasonAbsenceTab
-            :key="`in-game-absences-${embedKey.inGameAbsences}`"
-            :team-id="Number(teamId)"
-            default-phase="in_game"
-            game-day-actions
+            @changed="fetchAbsenceState"
           />
         </div>
       </template>
@@ -390,6 +415,8 @@ import SeasonAbsenceTab from '@/components/season/SeasonAbsenceTab.vue'
 import GameDaySteps, { type GameDayStep } from '@/components/gameDay/GameDaySteps.vue'
 import GameDayStateChip from '@/components/gameDay/GameDayStateChip.vue'
 import GameDayDateNote from '@/components/gameDay/GameDayDateNote.vue'
+import { dateTypeAppearance } from '@/components/gameDay/dateTypeAppearance'
+import type { PlayerAbsence } from '@/types/playerAbsence'
 import { setAppBarBreadcrumbs, clearAppBarBreadcrumbs } from '@/composables/useAppBarBreadcrumbs'
 import {
   GAME_LOG_MAX_BYTES,
@@ -613,6 +640,7 @@ const dateTypeItems = computed(() =>
   SCHEDULE_DATE_TYPES.map((value) => ({
     value,
     title: t(`settings.schedule.dateTypes.${value}`),
+    ...dateTypeAppearance(value),
   })),
 )
 const dateTypeLabel = (value: string) => t(`settings.schedule.dateTypes.${value}`)
@@ -681,6 +709,35 @@ const pitcherState = computed<StageState>(() =>
       }),
 )
 
+// 試合前・試合中を同じ日付の記録として区分別に数える。負傷は無い日の方が多く入力を求めない段なので、状態は 'info' 固定。
+const absences = ref<PlayerAbsence[] | null>(null)
+const todaysAbsences = computed(
+  () =>
+    absences.value?.filter(
+      (a) => a.start_date?.slice(0, 10) === gameData.value.game_date?.slice(0, 10),
+    ) ?? null,
+)
+const absenceSummary = computed(() => {
+  if (!todaysAbsences.value) return t('gameDay.summary.absences')
+  return t('gameDay.summary.absencesByPhase', {
+    pre: todaysAbsences.value.filter((a) => a.phase === 'pre_game').length,
+    inGame: todaysAbsences.value.filter((a) => a.phase === 'in_game').length,
+  })
+})
+
+const fetchAbsenceState = async () => {
+  if (!gameData.value.season_id) return
+  try {
+    const response = await axios.get<PlayerAbsence[]>('/player_absences', {
+      params: { season_id: gameData.value.season_id },
+    })
+    absences.value = Array.isArray(response.data) ? response.data : null
+  } catch (error) {
+    absences.value = null
+    console.error('Failed to fetch player absences:', error)
+  }
+}
+
 const mismatch = computed(() =>
   !isGameDay.value || appearanceCount.value === null
     ? null
@@ -747,7 +804,7 @@ const pitcherSummary = computed(() =>
 // どちらの形も、同じ steps・同じ状態から描く（判定は上の computed と gameDayStatus.ts）
 // ─────────────────────────────────────────
 
-// md 以上（960px〜）はステッパー。ステップ 7 つ + 状態の文字が 1 行に収まる幅の下限。それより狭い幅（スマホ・縦持ちのタブレット）は縦積み
+// md 以上（960px〜）はステッパー。狭い幅は縦積み。
 const { mdAndUp } = useDisplay()
 const stepsMode = computed<'tabs' | 'stack'>(() => (mdAndUp.value ? 'tabs' : 'stack'))
 
@@ -786,7 +843,7 @@ const steps = computed<GameDayStep[]>(() => {
       no: 3,
       icon: 'mdi-bandage',
       title: t('gameDay.sections.absences'),
-      summary: t('gameDay.summary.absences'),
+      summary: absenceSummary.value,
       state: 'info',
       hasBody: true,
       lazy: true,
@@ -835,23 +892,6 @@ const steps = computed<GameDayStep[]>(() => {
         title: t('gameDay.sections.pitcherStatus'),
       },
     },
-    {
-      id: 'inGameAbsences',
-      slug: 'in-game-absences',
-      group: 'game',
-      no: 7,
-      icon: 'mdi-ambulance',
-      title: t('gameDay.sections.inGameAbsences'),
-      summary: t('gameDay.summary.inGameAbsences'),
-      state: 'info',
-      hasBody: true,
-      lazy: true,
-      link: {
-        to: absencesRoute.value,
-        label: t('gameDay.links.absences'),
-        testId: 'link-in-game-absences',
-      },
-    },
   ]
   return allSteps.filter((step) => isGameDay.value || step.group === 'registration')
 })
@@ -870,14 +910,15 @@ const openSections = reactive<Record<string, boolean>>({
   result: false,
   pitchers: false,
   pitcherStatus: false,
-  inGameAbsences: false,
 })
 
-// 離脱者の画面は、埋め込みが 2 か所（離脱者・試合中の負傷）ある。片方で保存した結果がもう片方に反映されるよう、
-// 開く／選ぶたびに作り直して取り直す（保存はダイアログで即時に行うので、未保存の入力は無い）
-const embedKey = reactive({ absences: 0, inGameAbsences: 0 })
+// 開くたびに離脱一覧を再取得する。
+const embedKey = reactive({ absences: 0 })
 const refreshEmbedded = (id: string) => {
-  if (id === 'absences' || id === 'inGameAbsences') embedKey[id] += 1
+  if (id === 'absences') {
+    embedKey.absences += 1
+    fetchAbsenceState()
+  }
 }
 
 const setOpen = (id: string, value: boolean) => {
@@ -890,6 +931,8 @@ const TAB_OPEN: Record<string, string[]> = {
   overview: ['setup', 'result'],
   pitchers: ['pitchers'],
   pitcher_status: ['pitcherStatus'],
+  absences: ['absences'],
+  'in-game-absences': ['absences'],
 }
 
 const stateOf = (id: string) => steps.value.find((s) => s.id === id)?.state
@@ -901,9 +944,11 @@ const attentionStep = (candidates: string[]): string | undefined =>
 
 // 旧タブ名が指すステップ。overview は 予告先発・対戦設定 と 結果 のうち、手の要る方（無ければ結果）
 const stepForTab = (tab: string): string =>
-  tab === 'pitchers' || tab === 'pitcher_status'
-    ? 'pitchers'
-    : (attentionStep(['setup', 'result']) ?? 'result')
+  tab === 'absences' || tab === 'in-game-absences'
+    ? 'absences'
+    : tab === 'pitchers' || tab === 'pitcher_status'
+      ? 'pitchers'
+      : (attentionStep(['setup', 'result']) ?? 'result')
 
 const scrollToSection = (id: string) => {
   nextTick(() => {
@@ -1036,9 +1081,10 @@ const fetchAllTeams = async () => {
 const loadAll = async () => {
   currentDateType.value = ''
   appearanceCount.value = null
+  absences.value = null
   pitcherDirty.value = false
   await fetchGame()
-  await Promise.all([fetchAppearanceCount(), fetchSeasonInfo()])
+  await Promise.all([fetchAppearanceCount(), fetchSeasonInfo(), fetchAbsenceState()])
   if (!userPicked) applyTab(activeTab.value, false)
   resolveInitialStep()
 }

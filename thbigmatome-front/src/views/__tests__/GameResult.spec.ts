@@ -113,6 +113,7 @@ async function mountView() {
     if (url === '/game/100') return Promise.resolve({ data: { ...gameResponse } })
     if (url === '/teams') return Promise.resolve({ data: [] })
     if (url === '/pitcher_appearances') return Promise.resolve({ data: [] })
+    if (url === '/player_absences') return Promise.resolve({ data: [] })
     if (url === '/teams/1/season') return Promise.resolve({ data: seasonResponse })
     return Promise.reject(new Error(`Unexpected GET ${url}`))
   })
@@ -351,6 +352,7 @@ function setViewportWidth(width: number) {
 interface MountDayOptions {
   game?: Record<string, unknown>
   appearances?: unknown[] | Error
+  absences?: Array<{ start_date: string; phase: string }> | Error
   season?: Record<string, unknown> | Error
   width?: number
   query?: Record<string, string>
@@ -384,7 +386,7 @@ describe.each(LAYOUTS)('GameResult 試合日ページ: $name', ({ width, kind })
   })
 
   async function mountDay(opts: MountDayOptions = {}) {
-    const { game = {}, appearances = [], season = seasonResponse } = opts
+    const { game = {}, appearances = [], absences = [], season = seasonResponse } = opts
     mockGet.mockImplementation((url: string) => {
       if (url === '/game/100') return Promise.resolve({ data: { ...gameResponse, ...game } })
       if (url === '/teams') return Promise.resolve({ data: [] })
@@ -392,6 +394,11 @@ describe.each(LAYOUTS)('GameResult 試合日ページ: $name', ({ width, kind })
         return appearances instanceof Error
           ? Promise.reject(appearances)
           : Promise.resolve({ data: appearances })
+      }
+      if (url === '/player_absences') {
+        return absences instanceof Error
+          ? Promise.reject(absences)
+          : Promise.resolve({ data: absences })
       }
       if (url === '/teams/1/season') {
         if (season instanceof Error) return Promise.reject(season)
@@ -433,9 +440,7 @@ describe.each(LAYOUTS)('GameResult 試合日ページ: $name', ({ width, kind })
 
   // 行き先が見える状態か（スマホ幅 = 段が開いている、PC 幅 = そのステップが選ばれている）
   const isShown = (wrapper: Wrapper, id: string) =>
-    kind === 'section'
-      ? !!wrapper.vm.openSections[id === 'in-game-absences' ? 'inGameAbsences' : id]
-      : body(wrapper, id).isVisible()
+    kind === 'section' ? !!wrapper.vm.openSections[id] : body(wrapper, id).isVisible()
 
   const appearanceRows = (n: number) =>
     Array.from({ length: n }, (_, i) => ({ id: i + 1, pitcher_id: 10 + i }))
@@ -454,6 +459,111 @@ describe.each(LAYOUTS)('GameResult 試合日ページ: $name', ({ width, kind })
     template: '<button data-testid="make-dirty" @click="$emit(\'dirty-change\', true)" />',
   }
 
+  // Test Basis: subtask_1783t Operator 指摘 1（2026-11-01）
+  it('離脱は 1 段だけで、状態は記録の有無にかかわらず info 固定（件数は区分別に出る）', async () => {
+    const wrapper = await mountDay({
+      absences: [
+        { start_date: '2026-06-10', phase: 'pre_game' },
+        { start_date: '2026-06-10', phase: 'in_game' },
+      ],
+    })
+    expect(wrapper.vm.steps.map((step: { id: string }) => step.id)).toEqual([
+      'members',
+      'roster',
+      'absences',
+      'setup',
+      'result',
+      'pitchers',
+    ])
+    expect(state(wrapper, 'absences')).toBe('info')
+    expect(body(wrapper, 'absences').text()).toContain('試合前 1 件・試合中 1 件')
+    expect(wrapper.find('[data-testid="link-in-game-absences"]').exists()).toBe(false)
+    const inGameOnly = await mountDay({
+      absences: [{ start_date: '2026-06-10', phase: 'in_game' }],
+    })
+    expect(state(inGameOnly, 'absences')).toBe('info')
+    expect(body(inGameOnly, 'absences').text()).toContain('試合前 0 件・試合中 1 件')
+    const preGameOnly = await mountDay({
+      absences: [{ start_date: '2026-06-10', phase: 'pre_game' }],
+    })
+    expect(state(preGameOnly, 'absences')).toBe('info')
+    expect(body(preGameOnly, 'absences').text()).toContain('試合前 1 件・試合中 0 件')
+    const absent = await mountDay({ absences: [] })
+    expect(state(absent, 'absences')).toBe('info')
+    expect(body(absent, 'absences').text()).toContain('試合前 0 件・試合中 0 件')
+  })
+
+  // Test Basis: subtask_1783t Operator 指摘 1（旧 URL のまとめ先）
+  it('?tab=in-game-absences は統合した離脱段を開く', async () => {
+    const wrapper = await mountDay({ query: { tab: 'in-game-absences' } })
+    expect(wrapper.vm.activeStep).toBe('absences')
+    expect(isShown(wrapper, 'absences')).toBe(true)
+  })
+
+  // Test Basis: subtask_1783t Operator 指摘 2（2026-11-01）
+  it('PC 内容部は重複見出しを消しリンクを残し、スマホの段見出しは残す', async () => {
+    const wrapper = await mountDay()
+    if (kind === 'step') {
+      await wrapper.find('[data-testid="step-absences"]').trigger('click')
+      const panel = wrapper.find('[data-testid="panel-absences"]')
+      expect(panel.find('h2').exists()).toBe(false)
+      expect(panel.find('[data-testid="link-absences"]').exists()).toBe(true)
+    } else {
+      expect(
+        wrapper.find('[data-testid="section-absences"] .game-day-section__title').text(),
+      ).toContain('3負傷・出場停止')
+    }
+  })
+
+  // Test Basis: subtask_1783t Operator 指摘 3（2026-11-01）
+  it('全日付種類の選択肢と見出しに同じ色とアイコンを付ける', async () => {
+    const expected: Record<string, [string, string]> = {
+      game_day: ['date-game', 'mdi-baseball-diamond'],
+      playoff_day: ['date-game', 'mdi-trophy'],
+      interleague_game_day: ['date-interleague', 'mdi-swap-horizontal'],
+      interleague_reserve_day: ['date-interleague', 'mdi-swap-horizontal'],
+      reserve_day: ['date-reserve', 'mdi-calendar-clock'],
+      travel_day: ['date-travel', 'mdi-bus'],
+      no_game_day: ['state-neutral', 'mdi-minus-circle-outline'],
+      postponed: ['date-rain', 'mdi-weather-pouring'],
+      no_game: ['date-rain', 'mdi-weather-pouring'],
+    }
+    const wrapper = await mountDay()
+    const select = wrapper.findComponent('[data-testid="date-type-select"]')
+    const items = select.props('items') as Array<{
+      value: string
+      title: string
+      color: string
+      icon: string
+    }>
+    for (const [dateType, [color, icon]] of Object.entries(expected)) {
+      wrapper.vm.currentDateType = dateType
+      await flushPromises()
+      const chip = wrapper.find('[data-testid="date-type-headline"]')
+      expect(chip.classes()).toContain(`bg-${color}`)
+      expect(chip.html()).toContain(icon)
+      if (dateType === 'postponed' || dateType === 'no_game')
+        expect(chip.classes()).toContain('text-decoration-line-through')
+      expect(select.find('.v-select__selection').html()).toContain(icon)
+      expect(items.filter((item) => item.value === dateType)).toEqual([
+        expect.objectContaining({ color, icon }),
+      ])
+    }
+  })
+
+  // Test Basis: subtask_1783t Operator 指摘 4（2026-11-01）
+  it('前後のボタン組は両方・片方の各場合に右端へ寄る', async () => {
+    for (const schedules of [
+      seasonResponse.season_schedules,
+      seasonResponse.season_schedules.filter((s) => s.id >= 100),
+      seasonResponse.season_schedules.filter((s) => s.id <= 100),
+    ]) {
+      const wrapper = await mountDay({ season: { ...seasonResponse, season_schedules: schedules } })
+      expect(wrapper.find('[data-testid="game-day-nav"]').classes()).toContain('ms-auto')
+      expect(wrapper.find('[data-testid="game-day-nav"]').classes()).toContain('justify-end')
+    }
+  })
+
   it('補助として、シーズンポータルの該当タブへのリンクも残す', async () => {
     const wrapper = await mountDay()
     expect(wrapper.vm.membersRoute).toEqual({
@@ -466,16 +576,15 @@ describe.each(LAYOUTS)('GameResult 試合日ページ: $name', ({ width, kind })
     expect(wrapper.find('[data-testid="link-members"]').text()).toBe('シーズンポータルで開く')
     expect(wrapper.find('[data-testid="link-roster"]').exists()).toBe(true)
     expect(wrapper.find('[data-testid="link-absences"]').exists()).toBe(true)
-    expect(wrapper.find('[data-testid="link-in-game-absences"]').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="link-in-game-absences"]').exists()).toBe(false)
   })
 
-  // ───────── 埋め込んだ画面（選手登録・契約変更 / 登録・昇降格 / 負傷・出場停止 / 試合中の負傷） ─────────
+  // ───────── 埋め込んだ画面（選手登録・契約変更 / 登録・昇降格 / 負傷・出場停止） ─────────
   describe('埋め込んだ画面', () => {
     const EMBEDS = [
       { slug: 'members', component: 'TeamMembers' },
       { slug: 'roster', component: 'SeasonRosterTab' },
       { slug: 'absences', component: 'SeasonAbsenceTab' },
-      { slug: 'in-game-absences', component: 'SeasonAbsenceTab' },
     ] as const
 
     // 段・ステップを開く（スマホ幅 = 段の見出しを押す、PC 幅 = ステップを選ぶ）
@@ -515,17 +624,15 @@ describe.each(LAYOUTS)('GameResult 試合日ページ: $name', ({ width, kind })
         // 他の部品は描画されない
         expect(embedLog.mounts).toEqual({ [component]: 1 })
         // Test Basis: thbig-dugout-visual-refresh-design.md §7 段2。
-        // 試合日だけ action を使う。試合中の負傷だけ default-phase も渡す（AMB-25）。
-        const inGame = slug === 'in-game-absences'
-        expect(body(wrapper, slug).findComponent({ name: component }).props()).toEqual(
-          inGame
-            ? { teamId: 1, defaultPhase: 'in_game', gameDayActions: true }
-            : { teamId: 1, gameDayActions: true },
-        )
-        // team-id（と上記の default-phase）以外の props・属性（asOfDate など）を足していない（scoped style の識別子は除く）
-        expect(Object.keys(embedded.attributes()).filter((k) => !k.startsWith('data-v-'))).toEqual(
-          inGame ? ['data-embed', 'data-default-phase'] : ['data-embed'],
-        )
+        // 試合日だけ action を使う。離脱の既定区分は試合前（AMB-25）。
+        expect(body(wrapper, slug).findComponent({ name: component }).props()).toEqual({
+          teamId: 1,
+          gameDayActions: true,
+        })
+        // team-id 以外の props・属性（asOfDate など）を足していない（scoped style の識別子は除く）
+        expect(Object.keys(embedded.attributes()).filter((k) => !k.startsWith('data-v-'))).toEqual([
+          'data-embed',
+        ])
         expect(isShown(wrapper, slug)).toBe(true)
       },
     )
@@ -541,30 +648,25 @@ describe.each(LAYOUTS)('GameResult 試合日ページ: $name', ({ width, kind })
       expect(embedLog.unmounts).toEqual({})
     })
 
-    it('離脱者の画面は 2 か所（離脱者・試合中の負傷）にあるので、開くたびに作り直して取り直す', async () => {
+    it('離脱者の画面は 1 か所で、開くたびに作り直して取り直す', async () => {
       const wrapper = await mountDay({ appearances: appearanceRows(1) })
       await openStep(wrapper, 'absences')
       expect(embedLog.mounts.SeasonAbsenceTab).toBe(1)
       await leaveStep(wrapper, 'absences')
-      await openStep(wrapper, 'in-game-absences')
+      await openStep(wrapper, 'absences')
       expect(embedLog.mounts.SeasonAbsenceTab).toBe(2)
-      await leaveStep(wrapper, 'in-game-absences')
+      await leaveStep(wrapper, 'absences')
       await openStep(wrapper, 'absences')
       expect(embedLog.mounts.SeasonAbsenceTab).toBe(3)
       expect(body(wrapper, 'absences').find('[data-embed]').exists()).toBe(true)
     })
 
-    it('試合中の負傷の段だけ、離脱の区分の既定値が試合中になる（離脱者の段は既定のまま）', async () => {
+    it('離脱の区分の既定値は試合前のまま', async () => {
       const wrapper = await mountDay({ appearances: appearanceRows(1) })
       await openStep(wrapper, 'absences')
       expect(body(wrapper, 'absences').find('[data-embed]').attributes('data-default-phase')).toBe(
         undefined,
       )
-      await leaveStep(wrapper, 'absences')
-      await openStep(wrapper, 'in-game-absences')
-      expect(
-        body(wrapper, 'in-game-absences').find('[data-embed]').attributes('data-default-phase'),
-      ).toBe('in_game')
     })
 
     describe('現在日と試合日が違う時の注記', () => {
@@ -665,7 +767,7 @@ describe.each(LAYOUTS)('GameResult 試合日ページ: $name', ({ width, kind })
     expect(wrapper.find('[data-testid="mismatch-banner"]').exists()).toBe(false)
     expect(state(wrapper, 'result')).toBe('done')
     expect(state(wrapper, 'pitchers')).toBe('done')
-    expect(body(wrapper, 'pitchers').text()).toContain('登板 3 人')
+    if (kind === 'section') expect(body(wrapper, 'pitchers').text()).toContain('登板 3 人')
     // 予告先発・対戦設定は未設定だが、結果が保存済みなので「なし」（急かさない）
     expect(state(wrapper, 'setup')).toBe('none')
     expect(wrapper.find('[data-testid="game-day-progress-text"]').text()).toBe('3 / 3 済')
@@ -1506,7 +1608,9 @@ describe.each(LAYOUTS)('GameResult 試合日ページ: $name', ({ width, kind })
       expect(select.exists()).toBe(true)
       const items = wrapper.findComponent('[data-testid="date-type-select"]').props('items')
       expect(items).toHaveLength(9)
-      expect(items).toContainEqual({ value: 'travel_day', title: '移動日' })
+      expect(items).toContainEqual(
+        expect.objectContaining({ value: 'travel_day', title: '移動日' }),
+      )
       mockPatch.mockResolvedValueOnce({ data: {} })
       wrapper
         .findComponent('[data-testid="date-type-select"]')
@@ -1572,7 +1676,7 @@ describe.each(LAYOUTS)('GameResult 試合日ページ: $name', ({ width, kind })
         season: scheduleWith(schedule(100, '2026-06-10', 'travel_day')),
         query: { tab: 'result' },
       })
-      for (const slug of ['setup', 'result', 'pitchers', 'in-game-absences']) {
+      for (const slug of ['setup', 'result', 'pitchers']) {
         expect(wrapper.find(`[data-testid="${kind}-${slug}"]`).exists()).toBe(false)
       }
       expect(wrapper.find('[data-testid="mismatch-banner"]').exists()).toBe(false)
@@ -1587,7 +1691,7 @@ describe.each(LAYOUTS)('GameResult 試合日ページ: $name', ({ width, kind })
         game: { score: null, opponent_score: null },
         season: scheduleWith(schedule(100, '2026-06-10', 'no_game')),
       })
-      for (const slug of ['setup', 'result', 'pitchers', 'in-game-absences']) {
+      for (const slug of ['setup', 'result', 'pitchers']) {
         expect(wrapper.find(`[data-testid="${kind}-${slug}"]`).exists()).toBe(true)
       }
       mockPatch.mockResolvedValue({ data: {} })
@@ -1600,7 +1704,7 @@ describe.each(LAYOUTS)('GameResult 試合日ページ: $name', ({ width, kind })
       expect(wrapper.find(`[data-testid="${kind}-result"]`).exists()).toBe(true)
     })
 
-    it('D: 登録・離脱の 3 段、試合日の 4 段を順に出す', async () => {
+    it('D: 登録・離脱の 3 段、試合日の 3 段を順に出す', async () => {
       const wrapper = await mountDay()
       const first = wrapper.find('[data-testid="step-group-registration"]')
       const second = wrapper.find('[data-testid="step-group-game"]')
@@ -1612,12 +1716,7 @@ describe.each(LAYOUTS)('GameResult 試合日ページ: $name', ({ width, kind })
           .map((e) => e.attributes('data-testid'))
       if (kind === 'step') {
         expect(ids(first)).toEqual(['step-members', 'step-roster', 'step-absences'])
-        expect(ids(second)).toEqual([
-          'step-setup',
-          'step-result',
-          'step-pitchers',
-          'step-in-game-absences',
-        ])
+        expect(ids(second)).toEqual(['step-setup', 'step-result', 'step-pitchers'])
       } else {
         expect(ids(first)).toEqual(['section-members', 'section-roster', 'section-absences'])
         expect(ids(second)).toEqual([
@@ -1625,7 +1724,6 @@ describe.each(LAYOUTS)('GameResult 試合日ページ: $name', ({ width, kind })
           'section-result',
           'section-pitchers',
           'section-pitcher-status',
-          'section-in-game-absences',
         ])
       }
     })
@@ -1657,7 +1755,6 @@ describe.each(LAYOUTS)('GameResult 試合日ページ: $name', ({ width, kind })
           setup: 'mdi-clipboard-list-outline',
           result: 'mdi-scoreboard-outline',
           pitchers: 'mdi-baseball',
-          'in-game-absences': 'mdi-ambulance',
         }
         for (const [slug, icon] of Object.entries(icons)) {
           const step = wrapper.find(`[data-testid="step-${slug}"]`)
@@ -1688,7 +1785,6 @@ describe.each(LAYOUTS)('GameResult 試合日ページ: $name', ({ width, kind })
           'section-result',
           'section-pitchers',
           'section-pitcher-status',
-          'section-in-game-absences',
         ])
         const text = wrapper.find('[data-testid="section-members"]').text()
         expect(text).toContain('選手登録・契約変更')
@@ -1769,7 +1865,7 @@ describe.each(LAYOUTS)('GameResult 試合日ページ: $name', ({ width, kind })
           .filter((p) => p.isVisible())
           .map((p) => p.attributes('data-testid')!.replace('panel-', ''))
 
-      it('登録・離脱と試合日の 7 段が見出しと区切りなしで一列に並ぶ', async () => {
+      it('登録・離脱と試合日の 6 段が見出しと区切りなしで一列に並ぶ', async () => {
         const wrapper = await mountDay()
         expect(wrapper.find('[data-testid="game-day-stack"]').exists()).toBe(false)
         const stepIds = (group: string) =>
@@ -1778,12 +1874,7 @@ describe.each(LAYOUTS)('GameResult 試合日ページ: $name', ({ width, kind })
             .findAll('.v-stepper-item')
             .map((e) => e.attributes('data-testid'))
         expect(stepIds('registration')).toEqual(['step-members', 'step-roster', 'step-absences'])
-        expect(stepIds('game')).toEqual([
-          'step-setup',
-          'step-result',
-          'step-pitchers',
-          'step-in-game-absences',
-        ])
+        expect(stepIds('game')).toEqual(['step-setup', 'step-result', 'step-pitchers'])
         const header = wrapper.find('.game-day-stepper__header')
         expect(header.text()).not.toContain('登録・離脱')
         expect(header.text()).not.toContain('試合日')
@@ -1907,8 +1998,8 @@ describe.each(LAYOUTS)('GameResult 試合日ページ: $name', ({ width, kind })
         it('順番に関係なく、どのステップへも直接移れる（URL は変えず、確認も出さない）', async () => {
           const wrapper = await mountDay({ appearances: appearanceRows(1) })
           expect(visiblePanels(wrapper)).toEqual(['result'])
-          await wrapper.find('[data-testid="step-in-game-absences"]').trigger('click')
-          expect(visiblePanels(wrapper)).toEqual(['in-game-absences'])
+          await wrapper.find('[data-testid="step-absences"]').trigger('click')
+          expect(visiblePanels(wrapper)).toEqual(['absences'])
           await wrapper.find('[data-testid="step-members"]').trigger('click')
           expect(visiblePanels(wrapper)).toEqual(['members'])
           await wrapper.find('[data-testid="step-pitchers"]').trigger('click')
@@ -1987,14 +2078,14 @@ describe.each(LAYOUTS)('GameResult 試合日ページ: $name', ({ width, kind })
           })
           // 読み込みの途中（シーズンの取得待ち）。初期ステップのまま
           expect(visiblePanels(wrapper)).toEqual(['result'])
-          await wrapper.find('[data-testid="step-in-game-absences"]').trigger('click')
+          await wrapper.find('[data-testid="step-absences"]').trigger('click')
 
           release()
           await flushPromises()
 
           // 読み込みが終われば、選ばなければ最初の未入力（予告先発・対戦設定）に移るところ
           expect(state(wrapper, 'setup')).toBe('todo')
-          expect(visiblePanels(wrapper)).toEqual(['in-game-absences'])
+          expect(visiblePanels(wrapper)).toEqual(['absences'])
         })
 
         it('読み込み中に何も選ばなければ、読み込みの完了で最初の未入力のステップへ移る', async () => {

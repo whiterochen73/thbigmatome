@@ -241,7 +241,7 @@ function onNameClick() {
 <style scoped>
 .player-name-link {
   cursor: pointer;
-  color: rgb(var(--v-theme-primary));
+  color: rgb(var(--v-theme-link));
   text-decoration: underline;
 }
 </style>

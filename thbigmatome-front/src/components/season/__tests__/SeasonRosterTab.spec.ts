@@ -7,6 +7,7 @@ import { createI18n } from 'vue-i18n'
 import ja from '@/locales/ja.json'
 import SeasonRosterTab from '../SeasonRosterTab.vue'
 import { useSnackbar } from '@/composables/useSnackbar'
+import type { RosterPlayer } from '@/types/rosterPlayer'
 
 const { mockGet, mockPost } = vi.hoisted(() => ({ mockGet: vi.fn(), mockPost: vi.fn() }))
 
@@ -44,7 +45,11 @@ describe('SeasonRosterTab 保存結果の通知', () => {
       props: { teamId: 1 },
       global: {
         plugins: [vuetify, i18n],
-        stubs: { AbsenceInfo: true, PromotionCooldownInfo: true },
+        stubs: {
+          AbsenceInfo: true,
+          PromotionCooldownInfo: true,
+          PlayerNameLink: { props: ['playerName'], template: '<span>{{ playerName }}</span>' },
+        },
       },
     })
     await flushPromises()
@@ -97,5 +102,62 @@ describe('SeasonRosterTab 保存結果の通知', () => {
     expect(message.value).toBe(`${ja.activeRoster.keyPlayerSaveFailed}: network`)
     expect(color.value).toBe('error')
     expect(alertSpy).not.toHaveBeenCalled()
+  })
+
+  // Test Basis: thbig-dugout-visual-stage5-mapping.md §7 b1-3〜b1-21
+  it('契約、外の世界、特例とコストバーを役割色で表示する', async () => {
+    const costTypes = [
+      'relief_only_cost',
+      'pitcher_only_cost',
+      'fielder_only_cost',
+      'two_way_cost',
+    ] as const
+    const roster: RosterPlayer[] = Array.from({ length: 29 }, (_, index) => ({
+      team_membership_id: index + 1,
+      player_id: index + 1,
+      player_name: `選手${index + 1}`,
+      number: `${index + 1}`,
+      squad: index === 28 ? 'second' : 'first',
+      cost: 1,
+      selected_cost_type: costTypes[index % 4]!,
+      handedness: null,
+      position: index % 4 < 2 ? 'pitcher' : null,
+      player_types: [],
+      is_outside_world: index === 1 || index === 28,
+    }))
+    mockGet.mockImplementation((url: string) =>
+      url === '/teams/1/roster'
+        ? Promise.resolve({
+            data: {
+              roster,
+              season_id: 1,
+              current_date: '2026-05-07',
+              key_player_id: 1,
+            },
+          })
+        : Promise.resolve({ data: [] }),
+    )
+    const wrapper = await mountTab()
+    const chips = wrapper.findAllComponents(components.VChip)
+    for (const [costType, color] of [
+      ['relief_only_cost', 'tag-pitcher'],
+      ['pitcher_only_cost', 'tag-pitcher'],
+      ['fielder_only_cost', 'tag-fielder'],
+      ['two_way_cost', 'state-neutral'],
+    ] as const) {
+      const chip = chips.find((item) => item.text() === ja.baseball.construction[costType])
+      expect(chip, costType).toBeDefined()
+      expect(chip!.props('color')).toBe(color)
+      expect(chip!.props('variant')).toBe('flat')
+    }
+    expect(chips.filter((chip) => chip.props('color') === 'state-info').length).toBeGreaterThan(1)
+    expect(wrapper.find('tr.key-player-row').exists()).toBe(true)
+    expect(wrapper.findComponent(components.VProgressLinear).props('color')).toBe('success')
+  })
+
+  // Test Basis: thbig-dugout-visual-stage5-mapping.md §7 b1-15
+  it('コスト上限未設定時の色は border-strong を返す', async () => {
+    const wrapper = await mountTab()
+    expect((wrapper.vm as unknown as { costBarColor: string }).costBarColor).toBe('border-strong')
   })
 })

@@ -153,6 +153,35 @@ describe('SeasonAbsenceTab', () => {
     expect(button.find('.mdi-plus').exists()).toBe(true)
   })
 
+  // Test Basis: thbig-dugout-visual-stage5-mapping.md §7 b1-22〜b1-24
+  it('残り2以下は復帰間近の色、アイコン、行 class を使い、削除は danger-ink', async () => {
+    const wrapper = await mountComponent([
+      makeAbsence(1, '復帰間近', '2026-04-13'),
+      makeAbsence(2, 'まだ離脱中', '2026-04-15'),
+    ])
+    const rows = wrapper.findAll('.v-data-table tbody tr')
+    const near = rows.find((row) => row.text().includes('復帰間近'))!
+    const far = rows.find((row) => row.text().includes('まだ離脱中'))!
+    const nearChip = near
+      .findAllComponents(components.VChip)
+      .find((chip) => chip.text().includes('2'))!
+    const farChip = far
+      .findAllComponents(components.VChip)
+      .find((chip) => chip.text().includes('4'))!
+    expect(nearChip.props('color')).toBe('state-done')
+    expect(nearChip.props('variant')).toBe('flat')
+    expect(nearChip.props('prependIcon')).toBe('mdi-clock-check-outline')
+    expect(near.classes()).toContain('bg-state-done')
+    expect(farChip.props('color')).toBeUndefined()
+    expect(farChip.props('variant')).toBe('text')
+    expect(far.classes()).not.toContain('bg-state-done')
+    expect(
+      near
+        .findAllComponents(components.VBtn)
+        .find((button) => button.props('color') === 'danger-ink'),
+    ).toBeDefined()
+  })
+
   it('怪我中はactiveに分類すること', async () => {
     const wrapper = await mountComponent([injured])
 

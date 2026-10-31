@@ -3,6 +3,8 @@ class TeamMembership < ApplicationRecord
   belongs_to :player
   belongs_to :player_card, optional: true
   has_many :season_rosters
+  # チーム編成の変更記録（cmd_1784 段2）。契約・カード・在籍は、ある時点の値をここから導く（RosterState）
+  has_many :team_membership_changes, dependent: :destroy
   has_many :player_absences, dependent: :restrict_with_error
 
   attr_accessor :skip_commissioner_validation
@@ -12,6 +14,8 @@ class TeamMembership < ApplicationRecord
 
   validate :player_not_in_director_sibling_team, on: :create, unless: :skip_commissioner_validation
 
+  # 在籍中（放出されていない）。on_team は変更記録の最新の状態の写し（RosterState#rebuild_cache!）
+  scope :active, -> { where(on_team: true) }
   scope :included_in_team_total, -> { where(excluded_from_team_total: false) }
   scope :excluded_from_team_total, -> { where(excluded_from_team_total: true) }
 
@@ -114,7 +118,7 @@ class TeamMembership < ApplicationRecord
                                   .pluck(:team_id)
     return if sibling_team_ids.empty?
 
-    if TeamMembership.where(team_id: sibling_team_ids, player_id: player_id).exists?
+    if TeamMembership.active.where(team_id: sibling_team_ids, player_id: player_id).exists?
       sibling_team = Team.joins(:team_managers)
                          .where(team_managers: { manager_id: director_id, role: :director })
                          .where.not(id: team.id)

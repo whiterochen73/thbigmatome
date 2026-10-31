@@ -11,7 +11,7 @@ module DirectorSiblingCheck
                                   .pluck(:team_id)
     return if sibling_team_ids.empty?
 
-    if TeamMembership.where(team_id: sibling_team_ids, player_id: team.team_memberships.pluck(:player_id)).exists?
+    if TeamMembership.active.where(team_id: sibling_team_ids, player_id: team.team_memberships.pluck(:player_id)).exists?
       raise OverlapError, "Director変更不可: 新しい監督の他チームと選手が重複しています"
     end
   end

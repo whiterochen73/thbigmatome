@@ -199,6 +199,37 @@ RSpec.describe "Api::V1::PitcherGameStatesController", type: :request do
         expect(ids).not_to include(other_pitcher.id)
       end
 
+      it "区分で同じ日の 1軍が分かれる: 試合後に昇格した投手は、同じ日の pre_game では 2軍、post_game で 1軍" do
+        late_pitcher = create(:player, :pitcher)
+        late_card = create(:player_card, player: late_pitcher, card_set: card_set, card_type: "pitcher", is_pitcher: true)
+        late_tm = create(:team_membership, team: team, player: late_pitcher, player_card: late_card, squad: "second")
+        create(:season_roster, team_membership: late_tm, squad: "first", registered_on: "2026-03-10", phase: "post_game")
+
+        ids = lambda do |params|
+          get "/api/v1/teams/#{team.id}/pitcher_game_states/fatigue_summary", params: { date: "2026-03-10" }.merge(params)
+          response.parsed_body.map { |e| e["player_id"] }
+        end
+
+        expect(ids.call({})).to eq([ pitcher_first.id ])
+        expect(ids.call(phase: "pre_game")).to eq([ pitcher_first.id ])
+        expect(ids.call(phase: "post_game")).to contain_exactly(pitcher_first.id, late_pitcher.id)
+      end
+
+      it "写しが first でも昇降格の記録が無い投手は 2軍として返さない" do
+        stale_pitcher = create(:player, :pitcher)
+        stale_card = create(:player_card, player: stale_pitcher, card_set: card_set, card_type: "pitcher", is_pitcher: true)
+        create(:team_membership, team: team, player: stale_pitcher, player_card: stale_card, squad: "first")
+
+        get_fatigue_summary(date: "2026-03-10")
+
+        expect(response.parsed_body.map { |e| e["player_id"] }).to eq([ pitcher_first.id ])
+      end
+
+      it "不正な区分は 400" do
+        get "/api/v1/teams/#{team.id}/pitcher_game_states/fatigue_summary", params: { date: "2026-03-10", phase: "midnight" }
+        expect(response).to have_http_status(:bad_request)
+      end
+
       it "登板歴なし → projected_status: full, last_role: nil" do
         get_fatigue_summary(date: "2026-03-10")
 

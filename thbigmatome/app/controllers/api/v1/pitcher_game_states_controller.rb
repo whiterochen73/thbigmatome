@@ -14,13 +14,9 @@ module Api
         pitcher_ids = if player_ids.present?
           player_ids
         else
-          # 投手能力を持つカード（can_pitchスコープ）かつ野手専念契約でない選手のみ投手として扱う（#5 #6）
-          @team.team_memberships
-               .where.not(selected_cost_type: "fielder_only_cost")
-               .joins(:player_card)
-               .merge(PlayerCard.can_pitch)
-               .distinct
-               .pluck(:player_id)
+          # 投手能力を持つカードかつ野手専念契約でない選手のみ投手として扱う（#5 #6）。
+          # 在籍・契約・カードは target_date 時点（試合前）のチーム編成の変更記録から導く（cmd_1784 段2）
+          pitcher_views_at(target_date, RosterState::DEFAULT_PHASE, first_only: false).map(&:player_id)
         end
 
         injured_ids = build_injured_set(pitcher_ids, target_date)
@@ -65,22 +61,14 @@ module Api
       def fatigue_summary
         target_date = params[:date]&.to_date || Date.today
 
-        # season_rostersベースでtarget_date時点の1軍メンバーを取得（現在のsquadではなく登録履歴で判定）
-        # 投手能力を持つカード（can_pitchスコープ）かつ野手専念契約でない選手のみ（#5 #6）
-        all_pitcher_memberships = @team.team_memberships
-          .where.not(selected_cost_type: "fielder_only_cost")
-          .joins(:player_card)
-          .merge(PlayerCard.can_pitch)
-          .includes(:player, player_card: { player_card_abilities: :ability_definition })
-          .distinct
-
-        pitcher_memberships = all_pitcher_memberships.select do |tm|
-          latest_roster = tm.season_rosters
-                            .where("registered_on <= ?", target_date)
-                            .order(registered_on: :desc, created_at: :desc)
-                            .first
-          latest_roster && latest_roster.squad == "first"
+        # 1軍判定は昇降格の変更記録（RosterState）で target_date・phase 時点を導く。省略時は pre_game。記録が無い選手は 2軍
+        phase = begin
+          RosterState.parse_phase(params[:phase])
+        rescue ArgumentError
+          return render json: { error: "Invalid phase" }, status: :bad_request
         end
+        # 投手能力を持つカードかつ野手専念契約でない選手のみ（#5 #6）。契約・カードも target_date・phase 時点の値（cmd_1784 段2）
+        pitcher_memberships = pitcher_views_at(target_date, phase, first_only: true)
 
         pitcher_ids = pitcher_memberships.map(&:player_id)
         name_map = pitcher_memberships.each_with_object({}) { |tm, h| h[tm.player_id] = tm.player.name }
@@ -182,6 +170,27 @@ module Api
 
       private
 
+      PITCHER_CARD_INCLUDES = [ :player_card_defenses, { player_card_abilities: :ability_definition } ].freeze
+
+      # 時点 (date, phase) に在籍していて、その時点の契約が野手専念でなく、その時点のカードが投手能力を持つ選手の TeamMembership（view）。
+      # first_only: true なら 1軍だけ。契約・カードはチーム編成の変更記録（RosterState）から導く
+      def pitcher_views_at(date, phase, first_only:)
+        rows = @team.all_team_memberships
+                    .includes(:player, :season_rosters, :team_membership_changes, player_card: PITCHER_CARD_INCLUDES)
+                    .to_a
+        state = RosterState.new(@team, memberships: rows, card_includes: PITCHER_CARD_INCLUDES)
+        entries = state.at(date, phase)
+        rows.filter_map do |row|
+          entry = entries.fetch(row.id)
+          next unless entry.on_team
+          next if first_only && !entry.first?
+          next if entry.selected_cost_type == "fielder_only_cost"
+
+          view = state.view(row, entry)
+          view if view.player_card&.can_pitch?
+        end
+      end
+
       # 「先発なら」を出さない理由。リリーフ専門（カード）か救援専任契約。先発もできる契約に変われば nil に戻る
       def starter_omitted_reason(membership)
         return nil if membership.nil?
@@ -206,7 +215,7 @@ module Api
       end
 
       def build_injured_set(pitcher_ids, target_date)
-        tm_map = @team.team_memberships
+        tm_map = @team.all_team_memberships
           .where(player_id: pitcher_ids)
           .each_with_object({}) { |tm, h| h[tm.id] = tm.player_id }
 
@@ -226,7 +235,7 @@ module Api
       # 戻り値: { player_id => [{start_date:, end_date:}, ...] }
       # end_date は復帰可能日（排他的）。nil は無期限離脱。
       def preload_pitcher_absences(pitcher_ids)
-        tm_map = @team.team_memberships
+        tm_map = @team.all_team_memberships
           .where(player_id: pitcher_ids)
           .each_with_object({}) { |tm, h| h[tm.id] = tm.player_id }
 

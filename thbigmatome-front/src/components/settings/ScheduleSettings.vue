@@ -3,7 +3,7 @@
     <v-card-title>
       {{ t('settings.schedule.title') }}
       <v-spacer></v-spacer>
-      <v-btn color="accent" variant="flat" @click="openDialog(null)">
+      <v-btn color="action" variant="flat" @click="openDialog(null)">
         {{ t('settings.schedule.add') }}
       </v-btn>
     </v-card-title>

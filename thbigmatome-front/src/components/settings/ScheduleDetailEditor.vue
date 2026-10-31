@@ -67,7 +67,7 @@
       <v-card-actions>
         <v-spacer></v-spacer>
         <v-btn variant="text" @click="closeDialog">{{ t('actions.cancel') }}</v-btn>
-        <v-btn color="accent" variant="flat" @click="save">{{ t('actions.save') }}</v-btn>
+        <v-btn color="action" variant="flat" @click="save">{{ t('actions.save') }}</v-btn>
       </v-card-actions>
     </v-card>
   </v-dialog>

@@ -29,7 +29,7 @@
         density="compact"
         class="mb-4"
       />
-      <v-btn type="submit" color="primary" :loading="loading">変更する</v-btn>
+      <v-btn type="submit" color="action" variant="flat" :loading="loading">変更する</v-btn>
     </v-form>
   </DataCard>
 </template>

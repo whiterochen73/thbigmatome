@@ -43,7 +43,7 @@
         <v-btn variant="text" @click="cancel">
           {{ t('actions.cancel') }}
         </v-btn>
-        <v-btn color="accent" variant="flat" @click="save" :disabled="!isFormValid">
+        <v-btn color="action" variant="flat" @click="save" :disabled="!isFormValid">
           {{ t('actions.save') }}
         </v-btn>
       </v-card-actions>

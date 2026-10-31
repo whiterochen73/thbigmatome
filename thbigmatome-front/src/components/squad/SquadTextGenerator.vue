@@ -222,7 +222,7 @@
 
             <div class="d-flex align-center ga-2 mt-3">
               <v-btn
-                color="primary"
+                color="action"
                 variant="elevated"
                 prepend-icon="mdi-content-copy"
                 :loading="copying"

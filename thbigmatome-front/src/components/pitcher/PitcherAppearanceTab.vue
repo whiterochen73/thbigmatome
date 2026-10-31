@@ -233,7 +233,7 @@
       <!-- 保存ボタン -->
       <div class="d-flex justify-end mt-4">
         <v-btn
-          color="primary"
+          color="action"
           variant="elevated"
           :loading="saving"
           :disabled="!canSave"

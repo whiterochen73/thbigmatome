@@ -2,7 +2,7 @@
   <div>
     <!-- 試合結果 -->
     <div class="d-flex align-center mb-3">
-      <span class="text-caption text-grey mr-2">試合結果:</span>
+      <span class="text-caption on-surface-variant mr-2">試合結果:</span>
       <v-chip :color="gameResultColor" variant="flat" size="small">{{ gameResultLabel }}</v-chip>
     </div>
 
@@ -81,7 +81,7 @@
               <template #item="{ props, item }">
                 <v-list-item v-bind="props" :disabled="item.disabled">
                   <template #append>
-                    <span class="ml-1 text-caption text-grey">{{ item.preGameInfo }}</span>
+                    <span class="ml-1 text-caption on-surface-variant">{{ item.preGameInfo }}</span>
                   </template>
                 </v-list-item>
               </template>
@@ -199,7 +199,10 @@
 
           <!-- 試合前状態テキスト -->
           <v-col cols="auto">
-            <span v-if="getPitcherPreGameInfo(row.pitcher_id)" class="text-caption text-grey">
+            <span
+              v-if="getPitcherPreGameInfo(row.pitcher_id)"
+              class="text-caption on-surface-variant"
+            >
               {{ getPitcherPreGameInfo(row.pitcher_id) }}
             </span>
           </v-col>
@@ -310,7 +313,7 @@
           </tr>
         </tbody>
       </v-table>
-      <div v-else-if="!loadingFatigue" class="text-caption text-grey">データなし</div>
+      <div v-else-if="!loadingFatigue" class="text-caption on-surface-variant">データなし</div>
     </template>
   </div>
 </template>

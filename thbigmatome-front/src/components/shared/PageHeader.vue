@@ -22,8 +22,8 @@ defineProps<{
   font-family: var(--font-display);
   font-size: 22px;
   font-weight: 700;
-  color: var(--ai);
-  border-left: 3px solid var(--shu);
+  color: rgb(var(--v-theme-link));
+  border-left: 3px solid rgb(var(--v-theme-link));
   padding-left: 14px;
   margin-bottom: 0;
   line-height: 1.3;

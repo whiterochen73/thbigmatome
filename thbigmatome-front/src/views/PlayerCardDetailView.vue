@@ -152,7 +152,7 @@
                   </tbody>
                 </table>
               </div>
-              <div v-else class="section-body text-grey text-caption pa-2">守備値なし</div>
+              <div v-else class="section-body on-surface-variant text-caption pa-2">守備値なし</div>
             </div>
 
             <!-- 特徴・能力 -->
@@ -201,7 +201,7 @@
                     (!card.trait_list || !card.trait_list.length) &&
                     (!card.ability_list || !card.ability_list.length)
                   "
-                  class="text-grey text-caption"
+                  class="on-surface-variant text-caption"
                 >
                   特徴・能力なし
                 </div>

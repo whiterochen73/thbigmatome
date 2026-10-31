@@ -33,29 +33,29 @@
             <v-card-text>
               <v-row>
                 <v-col cols="12" sm="6" md="3">
-                  <div class="text-caption text-grey">日付</div>
+                  <div class="text-caption on-surface-variant">日付</div>
                   <div>{{ game.real_date }}</div>
                 </v-col>
                 <v-col cols="12" sm="6" md="3">
-                  <div class="text-caption text-grey">大会ID</div>
+                  <div class="text-caption on-surface-variant">大会ID</div>
                   <div>{{ game.competition_id }}</div>
                 </v-col>
                 <v-col cols="12" sm="6" md="3">
-                  <div class="text-caption text-grey">ホームチームID</div>
+                  <div class="text-caption on-surface-variant">ホームチームID</div>
                   <div>{{ game.home_team_id }}</div>
                 </v-col>
                 <v-col cols="12" sm="6" md="3">
-                  <div class="text-caption text-grey">ビジターチームID</div>
+                  <div class="text-caption on-surface-variant">ビジターチームID</div>
                   <div>{{ game.visitor_team_id }}</div>
                 </v-col>
                 <v-col cols="12" sm="6" md="3">
-                  <div class="text-caption text-grey">ステータス</div>
+                  <div class="text-caption on-surface-variant">ステータス</div>
                   <v-chip :color="game.status === 'confirmed' ? 'success' : 'warning'" size="small">
                     {{ game.status === 'confirmed' ? '確定' : '下書き' }}
                   </v-chip>
                 </v-col>
                 <v-col cols="12" sm="6" md="3">
-                  <div class="text-caption text-grey">出典</div>
+                  <div class="text-caption on-surface-variant">出典</div>
                   <div>{{ game.source }}</div>
                 </v-col>
               </v-row>

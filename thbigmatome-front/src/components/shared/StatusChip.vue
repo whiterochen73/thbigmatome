@@ -2,7 +2,9 @@
   <v-chip
     :color="resolvedColor"
     :size="size"
-    :variant="absenceAppearance || status === 'hachinai' ? 'flat' : 'tonal'"
+    :variant="
+      absenceAppearance || ['hachinai', 'active', 'warning'].includes(status) ? 'flat' : 'tonal'
+    "
     :prepend-icon="
       absenceAppearance?.icon ?? (status === 'hachinai' ? 'mdi-tag-outline' : undefined)
     "
@@ -22,11 +24,11 @@ const props = defineProps<{
 }>()
 
 const statusColorMap: Record<string, string> = {
-  active: 'success',
+  active: 'state-done',
   inactive: 'default',
   commissioner: 'link',
   hachinai: 'state-info',
-  warning: 'warning',
+  warning: 'state-todo',
 }
 
 const absenceAppearance = computed(() => ABSENCE_APPEARANCE[props.status])

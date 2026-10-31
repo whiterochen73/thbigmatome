@@ -51,21 +51,21 @@
             <v-card-text class="py-2">
               <v-row no-gutters>
                 <v-col cols="auto" class="mr-4">
-                  <span class="text-caption text-grey">日付</span><br />
+                  <span class="text-caption on-surface-variant">日付</span><br />
                   <span>{{ formatDate(gameRecord.game_date) }}</span>
                 </v-col>
                 <v-col cols="auto" class="mr-4">
-                  <span class="text-caption text-grey">スコア</span><br />
+                  <span class="text-caption on-surface-variant">スコア</span><br />
                   <span class="font-weight-bold">
                     {{ gameRecord.score_away ?? '?' }} - {{ gameRecord.score_home ?? '?' }}
                   </span>
                 </v-col>
                 <v-col cols="auto" class="mr-4" v-if="gameRecord.stadium">
-                  <span class="text-caption text-grey">球場</span><br />
+                  <span class="text-caption on-surface-variant">球場</span><br />
                   <span>{{ gameRecord.stadium }}</span>
                 </v-col>
                 <v-col cols="auto">
-                  <span class="text-caption text-grey">打席数</span><br />
+                  <span class="text-caption on-surface-variant">打席数</span><br />
                   <span>{{ gameRecord.at_bat_records?.length ?? '-' }}</span>
                 </v-col>
               </v-row>
@@ -82,7 +82,7 @@
       <!-- レビュー進捗バー (draft時のみ) -->
       <div v-if="gameRecord.status === 'draft'" class="review-progress mb-3">
         <div class="d-flex align-center justify-space-between mb-1">
-          <span class="text-caption text-grey">確認済み打席</span>
+          <span class="text-caption on-surface-variant">確認済み打席</span>
           <span class="text-caption font-weight-bold">{{ reviewedCount }} / {{ totalCount }}</span>
         </div>
         <v-progress-linear

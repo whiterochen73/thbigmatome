@@ -19,7 +19,7 @@
         <!-- 背番号 & 種別 -->
         <div class="d-flex align-center justify-between mb-1">
           <span class="text-caption">
-            <span class="text-grey">#</span>{{ card.player_number }}
+            <span class="on-surface-variant">#</span>{{ card.player_number }}
           </span>
           <v-chip
             :color="card.card_type === 'pitcher' ? 'tag-pitcher' : 'tag-fielder'"
@@ -34,7 +34,7 @@
 
         <!-- ポジション（野手の場合） -->
         <div v-if="card.defenses && card.defenses.length > 0" class="mb-1">
-          <div class="text-caption text-grey">ポジション</div>
+          <div class="text-caption on-surface-variant">ポジション</div>
           <div class="d-flex flex-wrap gap-1">
             <v-chip
               v-for="(def, idx) in card.defenses"
@@ -50,18 +50,18 @@
 
         <!-- コスト（あればの情報） -->
         <div v-if="card.cost" class="mb-1">
-          <div class="text-caption text-grey">コスト</div>
+          <div class="text-caption on-surface-variant">コスト</div>
           <div class="text-caption font-weight-bold">{{ card.cost }}</div>
         </div>
 
         <!-- 走力 -->
         <div class="mb-1">
-          <div class="text-caption text-grey">走力</div>
+          <div class="text-caption on-surface-variant">走力</div>
           <div class="text-caption font-weight-bold">{{ card.speed }}</div>
         </div>
 
         <!-- スタイル/スキル（テキスト省略） -->
-        <div v-if="card.unique_traits" class="text-caption text-grey-darken-1 mb-1">
+        <div v-if="card.unique_traits" class="text-caption on-surface-variant mb-1">
           <span class="text-truncate">{{ card.unique_traits }}</span>
         </div>
       </v-card-text>
@@ -131,13 +131,5 @@ const emit = defineEmits<{
 
 .player-name {
   color: #1a1a1a;
-}
-
-.text-grey {
-  color: #777777;
-}
-
-.text-grey-darken-1 {
-  color: #555555;
 }
 </style>

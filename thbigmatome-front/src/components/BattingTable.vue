@@ -24,7 +24,7 @@
     </v-table>
 
     <!-- 凡例 -->
-    <div class="d-flex flex-wrap ga-2 pa-2 pt-1 text-caption text-grey-darken-1">
+    <div class="d-flex flex-wrap ga-2 pa-2 pt-1 text-caption on-surface-variant">
       <span class="d-flex align-center ga-1">
         <span class="legend-swatch bg-orange-lighten-4"></span>安打・四死球
       </span>

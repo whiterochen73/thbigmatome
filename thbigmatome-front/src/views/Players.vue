@@ -38,7 +38,7 @@
             :label="seriesLabelMap[item.series] ?? item.series"
             size="small"
           />
-          <span v-else class="text-grey">—</span>
+          <span v-else class="on-surface-variant">—</span>
         </template>
         <template #item.card_count="{ item }">
           <a href="#" class="card-count-link" @click.prevent="router.push(`/players/${item.id}`)">

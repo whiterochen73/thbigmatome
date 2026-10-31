@@ -41,7 +41,7 @@
             density="compact"
           >
             <template v-slot:[`item.role`]="{ item }">
-              <v-chip :color="item.role === 'commissioner' ? 'primary' : 'default'" size="small">
+              <v-chip :color="item.role === 'commissioner' ? 'link' : 'default'" size="small">
                 {{ item.role === 'commissioner' ? 'コミッショナー' : '一般' }}
               </v-chip>
             </template>

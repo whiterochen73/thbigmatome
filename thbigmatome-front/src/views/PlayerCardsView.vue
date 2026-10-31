@@ -36,6 +36,7 @@
             density="compact"
             rounded="sm"
             color="link"
+            :style="{ borderColor: 'rgb(var(--v-theme-border-strong))' }"
           >
             <v-btn value="" size="small">全種</v-btn>
             <v-btn value="pitcher" size="small">投手</v-btn>
@@ -45,7 +46,14 @@
         </div>
       </template>
       <template #toggles>
-        <v-btn-toggle v-model="viewMode" mandatory density="compact" rounded="sm" color="link">
+        <v-btn-toggle
+          v-model="viewMode"
+          mandatory
+          density="compact"
+          rounded="sm"
+          color="link"
+          :style="{ borderColor: 'rgb(var(--v-theme-border-strong))' }"
+        >
           <v-btn value="table" size="small" title="テーブル表示">
             <v-icon size="small">mdi-table</v-icon>
           </v-btn>

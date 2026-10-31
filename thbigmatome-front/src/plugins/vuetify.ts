@@ -5,6 +5,7 @@ import * as directives from 'vuetify/directives'
 import { aliases, mdi } from 'vuetify/iconsets/mdi'
 import { ja, en } from 'vuetify/locale'
 import 'vuetify/styles'
+import '@/assets/button-size.css'
 import '@mdi/font/css/materialdesignicons.css'
 
 export default createVuetify({
@@ -30,12 +31,19 @@ export default createVuetify({
         colors: {
           // 基本カラー（和色）
           primary: '#1B3A6B', // 藍色（あいいろ）
+          'on-primary': '#FFFFFF',
           secondary: '#4A7A8A', // 千草色（ちくさいろ）
+          'on-secondary': '#FFFFFF',
           accent: '#C0392B', // 朱色（しゅいろ）
+          'on-accent': '#FFFFFF',
           success: '#5D8A2F', // 萌黄（もえぎ）
+          'on-success': '#111111',
           warning: '#D4940A', // 山吹（やまぶき）
+          'on-warning': '#1A1A1A',
           error: '#B01C2A', // 紅（くれない）
+          'on-error': '#FFFFFF',
           info: '#2E86AB', // 浅葱（あさぎ）
+          'on-info': '#111111',
 
           // 背景・サーフェス
           background: '#F8F6F1', // 和紙色
@@ -106,12 +114,19 @@ export default createVuetify({
         colors: {
           // 基本カラー（Dark mode、明るく調整）
           primary: '#4A72B8', // 藍を明るく
+          'on-primary': '#FFFFFF',
           secondary: '#6AADBE', // 千草を明るく
+          'on-secondary': '#1A1A1A',
           accent: '#E05C4A', // 朱を明るく
+          'on-accent': '#1A1A1A',
           success: '#7BBF4A', // 萌黄を明るく
+          'on-success': '#1A1A1A',
           warning: '#F0B030', // 山吹を明るく
+          'on-warning': '#1A1A1A',
           error: '#E84040', // 紅を明るく
+          'on-error': '#111111',
           info: '#5AACCE', // 浅葱を明るく
+          'on-info': '#1A1A1A',
 
           // 背景・サーフェス
           background: '#1A1A2E', // 夜空色

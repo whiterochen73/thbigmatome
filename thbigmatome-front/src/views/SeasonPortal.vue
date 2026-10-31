@@ -217,6 +217,9 @@
                               :class="`chip-${getTypeCategory(day.schedule.date_type)}`"
                               @click.stop
                             >
+                              <v-icon size="x-small" class="mr-1">{{
+                                dateTypeIcon(day.schedule.date_type)
+                              }}</v-icon>
                               {{ t(`settings.schedule.dateTypes.${day.schedule.date_type}`) }}
                             </span>
                           </template>
@@ -237,6 +240,9 @@
                           class="type-chip"
                           :class="`chip-${getTypeCategory(day.schedule.date_type)}`"
                         >
+                          <v-icon size="x-small" class="mr-1">{{
+                            dateTypeIcon(day.schedule.date_type)
+                          }}</v-icon>
                           {{ t(`settings.schedule.dateTypes.${day.schedule.date_type}`) }}
                         </span>
 
@@ -378,6 +384,9 @@
                             class="type-badge"
                             :class="`badge-${getTypeCategory(row.schedule.date_type)}`"
                           >
+                            <v-icon size="x-small" class="mr-1">{{
+                              dateTypeIcon(row.schedule.date_type)
+                            }}</v-icon>
                             {{ t(`settings.schedule.dateTypes.${row.schedule.date_type}`) }}
                           </span>
                           <span v-else class="text-disabled">—</span>
@@ -539,6 +548,9 @@
               class="type-badge"
               :class="`badge-${getTypeCategory(selectedDay.schedule.date_type)}`"
             >
+              <v-icon size="x-small" class="mr-1">{{
+                dateTypeIcon(selectedDay.schedule.date_type)
+              }}</v-icon>
               {{ t(`settings.schedule.dateTypes.${selectedDay.schedule.date_type}`) }}
             </span>
           </div>
@@ -946,13 +958,13 @@ const nextMonth = () => {
 const dateTypes = SCHEDULE_DATE_TYPES
 
 const legendItems = [
-  { type: 'game_day', color: 'primary' },
-  { type: 'interleague_game_day', color: 'info' },
-  { type: 'reserve_day', color: 'secondary' },
-  { type: 'interleague_reserve_day', color: 'info' },
-  { type: 'travel_day', color: 'warning' },
-  { type: 'no_game_day', color: 'surface-variant' },
-  { type: 'no_game', color: 'surface-variant' },
+  { type: 'game_day' },
+  { type: 'interleague_game_day' },
+  { type: 'reserve_day' },
+  { type: 'interleague_reserve_day' },
+  { type: 'travel_day' },
+  { type: 'no_game_day' },
+  { type: 'no_game' },
 ]
 
 // 日程種別カテゴリ (チップ/バッジのスタイルに使用)
@@ -966,6 +978,18 @@ const getTypeCategory = (dateType?: string) => {
   if (['travel_day'].includes(dateType)) return 'travel'
   if (['no_game', 'postponed'].includes(dateType)) return 'no-game'
   return 'off'
+}
+
+// Test Basis: thbig-dugout-visual-refresh-design.md §6.5, §7 段3
+const dateTypeIcon = (dateType?: string): string => {
+  if (dateType === 'playoff_day') return 'mdi-trophy'
+  if (dateType === 'game_day') return 'mdi-baseball-diamond'
+  if (dateType === 'interleague_game_day' || dateType === 'interleague_reserve_day')
+    return 'mdi-swap-horizontal'
+  if (dateType === 'reserve_day') return 'mdi-calendar-clock'
+  if (dateType === 'travel_day') return 'mdi-bus'
+  if (dateType === 'no_game' || dateType === 'postponed') return 'mdi-weather-pouring'
+  return 'mdi-minus-circle-outline'
 }
 
 // 雨天中止等のキャンセル系date_typeか判定
@@ -1136,10 +1160,10 @@ onMounted(async () => {
   text-align: center;
 }
 .sat-header {
-  color: #2563eb;
+  color: rgb(var(--v-theme-link));
 }
 .sun-header {
-  color: rgb(var(--v-theme-error));
+  color: rgb(var(--v-theme-danger-ink));
 }
 
 .day-cell {
@@ -1174,16 +1198,19 @@ onMounted(async () => {
   color: #fff;
 }
 .sat-num {
-  color: #2563eb;
+  color: rgb(var(--v-theme-link));
 }
 .sun-num {
-  color: rgb(var(--v-theme-error));
+  color: rgb(var(--v-theme-danger-ink));
 }
 
 .not-current-month {
   background-color: rgb(var(--v-theme-surface-variant));
-  opacity: 0.55;
+  border-style: dashed;
   cursor: default;
+}
+.not-current-month .day-number {
+  color: rgb(var(--v-theme-on-surface-variant));
 }
 .not-current-month:hover {
   background-color: rgb(var(--v-theme-surface-variant));
@@ -1221,61 +1248,60 @@ onMounted(async () => {
 }
 
 /* ===== 日程種別カラー (chip/badge共通) ===== */
-/* UD配慮: 赤緑対比不使用、青系⇔暖色系の色相差を最大活用 */
+/* 日付種類は寒色と無彩色で区別し、文字は対になる on-date-* を使う。 */
 
-/* 試合日・プレーオフ日: 藍色（primary）強 */
+/* 試合日・プレーオフ日: 藍色 */
 .chip-game,
 .badge-game {
-  background: rgba(var(--v-theme-primary), 0.18);
-  color: rgb(var(--v-theme-primary));
+  background: rgb(var(--v-theme-date-game));
+  color: rgb(var(--v-theme-on-date-game));
   font-weight: 700;
 }
 
-/* 交流戦試合日: 浅葱色（info）強 */
+/* 交流戦試合日: 浅葱色 */
 .chip-inter,
 .badge-inter {
-  background: rgba(var(--v-theme-info), 0.18);
-  color: rgb(var(--v-theme-info));
+  background: rgb(var(--v-theme-date-interleague));
+  color: rgb(var(--v-theme-on-date-interleague));
   font-weight: 700;
 }
 
-/* 予備日（通常ペナント）: 千草色（secondary=teal）中間色 */
+/* 予備日（通常ペナント）: 千草色 */
 .chip-reserve,
 .badge-reserve {
-  background: rgba(var(--v-theme-secondary), 0.18);
-  color: rgb(var(--v-theme-secondary));
+  background: rgb(var(--v-theme-date-reserve));
+  color: rgb(var(--v-theme-on-date-reserve));
   font-weight: 500;
 }
 
-/* 交流戦予備日: 浅葱色（info）淡め — interの軽量版 */
+/* 交流戦予備日: 浅葱色 */
 .chip-inter-reserve,
 .badge-inter-reserve {
-  background: rgba(var(--v-theme-info), 0.09);
-  color: rgb(var(--v-theme-info));
+  background: rgb(var(--v-theme-date-interleague));
+  color: rgb(var(--v-theme-on-date-interleague));
   font-weight: 400;
 }
 
-/* 移動日: 山吹色（warning=amber）暖色 */
+/* 移動日: 鼠色 */
 .chip-travel,
 .badge-travel {
-  background: rgba(var(--v-theme-warning), 0.18);
-  color: rgb(var(--v-theme-warning));
+  background: rgb(var(--v-theme-date-travel));
+  color: rgb(var(--v-theme-on-date-travel));
   font-weight: 500;
 }
 
 /* 試合不可日（off系）: 無彩色 */
 .chip-off,
 .badge-off {
-  background: rgb(var(--v-theme-surface-variant));
-  color: rgb(var(--v-theme-on-surface-variant));
+  background: rgb(var(--v-theme-state-neutral));
+  color: rgb(var(--v-theme-on-state-neutral));
 }
 
 /* 雨天ノーゲーム・雨天中止: 取消線 + 薄い無彩色 */
 .chip-no-game,
 .badge-no-game {
-  background: rgb(var(--v-theme-surface-variant));
-  color: rgb(var(--v-theme-on-surface-variant));
-  opacity: 0.7;
+  background: rgb(var(--v-theme-date-rain));
+  color: rgb(var(--v-theme-on-date-rain));
   text-decoration: line-through;
 }
 
@@ -1308,21 +1334,33 @@ onMounted(async () => {
 }
 
 .result-mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 24px;
+  min-height: 22px;
+  padding: 0 4px;
+  border-radius: 4px;
   font-weight: 700;
-  font-size: 0.95rem;
+  font-size: 0.85rem;
 }
 .result-win {
-  color: rgb(var(--v-theme-success));
+  background: rgb(var(--v-theme-result-win));
+  color: rgb(var(--v-theme-on-result-win));
 }
 .result-lose {
-  color: rgb(var(--v-theme-error));
+  background: rgb(var(--v-theme-result-loss));
+  color: rgb(var(--v-theme-on-result-loss));
 }
 .result-draw {
-  color: rgb(var(--v-theme-secondary));
+  background: rgb(var(--v-theme-result-draw));
+  color: rgb(var(--v-theme-on-result-draw));
 }
 /* ノーゲームは勝敗の色を付けない（勝敗・成績に入れない） */
 .result-no_game {
-  color: rgb(var(--v-theme-on-surface-variant));
+  background: rgb(var(--v-theme-result-nogame));
+  color: rgb(var(--v-theme-on-result-nogame));
+  text-decoration: line-through;
 }
 
 /* 入力漏れの印。色だけで伝えないため文字を付ける（配色は試合日ページの状態チップと同じ） */
@@ -1356,10 +1394,7 @@ onMounted(async () => {
 }
 
 .entry-btn {
-  font-size: 0.72rem !important;
   padding: 0 4px !important;
-  min-height: 18px !important;
-  height: auto !important;
 }
 
 /* ===== 凡例 ===== */
@@ -1383,6 +1418,7 @@ onMounted(async () => {
   width: 14px;
   height: 10px;
   border-radius: 3px;
+  border: 1px solid rgb(var(--v-theme-border-strong));
   flex-shrink: 0;
   display: inline-block;
 }
@@ -1444,27 +1480,15 @@ onMounted(async () => {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 22px;
+  min-width: 24px;
   height: 22px;
-  border-radius: 50%;
+  padding: 0 4px;
+  border-radius: 4px;
   font-size: 0.85rem;
   font-weight: 700;
 }
-.result-badge.result-win {
-  background: rgba(var(--v-theme-success), 0.15);
-  color: rgb(var(--v-theme-success));
-}
-.result-badge.result-lose {
-  background: rgba(var(--v-theme-error), 0.15);
-  color: rgb(var(--v-theme-error));
-}
-.result-badge.result-draw {
-  background: rgba(var(--v-theme-secondary), 0.15);
-  color: rgb(var(--v-theme-secondary));
-}
+
 .result-badge.result-no_game {
-  background: rgba(var(--v-theme-on-surface-variant), 0.15);
-  color: rgb(var(--v-theme-on-surface-variant));
   font-size: 0.7rem;
 }
 
@@ -1475,11 +1499,11 @@ onMounted(async () => {
   white-space: nowrap;
 }
 .sat-text {
-  color: #2563eb;
+  color: rgb(var(--v-theme-link));
   font-weight: 600;
 }
 .sun-text {
-  color: rgb(var(--v-theme-error));
+  color: rgb(var(--v-theme-danger-ink));
   font-weight: 600;
 }
 

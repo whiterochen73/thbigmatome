@@ -13,6 +13,20 @@ export type StageState =
   | 'upcoming' // まだ（試合日が来ていない。急かさない）
   | 'info' // 別画面で行う段。状態は出さず、入口だけ置く
 
+// Test Basis: thbig-dugout-visual-refresh-design.md §6.1, §6.5, §7 段3
+// 離脱・時期のチップと、同じ意味を示す操作色はこの表を共用する。
+export const ABSENCE_APPEARANCE: Record<string, { color: string; icon: string }> = {
+  injury: { color: 'absence-out', icon: 'mdi-hospital-box' },
+  suspension: { color: 'absence-out', icon: 'mdi-gavel' },
+  reconditioning: { color: 'absence-adjust', icon: 'mdi-wrench' },
+  cooldown: { color: 'absence-cooldown', icon: 'mdi-timer-sand' },
+}
+
+export const ABSENCE_PHASE_APPEARANCE = {
+  pre_game: { color: 'zone-roster', icon: 'mdi-account-switch' },
+  in_game: { color: 'zone-game', icon: 'mdi-baseball-diamond' },
+} as const
+
 // SeasonPortal と試合日ページで共用する日付種類・試合日判定
 export const SCHEDULE_DATE_TYPES = [
   'game_day',

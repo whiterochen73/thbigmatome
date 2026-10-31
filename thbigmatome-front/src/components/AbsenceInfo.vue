@@ -2,9 +2,9 @@
   <v-row>
     <v-col>
       <v-alert
-        variant="tonal"
-        :color="filteredAbsences.length === 0 ? 'primary' : 'error'"
-        border-color="error"
+        variant="flat"
+        color="state-neutral"
+        border-color="state-neutral"
         density="compact"
         elevation="2"
       >
@@ -17,7 +17,18 @@
           </div>
         </template>
         <div v-if="filteredAbsences.length > 0">
-          <div v-for="absence in filteredAbsences" :key="absence.id" class="ma-0">
+          <div
+            v-for="absence in filteredAbsences"
+            :key="absence.id"
+            class="ma-0 d-flex align-center ga-2"
+          >
+            <v-chip
+              :color="ABSENCE_APPEARANCE[absence.absence_type]?.color ?? 'state-neutral'"
+              :prepend-icon="ABSENCE_APPEARANCE[absence.absence_type]?.icon ?? 'mdi-alert'"
+              size="small"
+              variant="flat"
+              >{{ t(`enums.player_absence.absence_type.${absence.absence_type}`) }}</v-chip
+            >
             {{ getAbsenceDisplayText(absence) }}
           </div>
         </div>
@@ -34,6 +45,7 @@ import { ref, onMounted, computed, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import type { PlayerAbsence } from '@/types/playerAbsence'
 import axios from 'axios'
+import { ABSENCE_APPEARANCE } from '@/components/gameDay/gameDayStatus'
 
 const playerAbsences = ref<PlayerAbsence[]>([])
 
@@ -87,10 +99,9 @@ const filteredAbsences = computed(() => {
 })
 
 const getAbsenceDisplayText = (absence: PlayerAbsence) => {
-  const absenceType = t(`enums.player_absence.absence_type.${absence.absence_type}`)
   const durationUnit = t(`enums.player_absence.duration_unit.${absence.duration_unit}`)
   const phase = absence.phase === 'in_game' ? `（${t('enums.player_absence.phase.in_game')}）` : ''
-  return `【${absenceType}】${absence.player_name}: ${absence.reason} (${new Date(absence.start_date).toLocaleDateString('ja-JP', { month: 'long', day: 'numeric' })}${phase}から${absence.duration}${durationUnit})`
+  return `${absence.player_name}: ${absence.reason} (${new Date(absence.start_date).toLocaleDateString('ja-JP', { month: 'long', day: 'numeric' })}${phase}から${absence.duration}${durationUnit})`
 }
 
 watch(

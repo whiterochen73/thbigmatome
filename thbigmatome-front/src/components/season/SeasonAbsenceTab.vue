@@ -37,8 +37,11 @@
           <template v-slot:item.phase="{ item }">
             <v-chip
               size="small"
-              variant="outlined"
-              :color="item.phase === 'in_game' ? 'deep-orange' : undefined"
+              variant="flat"
+              :color="ABSENCE_PHASE_APPEARANCE[item.phase]?.color ?? 'state-neutral'"
+              :prepend-icon="
+                ABSENCE_PHASE_APPEARANCE[item.phase]?.icon ?? 'mdi-help-circle-outline'
+              "
               :data-testid="`phase-${item.id}`"
             >
               {{ t(`enums.player_absence.phase.${item.phase}`) }}
@@ -46,10 +49,10 @@
           </template>
           <template v-slot:item.absence_type="{ item }">
             <v-chip
-              :color="getAbsenceColor(item.absence_type)"
+              :color="ABSENCE_APPEARANCE[item.absence_type]?.color ?? 'state-neutral'"
               size="small"
-              variant="tonal"
-              :prepend-icon="getAbsenceIcon(item.absence_type)"
+              variant="flat"
+              :prepend-icon="ABSENCE_APPEARANCE[item.absence_type]?.icon ?? 'mdi-alert'"
             >
               {{ t(`enums.player_absence.absence_type.${item.absence_type}`) }}
             </v-chip>
@@ -112,12 +115,24 @@
               {{ formatDate(item.start_date) }}
             </template>
             <template v-slot:item.absence_type="{ item }">
-              <v-chip :color="getAbsenceColor(item.absence_type)" size="small" variant="tonal">
+              <v-chip
+                :color="ABSENCE_APPEARANCE[item.absence_type]?.color ?? 'state-neutral'"
+                :prepend-icon="ABSENCE_APPEARANCE[item.absence_type]?.icon ?? 'mdi-alert'"
+                size="small"
+                variant="flat"
+              >
                 {{ t(`enums.player_absence.absence_type.${item.absence_type}`) }}
               </v-chip>
             </template>
             <template v-slot:item.phase="{ item }">
-              <v-chip size="small" variant="outlined">
+              <v-chip
+                size="small"
+                variant="flat"
+                :color="ABSENCE_PHASE_APPEARANCE[item.phase]?.color ?? 'state-neutral'"
+                :prepend-icon="
+                  ABSENCE_PHASE_APPEARANCE[item.phase]?.icon ?? 'mdi-help-circle-outline'
+                "
+              >
                 {{ t(`enums.player_absence.phase.${item.phase}`) }}
               </v-chip>
             </template>
@@ -157,6 +172,7 @@ import type { SeasonDetail } from '@/types/seasonDetail'
 import type { AbsencePhase, PlayerAbsence } from '@/types/playerAbsence'
 import PlayerAbsenceFormDialog from '@/components/PlayerAbsenceFormDialog.vue'
 import PlayerNameLink from '@/components/shared/PlayerNameLink.vue'
+import { ABSENCE_APPEARANCE, ABSENCE_PHASE_APPEARANCE } from '@/components/gameDay/gameDayStatus'
 
 // defaultPhase: 新規登録ダイアログの区分の既定値。試合日ページの「試合中の負傷」段は in_game を渡す
 const props = withDefaults(
@@ -238,32 +254,6 @@ const getRowProps = ({ item }: { item: PlayerAbsence }) => {
     return { class: 'bg-green-lighten-4' }
   }
   return {}
-}
-
-const getAbsenceColor = (type: string) => {
-  switch (type) {
-    case 'injury':
-      return 'red'
-    case 'suspension':
-      return 'orange'
-    case 'reconditioning':
-      return 'blue-grey'
-    default:
-      return 'grey'
-  }
-}
-
-const getAbsenceIcon = (type: string) => {
-  switch (type) {
-    case 'injury':
-      return 'mdi-hospital-box'
-    case 'suspension':
-      return 'mdi-gavel'
-    case 'reconditioning':
-      return 'mdi-wrench'
-    default:
-      return 'mdi-alert'
-  }
 }
 
 const formatDate = (dateStr: string) => {

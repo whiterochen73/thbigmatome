@@ -84,6 +84,62 @@ const mockParseResponse = {
 }
 
 describe('GameImportView', () => {
+  // Test Basis: thbig-dugout-visual-stage5-mapping.md §7 b3-16〜b3-20
+  it('ステップとベンチの役割色をチップの props で表示する', async () => {
+    mockedAxios.post = vi.fn().mockResolvedValue({
+      data: {
+        ...mockParseResponse,
+        pregame_info: {
+          ...mockParseResponse.pregame_info,
+          home_bench: [
+            { name: '投手A', role: 'pitcher' },
+            { name: '野手A', role: 'fielder' },
+            { name: 'その他A', role: 'unknown' },
+          ],
+          visitor_bench: [{ name: '投手B', role: 'pitcher' }],
+        },
+      },
+    })
+    const wrapper = mount(GameImportView, { global: { plugins: [vuetify, createTestRouter()] } })
+    await flushPromises()
+    expect(
+      wrapper
+        .findAllComponents(components.VChip)
+        .find((chip) => chip.text() === 'Step 1')
+        ?.props('color'),
+    ).toBe('link')
+    await wrapper.find('textarea').setValue('ログ')
+    await wrapper
+      .findAll('.v-btn')
+      .find((button) => button.text().includes('解析する'))!
+      .trigger('click')
+    await flushPromises()
+    expect(
+      wrapper
+        .findAllComponents(components.VChip)
+        .find((chip) => chip.text() === 'Step 2')
+        ?.props('color'),
+    ).toBe('link')
+    const benchPanels = wrapper
+      .findAll('.v-expansion-panel-title')
+      .filter((panel) => panel.text().includes('ベンチ'))
+    for (const panel of benchPanels) await panel.trigger('click')
+    await flushPromises()
+    for (const [label, color] of [
+      ['投手', 'tag-pitcher'],
+      ['野手', 'tag-fielder'],
+      ['?', 'state-neutral'],
+    ]) {
+      const matching = wrapper
+        .findAllComponents(components.VChip)
+        .filter((chip) => chip.text() === label)
+      expect(matching.length, label).toBeGreaterThan(0)
+      for (const chip of matching) {
+        expect(chip.props('color')).toBe(color)
+        expect(chip.props('variant')).toBe('flat')
+      }
+    }
+  })
   beforeEach(() => {
     vi.clearAllMocks()
     mockedAxios.get = vi

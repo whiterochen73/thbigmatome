@@ -198,7 +198,7 @@ const deleteManager = async (id: number) => {
   const result = await confirmDialog.value.open(
     t('managerList.deleteConfirmTitle'),
     t('managerList.deleteConfirmMessage'),
-    { color: 'error' },
+    { destructive: true },
   )
   if (!result) {
     return

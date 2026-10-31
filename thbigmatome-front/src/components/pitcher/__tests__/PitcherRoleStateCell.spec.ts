@@ -16,6 +16,23 @@ const mountCell = (state: { status: string; notes: string[] } | null) =>
 
 // 台帳 AMB-19 追補: 疲労P 0 と「最初から疲労状態」は別の状態。画面でも区別して出す（cmd_1775 第3段 E9）
 describe('roleStatusLabel / roleStatusColor', () => {
+  // Test Basis: thbig-dugout-visual-stage5-mapping.md §7 b4-1〜b4-9
+  it('登板時状態の各色は役割トークンで、チップは flat', () => {
+    for (const [status, color] of [
+      ['full', 'state-done'],
+      ['injury_check', 'state-todo'],
+      ['unavailable', 'absence-out'],
+      ['injured', 'absence-out'],
+      ['fatigued_start', 'absence-cooldown'],
+      ['fatigued_start_check', 'absence-cooldown'],
+      ['reduced_0', 'state-info'],
+      ['other', 'state-neutral'],
+    ]) {
+      const chip = mountCell({ status: status!, notes: [] }).findComponent({ name: 'VChip' })
+      expect(chip.props('color'), status).toBe(color)
+      expect(chip.props('variant'), status).toBe('flat')
+    }
+  })
   it('疲労P0（reduced_0）と最初から疲労状態（fatigued_start）は、ラベルも色も別', () => {
     expect(roleStatusLabel('reduced_0')).toBe('⚡ P0')
     expect(roleStatusLabel('fatigued_start')).toBe('🔥 最初から疲労')
@@ -41,7 +58,7 @@ describe('roleStatusLabel / roleStatusColor', () => {
   it('表より短い間隔は「不可」と同じ表示（規定なしの表示は無い）', () => {
     expect(roleStatusLabel('unavailable')).toBe('🚫 不可')
     expect(roleStatusLabel('no_rule')).toBe('no_rule')
-    expect(roleStatusColor('unavailable')).toBe('error')
+    expect(roleStatusColor('unavailable')).toBe('absence-out')
   })
 
   it('未知の値はそのまま返す（握りつぶさない）', () => {

@@ -109,6 +109,61 @@ function cloneMock(overrides: object = {}) {
 }
 
 describe('GameRecordDetailView', () => {
+  // Test Basis: thbig-dugout-visual-stage5-mapping.md §7 b3-3〜b3-7
+  it('差異件数は state-warn の flat、絞り込みは danger-ink、確定は action', async () => {
+    vi.mocked(axios.get).mockResolvedValue({
+      data: cloneMock({
+        at_bat_records: [
+          { ...mockAtBatRecords[0], discrepancies: [{ field: 'score' }] },
+          mockAtBatRecords[1],
+        ],
+      }),
+    })
+    const router = createTestRouter()
+    await router.isReady()
+    const wrapper = mount(GameRecordDetailView, { global: { plugins: [vuetify, router] } })
+    await flushPromises()
+    const discrepancy = wrapper
+      .findAllComponents(components.VChip)
+      .filter((chip) => chip.text().includes('差異 1'))
+    expect(discrepancy.length).toBeGreaterThan(0)
+    for (const chip of discrepancy) {
+      expect(chip.props('color')).toBe('state-warn')
+      expect(chip.props('variant')).toBe('flat')
+    }
+    const filter = wrapper
+      .findAllComponents(components.VChip)
+      .find((chip) => chip.props('value') === 'discrepancy')!
+    expect(filter.props('color')).toBe('danger-ink')
+    const confirm = wrapper
+      .findAllComponents(components.VBtn)
+      .find((button) => button.text().includes('このゲームを確定'))!
+    expect(confirm.props('color')).toBe('action')
+    expect(confirm.props('variant')).toBe('flat')
+  })
+  // Test Basis: thbig-dugout-visual-stage5-mapping.md §7 b3-1, b3-4, b3-6
+  it('記録の未確定と確定は役割色の flat チップで表示する', async () => {
+    for (const [status, color, icon] of [
+      ['draft', 'state-todo', 'mdi-circle-outline'],
+      ['confirmed', 'state-done', 'mdi-check-circle'],
+    ]) {
+      vi.mocked(axios.get).mockResolvedValue({ data: cloneMock({ status }) })
+      const router = createTestRouter()
+      await router.isReady()
+      const wrapper = mount(GameRecordDetailView, { global: { plugins: [vuetify, router] } })
+      await flushPromises()
+      const chips = wrapper
+        .findAllComponents(components.VChip)
+        .filter((chip) => chip.text().includes(status === 'draft' ? '未確定' : '確定済み'))
+      expect(chips.length).toBeGreaterThan(0)
+      for (const chip of chips) {
+        expect(chip.props('color')).toBe(color)
+        expect(chip.props('variant')).toBe('flat')
+        expect(chip.props('prependIcon')).toBe(icon)
+      }
+      wrapper.unmount()
+    }
+  })
   beforeEach(() => {
     vi.resetAllMocks()
     vi.mocked(axios.get).mockResolvedValue({ data: cloneMock() })

@@ -19,7 +19,7 @@
               :key="f.value"
               size="x-small"
               :variant="addPlayerPositionFilter === f.value ? 'elevated' : 'outlined'"
-              :color="addPlayerPositionFilter === f.value ? 'secondary' : undefined"
+              :color="addPlayerPositionFilter === f.value ? 'primary' : undefined"
               rounded
               @click="addPlayerPositionFilter = f.value"
             >
@@ -61,8 +61,11 @@
                     <template #prepend>
                       <v-chip
                         size="x-small"
-                        :color="item.position === 'pitcher' ? 'blue' : 'green'"
-                        variant="tonal"
+                        :color="item.position === 'pitcher' ? 'tag-pitcher' : 'tag-fielder'"
+                        variant="flat"
+                        :prepend-icon="
+                          item.position === 'pitcher' ? 'mdi-baseball' : 'mdi-baseball-bat'
+                        "
                         class="mr-2"
                       >
                         {{ item.position ? t(`baseball.positions.${item.position}`) : '—' }}
@@ -94,7 +97,7 @@
             </v-col>
             <v-col cols="12" md="3">
               <v-btn
-                :color="gameDayActions ? 'action' : 'primary'"
+                :color="gameDayActions ? 'action' : 'link'"
                 :variant="gameDayActions ? 'flat' : 'outlined'"
                 :prepend-icon="gameDayActions ? 'mdi-plus' : undefined"
                 @click="addPlayer"
@@ -139,7 +142,7 @@
                     }}</span>
                     <v-tooltip location="top" max-width="280">
                       <template #activator="{ props }">
-                        <v-icon v-bind="props" size="x-small" color="grey"
+                        <v-icon v-bind="props" size="x-small" class="on-surface-variant"
                           >mdi-help-circle-outline</v-icon
                         >
                       </template>
@@ -168,7 +171,7 @@
                   height="12"
                   rounded
                   :color="costGaugeColor"
-                  bg-color="grey-lighten-3"
+                  bg-color="surface-variant"
                 />
                 <div class="d-flex justify-space-between mt-1">
                   <span class="text-caption text-disabled">0</span>
@@ -195,7 +198,7 @@
                   :key="position"
                   size="small"
                   variant="tonal"
-                  color="primary"
+                  color="link"
                 >
                   {{ t(`baseball.positions.${position}`) }}: {{ count }}
                 </v-chip>
@@ -235,7 +238,7 @@
                     <span>{{ t('teamMembers.headers.costExcluded') }}</span>
                     <v-tooltip location="top" max-width="240">
                       <template #activator="{ props }">
-                        <v-icon v-bind="props" size="x-small" color="grey"
+                        <v-icon v-bind="props" size="x-small" class="on-surface-variant"
                           >mdi-help-circle-outline</v-icon
                         >
                       </template>
@@ -361,7 +364,7 @@
             >{{ t('actions.cancel') }}</v-btn
           >
           <v-btn
-            :color="gameDayActions ? 'action' : 'action'"
+            color="action"
             variant="flat"
             :prepend-icon="gameDayActions ? 'mdi-content-save-outline' : undefined"
             @click="saveTeamMembers"

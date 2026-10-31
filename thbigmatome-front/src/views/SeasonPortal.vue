@@ -62,7 +62,7 @@
       </v-card-actions>
     </v-card>
 
-    <v-tabs v-if="!loading && season" v-model="activeTab" color="primary" class="mt-2">
+    <v-tabs v-if="!loading && season" v-model="activeTab" color="link" class="mt-2">
       <v-tab value="calendar">
         <v-icon start>mdi-calendar</v-icon>
         {{ t('seasonPortal.tabs.calendar') }}
@@ -155,7 +155,7 @@
                   mandatory
                   density="compact"
                   variant="outlined"
-                  color="primary"
+                  color="link"
                 >
                   <v-btn value="calendar" title="カレンダー表示">
                     <v-icon>mdi-calendar-month</v-icon>
@@ -287,7 +287,7 @@
                         </template>
                         <v-btn
                           size="x-small"
-                          color="primary"
+                          color="link"
                           variant="text"
                           density="compact"
                           :to="{
@@ -449,7 +449,7 @@
                           <v-btn
                             v-if="row.schedule"
                             size="x-small"
-                            color="primary"
+                            color="link"
                             variant="text"
                             :to="{
                               name: 'GameResult',
@@ -504,7 +504,7 @@
       <!-- リリース非表示: オーダータブ（タブ6）
       <v-tabs-window-item value="lineup">
         <div class="mt-2">
-          <v-tabs v-model="lineupSubTab" color="primary" density="compact" class="mb-2">
+          <v-tabs v-model="lineupSubTab" color="link" density="compact" class="mb-2">
             <v-tab value="template">
               <v-icon start size="small">mdi-pencil</v-icon>
               テンプレート編集
@@ -639,7 +639,7 @@
           </v-btn>
           <template v-if="isGameType(selectedDay.schedule.date_type)">
             <v-btn
-              color="teal"
+              :style="{ borderColor: 'rgb(var(--v-theme-border-strong))' }"
               variant="outlined"
               block
               class="mt-2"

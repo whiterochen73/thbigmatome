@@ -1110,7 +1110,6 @@ const onGameLogFileChange = async (event: Event) => {
       const ok = await confirmDialog.value?.open(
         t('gameResult.gameLog.replaceTitle'),
         t('gameResult.gameLog.replaceMessage'),
-        { color: 'warning' },
       )
       if (!ok) return
     }
@@ -1140,7 +1139,6 @@ const updateDateType = async (nextType: string) => {
     const accepted = await confirmDialog.value?.open(
       t('gameDay.dateType.confirmTitle'),
       t('gameDay.dateType.confirmMessage'),
-      { color: 'warning' },
     )
     if (!accepted) return
   }
@@ -1217,7 +1215,6 @@ const confirmDiscard = async (): Promise<boolean> => {
   const ok = await confirmDialog.value?.open(
     t('gameDay.leaveConfirm.title'),
     t('gameDay.leaveConfirm.message'),
-    { color: 'warning' },
   )
   return ok ?? true
 }
@@ -1238,7 +1235,6 @@ const goToGameDay = async (id: number) => {
     const ok = await confirmDialog.value?.open(
       t('gameDay.moveConfirm.title'),
       `${mismatchMessage.value}\n${t('gameDay.moveConfirm.suffix')}`,
-      { color: 'warning' },
     )
     if (!ok) return
   }

@@ -31,9 +31,13 @@
           />
           <h1 class="text-h5">vs {{ gameRecord.opponent_team_name }}</h1>
           <v-chip
-            :color="gameRecord.status === 'confirmed' ? 'success' : 'amber-darken-2'"
+            :color="gameRecord.status === 'confirmed' ? 'state-done' : 'state-todo'"
             size="small"
             label
+            variant="flat"
+            :prepend-icon="
+              gameRecord.status === 'confirmed' ? 'mdi-check-circle' : 'mdi-circle-outline'
+            "
             class="ml-1"
           >
             {{ gameRecord.status === 'confirmed' ? '確定済み' : '未確定' }}
@@ -84,7 +88,7 @@
         <v-progress-linear
           :model-value="reviewProgress"
           color="success"
-          bg-color="grey-lighten-3"
+          bg-color="surface-variant"
           rounded
           height="8"
         />
@@ -96,7 +100,7 @@
           <v-chip value="all" label variant="outlined" filter>全て</v-chip>
           <v-chip value="declaration" label variant="outlined" filter>📢 宣言のみ</v-chip>
           <v-chip value="dice" label variant="outlined" filter>🎲 ダイスのみ</v-chip>
-          <v-chip value="discrepancy" label variant="outlined" filter color="error"
+          <v-chip value="discrepancy" label variant="outlined" filter color="danger-ink"
             >⚠️ 差異あり</v-chip
           >
         </v-chip-group>
@@ -114,7 +118,14 @@
           <span class="text-caption inning-meta">投手: {{ group.pitcher }}</span>
           <span class="text-caption inning-meta">打席数: {{ group.records.length }}</span>
           <span class="text-caption inning-meta">得点: {{ group.totalRuns }}</span>
-          <v-chip v-if="group.discrepancyCount > 0" color="error" size="x-small" label class="ml-1">
+          <v-chip
+            v-if="group.discrepancyCount > 0"
+            color="state-warn"
+            variant="flat"
+            size="x-small"
+            label
+            class="ml-1"
+          >
             ⚠️ 差異 {{ group.discrepancyCount }}
           </v-chip>
           <v-spacer />
@@ -142,7 +153,7 @@
       <v-row v-if="gameRecord.status === 'draft'" class="mt-2">
         <v-col cols="12" class="d-flex justify-end gap-3">
           <v-btn
-            color="amber-darken-2"
+            :style="{ borderColor: 'rgb(var(--v-theme-border-strong))' }"
             variant="outlined"
             prepend-icon="mdi-check-all"
             @click="bulkConfirmDialog = true"
@@ -150,8 +161,8 @@
             全打席確定
           </v-btn>
           <v-btn
-            color="success"
-            variant="tonal"
+            color="action"
+            variant="flat"
             :loading="confirming"
             prepend-icon="mdi-check-circle"
             @click="confirmGameRecord"
@@ -176,12 +187,7 @@
         <v-card-actions>
           <v-spacer />
           <v-btn variant="text" @click="bulkConfirmDialog = false">キャンセル</v-btn>
-          <v-btn
-            color="amber-darken-2"
-            variant="tonal"
-            :loading="bulkConfirming"
-            @click="bulkMarkReviewed"
-          >
+          <v-btn color="action" variant="flat" :loading="bulkConfirming" @click="bulkMarkReviewed">
             確定する
           </v-btn>
         </v-card-actions>
@@ -397,13 +403,13 @@ onMounted(async () => {
 }
 
 .top-header {
-  background: var(--color-visitor);
-  color: white;
+  background: rgb(var(--v-theme-game-visitor));
+  color: rgb(var(--v-theme-surface));
 }
 
 .bot-header {
-  background: var(--color-home);
-  color: white;
+  background: rgb(var(--v-theme-game-home));
+  color: rgb(var(--v-theme-surface));
 }
 
 .inning-meta {

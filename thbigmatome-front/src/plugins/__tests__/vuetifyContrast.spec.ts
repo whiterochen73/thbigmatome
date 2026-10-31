@@ -3,6 +3,11 @@ import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import vuetify from '../vuetify'
 
+// Test Basis: thbig-dugout-visual-stage5-mapping.md §7 b0-3 / subtask_1787o 申し送り3
+it('VTabs の既定の選択色は link', () => {
+  expect(vuetify.defaults.value.VTabs.color).toBe('link')
+})
+
 // Test Basis: thbig-dugout-visual-refresh-design.md §6.1, §6.2, §6.4 (subtask_1787d)
 const expected = {
   light: {

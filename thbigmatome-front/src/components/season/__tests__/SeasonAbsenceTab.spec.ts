@@ -157,7 +157,7 @@ describe('SeasonAbsenceTab', () => {
   it('残り2以下は復帰間近の色、アイコン、行 class を使い、削除は danger-ink', async () => {
     const wrapper = await mountComponent([
       makeAbsence(1, '復帰間近', '2026-04-13'),
-      makeAbsence(2, 'まだ離脱中', '2026-04-15'),
+      makeAbsence(2, 'まだ離脱中', '2026-04-14'),
     ])
     const rows = wrapper.findAll('.v-data-table tbody tr')
     const near = rows.find((row) => row.text().includes('復帰間近'))!
@@ -167,7 +167,7 @@ describe('SeasonAbsenceTab', () => {
       .find((chip) => chip.text().includes('2'))!
     const farChip = far
       .findAllComponents(components.VChip)
-      .find((chip) => chip.text().includes('4'))!
+      .find((chip) => chip.text().includes('3'))!
     expect(nearChip.props('color')).toBe('state-done')
     expect(nearChip.props('variant')).toBe('flat')
     expect(nearChip.props('prependIcon')).toBe('mdi-clock-check-outline')

@@ -42,10 +42,10 @@
     <v-row class="mb-2">
       <v-col cols="12">
         <div class="d-flex align-center ga-2 text-body-2 text-medium-emphasis">
-          <v-chip :color="currentStep === 1 ? 'primary' : 'default'" size="small">Step 1</v-chip>
+          <v-chip :color="currentStep === 1 ? 'link' : 'default'" size="small">Step 1</v-chip>
           <span>ログ入力</span>
           <v-icon size="small">mdi-chevron-right</v-icon>
-          <v-chip :color="currentStep === 2 ? 'primary' : 'default'" size="small">Step 2</v-chip>
+          <v-chip :color="currentStep === 2 ? 'link' : 'default'" size="small">Step 2</v-chip>
           <span>メタデータ確認</span>
         </div>
       </v-col>
@@ -585,9 +585,9 @@ const visitorBenchFielders = computed(() =>
 )
 
 function benchRoleColor(role: string): string {
-  if (role === 'pitcher') return 'var(--color-visitor)'
-  if (role === 'fielder') return '#2c5f2e'
-  return 'grey'
+  if (role === 'pitcher') return 'tag-pitcher'
+  if (role === 'fielder') return 'tag-fielder'
+  return 'state-neutral'
 }
 
 function benchRoleLabel(role: string): string {
@@ -743,7 +743,7 @@ function resetAll() {
 
 <style scoped>
 .parse-summary-card {
-  border-left: 4px solid var(--color-visitor);
+  border-left: 4px solid rgb(var(--v-theme-link));
 }
 
 .game-settings-card {
@@ -751,16 +751,16 @@ function resetAll() {
 }
 
 .team-card__header {
-  color: white;
+  color: rgb(var(--v-theme-surface));
   padding: 8px 16px;
 }
 
 .team-card__header--home {
-  background: var(--color-home);
+  background: rgb(var(--v-theme-game-home));
 }
 
 .team-card__header--visitor {
-  background: var(--color-visitor);
+  background: rgb(var(--v-theme-game-visitor));
 }
 
 .starter-info {

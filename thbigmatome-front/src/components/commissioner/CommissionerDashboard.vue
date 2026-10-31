@@ -514,7 +514,7 @@ const openTeamDialog = (team: Team | null = null) => {
 const deleteTeam = async (id: number) => {
   if (!confirmDialog.value) return
   const result = await confirmDialog.value.open('チーム削除', 'このチームを削除しますか？', {
-    color: 'error',
+    destructive: true,
   })
   if (!result) return
   try {

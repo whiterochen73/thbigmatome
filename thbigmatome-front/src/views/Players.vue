@@ -152,7 +152,7 @@ const deletePlayer = async (id: number) => {
   const result = await confirmDialog.value.open(
     t('playerList.deleteConfirmTitle'),
     t('playerList.deleteConfirmMessage'),
-    { color: 'error' },
+    { destructive: true },
   )
   if (!result) {
     return

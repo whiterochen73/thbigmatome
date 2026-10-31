@@ -125,6 +125,14 @@ describe('SeasonRosterTab 保存結果の通知', () => {
       player_types: [],
       is_outside_world: index === 1 || index === 28,
     }))
+    roster[4]!.is_absent = true
+    roster[4]!.absence_info = {
+      absence_type: 'injury',
+      reason: 'テスト',
+      effective_end_date: '2026-05-10',
+      remaining_days: 3,
+      duration_unit: 'days',
+    }
     mockGet.mockImplementation((url: string) =>
       url === '/teams/1/roster'
         ? Promise.resolve({
@@ -145,14 +153,23 @@ describe('SeasonRosterTab 保存結果の通知', () => {
       ['fielder_only_cost', 'tag-fielder'],
       ['two_way_cost', 'state-neutral'],
     ] as const) {
-      const chip = chips.find((item) => item.text() === ja.baseball.construction[costType])
-      expect(chip, costType).toBeDefined()
-      expect(chip!.props('color')).toBe(color)
-      expect(chip!.props('variant')).toBe('flat')
+      const matching = chips.filter((item) => item.text() === ja.baseball.construction[costType])
+      expect(matching.length, costType).toBeGreaterThan(0)
+      for (const chip of matching) {
+        expect(chip.props('color')).toBe(color)
+        expect(chip.props('variant')).toBe('flat')
+      }
     }
     expect(chips.filter((chip) => chip.props('color') === 'state-info').length).toBeGreaterThan(1)
     expect(wrapper.find('tr.key-player-row').exists()).toBe(true)
     expect(wrapper.findComponent(components.VProgressLinear).props('color')).toBe('success')
+    // Test Basis: subtask_1787o 申し送り5 / thbig-dugout-visual-stage5-mapping.md §2 R2, R5
+    const absentRow = wrapper.findAll('tr').find((row) => row.text().includes('選手5'))!
+    const demote = absentRow.findComponent('.demote-btn')
+    expect(demote.props('color')).toBeUndefined()
+    expect(demote.props('variant')).toBe('outlined')
+    expect(demote.attributes('style')).toContain('border-color')
+    expect(demote.find('.on-absence-out').exists()).toBe(true)
   })
 
   // Test Basis: thbig-dugout-visual-stage5-mapping.md §7 b1-15

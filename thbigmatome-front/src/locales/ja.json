@@ -303,7 +303,6 @@
       "disabled": "なし"
     },
     "gameInfo": "試合",
-    "save": "保存",
     "saveSuccess": "保存しました",
     "saveFailed": "保存に失敗しました",
     "pitcherRebuildFailed": "得点は保存しました。ただし投手の判定の作り直しに失敗しました。後で作り直しが必要です",
@@ -322,10 +321,12 @@
     "noBottomInning": "最終回後攻攻撃なし"
   },
   "gameDay": {
+    "breadcrumbs": {
+      "label": "ぱんくず"
+    },
     "phase": {
       "registration": "登録・離脱",
-      "game": "試合日",
-      "gameDivider": "試合（IRC）"
+      "game": "試合日"
     },
     "dateType": {
       "label": "日付種類",
@@ -348,7 +349,7 @@
       "roster": "登録・昇降格",
       "absences": "負傷・出場停止",
       "setup": "予告先発・対戦設定",
-      "result": "結果",
+      "result": "試合結果",
       "pitchers": "登板記録",
       "pitcherStatus": "投手状態",
       "inGameAbsences": "試合中の負傷・出場停止"

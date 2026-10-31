@@ -7,6 +7,7 @@ import * as directives from 'vuetify/directives'
 import { createI18n } from 'vue-i18n'
 import ja from '@/locales/ja.json'
 import GameResult from '../GameResult.vue'
+import { appBarBreadcrumbs } from '@/composables/useAppBarBreadcrumbs'
 
 const { mockGet, mockPut, mockPatch, mockPush, routeGuards, routeQuery } = vi.hoisted(() => ({
   mockGet: vi.fn(),
@@ -1554,6 +1555,7 @@ describe.each(LAYOUTS)('GameResult 試合日ページ: $name', ({ width, kind })
       expect(wrapper.vm.activeStep).toBe('members')
       expect(wrapper.vm.openSections.members).toBe(true)
       expect(wrapper.find('[data-testid="game-day-progress-text"]').exists()).toBe(false)
+      expect(appBarBreadcrumbs.value?.gameNumber).toBeNull()
     })
 
     it('C: no_game は試合日扱いで 4 段を出し、種類変更でその場で段が出入りする', async () => {
@@ -1574,12 +1576,12 @@ describe.each(LAYOUTS)('GameResult 試合日ページ: $name', ({ width, kind })
       expect(wrapper.find(`[data-testid="${kind}-result"]`).exists()).toBe(true)
     })
 
-    it('D: 登録・離脱の 3 段、試合日の 4 段を各見出しの下に順に出す', async () => {
+    it('D: 登録・離脱の 3 段、試合日の 4 段を順に出す', async () => {
       const wrapper = await mountDay()
       const first = wrapper.find('[data-testid="step-group-registration"]')
       const second = wrapper.find('[data-testid="step-group-game"]')
-      expect(wrapper.text()).toContain('登録・離脱')
-      expect(wrapper.text()).toContain('試合日')
+      expect(first.attributes('aria-label')).toBe('登録・離脱')
+      expect(second.attributes('aria-label')).toBe('試合日')
       const ids = (node: ReturnType<Wrapper['find']>) =>
         node.findAll(`[data-testid^="${kind}-"]`).map((e) => e.attributes('data-testid'))
       if (kind === 'step') {
@@ -1603,6 +1605,23 @@ describe.each(LAYOUTS)('GameResult 試合日ページ: $name', ({ width, kind })
     })
 
     if (kind === 'step') {
+      // Test Basis: subtask_1783p Operator 要望 1・2（2026-10-31）
+      it('ページのツールバー保存を除き、AppBar 用ぱんくずを登録して離脱時に消す', async () => {
+        const wrapper = await mountDay()
+        expect(wrapper.find('.v-toolbar').exists()).toBe(false)
+        expect(wrapper.find('[data-testid="save-setup"]').exists()).toBe(true)
+        expect(wrapper.find('[data-testid="save-result"]').exists()).toBe(true)
+        expect(appBarBreadcrumbs.value).toMatchObject({
+          teamName: '豊玉',
+          gameNumber: 5,
+          seasonPortalRoute: { name: 'SeasonPortal', params: { teamId: '1' } },
+        })
+        expect(appBarBreadcrumbs.value?.date).toContain('6月10日')
+        mounted.splice(mounted.indexOf(wrapper), 1)
+        wrapper.unmount()
+        expect(appBarBreadcrumbs.value).toBeNull()
+      })
+
       it('E: 全段の指定アイコンは done と warn でも変わらず、読み上げから隠す', async () => {
         const wrapper = await mountDay({ appearances: [] })
         const icons = {
@@ -1647,6 +1666,19 @@ describe.each(LAYOUTS)('GameResult 試合日ページ: $name', ({ width, kind })
         ])
         const text = wrapper.find('[data-testid="section-members"]').text()
         expect(text).toContain('選手登録・契約変更')
+      })
+
+      // Test Basis: subtask_1783p Operator 要望 2（2026-10-31）
+      it('縦積みでも試合（IRC）の区切りを消し、二つの背景色を区別する', async () => {
+        const wrapper = await mountDay()
+        expect(wrapper.find('.game-day-divider').exists()).toBe(false)
+        expect(wrapper.find('[data-testid="step-group-registration"]').classes()).toContain(
+          'game-day-stack__group--registration',
+        )
+        expect(wrapper.find('[data-testid="step-group-game"]').classes()).toContain(
+          'game-day-stack__group--game',
+        )
+        expect(wrapper.find('[data-testid="section-result"]').text()).toContain('試合結果')
       })
 
       it('スマホ幅から PC 幅に変わると、登板記録の編集は描き直しで失われるので、未保存の印も戻す', async () => {
@@ -1711,7 +1743,7 @@ describe.each(LAYOUTS)('GameResult 試合日ページ: $name', ({ width, kind })
           .filter((p) => p.isVisible())
           .map((p) => p.attributes('data-testid')!.replace('panel-', ''))
 
-      it('登録・離脱（選手登録・契約変更 → 登録・昇降格 → 負傷・出場停止）と 試合日（予告先発・対戦設定 → 結果 → 登板記録 → 試合中の負傷）の順に、境目つきで並ぶ', async () => {
+      it('登録・離脱と試合日の 7 段が見出しと区切りなしで一列に並ぶ', async () => {
         const wrapper = await mountDay()
         expect(wrapper.find('[data-testid="game-day-stack"]').exists()).toBe(false)
         const stepIds = (group: string) =>
@@ -1726,12 +1758,17 @@ describe.each(LAYOUTS)('GameResult 試合日ページ: $name', ({ width, kind })
           'step-pitchers',
           'step-in-game-absences',
         ])
-        expect(wrapper.find('[data-testid="step-group-registration"]').text()).toContain(
-          '登録・離脱',
+        const header = wrapper.find('.game-day-stepper__header')
+        expect(header.text()).not.toContain('登録・離脱')
+        expect(header.text()).not.toContain('試合日')
+        expect(header.text()).not.toContain('試合（IRC）')
+        expect(wrapper.find('[data-testid="step-group-registration"]').classes()).toContain(
+          'game-day-stepper__group--registration',
         )
-        expect(wrapper.find('[data-testid="step-group-game"]').text()).toContain('試合日')
-        // setup と result の境目
-        expect(wrapper.find('.game-day-stepper__game').text()).toContain('試合')
+        expect(wrapper.find('[data-testid="step-group-game"]').classes()).toContain(
+          'game-day-stepper__group--game',
+        )
+        expect(wrapper.find('[data-testid="step-result"]').text()).toContain('試合結果')
         expect(wrapper.find('[data-testid="step-members"]').text()).toContain('選手登録・契約変更')
       })
 

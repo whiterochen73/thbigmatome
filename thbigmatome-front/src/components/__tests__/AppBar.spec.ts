@@ -6,7 +6,9 @@ import * as directives from 'vuetify/directives'
 import { createRouter, createMemoryHistory } from 'vue-router'
 import { createPinia, setActivePinia } from 'pinia'
 import { defineComponent, h } from 'vue'
+import { createI18n } from 'vue-i18n'
 import AppBar from '../AppBar.vue'
+import { appBarBreadcrumbs } from '@/composables/useAppBarBreadcrumbs'
 
 vi.mock('axios', () => {
   const mockAxios = {
@@ -33,6 +35,20 @@ vi.mock('@/composables/useAuth', () => ({
 }))
 
 const vuetify = createVuetify({ components, directives })
+const i18n = createI18n({
+  legacy: false,
+  locale: 'ja',
+  messages: {
+    ja: {
+      seasonPortal: { title: 'シーズンポータル' },
+      gameDay: { breadcrumbs: { label: 'ぱんくず' } },
+    },
+    en: {
+      seasonPortal: { title: 'Season Portal' },
+      gameDay: { breadcrumbs: { label: 'Breadcrumbs' } },
+    },
+  },
+})
 
 function createTestRouter() {
   return createRouter({
@@ -41,6 +57,7 @@ function createTestRouter() {
       { path: '/', component: { template: '<div />' } },
       { path: '/login', component: { template: '<div />' } },
       { path: '/settings', component: { template: '<div />' } },
+      { path: '/season/:teamId', name: 'SeasonPortal', component: { template: '<div />' } },
     ],
   })
 }
@@ -58,7 +75,7 @@ function mountWithLayout(options: Record<string, unknown> = {}) {
   })
 
   return mount(Wrapper, {
-    global: { plugins: [vuetify, router, pinia], ...options },
+    global: { plugins: [vuetify, router, pinia, i18n], ...options },
   })
 }
 
@@ -66,6 +83,8 @@ describe('AppBar', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     setActivePinia(createPinia())
+    appBarBreadcrumbs.value = null
+    i18n.global.locale.value = 'ja'
   })
 
   it('マウントに成功する', async () => {
@@ -79,5 +98,42 @@ describe('AppBar', () => {
     await flushPromises()
     // isCommissioner=false なので shield-crown アイコンなし
     expect(wrapper.html()).not.toContain('mdi-shield-crown')
+  })
+
+  // Test Basis: subtask_1783p Operator 要望 1（2026-10-31）
+  it('ぱんくずのないページは従来のロゴと操作だけを出し、登録時はリンク・チーム・Game N・日付を出す', async () => {
+    const wrapper = mountWithLayout()
+    await flushPromises()
+    expect(wrapper.find('[data-testid="app-bar-breadcrumbs"]').exists()).toBe(false)
+    expect(wrapper.find('.header-logo').exists()).toBe(true)
+    appBarBreadcrumbs.value = {
+      seasonPortalRoute: { name: 'SeasonPortal', params: { teamId: '1' } },
+      teamName: '豊玉',
+      gameNumber: 5,
+      date: '6月10日(水)',
+    }
+    await flushPromises()
+    const crumbs = wrapper.find('[data-testid="app-bar-breadcrumbs"]')
+    expect(crumbs.text()).toContain('シーズンポータル')
+    expect(crumbs.text()).toContain('豊玉')
+    expect(crumbs.text()).toContain('Game 5')
+    expect(crumbs.text()).toContain('6月10日(水)')
+    expect(crumbs.find('a').attributes('href')).toBe('/season/1')
+    expect(crumbs.attributes('aria-label')).toBe('ぱんくず')
+    expect(crumbs.find('a').attributes('aria-label')).toBe('シーズンポータル')
+    expect(crumbs.find('.app-bar-breadcrumbs__back').exists()).toBe(true)
+    i18n.global.locale.value = 'en'
+    await flushPromises()
+    expect(crumbs.attributes('aria-label')).toBe('Breadcrumbs')
+    i18n.global.locale.value = 'ja'
+    await flushPromises()
+    appBarBreadcrumbs.value = { ...appBarBreadcrumbs.value!, gameNumber: null }
+    await flushPromises()
+    expect(crumbs.text()).not.toContain('Game 5')
+    expect(crumbs.text()).toContain('6月10日(水)')
+    appBarBreadcrumbs.value = null
+    await flushPromises()
+    expect(wrapper.find('[data-testid="app-bar-breadcrumbs"]').exists()).toBe(false)
+    wrapper.unmount()
   })
 })

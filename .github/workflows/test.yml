@@ -92,6 +92,10 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      # Yarn Berry は corepack 経由。setup-node の cache: 'yarn' が yarn を呼ぶ前に有効化する
+      - name: Enable corepack
+        run: corepack enable
+
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
@@ -100,7 +104,7 @@ jobs:
           cache-dependency-path: thbigmatome-front/yarn.lock
 
       - name: Install dependencies
-        run: yarn install --frozen-lockfile
+        run: yarn install --immutable
 
       - name: Run Vitest
         run: yarn vitest run

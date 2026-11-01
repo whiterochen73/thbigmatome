@@ -52,7 +52,7 @@ services:
       - ./thbigmatome-front:/app
     environment:
       VITE_API_BASE_URL: http://localhost:3000/api/v1
-    command: yarn dev -- --host 0.0.0.0
+    command: yarn dev --host 0.0.0.0
 
   irc:
     build:

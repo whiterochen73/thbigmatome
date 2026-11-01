@@ -3,7 +3,7 @@ require "csv"
 namespace :season_records do
   desc <<~DESC
     シーズン記録の食い違いを数えて一覧にする（読むだけ。DB へは一切書かない）。cmd_1784 段0。
-    設計書 context/thbig-dugout-season-record-restructure-design.md §1.3 の S1・S2・S7・S8・S10・S11 を数える。
+    設計書 context/thbig-dugout-season-record-restructure-design.md §1.3 の S1・S2・S7・S8・S9・S10・S11・S12 を数える。
     各段の移行の前後で同じ道具を回し、件数と明細を突き合わせる。
       bundle exec rake season_records:audit                       # 件数の要約を標準出力へ
       OUT=/path/to/audit.csv bundle exec rake season_records:audit # 明細 CSV もファイルへ
@@ -183,5 +183,45 @@ namespace :season_records do
     puts "#   日付の出どころ: 最初の昇降格が開始日より前 #{by_source['first_roster']} / シーズン開始日 #{by_source['season_start']} / 現在日カーソル #{by_source['current_date']}"
     puts "#   （参考）最初の昇降格がシーズン開始日より後の選手: #{totals[:later_first_roster]} 件（開始日に登録したものとして読む）"
     puts "# 作らない: 記録あり #{totals[:already]} 件 / シーズンの無いチームの行 #{totals[:no_season]} 件"
+  end
+
+  desc <<~DESC
+    登板（pitcher_game_states）の season_schedule_id を、（チーム, 試合日）から日程の行を引いて埋める。cmd_1784 段3。
+    埋めるのは、紐づけが空で、そのチームのその日の日程の行がちょうど 1 件ある登板だけ。対応する日程の行が無い登板（no_schedule）・
+    同じ日に複数ある登板（ambiguous）・日付が読めない登板（bad_date）・紐づけ先が引いた行と違う登板（mismatch）は、行を作らず・変えず、一覧に出す。
+    既定は試運転（DB を書かない）。APPLY=1 の時だけ書く。何度流しても同じ結果になる。
+      bundle exec rake season_records:link_pitcher_schedules                 # 試運転（件数と、紐づけられない登板の一覧を標準出力へ）
+      OUT=/path/to/unlinkable.csv bundle exec rake season_records:link_pitcher_schedules  # 紐づけられない登板の CSV もファイルへ
+      TEAM_ID=3 bundle exec rake season_records:link_pitcher_schedules       # チームを絞る
+      APPLY=1 bundle exec rake season_records:link_pitcher_schedules         # 実際に書く
+    CSV は team_id, team, pitcher_id, pitcher, schedule_date, state_id, status, schedule_ids, current_schedule_id の列。
+    戻す時は pitcher_game_states.season_schedule_id を null にすればよい（列は残してよい。コードを戻せば schedule_date だけで読む）。
+  DESC
+  task link_pitcher_schedules: :environment do
+    apply = ENV["APPLY"] == "1"
+    linker = PitcherScheduleLinker.new(apply: apply, team_id: ENV["TEAM_ID"]).call
+    summary = linker.summary
+    unlinkable = linker.unlinkable
+
+    team_names = Team.where(id: unlinkable.map(&:team_id).uniq).pluck(:id, :name).to_h
+    pitcher_names = Player.where(id: unlinkable.map(&:pitcher_id).uniq).pluck(:id, :name).to_h
+    csv = CSV.generate do |out|
+      out << %w[team_id team pitcher_id pitcher schedule_date state_id status schedule_ids current_schedule_id]
+      unlinkable.each do |r|
+        out << [ r.team_id, team_names[r.team_id], r.pitcher_id, pitcher_names[r.pitcher_id], r.schedule_date, r.state_id, r.status,
+                 r.schedule_ids.join(" "), r.current_schedule_id ]
+      end
+    end
+    if ENV["OUT"].present?
+      File.write(ENV["OUT"], csv)
+      puts "# CSV written: #{ENV['OUT']}（#{unlinkable.size} 行）"
+    else
+      puts csv
+    end
+    puts "# mode: #{apply ? 'APPLY (DB updated)' : 'DRY-RUN (DB unchanged)'}"
+    puts "# 対象: #{ENV['TEAM_ID'].present? ? "チーム #{ENV['TEAM_ID']}" : '全チーム'} / 登板 #{linker.rows.size} 件"
+    puts "# 紐づける: #{summary.fetch(:linked, 0)} / すでに紐づいている: #{summary.fetch(:already, 0)}"
+    puts "# 紐づけない（一覧に出す）: 対応する日程の行が無い #{summary.fetch(:no_schedule, 0)} / 同じ日に日程の行が複数 #{summary.fetch(:ambiguous, 0)} / " \
+         "日付が読めない #{summary.fetch(:bad_date, 0)} / 紐づけ先が違う #{summary.fetch(:mismatch, 0)}"
   end
 end

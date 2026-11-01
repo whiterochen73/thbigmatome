@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_11_01_120000) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_01_140000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -364,6 +364,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_01_120000) do
     t.string "result_category"
     t.string "role", null: false
     t.string "schedule_date"
+    t.bigint "season_schedule_id"
     t.bigint "team_id", null: false
     t.datetime "updated_at", null: false
     t.index [ "competition_id" ], name: "index_pitcher_game_states_on_competition_id"
@@ -371,6 +372,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_01_120000) do
     t.index [ "game_id", "pitcher_id" ], name: "index_pitcher_game_states_on_game_id_and_pitcher_id", unique: true
     t.index [ "game_id" ], name: "index_pitcher_game_states_on_game_id"
     t.index [ "pitcher_id" ], name: "index_pitcher_game_states_on_pitcher_id"
+    t.index [ "season_schedule_id" ], name: "index_pitcher_game_states_on_season_schedule_id"
     t.index [ "team_id" ], name: "index_pitcher_game_states_on_team_id"
   end
 
@@ -749,6 +751,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_01_120000) do
   add_foreign_key "pitcher_game_states", "competitions"
   add_foreign_key "pitcher_game_states", "games"
   add_foreign_key "pitcher_game_states", "players", column: "pitcher_id"
+  add_foreign_key "pitcher_game_states", "season_schedules", on_delete: :nullify
   add_foreign_key "pitcher_game_states", "teams"
   add_foreign_key "player_absences", "seasons"
   add_foreign_key "player_absences", "team_memberships"

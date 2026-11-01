@@ -6,6 +6,7 @@ import {
   hasGameDayArrived,
   hasSavedScore,
   isInCurrentRange,
+  isOffRoster,
   mismatchMessageKey,
   pitcherStageState,
   progressMarks,
@@ -187,6 +188,59 @@ describe('pitcherStageState（登板記録の段）', () => {
 
   it('未保存の入力があれば編集中', () => {
     expect(pitcherStageState(record(), { dirty: true, arrived: false })).toBe('editing')
+  })
+})
+
+describe('isOffRoster / 登板記録の段の要確認（1軍でない投手の登板。設計書 §7 判断 5）', () => {
+  it('first 以外の 3 状態が要確認で、first・null・未指定は要確認にしない', () => {
+    expect(['second', 'not_on_team', 'no_membership'].map(isOffRoster)).toEqual([true, true, true])
+    expect([
+      isOffRoster('first'),
+      isOffRoster(null),
+      isOffRoster(undefined),
+      isOffRoster(''),
+      isOffRoster('unknown'),
+    ]).toEqual([false, false, false, false, false])
+  })
+
+  it('1軍でない投手の登板が 1 件でもあれば要確認（登板あり・得点ありでも済にしない）', () => {
+    expect(
+      pitcherStageState(record({ ...scored, appearanceCount: 2, offRosterCount: 1 }), arrivedCtx),
+    ).toBe('warn')
+  })
+
+  it('0 件・省略なら従来どおり済', () => {
+    expect(
+      pitcherStageState(record({ ...scored, appearanceCount: 2, offRosterCount: 0 }), arrivedCtx),
+    ).toBe('done')
+    expect(pitcherStageState(record({ ...scored, appearanceCount: 2 }), arrivedCtx)).toBe('done')
+  })
+
+  it('試合日が来ていなくても要確認（食い違いは時期に依らない）', () => {
+    expect(
+      pitcherStageState(
+        record({ ...scored, appearanceCount: 1, offRosterCount: 1 }),
+        notArrivedCtx,
+      ),
+    ).toBe('warn')
+  })
+
+  it('入力中（未保存）は編集中が先（保存前の入力で赤を出さない）', () => {
+    expect(
+      pitcherStageState(record({ ...scored, appearanceCount: 1, offRosterCount: 1 }), {
+        dirty: true,
+        arrived: true,
+      }),
+    ).toBe('editing')
+  })
+
+  it('ノーゲームの登板でも、1軍でない投手なら要確認', () => {
+    expect(
+      pitcherStageState(
+        record({ noGame: true, appearanceCount: 1, offRosterCount: 1 }),
+        arrivedCtx,
+      ),
+    ).toBe('warn')
   })
 })
 

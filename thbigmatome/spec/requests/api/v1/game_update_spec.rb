@@ -13,7 +13,7 @@ RSpec.describe "PUT /api/v1/game/:id（得点保存と投手判定の作り直�
 
   def stub_rebuild_failure(error)
     rebuilder = instance_double(PitcherResultCategoryRebuilder)
-    allow(rebuilder).to receive(:rebuild_for_schedule).and_raise(error)
+    allow(rebuilder).to receive(:rebuild_from).and_raise(error)
     allow(PitcherResultCategoryRebuilder).to receive(:new).and_return(rebuilder)
   end
 
@@ -44,10 +44,10 @@ RSpec.describe "PUT /api/v1/game/:id（得点保存と投手判定の作り直�
       expect(warnings.first).to include("後で作り直し")
     end
 
-    it "失敗はログに残す（試合概要 id・例外クラス・メッセージ）" do
+    it "失敗はログに残す（チーム・例外クラス・メッセージ）" do
       allow(Rails.logger).to receive(:error)
       put "/api/v1/game/#{schedule.id}", params: { score: 6, opponent_score: 5 }, as: :json
-      expect(Rails.logger).to have_received(:error).with(/PitcherResultCategoryRebuilder.*season_schedule_id=#{schedule.id}.*RuntimeError.*boom/m)
+      expect(Rails.logger).to have_received(:error).with(/PitcherHistoryRebuild.*team_id: #{team.id}.*RuntimeError.*boom/m)
     end
 
     it "投手の登板記録は作り直されないまま残る（古い区分のまま。後で rake で直せる）" do
@@ -59,7 +59,7 @@ RSpec.describe "PUT /api/v1/game/:id（得点保存と投手判定の作り直�
   context "作り直しの途中で DB エラーが起きた時（PostgreSQL はトランザクションが中断状態になる）" do
     it "得点の保存は取り消されず、応答も 200 + 警告になる。作り直しの途中の書き込みは戻る" do
       rebuilder = instance_double(PitcherResultCategoryRebuilder)
-      allow(rebuilder).to receive(:rebuild_for_schedule) do
+      allow(rebuilder).to receive(:rebuild_from) do
         state.update_columns(result_category: "ko")
         ActiveRecord::Base.connection.execute("SELECT * FROM table_that_does_not_exist")
       end

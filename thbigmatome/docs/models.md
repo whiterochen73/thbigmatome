@@ -474,6 +474,7 @@ class PitcherGameState < ApplicationRecord
 - `belongs_to :pitcher, class_name: "Player"` (FK: pitcher_id)
 - `belongs_to :competition, optional: true`
 - `belongs_to :team`
+- `belongs_to :season_schedule, optional: true` — 登板した試合日の日程の行（cmd_1784 段3）。対応する日程の行が無い登板は nil。保存時に（チーム, `schedule_date`）から引いて紐づける（`before_validation`。新規または `schedule_date` を変えた時。`season_schedule_id` を明示した保存はその値を使う）。日程の行の削除は紐づけを外すだけ（FK `on_delete: :nullify`）
 
 **バリデーション**:
 - `pitcher_id`: uniqueness(scope: game_id)
@@ -487,6 +488,8 @@ class PitcherGameState < ApplicationRecord
 - `pre_injury_days_excluded`: numericality >= 0
 
 **クラスメソッド**:
+- `PitcherGameState.schedule_id_for(team_id:, date:)` — チーム・試合日の日程の行の id。ちょうど 1 件の時だけ返す（0 件・複数件・日付が読めない時は nil）
+- `PitcherGameState.on_day(team_id:, date:)` — そのチームのその試合日の登板。日程の行に紐づく登板を正とし、紐づけが空の登板は `schedule_date` で拾う。日程の行が 1 件に決まらない日は `schedule_date` だけで引く
 - `PitcherGameState.calculate_result_category(role:, innings_pitched:, game_result:, pitchers_in_game:, fatigue_p: 0, decision: nil)` — result_category自動計算。先発で5イニング未満・後続あり・敗戦・L判定→"ko"、敗戦でイニング>疲労P+1→"long_loss"、試合なし→"no_game"、その他→"normal"
 
 ---
@@ -782,7 +785,7 @@ class SeasonSchedule < ApplicationRecord
 - `calculated_game_number` — 明示的なgame_numberがなければ該当日までの試合数から算出
 - `game_result_hash` — 試合結果を `{ opponent_short_name:, score:, result: }` で返す。`no_game` が立っていれば得点に依らず `{ score: nil, result: "no_game" }`（勝ち・負け・引き分けの印を出さない。台帳 D-11 再確認）
 
-**コールバック**: 得点（`score` / `opponent_score`）または `no_game` が変わった保存の後に、その日の自チーム先発の `result_category` を作り直す（`PitcherResultCategoryRebuilder`）。失敗しても保存は取り消さず `pitcher_rebuild_error` に持つ
+**コールバック**: 得点（`score` / `opponent_score`）または `no_game` が変わった保存の後に、その日の自チーム先発の投手に絞って、その試合日以降の先発の保存値（`result_category`・`fatigue_p_used`・`consecutive_short_rest_count`）を作り直す（`PitcherHistoryRebuild.guarded`。保存値の作り直しの 1 入口で、中身は `PitcherResultCategoryRebuilder`）。得点が未入力の先発は、その日の分だけ「負けではない」として作り直し、それ以降の未入力の先発の保存値は動かさない。失敗しても保存は取り消さず `pitcher_rebuild_error` に持つ
 
 ---
 

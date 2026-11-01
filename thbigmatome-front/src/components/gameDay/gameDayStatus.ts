@@ -60,6 +60,13 @@ export interface SavedGameRecord {
   opponentScore: number | string | null | undefined
   noGame: boolean | null | undefined
   appearanceCount: number
+  // その試合日の試合中に 1軍にいなかった投手の登板の件数（登板は保存済み。要確認の帯に出す）。分からない時は省略（0 扱い）
+  offRosterCount?: number
+}
+
+// 1軍でない投手の登板か（roster_status が first 以外。取れていない null・省略は要確認にしない）
+export function isOffRoster(status: string | null | undefined): boolean {
+  return status === 'second' || status === 'not_on_team' || status === 'no_membership'
 }
 
 // 画面の入力欄は空欄を '' で持つことがある。0 は正当な得点なので、真偽で判定せず「数として読めるか」で見る
@@ -115,6 +122,7 @@ export function resultStageState(record: SavedGameRecord, ctx: StageContext): St
 export function pitcherStageState(record: SavedGameRecord, ctx: StageContext): StageState {
   if (ctx.dirty) return 'editing'
   if (detectRecordMismatch(record) !== null) return 'warn'
+  if ((record.offRosterCount ?? 0) > 0) return 'warn'
   if (record.appearanceCount > 0) return 'done'
   // ノーゲームでも疲労・負傷は計算する（台帳 D-11）ので、登板は記録されている必要がある。
   // 登板が無ければ通常の試合と同じく未入力（試合日前は急かさない）。赤（要確認）にはしない。雨天中止は試合自体が無い扱い

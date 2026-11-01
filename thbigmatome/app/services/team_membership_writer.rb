@@ -43,6 +43,7 @@ class TeamMembershipWriter
     counts = Hash.new(0)
     warnings = []
 
+    card_changed_player_ids = Set.new
     ActiveRecord::Base.transaction do
       @team.lock!
       before = load_state
@@ -73,6 +74,8 @@ class TeamMembershipWriter
         next unless kind
 
         ensure_initial_join!(before, tm, date) if kind == "contract"
+        # カードが変わると疲労P が変わる（PitcherStarterFatigue はカードの先発疲労P を読む）。契約だけの変更では保存値は変わらない
+        card_changed_player_ids << tm.player_id if point.key?(tm.id) && point.fetch(tm.id).player_card_id != values[:player_card_id]
         record!(tm, kind, values, date, phase)
         counts[kind.to_sym] += 1
       end
@@ -80,12 +83,22 @@ class TeamMembershipWriter
       after = load_state
       check!(before, after, date, phase, warnings)
       after.rebuild_cache!
+      rebuild_pitcher_history(card_changed_player_ids, date, warnings)
     end
 
     Result.new(warnings: warnings, changes: counts)
   end
 
   private
+
+  # カードを変えた選手の登板の保存値を、変更の日から作り直す（PitcherHistoryRebuild。設計書 §4.5）。
+  # 作り直しが落ちても変更記録の保存は取り消さず、警告にする
+  def rebuild_pitcher_history(player_ids, date, warnings)
+    return if player_ids.empty?
+
+    outcome = PitcherHistoryRebuild.guarded(team_id: @team.id, date: date, pitcher_ids: player_ids.to_a)
+    warnings << PitcherHistoryRebuild.failure_message(outcome.error) unless outcome.ok?
+  end
 
   def normalize(players)
     desired = {}

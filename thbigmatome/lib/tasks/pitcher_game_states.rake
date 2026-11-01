@@ -16,10 +16,10 @@ namespace :pitcher_game_states do
   DESC
   task recalculate_result_category: :environment do
     apply = ENV["APPLY"] == "1"
-    rebuilder = PitcherResultCategoryRebuilder.new(apply: apply)
-
+    rebuilder = nil
+    # 作り直しの入口は PitcherHistoryRebuild の 1 本（日付・投手を渡さなければ全期間・全投手）
     ActiveRecord::Base.transaction do
-      rebuilder.rebuild_all(team_id: ENV["TEAM_ID"].presence)
+      rebuilder = PitcherHistoryRebuild.from(team_id: ENV["TEAM_ID"].presence, apply: apply)
     end
 
     team_names = Team.where(id: rebuilder.rows.map(&:team_id).uniq).pluck(:id, :name).to_h

@@ -141,6 +141,30 @@
       </div>
     </v-alert>
 
+    <!-- 要確認の帯（1軍にいなかった投手の登板）。登板は保存してある。段の状態も要確認（赤）になる -->
+    <v-alert
+      v-if="rosterWarningMessage"
+      type="error"
+      color="state-warn"
+      variant="flat"
+      density="compact"
+      class="mt-3 game-day-mismatch"
+      data-testid="roster-banner"
+    >
+      <div class="d-flex flex-wrap align-center ga-2">
+        <span>{{ rosterWarningMessage }}</span>
+        <v-spacer />
+        <v-btn
+          size="small"
+          variant="outlined"
+          class="game-day-mismatch__button"
+          @click="focusStep('pitchers')"
+        >
+          {{ t('gameDay.mismatch.openPitchers') }}
+        </v-btn>
+      </div>
+    </v-alert>
+
     <GameDaySteps
       :steps="steps"
       :mode="stepsMode"
@@ -430,6 +454,7 @@ import GameDayStateChip from '@/components/gameDay/GameDayStateChip.vue'
 import GameDayRangeNote from '@/components/gameDay/GameDayRangeNote.vue'
 import { dateTypeAppearance } from '@/components/gameDay/dateTypeAppearance'
 import type { PlayerAbsence } from '@/types/playerAbsence'
+import type { PitcherAppearanceRecord } from '@/types/pitcherAppearance'
 import { setAppBarBreadcrumbs, clearAppBarBreadcrumbs } from '@/composables/useAppBarBreadcrumbs'
 import {
   GAME_LOG_MAX_BYTES,
@@ -441,6 +466,7 @@ import {
   detectRecordMismatch,
   hasGameDayArrived,
   isInCurrentRange,
+  isOffRoster,
   dateKey,
   type CurrentRange,
   hasSavedScore,
@@ -645,6 +671,8 @@ const hasUnsavedChanges = computed(
 
 // null = まだ取れていない／取得に失敗（件数が分からない時に「登板記録なし」の赤を出さないため）
 const appearanceCount = ref<number | null>(null)
+// 1軍にいなかった投手の登板（その試合日の試合中。first 以外）。登板は保存済みで、要確認の帯と段の状態に出す
+const offRosterAppearances = ref<Array<{ name: string; status: string }>>([])
 
 interface SeasonScheduleLite {
   id: number
@@ -716,6 +744,7 @@ const savedRecord = computed(() => ({
   opponentScore: savedFields.value.opponentScore,
   noGame: savedFields.value.noGame,
   appearanceCount: appearanceCount.value ?? 0,
+  offRosterCount: offRosterAppearances.value.length,
 }))
 
 const resultSaved = computed(
@@ -785,6 +814,19 @@ const mismatch = computed(() =>
 const mismatchMessage = computed(() => {
   const key = mismatchMessageKey(mismatch.value)
   return key ? t(key) : ''
+})
+
+const rosterWarningMessage = computed(() => {
+  if (!isGameDay.value || offRosterAppearances.value.length === 0) return ''
+  const names = offRosterAppearances.value
+    .map((a) =>
+      t('gameDay.rosterWarning.pitcher', {
+        name: a.name,
+        status: t(`gameDay.rosterWarning.status.${a.status}`),
+      }),
+    )
+    .join(t('gameDay.rosterWarning.separator'))
+  return t('gameDay.rosterWarning.message', { names })
 })
 
 const progress = computed(() =>
@@ -1081,12 +1123,20 @@ const fetchGame = async () => {
 const fetchAppearanceCount = async () => {
   if (!gameData.value.team_id || !gameData.value.game_date) return
   try {
-    const response = await axios.get<unknown[]>('/pitcher_appearances', {
+    const response = await axios.get<PitcherAppearanceRecord[]>('/pitcher_appearances', {
       params: { team_id: gameData.value.team_id, schedule_date: gameData.value.game_date },
     })
-    appearanceCount.value = Array.isArray(response?.data) ? response.data.length : null
+    const rows = Array.isArray(response?.data) ? response.data : null
+    appearanceCount.value = rows ? rows.length : null
+    offRosterAppearances.value = (rows ?? [])
+      .filter((a) => isOffRoster(a.roster_status))
+      .map((a) => ({
+        name: a.pitcher_name ?? `ID ${a.pitcher_id}`,
+        status: a.roster_status as string,
+      }))
   } catch (error) {
     appearanceCount.value = null
+    offRosterAppearances.value = []
     console.error('Failed to fetch pitcher appearances:', error)
   }
 }
@@ -1125,6 +1175,7 @@ const loadAll = async () => {
   currentRangeLoaded.value = false
   currentDateType.value = ''
   appearanceCount.value = null
+  offRosterAppearances.value = []
   absences.value = null
   pitcherDirty.value = false
   await fetchGame()

@@ -544,7 +544,8 @@
 | decision | string | YES | — | 勝敗 (W/L/S/H) |
 | result_category | string | YES | — | 結果カテゴリ (normal/ko/no_game/long_loss) |
 | injury_check | string | YES | — | 怪我チェック結果 (safe/injured) |
-| schedule_date | string | YES | — | スケジュール日付文字列 |
+| schedule_date | string | YES | — | スケジュール日付文字列（互換と日付順の比較のため残す） |
+| season_schedule_id | bigint | YES | — | season_schedules FK（登板した試合日の日程の行。対応する日程の行が無い登板は NULL。FK は `on_delete: :nullify`。cmd_1784 段3） |
 | appearance_order | integer | NO | 0 | 投手の登板順序（リリーフの順番管理） |
 | is_opener | boolean | NO | false | オープナー投手フラグ |
 | consecutive_short_rest_count | integer | NO | 0 | 連続短期登板回数（疲労管理） |
@@ -552,7 +553,7 @@
 | created_at | datetime | NO | — | 作成日時 |
 | updated_at | datetime | NO | — | 更新日時 |
 
-**インデックス**: `competition_id`, `game_id`, `pitcher_id`, `team_id`, `decision`, `(game_id, pitcher_id)` (unique)
+**インデックス**: `competition_id`, `game_id`, `pitcher_id`, `team_id`, `decision`, `season_schedule_id`, `(game_id, pitcher_id)` (unique)
 
 ---
 

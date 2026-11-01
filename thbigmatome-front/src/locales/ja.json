@@ -396,6 +396,16 @@
       "openPitchers": "登板記録を開く",
       "openResult": "結果を開く"
     },
+    "rosterWarning": {
+      "message": "1軍にいなかった投手の登板があります: {names}。登板は保存してあります。昇降格の日付か登板の入力を確かめてください。",
+      "pitcher": "{name}（{status}）",
+      "separator": "、",
+      "status": {
+        "second": "2軍",
+        "not_on_team": "チームに在籍していない",
+        "no_membership": "チームの登録なし"
+      }
+    },
     "moveConfirm": {
       "title": "要確認が残っています",
       "suffix": "このまま移動しますか？"

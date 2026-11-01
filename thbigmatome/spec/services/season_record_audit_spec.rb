@@ -1,6 +1,6 @@
 require "rails_helper"
 
-# Test Basis: context/thbig-dugout-season-record-restructure-design.md §1.3 S1・S2・S7・S8・S10・S11 / §5.1 段0 / §5.3、
+# Test Basis: context/thbig-dugout-season-record-restructure-design.md §1.3 S1・S2・S7・S8・S9・S10・S11・S12 / §5.1 段0・段3 / §5.3、
 # 裁定台帳 AMB-24（試合日の昇降格は違反にしない。クールダウン 10 日だけ残る）・D-11（ノーゲーム）
 RSpec.describe SeasonRecordAudit, :pitcher_fatigue do
   let(:team_and_season) { create_team_with_season }
@@ -329,6 +329,105 @@ RSpec.describe SeasonRecordAudit, :pitcher_fatigue do
     end
   end
 
+  describe "S9: 試合前の離脱の開始日が登板日と同じ" do
+    let!(:pitcher_and_membership) { create_card_pitcher(team: team, starter_stamina: 7) }
+    let(:pitcher) { pitcher_and_membership[0] }
+    let(:membership) { pitcher_and_membership[1] }
+
+    before do
+      create_schedule(season, "2026-06-10", score: 0, opponent_score: 1)
+      create_start(team: team, pitcher: pitcher, date: "2026-06-10", innings: 5.0)
+    end
+
+    it "区分が pre_game で開始日が登板日と同じ離脱を数える（離脱の種別がカテゴリ）" do
+      create(:player_absence, team_membership: membership, season: season, start_date: "2026-06-10", phase: "pre_game", absence_type: :injury)
+      f = found("S9")
+      expect(f.map(&:category)).to eq([ "injury" ])
+      expect(f.first).to have_attributes(team_id: team.id, player_id: pitcher.id, date: "2026-06-10")
+      expect(f.first.evidence).to include("in_game に直す")
+    end
+
+    it "区分が in_game の同日の離脱は正常（翌日から離脱）で数えず、参考に件数だけ出す" do
+      create(:player_absence, team_membership: membership, season: season, start_date: "2026-06-10", phase: "in_game")
+      result = audit
+      expect(result.findings.select { |x| x.item == "S9" }).to be_empty
+      expect(result.reference["S9"]).to include("開始日が登板日と同じ離脱（in_game・正常）" => 1, "開始日が登板日と同じ離脱（pre_game・数えた件数）" => 0)
+    end
+
+    it "登板の前日・翌日に始まる離脱は数えない（境界）" do
+      create(:player_absence, team_membership: membership, season: season, start_date: "2026-06-09", phase: "pre_game")
+      create(:player_absence, team_membership: membership, season: season, start_date: "2026-06-11", phase: "pre_game")
+      expect(found("S9")).to be_empty
+    end
+
+    it "別の投手の登板日とは突き合わせない" do
+      _other, other_membership = create_card_pitcher(team: team, starter_stamina: 7)
+      create(:player_absence, team_membership: other_membership, season: season, start_date: "2026-06-10", phase: "pre_game")
+      expect(found("S9")).to be_empty
+    end
+
+    it "出場停止・再調整の同日の開始も数える（登板記録の候補からは全種別の離脱が外れる）" do
+      create(:player_absence, team_membership: membership, season: season, start_date: "2026-06-10", phase: "pre_game", absence_type: :suspension)
+      expect(found("S9").map(&:category)).to eq([ "suspension" ])
+    end
+  end
+
+  describe "S12: 日程の行に紐づいていない登板" do
+    let!(:pitcher_and_membership) { create_card_pitcher(team: team, starter_stamina: 7) }
+    let(:pitcher) { pitcher_and_membership[0] }
+
+    it "紐づいている登板は数えない" do
+      create_schedule(season, "2026-06-10")
+      create_start(team: team, pitcher: pitcher, date: "2026-06-10", innings: 5.0)
+      expect(found("S12")).to be_empty
+    end
+
+    it "日程の行が 1 件あるのに空なら unlinked/linkable（rake の前）" do
+      create_schedule(season, "2026-06-10")
+      state = create_start(team: team, pitcher: pitcher, date: "2026-06-10", innings: 5.0)
+      state.update_columns(season_schedule_id: nil)
+      expect(found("S12").map(&:category)).to eq([ "unlinked/linkable" ])
+    end
+
+    it "日程の行が無い日は unlinked/no_schedule、同じ日に複数あれば unlinked/ambiguous" do
+      create_start(team: team, pitcher: pitcher, date: "2026-06-20", innings: 5.0)
+      create_schedule(season, "2026-06-21")
+      create_schedule(season, "2026-06-21")
+      create_start(team: team, pitcher: pitcher, date: "2026-06-21", innings: 5.0, game: create(:game))
+      expect(found("S12").map(&:category).sort).to eq([ "unlinked/ambiguous", "unlinked/no_schedule" ])
+    end
+
+    it "紐づけ先が引いた行と違えば mismatch" do
+      create_schedule(season, "2026-06-10")
+      other = create_schedule(season, "2026-06-11")
+      state = create_start(team: team, pitcher: pitcher, date: "2026-06-10", innings: 5.0)
+      state.update_columns(season_schedule_id: other.id)
+      expect(found("S12").map(&:category)).to eq([ "mismatch" ])
+    end
+
+    it "日程の行が無い日に紐づけだけが残っていても mismatch" do
+      create_schedule(season, "2026-06-10")
+      state = create_start(team: team, pitcher: pitcher, date: "2026-06-10", innings: 5.0)
+      state.update_columns(schedule_date: "2026-06-30")
+      expect(found("S12").map(&:category)).to eq([ "mismatch" ])
+    end
+
+    it "同じ日に複数あっても、その中の 1 件に紐づいていれば数えない" do
+      a = create_schedule(season, "2026-06-10")
+      create_schedule(season, "2026-06-10")
+      state = create_start(team: team, pitcher: pitcher, date: "2026-06-10", innings: 5.0)
+      state.update_columns(season_schedule_id: a.id)
+      expect(found("S12")).to be_empty
+    end
+
+    it "参考に登板数と紐づき数を出す" do
+      create_schedule(season, "2026-06-10")
+      create_start(team: team, pitcher: pitcher, date: "2026-06-10", innings: 5.0)
+      create_start(team: team, pitcher: pitcher, date: "2026-06-20", innings: 5.0, game: create(:game))
+      expect(audit.reference["S12"]).to eq("登板" => 2, "紐づいている登板" => 1)
+    end
+  end
+
   describe "範囲と並び" do
     it "team_id を指定すれば他チームの食い違いを含めない" do
       other_team, other_season = create_team_with_season
@@ -368,8 +467,10 @@ RSpec.describe SeasonRecordAudit, :pitcher_fatigue do
       benched, benched_membership = create_card_pitcher(team: team, starter_stamina: 7)
       record(benched_membership, "second", "2026-05-01")
       create_start(team: team, pitcher: benched, date: "2026-06-01", innings: 2.0, role: "reliever")
+      create(:player_absence, team_membership: membership, season: season, start_date: "2026-06-01", phase: "pre_game") # S9
+      PitcherGameState.first.update_columns(season_schedule_id: nil) # S12
 
-      tables = %w[season_rosters team_memberships pitcher_game_states season_schedules seasons players]
+      tables = %w[season_rosters team_memberships pitcher_game_states season_schedules seasons players player_absences]
       snapshot = -> { tables.to_h { |t| [ t, ActiveRecord::Base.connection.select_rows("SELECT count(*), max(updated_at) FROM #{t}").first ] } }
       before_state = snapshot.call
 
@@ -380,7 +481,7 @@ RSpec.describe SeasonRecordAudit, :pitcher_fatigue do
       result = audit
       ActiveSupport::Notifications.unsubscribe(subscriber)
 
-      expect(result.findings.map(&:item).uniq).to include("S1", "S2a", "S7", "S8c", "S10", "S11")
+      expect(result.findings.map(&:item).uniq).to include("S1", "S2a", "S7", "S8c", "S9", "S10", "S11", "S12")
       expect(writes).to be_empty
       expect(snapshot.call).to eq(before_state)
     end

@@ -41,11 +41,13 @@
 
 <script setup lang="ts">
 import { ref, computed, nextTick } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
+import { sanitizeRedirect } from '@/router/loginRedirect'
 import { useAuth } from '@/composables/useAuth'
 import { useI18n } from 'vue-i18n'
 
 const router = useRouter()
+const route = useRoute()
 const { t } = useI18n()
 
 const { login, loading } = useAuth()
@@ -67,7 +69,8 @@ const handleLogin = async () => {
   try {
     await login(form.value.loginName, form.value.password)
     await nextTick() // リアクティビティ伝播を待つ
-    router.push('/') // ログイン成功後のリダイレクト先
+    // ログイン成功後は、セッション切れで離れた元の画面（redirect）へ戻る。無ければホーム
+    router.push(sanitizeRedirect(route.query.redirect))
   } catch (err: unknown) {
     error.value = err instanceof Error ? err.message : t('loginForm.loginFailed')
   }

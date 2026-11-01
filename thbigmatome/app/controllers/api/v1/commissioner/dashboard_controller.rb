@@ -116,6 +116,11 @@ class Api::V1::Commissioner::DashboardController < Api::V1::Commissioner::BaseCo
     render json: cooldowns
   end
 
+  # チームごとの試合数の進み具合（消化数／総数。数え方は SeasonGameProgress）。シーズンのあるチーム全部（休止中を含む）
+  def game_progress
+    render json: SeasonGameProgress.by_team_id.values.map(&:to_h)
+  end
+
   def roster_status
     current_cost = Cost.current_cost
 

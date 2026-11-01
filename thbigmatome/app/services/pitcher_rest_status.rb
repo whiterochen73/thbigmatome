@@ -291,57 +291,76 @@ module PitcherRestStatus
   # 実日数差が中10日以上ならリセット（離脱の有無は関与しない）。
   # PitcherGameStatesController（休養表示）と PitcherStarterFatigue（リリーフ→先発の補正）で共有する。
   def cumulative_innings(team_id, pitcher_id, target_date, absences = [])
-    appearances = PitcherGameState
-      .where(pitcher_id: pitcher_id, team_id: team_id, role: %w[reliever opener])
-      .where("schedule_date < ?", target_date.to_s)
-      .order(schedule_date: :asc)
+    cumulative_innings_by_pitcher(team_id, [ pitcher_id ], target_date, { pitcher_id => absences })[pitcher_id]
+  end
 
+  # 複数投手の指定日時点の累積イニングを、投手の人数に依らない問い合わせ数（登板 1 回・同じ試合の投球回 1 回）で求める。
+  # 戻り値: { pitcher_id => 累積 }（登板歴の無い投手も 0 で引ける）。absences_by_pitcher は { pitcher_id => 負傷の離脱期間 }
+  # 試合日ページの登板記録が、翌日（登板日 + 1）の累積を登板した投手ぶんまとめて出すのに使う。
+  def cumulative_innings_by_pitcher(team_id, pitcher_ids, target_date, absences_by_pitcher = {})
+    ids = pitcher_ids.uniq
+    return {} if ids.empty?
+
+    appearances = PitcherGameState
+      .where(pitcher_id: ids, team_id: team_id, role: %w[reliever opener])
+      .where("schedule_date < ?", target_date.to_s)
+      .order(:schedule_date, :id)
+      .to_a
+    prior_outs = prior_outs_by_appearance(team_id, appearances)
+    by_pitcher = appearances.group_by(&:pitcher_id)
+
+    ids.index_with do |pitcher_id|
+      entries = (by_pitcher[pitcher_id] || []).map do |app|
+        involvement = PitcherInnings.involvement(app.innings_pitched, prior_outs: prior_outs.fetch(app.id), no_out_exit: app.no_out_exit)
+        { date: app.schedule_date.to_date, involvement: involvement }
+      end
+      fold_cumulative(entries, target_date, absences_by_pitcher[pitcher_id] || [])
+    end
+  end
+
+  # 登板ごとの「同じ試合で自分より前に投げた同チーム投手の通算アウト数」{ pitcher_game_state.id => アウト数 }。
+  # 関与イニング（§8.2.4）の入った回の算出に使う。同じ試合の投手は役割を問わず数える。
+  def prior_outs_by_appearance(team_id, appearances)
+    return {} if appearances.empty?
+
+    outs_by_game = PitcherGameState
+      .where(game_id: appearances.map(&:game_id).uniq, team_id: team_id)
+      .pluck(:game_id, :appearance_order, :innings_pitched)
+      .group_by(&:first)
+    appearances.to_h do |app|
+      prior = (outs_by_game[app.game_id] || []).select { |(_, order, _)| order < app.appearance_order }
+      [ app.id, prior.sum { |(_, _, ip)| PitcherInnings.outs_from_innings(ip) } ]
+    end
+  end
+
+  # 登板の列（日付の昇順。{ date:, involvement: }）を、登板ごとの加算と登板しなかった日ごとの減衰で畳む。
+  def fold_cumulative(entries, target_date, absences)
     cumulative = 0
     prev_date = nil
 
-    appearances.each do |app|
-      if prev_date
-        app_date = app.schedule_date.to_date
-        if rest_reset?(prev_date, app_date)
-          # 実日数中10日以上 → 全快（累積リセット）
-          cumulative = 0
-        else
-          from = prev_date + 1
-          to = app_date - 1
-          idle_days = (app_date - prev_date).to_i - 1
-          absent_days = absence_days_in_range(absences, from, to)
-          effective_idle = [ idle_days - absent_days, 0 ].max
-          effective_idle.times do
-            cumulative = cumulative <= 3 ? [ cumulative - 2, 0 ].max : cumulative - 1
-          end
-        end
-      end
-      prior_outs = PitcherGameState
-        .where(game_id: app.game_id, team_id: app.team_id)
-        .where("appearance_order < ?", app.appearance_order)
-        .pluck(:innings_pitched)
-        .sum { |s| PitcherInnings.outs_from_innings(s) }
-      involvement = PitcherInnings.involvement(app.innings_pitched, prior_outs: prior_outs, no_out_exit: app.no_out_exit)
-      cumulative += [ involvement, 1 ].max
-      prev_date = app.schedule_date.to_date
+    entries.each do |entry|
+      cumulative = decayed_cumulative(cumulative, prev_date, entry[:date], absences) if prev_date
+      cumulative += [ entry[:involvement], 1 ].max
+      prev_date = entry[:date]
     end
 
-    # Decay from last appearance to target_date
-    if prev_date && prev_date < target_date
-      if rest_reset?(prev_date, target_date)
-        cumulative = 0
-      else
-        from = prev_date + 1
-        to = target_date - 1
-        idle_days = (target_date - prev_date).to_i - 1
-        absent_days = absence_days_in_range(absences, from, to)
-        effective_idle = [ idle_days - absent_days, 0 ].max
-        effective_idle.times do
-          cumulative = cumulative <= 3 ? [ cumulative - 2, 0 ].max : cumulative - 1
-        end
-      end
-    end
+    # 最後の登板から target_date までの減衰
+    cumulative = decayed_cumulative(cumulative, prev_date, target_date, absences) if prev_date && prev_date < target_date
 
     [ cumulative, 0 ].max
+  end
+
+  # from_date の登板から to_date までに登板しなかった日の減衰（累積 3 以下は 1 日 -2、4 以上は 1 日 -1。下限 0）。
+  # 実日数中10日以上は全快（累積 0）。負傷で離脱していた日は数えない
+  def decayed_cumulative(cumulative, from_date, to_date, absences)
+    return 0 if rest_reset?(from_date, to_date)
+
+    idle_days = (to_date - from_date).to_i - 1
+    absent_days = absence_days_in_range(absences, from_date + 1, to_date - 1)
+    effective_idle = [ idle_days - absent_days, 0 ].max
+    effective_idle.times do
+      cumulative = cumulative <= 3 ? [ cumulative - 2, 0 ].max : cumulative - 1
+    end
+    cumulative
   end
 end

@@ -836,6 +836,7 @@
 - **Response**: 指定チーム・日付の投手登板状態一覧（appearance_order順）。各エントリにid, pitcher_id, pitcher_name, role, innings_pitched, earned_runs, decision, is_opener, consecutive_short_rest_count, pre_injury_days_excluded, result_category, injury_check, season_schedule_id, roster_status等を含む
   ※ その日の登板は、日程の行に紐づく登板（`season_schedule_id`）を正として引き、まだ紐づけていない登板は `schedule_date` で拾う（日程の行が無い日・同じ日に複数ある日は `schedule_date` だけ）
   ※ `roster_status` = その試合日の試合中（`in_game`）に 1軍にいたか: `first` / `second`（2軍）/ `not_on_team`（登録前・放出後）/ `no_membership`（チームの登録なし）。日付が読めない・チームが引けない時は null。first 以外は試合日ページの「要確認」の帯に出る（設計書 §7 判断 5）
+  ※ `next_day_cumulative_innings` = リリーフ・オープナーの登板について、登板日の翌日時点の累積イニング（その登板の加算まで含む。登板しなかった日の減衰・中10日リセット・負傷による減衰停止は休養表示（`fatigue_summary`）と同じ計算）。先発・日付が読めない時は null。試合日ページの登板記録の「登板による変化」に出る
 
 ### POST /api/v1/pitcher_appearances
 

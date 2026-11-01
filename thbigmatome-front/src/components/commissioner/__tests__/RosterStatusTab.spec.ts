@@ -56,8 +56,12 @@ const mockRosterStatus = [
   },
 ]
 
-const mountComponent = () =>
+// 1軍登録状況の取得は親（ダッシュボード）が持つ（概況と共用）。このタブは records / loading / failed を受けて描く
+const mountComponent = (
+  props: { records?: typeof mockRosterStatus; loading?: boolean; failed?: boolean } = {},
+) =>
   mount(RosterStatusTab, {
+    props: { records: mockRosterStatus, loading: false, failed: false, ...props },
     global: {
       plugins: [i18n, vuetify],
     },
@@ -68,15 +72,13 @@ describe('RosterStatusTab', () => {
     vi.clearAllMocks()
   })
 
-  it('マウント時にroster_status APIが呼ばれる', async () => {
-    vi.mocked(axios.get).mockResolvedValueOnce({ data: mockRosterStatus })
+  it('roster_status は親が取る。このタブはマウントしても自分では取らない', async () => {
     mountComponent()
     await flushPromises()
-    expect(axios.get).toHaveBeenCalledWith('/commissioner/dashboard/roster_status')
+    expect(axios.get).not.toHaveBeenCalled()
   })
 
   it('全チームCSV出力ボタンが表示される', async () => {
-    vi.mocked(axios.get).mockResolvedValueOnce({ data: mockRosterStatus })
     const wrapper = mountComponent()
     await flushPromises()
     const btn = wrapper.find('a[href*="roster_status.csv"]')
@@ -85,7 +87,6 @@ describe('RosterStatusTab', () => {
   })
 
   it('全チームCSVのhrefにbaseURLが含まれる', async () => {
-    vi.mocked(axios.get).mockResolvedValueOnce({ data: mockRosterStatus })
     const wrapper = mountComponent()
     await flushPromises()
     const btn = wrapper.find('a[href*="roster_status.csv"]')
@@ -93,7 +94,6 @@ describe('RosterStatusTab', () => {
   })
 
   it('警告ありチームに警告チップが表示される', async () => {
-    vi.mocked(axios.get).mockResolvedValueOnce({ data: mockRosterStatus })
     const wrapper = mountComponent()
     await flushPromises()
     const text = wrapper.text()
@@ -129,30 +129,61 @@ describe('RosterStatusTab', () => {
     expect(wrapper.find('.on-state-info.mdi-earth').exists()).toBe(true)
   })
 
-  it('APIエラー時にクラッシュしない', async () => {
-    vi.mocked(axios.get).mockRejectedValueOnce(new Error('network error'))
-    const wrapper = mountComponent()
+  it('取得失敗時（failed）にクラッシュしない', async () => {
+    const wrapper = mountComponent({ records: [], failed: true })
     await flushPromises()
     expect(wrapper.exists()).toBe(true)
-    // 失敗は空状態ではなくページ内のアラート＋再読み込みで出す
+    // 失敗は空状態ではなくページ内のアラート＋再読み込みで出す。再読み込みは親へ通知する
     expect(wrapper.find('[data-testid="state-error"]').exists()).toBe(true)
     expect(wrapper.find('[data-testid="state-empty"]').exists()).toBe(false)
+    await wrapper.find('[data-testid="state-retry"]').trigger('click')
+    expect(wrapper.emitted('retry')).toHaveLength(1)
   })
 
   it('0 件なら空状態を出し、読み込み中は空状態を出さない', async () => {
-    vi.mocked(axios.get).mockResolvedValueOnce({ data: [] })
-    const wrapper = mountComponent()
+    const wrapper = mountComponent({ records: [], loading: true })
     expect(wrapper.find('[data-testid="state-loading"]').exists()).toBe(true)
     expect(wrapper.find('[data-testid="state-empty"]').exists()).toBe(false)
-    await flushPromises()
+    await wrapper.setProps({ loading: false })
     expect(wrapper.find('[data-testid="state-empty"]').exists()).toBe(true)
+  })
+
+  // Test Basis: thbig-dugout-commissioner-dashboard-visual-design.md §2 案 A+（「OK」を毎行出さず違反の行だけ）。色は Operator 決定 2026-11-02
+  it('状態の列: 違反の無い行は「OK」を出さず「—」、違反の行は赤系（state-warn）の「警告あり」', async () => {
+    const wrapper = mountComponent()
+    await flushPromises()
+    expect(wrapper.text()).not.toContain('OK')
+    const rows = wrapper.findAll('tbody tr')
+    expect(
+      rows
+        .find((r) => r.text().includes('紅魔館'))!
+        .find('.status-none')
+        .text(),
+    ).toBe('—')
+    const chip = wrapper.findAllComponents(components.VChip).filter((c) => c.text() === '警告あり')
+    expect(chip).toHaveLength(1)
+    expect(chip[0]!.props('color')).toBe('state-warn')
+    expect(chip[0]!.props('variant')).toBe('flat')
+    expect(chip[0]!.props('prependIcon')).toBe('mdi-alert-circle')
+  })
+
+  it('コスト・外枠が上限を超えた時の「超過」チップも赤系（state-warn）で、上限内の行には出さない', async () => {
+    const wrapper = mountComponent()
+    await flushPromises()
+    const over = wrapper.findAllComponents(components.VChip).filter((c) => c.text() === '超過')
+    expect(over).toHaveLength(2) // 白玉楼のコストと外枠
+    for (const c of over) {
+      expect(c.props('color')).toBe('state-warn')
+      expect(c.props('variant')).toBe('flat')
+    }
+    const row1 = wrapper.findAll('tbody tr').find((r) => r.text().includes('紅魔館'))!
+    expect(row1.text()).not.toContain('超過')
   })
 })
 
 // Test Basis: thbig-dugout-ui-unification-design.md §2.5（列を落とせる表は <600px で縦積み、列を落とせない表は横スクロールで名前の列を固定）/ §4.2 段 4
 describe('RosterStatusTab 表のスマホ対応（段 4）', () => {
   it('1軍登録状況: 横に比べる数値の表なので縦積みにせず、チーム名の列を固定して横スクロール', async () => {
-    vi.mocked(axios.get).mockResolvedValueOnce({ data: mockRosterStatus })
     const wrapper = mountComponent()
     await flushPromises()
     expect(scrollLayout(wrapper, 'first_cost')).toEqual({

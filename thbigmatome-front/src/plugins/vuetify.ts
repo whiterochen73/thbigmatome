@@ -54,6 +54,9 @@ export default createVuetify({
           link: '#1B3A6B',
           'border-strong': '#857F70',
           'danger-ink': '#8a1420',
+          // 合計コストの棒の塗り（上限に近い=琥珀・超過=濃い赤）。文字色ではなく背景として使う
+          'meter-near': '#A66A00',
+          'meter-over': '#8a1420',
 
           // テキストカラー（Lightモード）
           'text-high': '#1A1A1A', // 本文（高重要）
@@ -141,6 +144,8 @@ export default createVuetify({
           link: '#9DBBF2',
           'border-strong': '#7C7CB0',
           'danger-ink': '#ffb3b8',
+          'meter-near': '#F0B030',
+          'meter-over': '#E84040',
 
           // テキストカラー（Darkモード）
           'text-high': '#E8E8F2', // 本文（高重要）

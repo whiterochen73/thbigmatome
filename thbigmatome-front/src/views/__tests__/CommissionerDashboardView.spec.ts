@@ -42,6 +42,13 @@ import {
 } from '@/components/shared/__tests__/tableLayout'
 
 const vuetify = createVuetify({ components, directives })
+
+// 先頭のタブは「概況」。明細のタブは activeTab を切り替えて開く
+const showTab = async (wrapper: ReturnType<typeof mount>, tab: string) => {
+  const vm = wrapper.findComponent(CommissionerDashboard).vm as unknown as { activeTab: string }
+  vm.activeTab = tab
+  await flushPromises()
+}
 const pinia = createPinia()
 const i18n = createI18n({ legacy: false, locale: 'ja', messages: {} })
 
@@ -120,6 +127,19 @@ const mockCosts = [
   },
 ]
 
+const mockRosterStatus = (team_id: number, team_name: string, warnings: string[]) => ({
+  team_id,
+  team_name,
+  team_type: 'normal',
+  first_count: 28,
+  second_count: 7,
+  first_cost: 120,
+  first_cost_limit: 120,
+  outside_world_count: 3,
+  outside_world_limit: 4,
+  warnings,
+})
+
 describe('CommissionerDashboardView', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -143,7 +163,8 @@ describe('CommissionerDashboardView', () => {
     expect(wrapper.find('[data-testid="page-layout"]').exists()).toBe(true)
     expect(wrapper.find('h1').exists()).toBe(false)
     expect(wrapper.text()).not.toContain('ダッシュボード')
-    expect(wrapper.text()).toContain('全チーム管理')
+    expect(wrapper.text()).toContain('概況')
+    expect(wrapper.text()).toContain('チーム管理')
   })
 
   it('fetches absences on mount', async () => {
@@ -236,12 +257,9 @@ describe('CommissionerDashboardView', () => {
       global: { plugins: [vuetify, pinia, i18n], stubs: { TeamDialog: true, ConfirmDialog: true } },
     })
     await flushPromises()
-    const dashboardVm = wrapper.findComponent(CommissionerDashboard).vm as unknown as {
-      activeTab: string
-    }
-    dashboardVm.activeTab = 'absences'
-    await wrapper.vm.$nextTick()
-    const chips = wrapper.findAll('.v-chip.bg-absence-out')
+    await showTab(wrapper, 'absences')
+    // 概況にも離脱のチップが出るので、いま開いているタブの中で数える
+    const chips = wrapper.findAll('.v-window-item--active .v-chip.bg-absence-out')
     expect(chips).toHaveLength(2)
     expect(chips.some((chip) => chip.find('.mdi-hospital-box').exists())).toBe(true)
     expect(chips.some((chip) => chip.find('.mdi-gavel').exists())).toBe(true)
@@ -252,7 +270,7 @@ describe('CommissionerDashboardView', () => {
       global: { plugins: [vuetify, pinia, i18n], stubs: { TeamDialog: true, ConfirmDialog: true } },
     })
     await flushPromises()
-    expect(wrapper.text()).toContain('離脱者一覧')
+    expect(wrapper.text()).toContain('離脱者')
   })
 
   it('fetches cooldowns on mount', async () => {
@@ -268,7 +286,7 @@ describe('CommissionerDashboardView', () => {
       global: { plugins: [vuetify, pinia, i18n], stubs: { TeamDialog: true, ConfirmDialog: true } },
     })
     await flushPromises()
-    expect(wrapper.text()).toContain('コスト状況')
+    expect(wrapper.text()).toContain('コスト')
   })
 
   it('displays cooldown tab', async () => {
@@ -347,7 +365,8 @@ describe('CommissionerDashboardView', () => {
       global: { plugins: [vuetify, pinia, i18n], stubs: { TeamDialog: true, ConfirmDialog: true } },
     })
     await flushPromises()
-    expect(wrapper.find('[data-testid="state-empty"]').exists()).toBe(true)
+    await showTab(wrapper, 'teams')
+    expect(wrapper.find('.v-window-item--active [data-testid="state-empty"]').exists()).toBe(true)
     ;(axios.get as ReturnType<typeof vi.fn>).mockImplementation((url: string) =>
       Promise.resolve({
         data: url === '/teams' ? [{ id: 1, name: 'チームA', is_active: true }] : [],
@@ -357,6 +376,7 @@ describe('CommissionerDashboardView', () => {
       global: { plugins: [vuetify, pinia, i18n], stubs: { TeamDialog: true, ConfirmDialog: true } },
     })
     await flushPromises()
+    await showTab(w2, 'teams')
     const labels = w2.findAll('button[aria-label]').map((b) => b.attributes('aria-label'))
     expect(labels).toEqual(
       expect.arrayContaining([
@@ -410,7 +430,8 @@ describe('CommissionerDashboard 表のスマホ対応（段 4）', () => {
   }
 
   it('全チーム: 縦積み（ID=lead・チーム名=title・監督=sub1・種別=sub2・ゲーム内日付=note・操作=act）', async () => {
-    const { wrapper } = await mountDashboard()
+    const { wrapper, show } = await mountDashboard()
+    await show('teams')
     expect(stackedLayout(wrapper, 'manager_name')).toEqual({
       mobileBreakpoint: 'sm',
       rows: true,
@@ -427,7 +448,8 @@ describe('CommissionerDashboard 表のスマホ対応（段 4）', () => {
   })
 
   it('全チームの操作は 4 つ。PC はアイコン 4 つ、スマホは同じ 4 操作の操作メニュー', async () => {
-    const { wrapper } = await mountDashboard()
+    const { wrapper, show } = await mountDashboard()
+    await show('teams')
     const full = wrapper.find('.row-actions.row-actions--full')
     expect(full.findAll('button')).toHaveLength(4)
     const menu = wrapper.find('.row-menu [data-testid="row-menu"]')
@@ -509,6 +531,12 @@ describe('CommissionerDashboard 再読み込みの結線（タブごと）', () 
       data: mockCooldowns,
       text: '博麗霊夢',
     },
+    {
+      tab: 'rosterStatus',
+      url: '/commissioner/dashboard/roster_status',
+      data: [mockRosterStatus(1, 'チームA', [])],
+      text: 'チームA',
+    },
   ]
 
   it.each(cases)(
@@ -585,6 +613,7 @@ describe('CommissionerDashboard 全チームの操作メニューの各項目', 
       },
     })
     await flushPromises()
+    await showTab(wrapper, 'teams')
     return wrapper
   }
 
@@ -630,6 +659,416 @@ describe('CommissionerDashboard 全チームの操作メニューの各項目', 
     expect(axios.delete).toHaveBeenCalledWith('/teams/3')
     expect(mockPush).not.toHaveBeenCalled()
     expect(wrapper.findComponent({ name: 'TeamDialog' }).props('isVisible')).toBe(false)
+    wrapper.unmount()
+  })
+})
+
+const mountPlain = () =>
+  mount(CommissionerDashboardView, {
+    attachTo: document.body,
+    global: { plugins: [vuetify, pinia, i18n], stubs: { TeamDialog: true, ConfirmDialog: true } },
+  })
+
+const apiMock =
+  (bodies: Record<string, unknown>, failing: string[] = []) =>
+  (url: string) =>
+    failing.includes(url)
+      ? Promise.reject(new Error('network'))
+      : Promise.resolve({ data: bodies[url] ?? [] })
+
+// Test Basis: thbig-dugout-commissioner-dashboard-visual-design.md §2 案 A+（タブは概況・離脱者・クールダウン・コスト・1軍登録・チーム管理。アイコンと件数）/ Operator 決定 2026-11-02
+describe('CommissionerDashboard タブ（概況が先頭・アイコンと件数）', () => {
+  afterEach(() => {
+    document.body.innerHTML = ''
+  })
+
+  it('並びは 概況・離脱者・クールダウン・コスト・1軍登録・チーム管理。先頭の概況が開く', async () => {
+    ;(axios.get as ReturnType<typeof vi.fn>).mockImplementation(apiMock({}))
+    const wrapper = mountPlain()
+    await flushPromises()
+    const tabs = wrapper.findAllComponents(components.VTab)
+    expect(tabs.map((t) => t.props('value'))).toEqual([
+      'overview',
+      'absences',
+      'cooldowns',
+      'costs',
+      'rosterStatus',
+      'teams',
+    ])
+    expect(tabs.map((t) => t.text().replace(/\d+$/, '').trim())).toEqual([
+      '概況',
+      '離脱者',
+      'クールダウン',
+      'コスト',
+      '1軍登録',
+      'チーム管理',
+    ])
+    expect(wrapper.find('.v-window-item--active [data-testid="dashboard-overview"]').exists()).toBe(
+      true,
+    )
+    wrapper.unmount()
+  })
+
+  it('各タブにアイコンがつく（概況・離脱者・クールダウン・コスト・1軍登録・チーム管理）', async () => {
+    ;(axios.get as ReturnType<typeof vi.fn>).mockImplementation(apiMock({}))
+    const wrapper = mountPlain()
+    await flushPromises()
+    expect(wrapper.findAllComponents(components.VTab).map((t) => t.props('prependIcon'))).toEqual([
+      'mdi-view-dashboard-outline',
+      'mdi-account-off-outline',
+      'mdi-timer-sand',
+      'mdi-currency-jpy',
+      'mdi-clipboard-list-outline',
+      'mdi-account-group-outline',
+    ])
+    wrapper.unmount()
+  })
+
+  it('離脱者・クールダウン・コスト・1軍登録・チーム管理に件数がつく。コストは 95% 以上と超過の合計、1軍登録は要確認（規定違反または合計コスト超過）のチーム数', async () => {
+    ;(axios.get as ReturnType<typeof vi.fn>).mockImplementation(
+      apiMock({
+        '/teams': [
+          { id: 1, name: 'チームA', is_active: true },
+          { id: 2, name: 'チームB', is_active: false },
+          { id: 3, name: 'チームC', is_active: true },
+        ],
+        '/commissioner/dashboard/absences': mockAbsences,
+        '/commissioner/dashboard/cooldowns': mockCooldowns,
+        '/commissioner/dashboard/costs': [
+          ...mockCosts, // 185（92.5%）と 210（超過）
+          { ...mockCosts[0], team_id: 3, total_cost: 190, cost_usage_ratio: 0.95 },
+        ],
+        '/commissioner/dashboard/roster_status': [
+          mockRosterStatus(1, 'チームA', []),
+          mockRosterStatus(3, 'チームC', ['コスト上限を超過しています']),
+        ],
+      }),
+    )
+    const wrapper = mountPlain()
+    await flushPromises()
+    const counts = Object.fromEntries(
+      wrapper
+        .findAllComponents(components.VTab)
+        .map((t) => [t.props('value') as string, t.findComponent(components.VChip)]),
+    )
+    expect(counts.overview!.exists()).toBe(false)
+    expect(counts.absences!.text()).toBe('2')
+    expect(counts.cooldowns!.text()).toBe('1')
+    expect(counts.costs!.text()).toBe('2')
+    expect(counts.costs!.props('color')).toBe('state-warn')
+    // 規定違反はチームC、合計コスト超過はチーム2（210）。重ならないので 2
+    expect(counts.rosterStatus!.text()).toBe('2')
+    expect(counts.rosterStatus!.props('color')).toBe('state-warn')
+    expect(counts.teams!.text()).toBe('3')
+    for (const c of Object.values(counts).slice(1)) expect(c.props('variant')).toBe('flat')
+    wrapper.unmount()
+  })
+
+  it('読み込み中・失敗の間は件数を出さない（0 と見分ける）。違反が 0 なら緑', async () => {
+    ;(axios.get as ReturnType<typeof vi.fn>).mockImplementation(
+      apiMock({ '/commissioner/dashboard/roster_status': [mockRosterStatus(1, 'チームA', [])] }, [
+        '/commissioner/dashboard/absences',
+      ]),
+    )
+    const wrapper = mountPlain()
+    await flushPromises()
+    const chip = (value: string) =>
+      wrapper
+        .findAllComponents(components.VTab)
+        .find((t) => t.props('value') === value)!
+        .findComponent(components.VChip)
+    expect(chip('absences').exists()).toBe(false)
+    expect(chip('rosterStatus').text()).toBe('0')
+    expect(chip('rosterStatus').props('color')).toBe('state-done')
+    wrapper.unmount()
+  })
+
+  // Test Basis: Operator 決定 2026-11-02「要確認に合計コスト超過のチームも数える」。コストが取れていない間は 0 を「問題なし」に見せない
+  it('1軍登録の件数: 規定違反のみ・超過のみ・両方（1 回）・95% 以上で超過なし（数えない）', async () => {
+    const cost = (team_id: number, total_cost: number) => ({
+      ...mockCosts[0],
+      team_id,
+      total_cost,
+      cost_usage_ratio: total_cost / 200,
+    })
+    const countFor = async (roster: unknown[], costs: unknown[]) => {
+      ;(axios.get as ReturnType<typeof vi.fn>).mockImplementation(
+        apiMock({
+          '/commissioner/dashboard/roster_status': roster,
+          '/commissioner/dashboard/costs': costs,
+        }),
+      )
+      const wrapper = mountPlain()
+      await flushPromises()
+      const chip = wrapper
+        .findAllComponents(components.VTab)
+        .find((t) => t.props('value') === 'rosterStatus')!
+        .findComponent(components.VChip)
+      const result = [chip.text(), chip.props('color')]
+      wrapper.unmount()
+      return result
+    }
+    const warn = (id: number) => mockRosterStatus(id, `チーム${id}`, ['x'])
+    expect(await countFor([warn(1)], [cost(1, 100)])).toEqual(['1', 'state-warn'])
+    expect(await countFor([], [cost(1, 201)])).toEqual(['1', 'state-warn'])
+    expect(await countFor([warn(1)], [cost(1, 201)])).toEqual(['1', 'state-warn'])
+    expect(await countFor([warn(1)], [cost(1, 201), cost(2, 250)])).toEqual(['2', 'state-warn'])
+    expect(await countFor([], [cost(1, 200), cost(2, 190)])).toEqual(['0', 'state-done'])
+  })
+
+  it('1軍登録の件数: コストが失敗・読み込み中で 0 件なら緑にせず中立色。超過が分かっていれば警告色', async () => {
+    const failCosts = apiMock(
+      { '/commissioner/dashboard/roster_status': [mockRosterStatus(1, 'チームA', [])] },
+      ['/commissioner/dashboard/costs'],
+    )
+    ;(axios.get as ReturnType<typeof vi.fn>).mockImplementation(failCosts)
+    const wrapper = mountPlain()
+    await flushPromises()
+    const chip = wrapper
+      .findAllComponents(components.VTab)
+      .find((t) => t.props('value') === 'rosterStatus')!
+      .findComponent(components.VChip)
+    expect(chip.text()).toBe('0')
+    expect(chip.props('color')).toBe('state-neutral')
+    wrapper.unmount()
+    ;(axios.get as ReturnType<typeof vi.fn>).mockImplementation(
+      apiMock(
+        { '/commissioner/dashboard/roster_status': [mockRosterStatus(1, 'チームA', ['x'])] },
+        ['/commissioner/dashboard/costs'],
+      ),
+    )
+    const warned = mountPlain()
+    await flushPromises()
+    const warnedChip = warned
+      .findAllComponents(components.VTab)
+      .find((t) => t.props('value') === 'rosterStatus')!
+      .findComponent(components.VChip)
+    expect(warnedChip.text()).toBe('1')
+    expect(warnedChip.props('color')).toBe('state-warn')
+    warned.unmount()
+  })
+})
+
+// Test Basis: 同上 §5 段 2。概況と 1軍登録タブは roster_status を共用する（9 秒かかる API を 2 度呼ばない）
+describe('CommissionerDashboard 概況の取得', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+  afterEach(() => {
+    document.body.innerHTML = ''
+  })
+
+  it('5 本の API を最初に 1 度ずつ取る。1軍登録タブを開いても roster_status を取り直さない', async () => {
+    ;(axios.get as ReturnType<typeof vi.fn>).mockImplementation(apiMock({}))
+    const wrapper = mountPlain()
+    await flushPromises()
+    await showTab(wrapper, 'rosterStatus')
+    const urls = (axios.get as ReturnType<typeof vi.fn>).mock.calls.map((c) => c[0])
+    for (const u of [
+      '/teams',
+      '/commissioner/dashboard/absences',
+      '/commissioner/dashboard/cooldowns',
+      '/commissioner/dashboard/costs',
+      '/commissioner/dashboard/roster_status',
+    ]) {
+      expect(urls.filter((x) => x === u)).toHaveLength(1)
+    }
+    wrapper.unmount()
+  })
+
+  it('遅い API（costs）が未着でも、他の API の値は先に概況に出る', async () => {
+    let release: (v: { data: unknown[] }) => void = () => {}
+    ;(axios.get as ReturnType<typeof vi.fn>).mockImplementation((url: string) =>
+      url === '/commissioner/dashboard/costs'
+        ? new Promise((resolve) => {
+            release = resolve
+          })
+        : Promise.resolve({
+            data:
+              url === '/commissioner/dashboard/absences'
+                ? mockAbsences
+                : url === '/teams'
+                  ? [{ id: 1, name: 'チームA', is_active: true }]
+                  : [],
+          }),
+    )
+    const wrapper = mountPlain()
+    await flushPromises()
+    expect(wrapper.find('[data-testid="tile-absence"]').text()).toContain('2')
+    expect(wrapper.find('[data-testid="tile-cost"] [data-testid="state-loading"]').exists()).toBe(
+      true,
+    )
+    expect(wrapper.find('[data-testid="team-table-card"]').text()).toContain('チームA')
+    release({ data: mockCosts })
+    await flushPromises()
+    expect(wrapper.find('[data-testid="tile-cost"] [data-testid="state-loading"]').exists()).toBe(
+      false,
+    )
+    wrapper.unmount()
+  })
+
+  it('costs が失敗しても概況の他のタイルは数字を出し、再読み込みは costs だけを取り直す', async () => {
+    let failing = true
+    ;(axios.get as ReturnType<typeof vi.fn>).mockImplementation((url: string) =>
+      url === '/commissioner/dashboard/costs' && failing
+        ? Promise.reject(new Error('network'))
+        : Promise.resolve({
+            data:
+              url === '/commissioner/dashboard/absences'
+                ? mockAbsences
+                : url === '/commissioner/dashboard/costs'
+                  ? mockCosts
+                  : [],
+          }),
+    )
+    const wrapper = mountPlain()
+    await flushPromises()
+    expect(wrapper.find('[data-testid="tile-cost"] [data-testid="state-error"]').exists()).toBe(
+      true,
+    )
+    expect(wrapper.find('[data-testid="tile-absence"] [data-testid="state-error"]').exists()).toBe(
+      false,
+    )
+    expect(wrapper.find('[data-testid="tile-absence"]').text()).toContain('2')
+    failing = false
+    const before = (axios.get as ReturnType<typeof vi.fn>).mock.calls.length
+    await wrapper.find('[data-testid="tile-cost"] [data-testid="state-retry"]').trigger('click')
+    await flushPromises()
+    const added = (axios.get as ReturnType<typeof vi.fn>).mock.calls.slice(before).map((c) => c[0])
+    expect(added).toEqual(['/commissioner/dashboard/costs'])
+    expect(wrapper.find('[data-testid="tile-cost"] [data-testid="state-error"]').exists()).toBe(
+      false,
+    )
+    wrapper.unmount()
+  })
+
+  it('タイルを押すと、その明細のタブへ移る', async () => {
+    ;(axios.get as ReturnType<typeof vi.fn>).mockImplementation(apiMock({}))
+    const wrapper = mountPlain()
+    await flushPromises()
+    await wrapper.find('[data-testid="tile-absence"] button.overview-tile__go').trigger('click')
+    await flushPromises()
+    const vm = wrapper.findComponent(CommissionerDashboard).vm as unknown as { activeTab: string }
+    expect(vm.activeTab).toBe('absences')
+    wrapper.unmount()
+  })
+
+  it('チームの表の「シーズン」は、そのチームを選んでシーズン画面へ遷移する', async () => {
+    ;(axios.get as ReturnType<typeof vi.fn>).mockImplementation(
+      apiMock({ '/teams': [{ id: 5, name: '紅魔館', is_active: true }] }),
+    )
+    const wrapper = mountPlain()
+    await flushPromises()
+    await wrapper.find('button[aria-label="紅魔館のシーズン"]').trigger('click')
+    expect(mockPush).toHaveBeenCalledWith('/teams/5/season')
+    wrapper.unmount()
+  })
+})
+
+// Test Basis: Operator 決定 2026-11-02「1軍コストは色を付けない。合計コストは 95% 以上で黄、超過で赤」/ 設計 §2 案 A+ コスト関連の色
+describe('CommissionerDashboard コスト状況の色', () => {
+  afterEach(() => {
+    document.body.innerHTML = ''
+  })
+
+  const costRow = (id: number, total: number, firstCost: number, firstLimit: number | null) => ({
+    team_id: id,
+    team_name: `チーム${id}`,
+    team_type: 'normal',
+    total_cost: total,
+    total_cost_limit: 200,
+    first_squad_cost: firstCost,
+    first_squad_cost_limit: firstLimit,
+    first_squad_count: 28,
+    exempt_count: 0,
+    cost_usage_ratio: total / 200,
+  })
+  const mountCosts = async () => {
+    ;(axios.get as ReturnType<typeof vi.fn>).mockImplementation(
+      apiMock({
+        '/commissioner/dashboard/costs': [
+          costRow(1, 189, 120, 120), // 94.5%・1軍は上限ぴったり
+          costRow(2, 190, 120, 120), // 95%
+          costRow(3, 200, 100, 120), // 100%
+          costRow(4, 201, 119, 120), // 超過
+        ],
+      }),
+    )
+    const wrapper = mountPlain()
+    await flushPromises()
+    await showTab(wrapper, 'costs')
+    const row = (name: string) =>
+      wrapper.findAll('.v-window-item--active tbody tr').find((tr) => tr.text().includes(name))!
+    return { wrapper, row }
+  }
+
+  it('合計コストの棒: 94.5% は通常（link）、95% と 100% は黄系、超過は赤系', async () => {
+    const { wrapper, row } = await mountCosts()
+    const color = (name: string) =>
+      row(name).findComponent('[data-testid="total-cost-bar"]').props('color')
+    expect(color('チーム1')).toBe('link')
+    expect(color('チーム2')).toBe('meter-near')
+    expect(color('チーム3')).toBe('meter-near')
+    expect(color('チーム4')).toBe('meter-over')
+    wrapper.unmount()
+  })
+
+  it('合計コストのチップ: 94.5% は無し、95% と 100% は「上限に近い」（黄）、超過は「超過」（赤）。旧い「警告」は出さない', async () => {
+    const { wrapper, row } = await mountCosts()
+    const chips = (name: string) =>
+      row(name)
+        .findAllComponents(components.VChip)
+        .map((c) => ({ text: c.text(), color: c.props('color'), variant: c.props('variant') }))
+    expect(chips('チーム1')).toEqual([])
+    expect(chips('チーム2')).toEqual([{ text: '上限に近い', color: 'state-todo', variant: 'flat' }])
+    expect(chips('チーム3')).toEqual([{ text: '上限に近い', color: 'state-todo', variant: 'flat' }])
+    expect(chips('チーム4')).toEqual([{ text: '超過', color: 'state-warn', variant: 'flat' }])
+    expect(wrapper.text()).not.toContain('警告')
+    wrapper.unmount()
+  })
+
+  it('1軍コストの棒は、上限ぴったりでも超過に近くても色を付けない（常に link）', async () => {
+    const { wrapper, row } = await mountCosts()
+    for (const name of ['チーム1', 'チーム2', 'チーム3', 'チーム4']) {
+      expect(row(name).findComponent('[data-testid="first-cost-bar"]').props('color')).toBe('link')
+    }
+    wrapper.unmount()
+  })
+})
+
+// Test Basis: 設計 §2 案 A+「1軍登録の「OK」を毎行出さず違反の行だけ」
+describe('CommissionerDashboard 1軍登録状況の状態', () => {
+  afterEach(() => {
+    document.body.innerHTML = ''
+  })
+
+  it('違反の無い行に「OK」を出さず、違反の行だけ赤系の「警告あり」チップを出す', async () => {
+    ;(axios.get as ReturnType<typeof vi.fn>).mockImplementation(
+      apiMock({
+        '/commissioner/dashboard/roster_status': [
+          mockRosterStatus(1, 'チームA', []),
+          mockRosterStatus(2, 'チームB', ['コスト上限を超過しています']),
+        ],
+      }),
+    )
+    const wrapper = mountPlain()
+    await flushPromises()
+    await showTab(wrapper, 'rosterStatus')
+    const active = wrapper.find('.v-window-item--active')
+    expect(active.text()).not.toContain('OK')
+    const chips = active.findAllComponents(components.VChip).filter((c) => c.text() === '警告あり')
+    expect(chips).toHaveLength(1)
+    expect(chips[0]!.props('color')).toBe('state-warn')
+    expect(chips[0]!.props('variant')).toBe('flat')
+    expect(chips[0]!.props('prependIcon')).toBe('mdi-alert-circle')
+    const rows = active.findAll('tbody tr')
+    expect(rows.find((r) => r.text().includes('チームA'))!.text()).not.toContain('警告あり')
+    expect(
+      rows
+        .find((r) => r.text().includes('チームA'))!
+        .find('.status-none')
+        .text(),
+    ).toBe('—')
     wrapper.unmount()
   })
 })

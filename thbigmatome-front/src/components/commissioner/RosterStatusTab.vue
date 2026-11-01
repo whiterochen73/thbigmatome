@@ -3,12 +3,12 @@
   <AsyncState
     framed
     :loading="loading"
-    :error="fetchFailed"
+    :error="failed"
     error-message="1軍登録状況の取得に失敗しました"
-    :empty="rosterStatus.length === 0"
+    :empty="records.length === 0"
     empty-icon="mdi-clipboard-list-outline"
     empty-message="1軍登録状況のデータがありません"
-    @retry="fetchRosterStatus"
+    @retry="emit('retry')"
   >
     <DataCard title="">
       <div class="d-flex align-center mb-4">
@@ -26,7 +26,7 @@
       <v-data-table
         v-model:expanded="expanded"
         :headers="summaryHeaders"
-        :items="rosterStatus"
+        :items="records"
         class="ui-table"
         density="compact"
         item-value="team_id"
@@ -51,30 +51,43 @@
         <template #[`item.first_cost`]="{ item }">
           <div class="d-flex align-center gap-2">
             <span>{{ item.first_cost }} / {{ item.first_cost_limit ?? '-' }}</span>
-            <StatusChip
+            <v-chip
               v-if="item.first_cost_limit !== null && item.first_cost > item.first_cost_limit"
-              status="error"
-              label="超過"
-            />
+              color="state-warn"
+              variant="flat"
+              size="small"
+              prepend-icon="mdi-alert-circle"
+            >
+              超過
+            </v-chip>
           </div>
         </template>
         <template #[`item.outside_world_count`]="{ item }">
           <div class="d-flex align-center gap-2">
             <span>{{ item.outside_world_count }} / {{ item.outside_world_limit }}</span>
-            <StatusChip
+            <v-chip
               v-if="item.outside_world_count > item.outside_world_limit"
-              status="error"
-              label="超過"
-            />
+              color="state-warn"
+              variant="flat"
+              size="small"
+              prepend-icon="mdi-alert-circle"
+            >
+              超過
+            </v-chip>
           </div>
         </template>
         <template #[`item.status`]="{ item }">
-          <StatusChip
+          <!-- 違反の無い行は何も出さない（「OK」を毎行出すと、違反の行が埋もれる） -->
+          <v-chip
             v-if="item.warnings && item.warnings.length > 0"
-            status="warning"
-            label="警告あり"
-          />
-          <StatusChip v-else status="success" label="OK" />
+            color="state-warn"
+            variant="flat"
+            size="small"
+            prepend-icon="mdi-alert-circle"
+          >
+            警告あり
+          </v-chip>
+          <span v-else class="status-none text-caption on-surface-variant">—</span>
         </template>
 
         <template #expanded-row="{ item }">
@@ -154,30 +167,23 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, onMounted } from 'vue'
+import { ref, computed, watch } from 'vue'
 import axios from 'axios'
 import AsyncState from '@/components/shared/AsyncState.vue'
 import DataCard from '@/components/shared/DataCard.vue'
 import StatusChip from '@/components/shared/StatusChip.vue'
 import type { RosterPlayer } from '@/types/rosterPlayer'
+import type { RosterStatusRecord } from '@/types/commissionerDashboard'
 import { useColumnMinWidth } from '@/composables/useColumnMinWidth'
 
-interface RosterStatusRecord {
-  team_id: number
-  team_name: string
-  team_type: string
-  first_count: number
-  second_count: number
-  first_cost: number
-  first_cost_limit: number | null
-  outside_world_count: number
-  outside_world_limit: number
-  warnings: string[]
-}
+// 1軍登録状況の取得は親（ダッシュボード）が持つ。概況の「要確認」と同じ API なので、2 度取らないよう共用する
+defineProps<{
+  records: RosterStatusRecord[]
+  loading: boolean
+  failed: boolean
+}>()
+const emit = defineEmits<{ retry: [] }>()
 
-const rosterStatus = ref<RosterStatusRecord[]>([])
-const loading = ref(true)
-const fetchFailed = ref(false)
 const expanded = ref<string[]>([])
 const teamDetails = ref<Map<number, RosterPlayer[]>>(new Map())
 const loadingTeams = ref<Set<number>>(new Set())
@@ -225,20 +231,6 @@ const allCsvUrl = computed(() => `${baseURL.value}/commissioner/dashboard/roster
 const teamCsvUrl = (teamId: number) =>
   `${baseURL.value}/commissioner/dashboard/roster_status.csv?team_id=${teamId}`
 
-const fetchRosterStatus = async () => {
-  loading.value = true
-  fetchFailed.value = false
-  try {
-    const response = await axios.get<RosterStatusRecord[]>('/commissioner/dashboard/roster_status')
-    rosterStatus.value = response.data
-  } catch (error) {
-    console.error('Failed to fetch roster status:', error)
-    fetchFailed.value = true
-  } finally {
-    loading.value = false
-  }
-}
-
 const fetchTeamDetail = async (teamId: number) => {
   if (teamDetails.value.has(teamId) || loadingTeams.value.has(teamId)) return
 
@@ -271,9 +263,5 @@ const fetchTeamDetail = async (teamId: number) => {
 watch(expanded, (newExpanded, oldExpanded) => {
   const added = newExpanded.filter((id) => !oldExpanded.includes(id))
   added.forEach((teamId) => fetchTeamDetail(Number(teamId)))
-})
-
-onMounted(() => {
-  fetchRosterStatus()
 })
 </script>

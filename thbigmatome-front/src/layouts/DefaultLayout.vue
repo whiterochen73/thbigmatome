@@ -26,6 +26,7 @@
 
 <script setup lang="ts">
 import { ref } from 'vue'
+import { useDisplay } from 'vuetify'
 import { useSnackbar } from '@/composables/useSnackbar'
 import AppBar from '@/components/AppBar.vue'
 import NavigationDrawer from '@/components/NavigationDrawer.vue'
@@ -38,6 +39,9 @@ const {
   timeout: snackbarTimeout,
 } = useSnackbar()
 
-const drawer = ref(true)
+// ナビは「常時表示になる幅」でだけ最初から開く。狭い幅（Vuetify の mobile）では一時表示になるので、
+// 開いたままだと起動時に本文を覆う
+const { mobile } = useDisplay()
+const drawer = ref(!mobile.value)
 const rail = ref(false)
 </script>

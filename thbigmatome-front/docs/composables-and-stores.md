@@ -41,6 +41,22 @@
 
 ---
 
+### `useAppBarTitle` (`src/composables/useAppBarTitle.ts`)
+
+ヘッダーバー（`AppBar`）に出す画面のタイトルを宣言する（cmd_1791。旧 `useAppBarBreadcrumbs` の一般化）。
+
+#### 引数・公開
+
+| 名前 | 説明 |
+|------|------|
+| `useAppBarTitle(source)` | `source` は `{ title, subtitle?, back?: { to, label } }` を返す関数・ref、または `null`（宣言しない）。変化に追従し、画面を離れる（スコープが閉じる）時に自動で解除する。後から宣言した画面を、先の画面の解除が消さない（所有者トークン） |
+| `appBarTitle` | 宣言された値（`shallowRef`）。`AppBar` が読む。無ければ `route.meta.title` |
+| `appBarShownTitle` | `AppBar` が実際に出している題。まだ移していない画面の `PageHeader` が、バーと二重にならないよう本文の h1 を省くために読む |
+
+使用箇所: `GameResult.vue`、`SeasonPortal.vue`、`AppBar.vue`、`PageHeader.vue`
+
+---
+
 ### `useAuth` (`src/composables/useAuth.ts`)
 
 ユーザー認証状態を管理するコンポーザブル。`useSnackbar`と同様にモジュールスコープの`ref`でグローバル共有。

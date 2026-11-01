@@ -1,46 +1,43 @@
 <template>
-  <v-app-bar color="primary" elevation="2" :height="64">
+  <v-app-bar color="primary" elevation="2" :height="xs ? 56 : 64">
     <v-app-bar-nav-icon @click.stop="emit('toggle-drawer')" />
 
+    <!-- ロゴは PC で残し、スマホ幅ではタイトルを優先して隠す（タイトルが無い画面では出す） -->
     <v-app-bar-title
-      class="app-bar-title"
-      :class="{ 'app-bar-title--with-breadcrumbs': appBarBreadcrumbs }"
+      v-if="showLogo"
+      class="app-bar-logo"
+      :class="{ 'app-bar-logo--with-heading': heading }"
       @click="router.push('/')"
     >
       <img class="header-logo" src="/logo-thbig-dugout.svg" alt="THBIG Dugout" />
     </v-app-bar-title>
 
-    <nav
-      v-if="appBarBreadcrumbs"
-      class="app-bar-breadcrumbs"
-      data-testid="app-bar-breadcrumbs"
-      :aria-label="t('gameDay.breadcrumbs.label')"
+    <div
+      v-if="heading"
+      class="app-bar-heading"
+      :class="{ 'app-bar-heading--no-back': !heading.back }"
+      data-testid="app-bar-heading"
     >
       <v-btn
-        :to="appBarBreadcrumbs.seasonPortalRoute"
+        v-if="heading.back"
+        :to="heading.back.to"
         variant="text"
         size="small"
-        class="app-bar-breadcrumbs__link"
-        :aria-label="t('seasonPortal.title')"
-        ><v-icon class="app-bar-breadcrumbs__back" aria-hidden="true">mdi-arrow-left</v-icon>
-        <span class="app-bar-breadcrumbs__link-text">{{ t('seasonPortal.title') }}</span></v-btn
+        class="app-bar-heading__back"
+        data-testid="app-bar-back"
+        :aria-label="t('appBar.backTo', { label: heading.back.label })"
+        ><v-icon class="app-bar-heading__back-icon" aria-hidden="true">mdi-arrow-left</v-icon>
+        <span class="app-bar-heading__back-text">{{ heading.back.label }}</span></v-btn
       >
-      <v-icon size="x-small" class="app-bar-breadcrumbs__separator" aria-hidden="true"
-        >mdi-chevron-right</v-icon
+      <h1 class="app-bar-heading__title" data-testid="app-bar-title">{{ heading.title }}</h1>
+      <span v-if="heading.subtitle" class="app-bar-heading__separator" aria-hidden="true">・</span>
+      <span
+        v-if="heading.subtitle"
+        class="app-bar-heading__subtitle"
+        data-testid="app-bar-subtitle"
+        >{{ heading.subtitle }}</span
       >
-      <span class="app-bar-breadcrumbs__team">{{ appBarBreadcrumbs.teamName }}</span>
-      <v-icon
-        v-if="appBarBreadcrumbs.gameNumber !== null"
-        size="x-small"
-        class="app-bar-breadcrumbs__separator app-bar-breadcrumbs__game"
-        aria-hidden="true"
-        >mdi-chevron-right</v-icon
-      >
-      <span v-if="appBarBreadcrumbs.gameNumber !== null" class="app-bar-breadcrumbs__game"
-        >Game {{ appBarBreadcrumbs.gameNumber }}</span
-      >
-      <span class="app-bar-breadcrumbs__date">{{ appBarBreadcrumbs.date }}</span>
-    </nav>
+    </div>
 
     <v-spacer />
 
@@ -59,6 +56,13 @@
         </v-list-item>
 
         <v-divider />
+
+        <v-list-item to="/settings" data-testid="menu-settings">
+          <v-list-item-title>
+            <v-icon start>mdi-cog-outline</v-icon>
+            設定
+          </v-list-item-title>
+        </v-list-item>
 
         <v-list-item :to="{ path: '/settings', query: { tab: 'account' } }">
           <v-list-item-title>
@@ -79,21 +83,36 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
-import { useRouter } from 'vue-router'
-import { useTheme } from 'vuetify'
+import { computed, watchEffect } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { useDisplay, useTheme } from 'vuetify'
 import { useI18n } from 'vue-i18n'
 import { useAuth } from '@/composables/useAuth'
-import { appBarBreadcrumbs } from '@/composables/useAppBarBreadcrumbs'
+import { appBarShownTitle, appBarTitle, type AppBarTitle } from '@/composables/useAppBarTitle'
 
 const emit = defineEmits<{
   'toggle-drawer': []
 }>()
 
 const router = useRouter()
+const route = useRoute()
+const { xs } = useDisplay()
 const { t } = useI18n()
 const { user, logout } = useAuth()
 const theme = useTheme()
+
+// 画面が宣言したタイトルを優先し、無ければ route.meta.title を出す（全画面にタイトルが出る）
+const heading = computed<AppBarTitle | null>(() => {
+  if (appBarTitle.value) return appBarTitle.value
+  const metaTitle = route.meta?.title
+  return typeof metaTitle === 'string' && metaTitle ? { title: metaTitle } : null
+})
+const showLogo = computed(() => !xs.value || !heading.value)
+
+// まだ移していない画面の PageHeader が、バーと同じ題を二重に出さないための目印
+watchEffect(() => {
+  appBarShownTitle.value = heading.value?.title ?? ''
+})
 
 const isDark = computed(() => theme.global.current.value.dark)
 
@@ -110,88 +129,110 @@ const handleLogout = async () => {
 </script>
 
 <style scoped>
-.app-bar-title {
+.app-bar-logo {
   cursor: pointer;
   min-width: 0;
 }
-.app-bar-title--with-breadcrumbs {
-  flex: 0 1 auto;
+.app-bar-logo--with-heading {
+  flex: 0 0 auto;
+  margin-inline-end: 8px;
 }
-.app-bar-breadcrumbs {
-  display: flex;
-  align-items: center;
-  flex: 1 1 auto;
-  min-width: 0;
-  overflow: hidden;
-  white-space: nowrap;
-  color: rgb(var(--v-theme-on-primary));
-  gap: 4px;
-}
-.app-bar-breadcrumbs__link {
-  flex: 0 1 auto;
-  min-width: 0;
-  overflow: hidden;
-  text-decoration: underline;
-  text-underline-offset: 2px;
-}
-.app-bar-breadcrumbs__link :deep(.v-btn__content) {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.app-bar-breadcrumbs__back {
-  display: none;
-}
-.app-bar-breadcrumbs__team {
-  overflow: hidden;
-  min-width: 0;
-  text-overflow: ellipsis;
-  font-weight: 700;
-}
-.app-bar-breadcrumbs__separator,
-.app-bar-breadcrumbs__date,
-.app-bar-breadcrumbs__game {
-  flex-shrink: 0;
-}
-@media (max-width: 600px) {
-  .app-bar-title--with-breadcrumbs {
-    flex: 0 0 90px;
-    width: 90px;
-    margin-inline-start: 4px;
-  }
-  .app-bar-title--with-breadcrumbs .header-logo {
-    width: 90px;
-    max-width: none;
-    height: auto;
-  }
-  .app-bar-breadcrumbs__link {
-    flex: 0 0 32px;
-    width: 32px;
-    min-width: 32px;
-    padding-inline: 0;
-  }
-  .app-bar-breadcrumbs__back {
-    display: inline-flex;
-  }
-  .app-bar-breadcrumbs__link-text {
-    display: none;
-  }
-  .app-bar-breadcrumbs__team,
-  .app-bar-breadcrumbs__game,
-  .app-bar-breadcrumbs__separator {
-    display: none;
-  }
-  .app-bar-breadcrumbs__date {
-    overflow: hidden;
-    text-overflow: ellipsis;
-    font-size: 0.75rem;
-  }
-}
-
 .header-logo {
   display: block;
   height: 36px;
   max-width: min(240px, 52vw);
   width: auto;
+}
+
+/* タイトル（h1）。PC は「戻り先 タイトル ・ サブタイトル」を 1 行、スマホは 2 段 */
+.app-bar-heading {
+  display: flex;
+  align-items: baseline;
+  flex: 1 1 auto;
+  gap: 10px;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  color: rgb(var(--v-theme-on-primary));
+}
+.app-bar-heading__back {
+  align-self: center;
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+}
+.app-bar-heading__back :deep(.v-btn__content) {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.app-bar-heading__back-icon {
+  margin-inline-end: 2px;
+}
+.app-bar-heading__back-text {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  text-transform: none;
+  letter-spacing: 0;
+}
+.app-bar-heading__separator {
+  flex: none;
+  align-self: center;
+  margin-inline: -4px;
+}
+.app-bar-heading__title {
+  margin: 0;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 1.125rem;
+  font-weight: 700;
+  line-height: 1.3;
+  /* 明朝（global の h1 指定）は使わない。バーのタイトルはゴシック 700 */
+  font-family: inherit;
+}
+.app-bar-heading__subtitle {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 0.8125rem;
+  font-weight: 400;
+}
+
+@media (max-width: 599.98px) {
+  .app-bar-heading {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    column-gap: 2px;
+    align-items: center;
+    row-gap: 0;
+  }
+  .app-bar-heading--no-back {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .app-bar-heading__back {
+    grid-row: 1 / 3;
+    width: 32px;
+    min-width: 32px;
+    padding-inline: 0;
+  }
+  .app-bar-heading__back-icon {
+    margin-inline-end: 0;
+  }
+  .app-bar-heading__back-text {
+    display: none;
+  }
+  .app-bar-heading__separator {
+    display: none;
+  }
+  .app-bar-heading__title {
+    font-size: 1rem;
+    line-height: 1.2;
+  }
+  .app-bar-heading__subtitle {
+    font-size: 0.75rem;
+    font-weight: 500;
+    line-height: 1.2;
+  }
 }
 </style>

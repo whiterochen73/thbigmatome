@@ -1,23 +1,32 @@
 <template>
-  <v-card>
-    <v-card-title>
-      {{ t('settings.schedule.title') }}
-      <v-spacer></v-spacer>
-      <v-btn color="action" variant="flat" @click="openDialog(null)">
-        {{ t('settings.schedule.add') }}
-      </v-btn>
-    </v-card-title>
+  <MasterPanel
+    :title="t('settings.schedule.title')"
+    icon="mdi-calendar-month"
+    :count="schedules.length"
+    default-open
+  >
+    <template #actions>
+      <MasterAddButton :label="t('settings.schedule.add')" @click="openDialog(null)" />
+    </template>
     <!-- eslint-disable vue/valid-v-slot -->
-    <v-data-table :headers="headers" :items="schedules" class="elevation-1">
+    <v-data-table :headers="headers" :items="schedules" mobile-breakpoint="sm">
       <template v-slot:item.actions="{ item }">
-        <v-icon
-          size="small"
-          class="mr-2"
-          @click="openScheduleDetailDialog(item)"
+        <RowIconButton
           icon="mdi-calendar-edit"
-        ></v-icon>
-        <v-icon size="small" class="mr-2" @click="openDialog(item)" icon="mdi-pencil"></v-icon>
-        <v-icon size="small" @click="deleteItem(item)" icon="mdi-delete"></v-icon>
+          :label="t('settings.rowActions.editDetail', { name: item.name })"
+          @click="openScheduleDetailDialog(item)"
+        />
+        <RowIconButton
+          icon="mdi-pencil"
+          :label="t('settings.rowActions.edit', { name: item.name })"
+          @click="openDialog(item)"
+        />
+        <RowIconButton
+          icon="mdi-delete-outline"
+          danger
+          :label="t('settings.rowActions.delete', { name: item.name })"
+          @click="deleteItem(item)"
+        />
       </template>
     </v-data-table>
 
@@ -27,7 +36,7 @@
       :schedule="selectedSchedule"
       @save="fetchSchedules"
     />
-  </v-card>
+  </MasterPanel>
 </template>
 
 <script setup lang="ts">
@@ -36,6 +45,9 @@ import { useI18n } from 'vue-i18n'
 import axios from '@/plugins/axios'
 import ScheduleDialog from './ScheduleDialog.vue'
 import ScheduleDetailEditor from './ScheduleDetailEditor.vue'
+import MasterPanel from '@/components/settings/MasterPanel.vue'
+import MasterAddButton from '@/components/settings/MasterAddButton.vue'
+import RowIconButton from '@/components/shared/RowIconButton.vue'
 import type { ScheduleList } from '@/types/scheduleList'
 
 const { t } = useI18n()
@@ -51,7 +63,12 @@ const headers = computed(() => [
   { title: t('settings.schedule.headers.start_date'), key: 'start_date' },
   { title: t('settings.schedule.headers.end_date'), key: 'end_date' },
   { title: t('settings.schedule.headers.effective_date'), key: 'effective_date' },
-  { title: t('settings.schedule.headers.actions'), key: 'actions', sortable: false },
+  {
+    title: t('settings.schedule.headers.actions'),
+    key: 'actions',
+    sortable: false,
+    align: 'end' as const,
+  },
 ])
 
 const fetchSchedules = async () => {

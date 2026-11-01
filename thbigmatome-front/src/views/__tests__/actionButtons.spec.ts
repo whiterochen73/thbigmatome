@@ -18,11 +18,6 @@ it('uses action for filled buttons while keeping identified navigation and row a
   const allowedPrimaryButtons = [
     { path: 'views/GamesView.vue', marker: 'ログ取り込み', reason: '取り込み画面への遷移' },
     {
-      path: 'views/SeasonPortal.vue',
-      marker: 'seasonPortal.gameResultInput',
-      reason: '試合結果入力画面への遷移',
-    },
-    {
       path: 'components/season/SeasonRosterTab.vue',
       marker: 'mdi-arrow-up',
       reason: '行ごとの昇格操作アイコン',
@@ -89,12 +84,6 @@ it('limits static primary on buttons, tabs, toggles and chips to identified fill
       marker: 'ログ取り込み',
       variant: 'flat',
       reason: '取り込み画面への遷移',
-    },
-    {
-      path: 'views/SeasonPortal.vue',
-      marker: 'detail-open-schedule',
-      variant: 'elevated',
-      reason: '試合結果入力画面への遷移',
     },
     {
       path: 'components/season/SeasonRosterTab.vue',

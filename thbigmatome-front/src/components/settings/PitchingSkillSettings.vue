@@ -1,6 +1,7 @@
 <template>
   <GenericMasterSettings
     :title="t('settings.pitchingSkill.title')"
+    icon="mdi-star-four-points"
     endpoint="/pitching-skills"
     i18n-key="settings.pitchingSkill"
     :dialog-component="PitchingSkillDialog"

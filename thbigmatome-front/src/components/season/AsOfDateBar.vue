@@ -44,7 +44,6 @@
         {{ t('asOfBar.backToCurrent') }}
       </v-btn>
     </div>
-    <div class="text-caption mt-2">{{ t('asOfBar.hint') }}</div>
   </v-card>
 </template>
 

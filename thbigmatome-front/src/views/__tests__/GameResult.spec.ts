@@ -7,7 +7,7 @@ import * as directives from 'vuetify/directives'
 import { createI18n } from 'vue-i18n'
 import ja from '@/locales/ja.json'
 import GameResult from '../GameResult.vue'
-import { appBarBreadcrumbs } from '@/composables/useAppBarBreadcrumbs'
+import { appBarTitle } from '@/composables/useAppBarTitle'
 
 const { mockGet, mockPut, mockPatch, mockPush, routeGuards, routeQuery } = vi.hoisted(() => ({
   mockGet: vi.fn(),
@@ -1710,7 +1710,9 @@ describe.each(LAYOUTS)('GameResult 試合日ページ: $name', ({ width, kind })
       expect(wrapper.vm.activeStep).toBe('members')
       expect(wrapper.vm.openSections.members).toBe(true)
       expect(wrapper.find('[data-testid="game-day-progress-text"]').exists()).toBe(false)
-      expect(appBarBreadcrumbs.value?.gameNumber).toBeNull()
+      // 試合日でない日は「Game N」を出さず、日付だけ
+      expect(appBarTitle.value?.subtitle).not.toContain('Game')
+      expect(appBarTitle.value?.subtitle).toContain('6月10日')
     })
 
     it('C: no_game は試合日扱いで 4 段を出し、種類変更でその場で段が出入りする', async () => {
@@ -1757,20 +1759,20 @@ describe.each(LAYOUTS)('GameResult 試合日ページ: $name', ({ width, kind })
 
     if (kind === 'step') {
       // Test Basis: subtask_1783p Operator 要望 1・2（2026-10-31）
-      it('ページのツールバー保存を除き、AppBar 用ぱんくずを登録して離脱時に消す', async () => {
+      it('ページのツールバー保存を除き、AppBar 用のタイトルを登録して離脱時に消す', async () => {
         const wrapper = await mountDay()
         expect(wrapper.find('.v-toolbar').exists()).toBe(false)
         expect(wrapper.find('[data-testid="save-setup"]').exists()).toBe(true)
         expect(wrapper.find('[data-testid="save-result"]').exists()).toBe(true)
-        expect(appBarBreadcrumbs.value).toMatchObject({
-          teamName: '豊玉',
-          gameNumber: 5,
-          seasonPortalRoute: { name: 'SeasonPortal', params: { teamId: '1' } },
+        // タイトル=チーム名、サブタイトル=「Game N ・ 日付」、戻り先=シーズン
+        expect(appBarTitle.value).toMatchObject({
+          title: '豊玉',
+          back: { to: { name: 'SeasonPortal', params: { teamId: '1' } }, label: 'シーズン' },
         })
-        expect(appBarBreadcrumbs.value?.date).toContain('6月10日')
+        expect(appBarTitle.value?.subtitle).toMatch(/^Game 5 ・ .*6月10日/)
         mounted.splice(mounted.indexOf(wrapper), 1)
         wrapper.unmount()
-        expect(appBarBreadcrumbs.value).toBeNull()
+        expect(appBarTitle.value).toBeNull()
       })
 
       it('E: 全段の指定アイコンは done と warn でも変わらず、読み上げから隠す', async () => {

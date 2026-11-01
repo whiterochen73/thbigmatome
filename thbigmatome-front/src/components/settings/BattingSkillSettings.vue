@@ -1,6 +1,7 @@
 <template>
   <GenericMasterSettings
     :title="t('settings.battingSkill.title')"
+    icon="mdi-star-four-points"
     endpoint="/batting-skills"
     i18n-key="settings.battingSkill"
     :dialog-component="BattingSkillDialog"

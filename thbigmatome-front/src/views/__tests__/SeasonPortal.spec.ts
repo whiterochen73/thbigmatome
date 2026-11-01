@@ -7,6 +7,7 @@ import { createI18n } from 'vue-i18n'
 import { createRouter, createMemoryHistory } from 'vue-router'
 import { createPinia, setActivePinia } from 'pinia'
 import SeasonPortal from '../SeasonPortal.vue'
+import { appBarTitle } from '@/composables/useAppBarTitle'
 import realJa from '@/locales/ja.json'
 
 // Mock axios using vi.hoisted to avoid hoisting issues
@@ -72,6 +73,7 @@ const i18n = createI18n({
     ja: {
       asOfBar: realJa.asOfBar,
       seasonPortal: {
+        shortTitle: 'シーズン',
         goToGameResult: '今日の試合へ',
         gameResultInput: '試合結果入力',
         openSchedule: '日程を開く',
@@ -100,7 +102,7 @@ const i18n = createI18n({
         },
       },
       common: { close: '閉じる' },
-      settings: { schedule: { dateTypes: { travel_day: '移動日' } } },
+      settings: { schedule: { dateTypes: { travel_day: '移動日', game_day: '試合日' } } },
     },
   },
 })
@@ -158,7 +160,7 @@ describe('SeasonPortal', () => {
   })
 
   // Test Basis: cmd_1783 A（全日程から試合日ページを開く）
-  it('移動日にもカレンダー・一覧・詳細から日程を開くリンクが出る', async () => {
+  it('移動日にも一覧・詳細から日程を開くリンクが出る（カレンダーのセルは詳細を開く）', async () => {
     localStorage.setItem('sp_view', 'calendar')
     const season = {
       id: 1,
@@ -172,7 +174,9 @@ describe('SeasonPortal', () => {
         (cell) =>
           cell.find('.day-number').text() === '11' && !cell.classes().includes('not-current-month'),
       )!
-    expect(day.find('.entry-btn').text()).toBe('日程を開く')
+    // セル全体が押せるので、セル内の文字リンクは置かない（詳細ダイアログから開く）
+    expect(day.find('.entry-btn').exists()).toBe(false)
+    expect(day.text()).not.toContain('日程を開く')
     await day.trigger('click')
     await flushPromises()
     expect(
@@ -298,8 +302,9 @@ describe('SeasonPortal', () => {
     })
   })
 
-  describe('画面のタイトルはチーム名', () => {
-    it('シーズンに name が付いて返ってきても、タイトルにはチーム名を出す', async () => {
+  // Test Basis: thbig-dugout-ui-unification-design.md §2.2 B 型（タイトル=チーム名、サブタイトル=画面名。本文に h1 は置かない）
+  describe('画面のタイトルはチーム名（ヘッダーバーへ渡す）', () => {
+    it('シーズンに name が付いて返ってきても、バーのタイトルにはチーム名、サブタイトルに「シーズン」', async () => {
       const season = {
         id: 1,
         name: '旧題のシーズン',
@@ -308,14 +313,23 @@ describe('SeasonPortal', () => {
       }
       const wrapper = await mountSeasonPortal({ season })
 
-      expect(wrapper.find('[data-testid="season-title"]').text()).toBe('チームA')
+      expect(appBarTitle.value).toEqual({ title: 'チームA', subtitle: 'シーズン' })
       expect(wrapper.text()).not.toContain('旧題のシーズン')
+      expect(wrapper.find('h1').exists()).toBe(false)
     })
 
     it('シーズン未作成でもタイトルはチーム名', async () => {
       const wrapper = await mountSeasonPortal({ season: null, schedules: [] })
 
-      expect(wrapper.find('[data-testid="season-title"]').text()).toBe('チームA')
+      expect(appBarTitle.value).toEqual({ title: 'チームA', subtitle: 'シーズン' })
+      expect(wrapper.find('h1').exists()).toBe(false)
+    })
+
+    it('画面を離れるとバーの宣言を消す', async () => {
+      const wrapper = await mountSeasonPortal({ season: null, schedules: [] })
+      mountedWrappers.splice(mountedWrappers.indexOf(wrapper), 1)
+      wrapper.unmount()
+      expect(appBarTitle.value).toBeNull()
     })
   })
 
@@ -574,13 +588,16 @@ describe('SeasonPortal', () => {
       mountedWrappers.splice(0).forEach((w) => w.unmount())
     })
 
-    it('ツールバーに現在日（範囲の最後の試合日）を出し、◀ ▶ のボタンは無い', async () => {
+    it('「いま」の帯に現在日（範囲の最後の試合日・曜日つき）を出し、◀ ▶ のボタンは無い', async () => {
       const wrapper = await mountSeasonPortal({ season })
 
-      expect(wrapper.find('[data-testid="current-date"]').text()).toBe('現在の日付: 5月9日')
-      const toolbar = wrapper.find('.v-toolbar')
-      expect(toolbar.find('.mdi-chevron-left').exists()).toBe(false)
-      expect(toolbar.find('.mdi-chevron-right').exists()).toBe(false)
+      const date = wrapper.find('[data-testid="current-date"]')
+      expect(date.find('.now-strip__label').text()).toBe('現在の日付')
+      expect(date.find('.now-strip__value').text()).toBe('5月9日(土)')
+      const strip = wrapper.find('[data-testid="now-strip"]')
+      expect(strip.find('.mdi-chevron-left').exists()).toBe(false)
+      expect(strip.find('.mdi-chevron-right').exists()).toBe(false)
+      expect(wrapper.find('.v-toolbar').exists()).toBe(false)
     })
 
     it('現在日を動かす PATCH を呼ばない（月送りでも現在日は変わらない）', async () => {
@@ -593,7 +610,7 @@ describe('SeasonPortal', () => {
       await flushPromises()
 
       expect(mockPatch).not.toHaveBeenCalled()
-      expect(wrapper.find('[data-testid="current-date"]').text()).toBe('現在の日付: 5月9日')
+      expect(wrapper.find('.now-strip__value').text()).toBe('5月9日(土)')
       expect(wrapper.find('.month-label').text()).toBe('2026年6月')
     })
 
@@ -659,6 +676,115 @@ describe('SeasonPortal', () => {
       const wrapper = await mountSeasonPortal({ season, query: '?tab=roster&date=abc' })
 
       expect(wrapper.find('[data-stub="roster"]').attributes('data-as-of')).toBe('2026-05-09')
+    })
+  })
+
+  // Test Basis: thbig-dugout-ui-unification-design.md §2.4 / §2.6 / §3（「いま」帯・主操作は緑 1 つ・土日の赤字をやめる）
+  describe('骨格（段 1）', () => {
+    const gameDay = {
+      id: 7,
+      date: '2026-05-09',
+      date_type: 'game_day',
+      game_result: null,
+      pitcher_appearance_count: 0,
+    }
+    const season = {
+      id: 1,
+      current_date: '2026-05-09',
+      start_date: '2026-04-01',
+      end_date: '2026-10-31',
+      season_schedules: [
+        gameDay,
+        { ...gameDay, id: 8, date: '2026-05-10', date_type: 'travel_day' },
+      ],
+    }
+
+    beforeEach(() => {
+      localStorage.removeItem('sp_view')
+    })
+
+    afterEach(() => {
+      mountedWrappers.splice(0).forEach((w) => w.unmount())
+    })
+
+    it('「いま」の帯: 現在日が試合日なら、試合日の種別と未入力の印を出し、「今日の試合へ」は緑の主ボタンで試合日ページへ向かう', async () => {
+      const wrapper = await mountSeasonPortal({ season })
+      const strip = wrapper.find('[data-testid="now-strip"]')
+      expect(strip.find('[data-testid="now-type"]').text()).toContain('試合日')
+      expect(strip.find('[data-testid="now-mark"]').text()).toBe('未入力')
+      const go = strip.find('[data-testid="go-to-game"]')
+      expect(go.text()).toContain('今日の試合へ')
+      expect(go.classes()).toContain('bg-action')
+      expect(go.classes()).toContain('v-btn--variant-flat')
+      expect(go.attributes('disabled')).toBeUndefined()
+      expect(go.attributes('href')).toBe('/teams/1/season/schedules/7/game')
+    })
+
+    it('「いま」の帯: 現在日が試合日でなければ「今日の試合へ」は押せない', async () => {
+      const wrapper = await mountSeasonPortal({
+        season: { ...season, current_date: '2026-05-10' },
+      })
+      const go = wrapper.find('[data-testid="go-to-game"]')
+      expect(go.attributes('disabled')).toBeDefined()
+      expect(wrapper.find('[data-testid="now-mark"]').exists()).toBe(false)
+    })
+
+    it('「いま」の帯はシーズンがある時だけ。タブより前に置く', async () => {
+      const none = await mountSeasonPortal({ season: null, schedules: [] })
+      expect(none.find('[data-testid="now-strip"]').exists()).toBe(false)
+      expect(none.find('.v-tabs').exists()).toBe(false)
+
+      const wrapper = await mountSeasonPortal({ season })
+      const html = wrapper.find('[data-testid="page-layout"]').html()
+      expect(html.indexOf('data-testid="now-strip"')).toBeGreaterThan(-1)
+      expect(html.indexOf('data-testid="now-strip"')).toBeLessThan(html.indexOf('v-tabs'))
+    })
+
+    it('タブは全部アイコンつき。幅は wide', async () => {
+      const wrapper = await mountSeasonPortal({ season })
+      const tabs = wrapper.findAll('.v-tab')
+      expect(tabs).toHaveLength(5)
+      for (const tab of tabs) expect(tab.find('.v-icon').exists()).toBe(true)
+      expect(wrapper.find('[data-testid="page-layout"]').classes()).toContain('page-layout--wide')
+    })
+
+    it('土日は赤・青の文字クラスを付けず、地色のクラス（weekend）だけで区別する。移動日などの平日には付けない', async () => {
+      localStorage.setItem('sp_view', 'calendar')
+      const wrapper = await mountSeasonPortal({ season })
+      const cells = wrapper
+        .findAll('.day-cell')
+        .filter((c) => !c.classes().includes('not-current-month'))
+      // 2026-05-09 は土曜、05-10 は日曜、05-11 は月曜
+      const cell = (n: number) => cells.find((c) => c.find('.day-number').text() === String(n))!
+      expect(cell(9).classes()).toContain('weekend')
+      expect(cell(10).classes()).toContain('weekend')
+      expect(cell(11).classes()).not.toContain('weekend')
+      expect(wrapper.html()).not.toMatch(/sat-|sun-|saturday|sunday/)
+      const source = (await import('../SeasonPortal.vue?raw')).default as string
+      expect(source).not.toMatch(/\.(sat|sun)-(header|num|text)|\.saturday|\.sunday/)
+    })
+
+    it('カレンダーの日程種別チップは、文字を span に分けて title に名前を持つ（スマホ幅は文字を省きアイコンだけにする）', async () => {
+      localStorage.setItem('sp_view', 'calendar')
+      const wrapper = await mountSeasonPortal({ season })
+      const chip = wrapper
+        .findAll('.day-cell')
+        .find(
+          (c) =>
+            !c.classes().includes('not-current-month') && c.find('.day-number').text() === '10',
+        )!
+        .find('.type-chip')
+      expect(chip.find('.type-chip__text').text()).toBe('移動日')
+      expect(chip.attributes('title')).toBe('移動日')
+      expect(chip.find('.v-icon').exists()).toBe(true)
+    })
+
+    it('表形式: 曜日の列にも赤・青の文字クラスを付けない', async () => {
+      localStorage.setItem('sp_view', 'table')
+      const wrapper = await mountSeasonPortal({ season })
+      const dows = wrapper.findAll('.dow-cell')
+      expect(dows.length).toBeGreaterThan(0)
+      for (const d of dows) expect(d.classes()).toEqual(['dow-cell'])
     })
   })
 })

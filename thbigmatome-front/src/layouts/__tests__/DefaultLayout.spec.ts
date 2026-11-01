@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { ref } from 'vue'
 import { mount, flushPromises } from '@vue/test-utils'
 import { createVuetify } from 'vuetify'
@@ -289,6 +289,62 @@ describe('DefaultLayout.vue', () => {
       await flushPromises()
 
       expect(wrapper.text()).toContain('THBIG Dugout')
+    })
+  })
+
+  // Test Basis: thbig-dugout-ui-unification-design.md §1.2 #9 / §2.8（狭い幅ではナビを起動時に閉じる）
+  describe('ナビの初期状態', () => {
+    const originalWidth = window.innerWidth
+    afterEach(() => {
+      window.innerWidth = originalWidth
+    })
+
+    const drawerOpenAt = async (width: number) => {
+      window.innerWidth = width
+      const wrapper = mount(DefaultLayout, {
+        global: {
+          plugins: [
+            createVuetify({ components, directives }),
+            i18n,
+            createTestRouter(),
+            createPinia(),
+          ],
+        },
+      })
+      await flushPromises()
+      const open = wrapper.findComponent({ name: 'NavigationDrawer' }).props('modelValue')
+      wrapper.unmount()
+      return open
+    }
+
+    it('スマホ幅（390px）では起動時に閉じ、本文を覆わない', async () => {
+      expect(await drawerOpenAt(390)).toBe(false)
+    })
+
+    it('常時表示になる広い幅（1440px）では最初から開く', async () => {
+      expect(await drawerOpenAt(1440)).toBe(true)
+    })
+
+    it('メニューボタンで開閉できる', async () => {
+      window.innerWidth = 390
+      const wrapper = mount(DefaultLayout, {
+        global: {
+          plugins: [
+            createVuetify({ components, directives }),
+            i18n,
+            createTestRouter(),
+            createPinia(),
+          ],
+        },
+      })
+      await flushPromises()
+      const drawer = () => wrapper.findComponent({ name: 'NavigationDrawer' }).props('modelValue')
+      expect(drawer()).toBe(false)
+      await wrapper.find('.v-app-bar-nav-icon').trigger('click')
+      expect(drawer()).toBe(true)
+      await wrapper.find('.v-app-bar-nav-icon').trigger('click')
+      expect(drawer()).toBe(false)
+      wrapper.unmount()
     })
   })
 })

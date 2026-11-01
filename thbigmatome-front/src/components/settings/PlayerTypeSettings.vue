@@ -1,6 +1,7 @@
 <template>
   <GenericMasterSettings
     :title="t('settings.playerType.title')"
+    icon="mdi-account-details"
     endpoint="/player-types"
     i18n-key="settings.playerType"
     :dialog-component="PlayerTypeDialog"

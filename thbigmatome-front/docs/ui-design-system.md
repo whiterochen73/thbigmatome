@@ -92,7 +92,7 @@
 
 複数のセクションを縦に積む構成。情報集約型画面。
 
-**該当View**: HomeView, GameResult, ScoreSheet
+**該当View**: GameResult, ScoreSheet
 
 **共通骨格**:
 ```vue
@@ -648,7 +648,6 @@ const headers = [
 |------|---------|---------|---------|-----------|--------|
 | LoginForm | LP-6変形 | なし | なし | なし | なし |
 | HomePortalView | LP-6 | なし | なし | なし | v-select |
-| HomeView | LP-2 | A | なし | なし | v-select |
 | ManagerList | LP-1 | A | v-data-table (expand) | ManagerDialog | なし |
 | Players | LP-1 | A | v-data-table | PlayerDialog | 検索 |
 | PlayerDetailView | LP-4 | D | v-table | PlayerDialog | なし |

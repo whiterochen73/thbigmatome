@@ -28,11 +28,6 @@ const routes: RouteRecordRaw[] = [
         meta: { requiresAuth: true, title: 'ホーム' },
       },
       {
-        path: 'home',
-        component: () => import('@/views/HomeView.vue'),
-        meta: { requiresAuth: true, title: 'ホーム（旧）' },
-      },
-      {
         path: 'managers',
         name: '監督一覧',
         component: ManagerList,

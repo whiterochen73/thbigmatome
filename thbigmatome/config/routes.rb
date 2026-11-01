@@ -88,9 +88,6 @@ Rails.application.routes.draw do
         end
       end
 
-      # ホーム画面
-      get "home/summary", to: "home#summary"
-
       # コストアサインメント
       resources :cost_assignments, only: [ :index, :create ]
 

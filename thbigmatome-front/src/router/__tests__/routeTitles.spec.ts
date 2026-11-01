@@ -46,9 +46,10 @@ describe('route.meta.title', () => {
   })
 
   // Test Basis: Operator 決定 2026-11-01（cmd_1795）「パーサー経由の試合記録・試合詳細・成績集計・レビューは廃止」
-  it('パーサー経由の画面（試合記録・試合詳細・オーダー確認・成績集計・パーサーレビュー）の route は無い', () => {
+  it('パーサー経由の画面（試合記録・試合詳細・オーダー確認・成績集計・パーサーレビュー・旧ホーム）の route は無い', () => {
     const paths = router.getRoutes().map((r) => r.path)
     for (const path of [
+      '/home',
       '/games',
       '/games/:id',
       '/games/:id/lineup',
@@ -58,5 +59,13 @@ describe('route.meta.title', () => {
     ]) {
       expect(paths).not.toContain(path)
     }
+  })
+
+  // Test Basis: Operator 決定 2026-11-01（cmd_1795）旧ホーム（/home）を削除。今のホーム（/ の HomePortalView）は残す
+  it('旧ホーム（/home）は画面に解決されず、ホーム（/）は残る', () => {
+    expect(router.resolve('/home').matched.some((r) => r.path === '/home')).toBe(false)
+    const home = router.getRoutes().find((r) => r.name === 'ホーム')
+    expect(home?.meta.title).toBe('ホーム')
+    expect(router.resolve('/').name).toBe('ホーム')
   })
 })

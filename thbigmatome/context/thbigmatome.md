@@ -29,7 +29,7 @@ thbigmatome-front (Vue.js 3 SPA)
   └─ 試合日ページ（GameResult）での結果入力など。パーサー経由の画面（試合記録・試合詳細・オーダー確認・成績集計・パーサーレビュー）は廃止
 
 thbig-irc-parser (Python独立パッケージ・凍結)
-  ├─ IRCログ解析（atbat_parser ほか）: Rails とは繋がらない。Clubhouse の取り込みが今も呼ぶ
+  ├─ IRCログ解析（atbat_parser ほか）: Rails とも Clubhouse とも繋がらない。開発 compose のサービスも外した（cmd_1795）。テストは repo で直接 `uv run pytest tests/`
   └─ 選手カードPDF解析（card_parser）: 現役の使い道
 ```
 

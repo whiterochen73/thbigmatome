@@ -14,7 +14,6 @@
 |--------|------|------|------|------|
 | `/login` | Login | `LoginForm.vue` | ログイン画面 | 不要 |
 | `/` | ホーム | `HomePortalView.vue` | ホームポータル（現行） | 要 |
-| `/home` | — | `HomeView.vue` | ホーム（旧版） | 要 |
 | `/settings` | 各種設定 | `Settings.vue` | ユーザー設定 | 要 |
 
 ### チーム管理

@@ -1,7 +1,6 @@
 # Docker Compose for thbigmatome development environment
 # Usage:
-#   docker compose up                        # db + rails + frontend + parser(凍結) + irc
-#   docker compose run --rm parser pytest    # run parser tests
+#   docker compose up                        # db + rails + frontend + irc
 
 services:
   db:
@@ -54,35 +53,6 @@ services:
     environment:
       VITE_API_BASE_URL: http://localhost:3000/api/v1
     command: yarn dev -- --host 0.0.0.0
-
-  # 凍結中。Dugout（Rails）からは繋がらない（cmd_1791・cmd_1795 で連携を削除）。
-  # 残している理由: (1) Clubhouse のログ取り込みが PARSER_API_URL=http://localhost:5000 でここへ来る
-  # (2) parser の pytest を `docker compose run --rm parser pytest` で回す。
-  # カード読み取り（parse_all_cards.py・split_card_pdf.sh）はホストで直接動かす手順で、このサービスは使わない。
-  # Clubhouse の取り込みを廃止する時に、このサービスごと外す。
-  parser:
-    build:
-      context: ./thbig-irc-parser
-      dockerfile: Dockerfile.dev
-    ports:
-      - "5000:5000"
-    volumes:
-      # テストコードがハードコードされたホストパスを参照するため同一パスでマウント
-      - /home/morinaga/projects/thbig-irc-parser:/home/morinaga/projects/thbig-irc-parser
-      # PDFカードデータ・IRCログ（テストがWindowsパスをハードコード）
-      - /mnt/c/Users/necro/Documents/to_team:/mnt/c/Users/necro/Documents/to_team
-    working_dir: /home/morinaga/projects/thbig-irc-parser
-    depends_on:
-      - db
-    environment:
-      DB_HOST: db
-      DB_USERNAME: morinaga
-    healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:5000/health')"]
-      interval: 5s
-      timeout: 10s
-      retries: 12
-      start_period: 15s
 
   irc:
     build:

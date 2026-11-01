@@ -7,7 +7,6 @@
 - `src/router/index.ts`
 - `src/views/LoginForm.vue`
 - `src/views/HomePortalView.vue`
-- `src/views/HomeView.vue`
 - `src/views/ManagerList.vue`
 - `src/views/Players.vue`
 - `src/views/PlayerDetailView.vue`
@@ -36,7 +35,6 @@
 |------|---------|--------------|-----------|---------|
 | `/login` | `Login` | `LoginForm` | — | 不要 |
 | `/` | `ホーム` | `HomePortalView` | — | 要（authGuard） |
-| `/home` | — | `HomeView` | — | 要（authGuard） |
 | `/managers` | `監督一覧` | `ManagerList` | — | 要（authGuard） |
 | `/players` | `Players` | `Players` | — | 要（authGuard） |
 | `/players/:id` | `PlayerDetail` | `PlayerDetailView` | `id` | 要（authGuard） |
@@ -95,19 +93,9 @@
 
 ---
 
-### 2.3 ホーム（レガシー）
+### 2.3 （削除）旧ホーム（HomeView）
 
-- **画面名**: ホーム / HomeView
-- **ルートパス**: `/home`
-- **主要機能・目的**: 大会ごとの試合サマリー表示（旧ホーム画面）
-- **使用APIエンドポイント**:
-  - GET `/competitions`
-  - GET `/home/summary?competition_id=N`
-- **主要なcomposable/store**: なし（直接axios）
-- **ヘッダーバー**: `route.meta.title`（ホーム（旧））
-- **画面構成**: `PageLayout`（大会選択・試合サマリーカード）
-- **他画面への遷移先**: なし（参照のみ）。直近の試合結果の行は、行き先の画面（`/games/:id`）が無くなったのでリンクにしていない（cmd_1795）
-- **備考**: 成績サマリーの元になる集計（`/home/summary`）は、パーサー経由で入った打席を使う。旧ホームを残すか消すかは未決
+`/home` の旧ホーム画面と `GET /home/summary` は cmd_1795 で削除した。ホームは `/` の HomePortalView。
 
 ---
 

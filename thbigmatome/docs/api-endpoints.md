@@ -732,29 +732,9 @@
 
 ---
 
-## ホーム画面 (Home)
+## ホーム画面 (Home)・成績集計 (Stats)
 
-### GET /api/v1/home/summary
-
-- **Controller**: `Api::V1::HomeController#summary`
-- **Query Params**: `competition_id` (integer, 必須)
-- **Response**:
-  ```json
-  {
-    "season_progress": { "completed": int, "total": 143 },
-    "recent_games": [{ "id", "real_date", "home_team", "visitor_team", "home_score", "visitor_score" }],
-    "batting_top3": [{ ...stats, "hr", "batting_average" }],
-    "pitching_top3": [{ ...stats, "era" }],
-    "team_summary": { ...TeamStatsCalculator 返り値 }
-  }
-  ```
-- **ノーゲーム**: ノーゲームの試合は消化試合数・直近試合・成績に入れない（台帳 D-11。`Game.excluding_no_game` / `NoGameGames`）
-
----
-
-## 成績集計 (Stats)
-
-廃止（cmd_1795）: `GET /api/v1/stats/batting|pitching|team` は成績集計画面と一緒に削除した。集計の計算（`BattingStatsCalculator` / `PitchingStatsCalculator` / `TeamStatsCalculator`）は `GET /api/v1/home/summary`（旧ホーム画面）が使うので残っている。
+廃止（cmd_1795）: `GET /api/v1/home/summary`（旧ホーム画面）と `GET /api/v1/stats/batting|pitching|team`（成績集計画面）は、画面・集計の計算（`BattingStatsCalculator` / `PitchingStatsCalculator` / `TeamStatsCalculator`）とあわせて削除した。パーサー経由で取り込んだ打席から集計するだけのもので、役目が無かったため。DB の表・データは残している。不在は `spec/routing/removed_parser_screens_spec.rb` が固定する。
 
 ---
 

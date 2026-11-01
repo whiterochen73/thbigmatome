@@ -329,7 +329,6 @@
     "score": "得点",
     "opponentScore": "失点",
     "noGame": "ノーゲーム",
-    "noGameHint": "試合が成立しなかった場合に選ぶ。投手の休養は KO・ノーゲームの表で計算され、勝敗投手は付けられない",
     "team": "チーム",
     "total": "合計",
     "addInning": "回追加",
@@ -344,6 +343,9 @@
     "dateType": {
       "label": "日付種類",
       "saveFirst": "保存してから変更",
+      "change": "日付種類を変更",
+      "current": "今の種類",
+      "confirm": "変更",
       "confirmTitle": "日付種類を変更しますか？",
       "confirmMessage": "保存済みの試合データがあります。日付種類を変更してもデータは消えず、隠れるだけです。変更しますか？",
       "saveFailed": "日付種類の変更に失敗しました"
@@ -381,9 +383,9 @@
       "absences": "シーズンポータルで開く"
     },
     "rangeNote": {
-      "outside": "この日は今の範囲（{start}〜{end}）の外なので、登録・昇降格・負傷・出場停止は見るだけです。過去分の修正はシーズン画面から行います。",
-      "seasonOver": "シーズンの最終試合日が終わっているため、登録・昇降格・負傷・出場停止は見るだけです。過去分の修正はシーズン画面から行います。",
-      "unknown": "今の範囲を取得できなかったため、登録・昇降格・負傷・出場停止は見るだけにしています。",
+      "outside": "この日は見るだけです",
+      "seasonOver": "シーズンが終わったので、見るだけです",
+      "unknown": "範囲を取得できないので、見るだけです",
       "link": "シーズン画面で修正する"
     },
     "progress": {
@@ -567,8 +569,7 @@
   "confirmDialog": {},
   "settings": {
     "title": "設定",
-    "description": "この画面では、アプリケーション全体で利用される細かいマスターデータの設定を行います。",
-    "managedByConfigFile": "この設定は設定ファイルで管理されているため、ここでは閲覧のみ可能です。",
+    "managedByConfigFile": "閲覧のみです",
     "tabs": {
       "player": "選手設定",
       "squad": "コスト・日程",
@@ -585,12 +586,6 @@
       "editDetail": "{name}の日程を編集",
       "duplicate": "{name}を複製",
       "delete": "{name}を削除"
-    },
-    "player": {
-      "description": "選手に関する設定を行います。"
-    },
-    "squad": {
-      "description": "登録に関する設定を行います。"
     },
     "pitchingStyle": {
       "title": "投手特徴",

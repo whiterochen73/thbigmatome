@@ -176,8 +176,8 @@ describe('GameResult 試合日ページ: 登録・離脱の操作範囲', () => 
       ...seasonResponse,
       current_range: range,
     })
-    const OUTSIDE =
-      'この日は今の範囲（6/12〜6/12）の外なので、登録・昇降格・負傷・出場停止は見るだけです。過去分の修正はシーズン画面から行います。'
+    // Operator 決定 2026-11-01: 操作の仕組みを説明する文は足さない。「見るだけ」とわかる短い文だけ
+    const OUTSIDE = 'この日は見るだけです'
     const embedded = (wrapper: Wrapper, slug: string) => body(wrapper, slug).find('[data-embed]')
 
     it.each(EMBEDS)('$slug: 範囲の中の日は操作でき、案内を出さない', async ({ slug }) => {
@@ -198,6 +198,8 @@ describe('GameResult 試合日ページ: 登録・離脱の操作範囲', () => 
         const panel = body(wrapper, slug)
         expect(embedded(wrapper, slug).attributes('data-readonly')).toBe('true')
         expect(panel.find('[data-testid="range-note"]').text()).toContain(OUTSIDE)
+        expect(panel.find('[data-testid="range-note"]').text()).not.toContain('過去分の修正')
+        expect(panel.find('[data-testid="range-note"]').text()).not.toContain('今の範囲')
         expect(panel.find('[data-testid="range-note-link"]').text()).toBe('シーズン画面で修正する')
         const html = panel.element.innerHTML
         expect(html.indexOf('data-testid="range-note"')).toBeLessThan(html.indexOf('data-embed'))
@@ -254,7 +256,7 @@ describe('GameResult 試合日ページ: 登録・離脱の操作範囲', () => 
       await openStep(wrapper, 'absences')
       expect(embedded(wrapper, 'absences').attributes('data-readonly')).toBe('true')
       expect(body(wrapper, 'absences').find('[data-testid="range-note"]').text()).toContain(
-        'シーズンの最終試合日が終わっている',
+        'シーズンが終わったので、見るだけです',
       )
     })
 
@@ -290,7 +292,7 @@ describe('GameResult 試合日ページ: 登録・離脱の操作範囲', () => 
 
       expect(embedded(wrapper, 'roster').attributes('data-readonly')).toBe('true')
       expect(body(wrapper, 'roster').find('[data-testid="range-note"]').text()).toContain(
-        '今の範囲を取得できなかった',
+        '範囲を取得できないので、見るだけです',
       )
     })
 
@@ -299,7 +301,7 @@ describe('GameResult 試合日ページ: 登録・離脱の操作範囲', () => 
       await openStep(wrapper, 'members')
       expect(embedded(wrapper, 'members').attributes('data-readonly')).toBe('true')
       expect(body(wrapper, 'members').find('[data-testid="range-note"]').text()).toContain(
-        '今の範囲を取得できなかった',
+        '範囲を取得できないので、見るだけです',
       )
     })
 
@@ -384,7 +386,7 @@ describe('GameResult 試合日ページ: 登録・離脱の操作範囲', () => 
       await openStep(wrapper, 'roster')
       expect(embedded(wrapper, 'roster').attributes('data-readonly')).toBe('true')
       expect(body(wrapper, 'roster').find('[data-testid="range-note"]').text()).toContain(
-        'この日は今の範囲（6/11〜6/12）の外',
+        'この日は見るだけです',
       )
     })
 
@@ -397,6 +399,22 @@ describe('GameResult 試合日ページ: 登録・離脱の操作範囲', () => 
 
       expect(mockPut).toHaveBeenCalledTimes(1)
       expect(mockGet.mock.calls.filter(([url]) => url === '/teams/1/season')).toHaveLength(1)
+    })
+  })
+
+  // Operator 決定 2026-11-01: 画面に操作の仕組みを説明する文を足さない。
+  // ノーゲームのチェックに付けていた常時表示のヒント（休養の計算・勝敗投手の説明）をやめた
+  describe('ノーゲームのチェック', () => {
+    it('ラベルだけを出し、常時表示のヒント（仕組みの説明）は出さない', async () => {
+      const wrapper = await mountDay()
+      await openStep(wrapper, 'result')
+      const checkbox = wrapper.find('[data-testid="no-game-checkbox"]')
+      expect(checkbox.exists()).toBe(true)
+      expect(checkbox.text()).toBe('ノーゲーム')
+      expect(checkbox.find('.v-messages__message').exists()).toBe(false)
+      expect(wrapper.text()).not.toContain('試合が成立しなかった場合に選ぶ')
+      expect(wrapper.text()).not.toContain('KO・ノーゲームの表')
+      expect(ja.gameResult).not.toHaveProperty('noGameHint')
     })
   })
 })

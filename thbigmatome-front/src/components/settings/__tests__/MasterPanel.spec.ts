@@ -36,7 +36,7 @@ describe('MasterPanel', () => {
   it('アイコン・名前・件数を 1 行に出し、既定では閉じている', () => {
     const w = panel()
     expect(w.find('.mdi-tag-outline').exists()).toBe(true)
-    expect(w.find('h3').text()).toBe('投手特徴')
+    expect(w.find('h3 .master-panel__title').text()).toBe('投手特徴')
     expect(w.find('[data-testid="master-panel-count"]').text()).toBe('12件')
     expect(hidden(w)).toBe(true)
     expect(w.find('[data-testid="master-panel-toggle"]').attributes('aria-expanded')).toBe('false')
@@ -60,6 +60,14 @@ describe('MasterPanel', () => {
     const w = panel({ defaultOpen: true, count: undefined })
     expect(hidden(w)).toBe(false)
     expect(w.find('[data-testid="master-panel-count"]').exists()).toBe(false)
+  })
+
+  it('見出し（h3）が開閉ボタンを包み、button の中に見出しを置かない（HTML 適合）', () => {
+    const w = panel()
+    const toggle = w.find('[data-testid="master-panel-toggle"]')
+    expect(toggle.element.closest('h3')).not.toBeNull()
+    expect(toggle.find('h1,h2,h3,h4,h5,h6').exists()).toBe(false)
+    expect(w.findAll('h3')).toHaveLength(1)
   })
 
   it('追加ボタンは開閉ボタンの外（入れ子にしない）。押しても開閉しない', async () => {
@@ -88,6 +96,51 @@ describe('MasterAddButton', () => {
     expect(w.attributes('style')).toContain('--v-theme-border-strong')
     await w.trigger('click')
     expect(onClick).toHaveBeenCalledOnce()
+  })
+
+  describe('スマホ幅（xs = 600px 未満）では + のアイコンだけにして、パネル名を省略させない', () => {
+    const original = window.innerWidth
+    afterEach(() => {
+      window.innerWidth = original
+    })
+    const mountAt = (width: number, props: Record<string, unknown> = {}) => {
+      window.innerWidth = width
+      const w = mount(MasterAddButton, {
+        props: { label: '特徴を追加', ...props },
+        global: { plugins: [createVuetify({ components, directives }), i18n] },
+      })
+      wrappers.push(w as VueWrapper)
+      return w
+    }
+
+    it('390px: 文字を出さず、名前は aria-label と title が持つ。枠ボタンのまま', () => {
+      const w = mountAt(390, { text: '追加' })
+      expect(w.text()).toBe('')
+      expect(w.find('.mdi-plus').exists()).toBe(true)
+      expect(w.attributes('aria-label')).toBe('特徴を追加')
+      expect(w.attributes('title')).toBe('特徴を追加')
+      expect(w.attributes('data-testid')).toBe('master-add')
+      expect(w.classes()).toContain('v-btn--icon')
+      expect(w.classes()).toContain('v-btn--variant-outlined')
+      expect(w.classes()).not.toContain('bg-action')
+      expect(w.attributes('style')).toContain('--v-theme-border-strong')
+    })
+
+    it('390px でもクリックを通す', async () => {
+      const onClick = vi.fn()
+      await mountAt(390, { onClick }).trigger('click')
+      expect(onClick).toHaveBeenCalledOnce()
+    })
+
+    it('境界: 599px はアイコンのみ、600px と PC 幅は文字つき（title は付けない）', () => {
+      expect(mountAt(599).text()).toBe('')
+      for (const width of [600, 1280]) {
+        const w = mountAt(width)
+        expect(w.text()).toBe('特徴を追加')
+        expect(w.classes()).not.toContain('v-btn--icon')
+        expect(w.attributes('title')).toBeUndefined()
+      }
+    })
   })
 
   it('text を渡せば表示文字と aria-label を分けられる', () => {

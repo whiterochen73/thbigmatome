@@ -1,26 +1,29 @@
 <template>
   <section class="master-panel" data-testid="master-panel">
     <header class="master-panel__header">
-      <!-- 開閉の操作はこの 1 つ。::after でヘッダー全体を押せる範囲にし、追加ボタンはその上に載せる（ボタンの入れ子を避ける） -->
-      <button
-        type="button"
-        class="master-panel__toggle"
-        :aria-expanded="open ? 'true' : 'false'"
-        :aria-controls="bodyId"
-        data-testid="master-panel-toggle"
-        @click="open = !open"
-      >
-        <v-icon class="on-surface-variant" size="22" aria-hidden="true">{{ icon }}</v-icon>
-        <h3 class="master-panel__title">{{ title }}</h3>
-        <v-chip
-          v-if="count !== undefined"
-          color="state-neutral"
-          variant="flat"
-          size="small"
-          data-testid="master-panel-count"
-          >{{ t('settings.itemCount', { count }) }}</v-chip
+      <!-- 開閉の操作はこの 1 つ。::after でヘッダー全体を押せる範囲にし、追加ボタンはその上に載せる（ボタンの入れ子を避ける）。
+           見出し（h3）がボタンを包む（アコーディオンの標準形。button の中に見出しは置けない） -->
+      <h3 class="master-panel__heading">
+        <button
+          type="button"
+          class="master-panel__toggle"
+          :aria-expanded="open ? 'true' : 'false'"
+          :aria-controls="bodyId"
+          data-testid="master-panel-toggle"
+          @click="open = !open"
         >
-      </button>
+          <v-icon class="on-surface-variant" size="22" aria-hidden="true">{{ icon }}</v-icon>
+          <span class="master-panel__title">{{ title }}</span>
+          <v-chip
+            v-if="count !== undefined"
+            color="state-neutral"
+            variant="flat"
+            size="small"
+            data-testid="master-panel-count"
+            >{{ t('settings.itemCount', { count }) }}</v-chip
+          >
+        </button>
+      </h3>
       <div v-if="$slots.actions" class="master-panel__actions">
         <slot name="actions" />
       </div>
@@ -70,6 +73,13 @@ const bodyId = `master-panel-body-${useId()}`
   gap: 8px;
   min-height: 48px;
   padding-inline-end: 12px;
+}
+.master-panel__heading {
+  display: flex;
+  flex: 1 1 auto;
+  min-width: 0;
+  margin: 0;
+  font: inherit;
 }
 .master-panel__toggle {
   display: flex;

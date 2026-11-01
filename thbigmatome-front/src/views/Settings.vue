@@ -67,7 +67,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 
 defineOptions({ name: 'SettingsView' })
@@ -84,7 +84,17 @@ import PasswordChangeForm from '@/components/settings/PasswordChangeForm.vue'
 
 // 画面タイトル「設定」はヘッダーバー（route.meta.title）が出す
 const route = useRoute()
-const selectedTab = ref((route.query.tab as string) || 'player')
+const TABS = ['player', 'squad', 'account']
+const tabFromQuery = (query: unknown) =>
+  typeof query === 'string' && TABS.includes(query) ? query : 'player'
+const selectedTab = ref(tabFromQuery(route.query.tab))
+// アカウントメニューの「パスワード変更」など、同じ画面のまま ?tab= だけが変わる遷移に追従する
+watch(
+  () => route.query.tab,
+  (tab) => {
+    selectedTab.value = tabFromQuery(tab)
+  },
+)
 </script>
 
 <style scoped>

@@ -7,6 +7,7 @@ import * as directives from 'vuetify/directives'
 import { createI18n } from 'vue-i18n'
 import ja from '@/locales/ja.json'
 import GameResult from '../GameResult.vue'
+import DateTypeDialog from '@/components/gameDay/DateTypeDialog.vue'
 import { appBarTitle } from '@/composables/useAppBarTitle'
 
 const { mockGet, mockPut, mockPatch, mockPush, routeGuards, routeQuery } = vi.hoisted(() => ({
@@ -541,7 +542,7 @@ describe.each(LAYOUTS)('GameResult 試合日ページ: $name', ({ width, kind })
   })
 
   // Test Basis: subtask_1783t Operator 指摘 3（2026-11-01）
-  it('全日付種類の選択肢と見出しに同じ色とアイコンを付ける', async () => {
+  it('全日付種類の変更ダイアログの選択肢と見出しに同じ色とアイコンを付ける', async () => {
     const expected: Record<string, [string, string]> = {
       game_day: ['date-game', 'mdi-baseball-diamond'],
       playoff_day: ['date-game', 'mdi-trophy'],
@@ -554,8 +555,7 @@ describe.each(LAYOUTS)('GameResult 試合日ページ: $name', ({ width, kind })
       no_game: ['date-rain', 'mdi-weather-pouring'],
     }
     const wrapper = await mountDay()
-    const select = wrapper.findComponent('[data-testid="date-type-select"]')
-    const items = select.props('items') as Array<{
+    const items = wrapper.findComponent(DateTypeDialog).props('items') as Array<{
       value: string
       title: string
       color: string
@@ -569,7 +569,6 @@ describe.each(LAYOUTS)('GameResult 試合日ページ: $name', ({ width, kind })
       expect(chip.html()).toContain(icon)
       if (dateType === 'postponed' || dateType === 'no_game')
         expect(chip.classes()).toContain('text-decoration-line-through')
-      expect(select.find('.v-select__selection').html()).toContain(icon)
       expect(items.filter((item) => item.value === dateType)).toEqual([
         expect.objectContaining({ color, icon }),
       ])
@@ -1626,30 +1625,6 @@ describe.each(LAYOUTS)('GameResult 試合日ページ: $name', ({ width, kind })
       })
     })
 
-    it('B: 9 種の選択肢を表示し、保存済みデータなしなら確認なしで PATCH する', async () => {
-      const wrapper = await mountDay({
-        game: { score: null, opponent_score: null },
-        appearances: [],
-      })
-      const select = wrapper.find('[data-testid="date-type-select"]')
-      expect(select.exists()).toBe(true)
-      const items = wrapper.findComponent('[data-testid="date-type-select"]').props('items')
-      expect(items).toHaveLength(9)
-      expect(items).toContainEqual(
-        expect.objectContaining({ value: 'travel_day', title: '移動日' }),
-      )
-      mockPatch.mockResolvedValueOnce({ data: {} })
-      wrapper
-        .findComponent('[data-testid="date-type-select"]')
-        .vm.$emit('update:modelValue', 'travel_day')
-      await flushPromises()
-      expect(mockPatch).toHaveBeenCalledWith('/teams/1/season/season_schedules/100', {
-        season_schedule: { date_type: 'travel_day' },
-      })
-      expect(wrapper.vm.currentDateType).toBe('travel_day')
-      expect(document.body.textContent).not.toContain('データは消えず')
-    })
-
     it.each([
       { name: '得点', game: { score: 0, opponent_score: null }, appearances: [] },
       { name: '相手得点', game: { score: null, opponent_score: 0 }, appearances: [] },
@@ -1681,22 +1656,8 @@ describe.each(LAYOUTS)('GameResult 試合日ページ: $name', ({ width, kind })
       },
     )
 
-    it('B: dirty 中は選択不可で、保存後に変更する案内を出す', async () => {
-      const wrapper = await mountDay()
-      wrapper.vm.gameData.score = 9
-      await flushPromises()
-      expect(wrapper.findComponent('[data-testid="date-type-select"]').props('disabled')).toBe(true)
-      expect(wrapper.text()).toContain('保存してから変更')
-    })
-
-    it('B: PATCH 失敗時は元の種類に戻し、エラーを出す', async () => {
-      const wrapper = await mountDay({ game: { score: null, opponent_score: null } })
-      mockPatch.mockRejectedValueOnce(new Error('500'))
-      await wrapper.vm.updateDateType('travel_day')
-      await flushPromises()
-      expect(wrapper.vm.currentDateType).toBe('game_day')
-      expect(wrapper.vm.snackbarColor).toBe('error')
-    })
+    // 変更ダイアログ（開閉・選択・PATCH・範囲の再取得・キャンセル・未保存時・失敗時）は GameResultDateType.spec.ts
+    // （このファイルは 1 つでヒープを大きく使うため分けた）
 
     it('C: 移動日は試合の 4 段と要確認を隠し、tab=result でも members を開く', async () => {
       const wrapper = await mountDay({
@@ -1724,10 +1685,21 @@ describe.each(LAYOUTS)('GameResult 試合日ページ: $name', ({ width, kind })
         expect(wrapper.find(`[data-testid="${kind}-${slug}"]`).exists()).toBe(true)
       }
       mockPatch.mockResolvedValue({ data: {} })
+      // 変更後の種類は、取り直した日程にも反映されている（サーバの状態を映す）
+      const serverType = (type: string) => {
+        const impl = mockGet.getMockImplementation()!
+        mockGet.mockImplementation((url: string) =>
+          url === '/teams/1/season'
+            ? Promise.resolve({ data: scheduleWith(schedule(100, '2026-06-10', type)) })
+            : impl(url),
+        )
+      }
+      serverType('travel_day')
       await wrapper.vm.updateDateType('travel_day')
       await flushPromises()
       expect(wrapper.find(`[data-testid="${kind}-result"]`).exists()).toBe(false)
       expect(wrapper.vm.activeStep).toBe('members')
+      serverType('game_day')
       await wrapper.vm.updateDateType('game_day')
       await flushPromises()
       expect(wrapper.find(`[data-testid="${kind}-result"]`).exists()).toBe(true)

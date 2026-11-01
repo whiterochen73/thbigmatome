@@ -57,8 +57,13 @@ describe('Settings（段 1 の見本）', () => {
   it('本文に画面タイトル（h1）と説明文を置かない。骨格は default 幅', async () => {
     const wrapper = await mountSettings()
     expect(wrapper.find('h1').exists()).toBe(false)
-    expect(wrapper.text()).not.toContain(ja.settings.description)
-    expect(wrapper.text()).not.toContain(ja.settings.player.description)
+    expect(wrapper.text()).not.toContain('この画面では、アプリケーション全体で利用される')
+    expect(wrapper.text()).not.toContain('選手に関する設定を行います')
+    expect(wrapper.text()).not.toContain('登録に関する設定を行います')
+    // 使わなくなった説明文のキーは残さない
+    expect(ja.settings).not.toHaveProperty('description')
+    expect(ja.settings).not.toHaveProperty('player')
+    expect(ja.settings).not.toHaveProperty('squad')
     expect(wrapper.find('[data-testid="page-layout"]').classes()).toContain('page-layout--default')
   })
 
@@ -75,7 +80,7 @@ describe('Settings（段 1 の見本）', () => {
     const titles = (group: string) =>
       wrapper
         .find(`[data-testid="settings-group-${group}"]`)
-        .findAll('[data-testid="master-panel"] h3')
+        .findAll('[data-testid="master-panel"] h3 .master-panel__title')
         .map((h) => h.text())
     expect(titles('pitcher')).toEqual(['投手特徴', '投手特殊能力'])
     expect(titles('batter')).toEqual(['打者特徴', '打者特殊能力'])
@@ -111,7 +116,7 @@ describe('Settings（段 1 の見本）', () => {
     const withAdd = wrapper
       .findAll('[data-testid="master-panel"]')
       .filter((p) => p.find('[data-testid="master-add"]').exists())
-      .map((p) => p.find('h3').text())
+      .map((p) => p.find('.master-panel__title').text())
     expect(withAdd).toEqual(['バイオリズム'])
   })
 
@@ -128,7 +133,7 @@ describe('Settings（段 1 の見本）', () => {
     )
     const wrapper = await mountSettings('?tab=squad')
     const panels = wrapper.findAll('[data-testid="master-panel"]')
-    expect(panels.map((p) => p.find('h3').text())).toEqual([
+    expect(panels.map((p) => p.find('.master-panel__title').text())).toEqual([
       ja.settings.cost.title,
       ja.settings.schedule.title,
     ])
@@ -155,5 +160,44 @@ describe('Settings（段 1 の見本）', () => {
   it('?tab= で開くタブを選ぶ', async () => {
     const wrapper = await mountSettings('?tab=account')
     expect(wrapper.find('.v-tab--selected').text()).toBe('アカウント')
+  })
+
+  it('画面を開いたまま ?tab= だけが変わっても追従する（アカウントメニューの「パスワード変更」）', async () => {
+    const wrapper = await mountSettings()
+    const selected = () => wrapper.find('.v-tab--selected').text()
+    expect(selected()).toBe('選手設定')
+    await wrapper.vm.$router.push('/settings?tab=account')
+    await flushPromises()
+    expect(selected()).toBe('アカウント')
+    await wrapper.vm.$router.push('/settings?tab=squad')
+    await flushPromises()
+    expect(selected()).toBe('コスト・日程')
+    // ?tab= の無い遷移（ナビの「設定」）は既定のタブへ。知らない値も既定のタブ
+    await wrapper.vm.$router.push('/settings')
+    await flushPromises()
+    expect(selected()).toBe('選手設定')
+    await wrapper.vm.$router.push('/settings?tab=nothing')
+    await flushPromises()
+    expect(selected()).toBe('選手設定')
+  })
+
+  it('タブを手で切り替えた後でも、?tab= の変化に追従する', async () => {
+    const wrapper = await mountSettings()
+    await wrapper.findAll('.v-tab')[1]!.trigger('click')
+    await flushPromises()
+    expect(wrapper.find('.v-tab--selected').text()).toBe('コスト・日程')
+    await wrapper.vm.$router.push('/settings?tab=account')
+    await flushPromises()
+    expect(wrapper.find('.v-tab--selected').text()).toBe('アカウント')
+  })
+
+  // Operator 決定 2026-11-01: 画面に操作の仕組みを説明する文を足さない。理由を削り「閲覧のみ」だけにする
+  it('読み取り専用のマスタの案内は「閲覧のみです」だけ（設定ファイルの説明を書かない）', async () => {
+    const wrapper = await mountSettings()
+    const alerts = wrapper.findAll('.v-alert')
+    expect(alerts.length).toBeGreaterThan(0)
+    for (const alert of alerts) expect(alert.text()).toBe('閲覧のみです')
+    expect(wrapper.text()).not.toContain('設定ファイル')
+    expect(ja.settings.managedByConfigFile).toBe('閲覧のみです')
   })
 })

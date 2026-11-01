@@ -6,61 +6,33 @@
         <div>
           <div class="text-h6 font-weight-bold">{{ formattedGameDate }}</div>
           <div class="d-flex flex-wrap align-center ga-2 text-body-2">
-            <v-chip
+            <button
               v-if="currentDateType"
-              data-testid="date-type-headline"
-              size="small"
-              variant="flat"
-              :color="dateTypeAppearance(currentDateType).color"
-              :prepend-icon="dateTypeAppearance(currentDateType).icon"
-              :class="{
-                'text-decoration-line-through': dateTypeAppearance(currentDateType).cancelled,
-              }"
-              >{{ dateTypeLabel(currentDateType) }}</v-chip
+              type="button"
+              class="date-type-trigger"
+              :disabled="hasUnsavedChanges || dateTypeSaving"
+              :aria-label="t('gameDay.dateType.change')"
+              :title="t('gameDay.dateType.change')"
+              data-testid="date-type-trigger"
+              @click="dateTypeDialogOpen = true"
             >
+              <v-chip
+                data-testid="date-type-headline"
+                variant="flat"
+                :color="dateTypeAppearance(currentDateType).color"
+                :prepend-icon="dateTypeAppearance(currentDateType).icon"
+                append-icon="mdi-chevron-down"
+                :class="{
+                  'text-decoration-line-through': dateTypeAppearance(currentDateType).cancelled,
+                }"
+                >{{ dateTypeLabel(currentDateType) }}</v-chip
+              >
+            </button>
+            <span v-if="hasUnsavedChanges" class="text-caption text-medium-emphasis">{{
+              t('gameDay.dateType.saveFirst')
+            }}</span>
             <span v-if="isGameDay" class="text-medium-emphasis">{{ headLine }}</span>
           </div>
-        </div>
-        <div class="d-flex flex-column" style="min-width: 220px">
-          <v-select
-            :model-value="currentDateType"
-            :items="dateTypeItems"
-            item-title="title"
-            item-value="value"
-            :label="t('gameDay.dateType.label')"
-            :disabled="hasUnsavedChanges || !currentDateType || dateTypeSaving"
-            :loading="dateTypeSaving"
-            density="compact"
-            hide-details
-            data-testid="date-type-select"
-            @update:model-value="updateDateType"
-          >
-            <template #selection="{ item }">
-              <v-chip
-                size="x-small"
-                variant="flat"
-                :color="item.color"
-                :prepend-icon="item.icon"
-                :class="{ 'text-decoration-line-through': item.cancelled }"
-                >{{ item.title }}</v-chip
-              >
-            </template>
-            <template #item="{ props: itemProps, item }">
-              <v-list-item v-bind="itemProps" :title="undefined">
-                <v-chip
-                  size="small"
-                  variant="flat"
-                  :color="item.color"
-                  :prepend-icon="item.icon"
-                  :class="{ 'text-decoration-line-through': item.cancelled }"
-                  >{{ item.title }}</v-chip
-                >
-              </v-list-item>
-            </template>
-          </v-select>
-          <span v-if="hasUnsavedChanges" class="text-caption text-medium-emphasis">{{
-            t('gameDay.dateType.saveFirst')
-          }}</span>
         </div>
         <div
           v-if="isGameDay"
@@ -328,9 +300,8 @@
               v-model="gameData.no_game"
               data-testid="no-game-checkbox"
               :label="t('gameResult.noGame')"
-              :hint="t('gameResult.noGameHint')"
-              persistent-hint
               density="compact"
+              hide-details
             />
           </v-col>
         </v-row>
@@ -421,6 +392,12 @@
     </v-snackbar>
 
     <ConfirmDialog ref="confirmDialog" />
+    <DateTypeDialog
+      v-model="dateTypeDialogOpen"
+      :current="currentDateType"
+      :items="dateTypeItems"
+      @confirm="updateDateType"
+    />
   </v-container>
 </template>
 
@@ -443,6 +420,7 @@ import SeasonAbsenceTab from '@/components/season/SeasonAbsenceTab.vue'
 import GameDaySteps, { type GameDayStep } from '@/components/gameDay/GameDaySteps.vue'
 import GameDayStateChip from '@/components/gameDay/GameDayStateChip.vue'
 import GameDayRangeNote from '@/components/gameDay/GameDayRangeNote.vue'
+import DateTypeDialog from '@/components/gameDay/DateTypeDialog.vue'
 import { dateTypeAppearance } from '@/components/gameDay/dateTypeAppearance'
 import type { PlayerAbsence } from '@/types/playerAbsence'
 import type { PitcherAppearanceRecord } from '@/types/pitcherAppearance'
@@ -678,6 +656,7 @@ const currentRangeLoaded = ref(false)
 const seasonSchedules = ref<SeasonScheduleLite[]>([])
 const currentDateType = ref('')
 const dateTypeSaving = ref(false)
+const dateTypeDialogOpen = ref(false)
 const dateTypeItems = computed(() =>
   SCHEDULE_DATE_TYPES.map((value) => ({
     value,
@@ -717,10 +696,7 @@ const registrationNote = computed(() => {
   if (registrationOperable.value || !currentRangeLoaded.value) return ''
   if (currentRange.value === undefined) return t('gameDay.rangeNote.unknown')
   if (currentRange.value === null) return t('gameDay.rangeNote.seasonOver')
-  return t('gameDay.rangeNote.outside', {
-    start: formatScheduleDate(currentRange.value.start_date),
-    end: formatScheduleDate(currentRange.value.end_date),
-  })
+  return t('gameDay.rangeNote.outside')
 })
 
 // 試合日が来るまでは入力を急かさない（黄色にしない）。現在日が取れない時も来ていない扱い
@@ -1286,6 +1262,8 @@ const updateDateType = async (nextType: string) => {
       activeStep.value = 'members'
       openSections.members = true
     }
+    // 日程の種類が変わると試合日の集合が変わり、今の範囲が動く。取り直さないと登録・離脱の操作可否が古いまま残る
+    await fetchSeasonInfo()
   } catch (error) {
     console.error('Failed to update schedule:', error)
     currentDateType.value = previous
@@ -1402,6 +1380,36 @@ onBeforeUnmount(() => {
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, 'Courier New', monospace;
   font-size: 0.85rem;
   line-height: 1.4;
+}
+.date-type-trigger {
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
+  padding: 0;
+  border: 0;
+  border-radius: 16px;
+  background: none;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+.date-type-trigger:focus-visible {
+  outline: 2px solid rgb(var(--v-theme-link));
+  outline-offset: 2px;
+}
+.date-type-trigger:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+.date-type-trigger :deep(.v-chip) {
+  cursor: inherit;
+}
+/* スマホ幅でも押しやすい大きさ（44px 四方） */
+@media (max-width: 599.98px) {
+  .date-type-trigger {
+    min-width: 44px;
+    min-height: 44px;
+  }
 }
 .game-day-progress {
   display: flex;

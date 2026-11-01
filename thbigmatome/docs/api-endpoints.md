@@ -664,7 +664,7 @@
 - **Controller**: `Api::V1::ScheduleDetailsController#upsert_all`
 - **Body Params**: `schedule_details: [{ id, date, date_type, schedule_id, priority }]`
 - **挙動**: `upsert_all` (unique_by: [schedule_id, date])
-- **Response**: 200 OK
+- **Response**: 200 OK（本文なし）。保存のあと、日程表のレギュラー（通常・交流戦）の試合日が 143 日でなければ（AMB-11）、保存したうえで `200 OK` と本文 `{ warnings: ["…"] }` を返す（止めない）
 
 ---
 
@@ -968,12 +968,13 @@
 ### GET /api/v1/commissioner/dashboard/game_progress
 
 - **Controller**: `Api::V1::Commissioner::DashboardController#game_progress`
-- **Response**: シーズンのある全チーム（休止中を含む。シーズンの無いチームは含まない）の試合数の進み具合。1 チーム 1 行の配列 `[{ team_id, regular_played, regular_total, playoff_played }]`（すべて整数）
-  - `regular_total`: 日程の「試合数に数える日」（通常・交流戦の試合日でノーゲームでない日）の数。ノーゲームの日は数えず、振り替えた日が増える。固定値（143 等）は持たず日程から数える
-  - `regular_played`: そのうち結果（自軍・相手の得点）が入った日の数
+- **Response**: シーズンのある全チーム（休止中を含む。シーズンの無いチームは含まない）の試合数の進み具合。1 チーム 1 行の配列 `[{ team_id, regular_played, regular_total, regular_unrescheduled, playoff_played }]`（すべて整数）
+  - `regular_total`: **日程マスタ（schedule_details）のレギュラー（通常・交流戦）の試合日の数**で固定する（ペナント日程表は 143。AMB-11）。チームの雨天中止・ノーゲーム・振り替えでは動かさない。マスタはシーズンの日付の集合と一致する日程表を使う（どれとも合わなければ id が最小の日程表）
+  - `regular_played`: 数える日（試合日でノーゲームでない日）のうち結果（自軍・相手の得点）が入った日の数。ノーゲームの日は数えない
+  - `regular_unrescheduled`: 総数のうち、まだ日程に載っていない試合の数。`max(0, regular_total − そのシーズンの数える日)`（数える日 = レギュラーの試合日でノーゲームでない日）。雨天中止・ノーゲーム・試合日を移動日や予備日へ手で直した日は、どれも数える日が減るので未振替に出る。予備日などを試合日にして振り替えると減る。数える日が総数を超えるチームは 0（超えた数は返さない）
   - `playoff_played`: 結果が入ったプレーオフ日の数（ノーゲームを除く）。プレーオフの総数は返さない（日程には全チーム同じ日数があり、進出で変わるため）
-  - 日程が 1 行も無いシーズンは 3 つとも 0
-- **集計**: 全チーム分を 2 本の問い合わせで求める（`SeasonGameProgress`）
+  - 日程が 1 行も無いシーズンは 4 つとも 0（team_id を除く）
+- **集計**: 全チーム分を 4 本の問い合わせで求める（`SeasonGameProgress`。チームの数に依らない）
 
 ### GET /api/v1/commissioner/dashboard/roster_status
 

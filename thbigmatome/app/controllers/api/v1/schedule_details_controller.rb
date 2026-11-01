@@ -18,7 +18,11 @@ class Api::V1::ScheduleDetailsController < Api::V1::BaseController
 
     ScheduleDetail.upsert_all(schedule_details_params, unique_by: [ :schedule_id, :date ])
 
-    head :ok
+    # 日程の完全性の検算（AMB-11。レギュラーの試合日が 143 か）。止めずに、合わない時だけ応答に warnings を付ける（合う時は本文なしの 200）
+    warnings = ScheduleMasterCheck.warnings(@schedule)
+    return head :ok if warnings.empty?
+
+    render json: { warnings: warnings }, status: :ok
   end
 
   private

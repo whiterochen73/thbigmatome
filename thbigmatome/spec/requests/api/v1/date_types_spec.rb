@@ -84,5 +84,29 @@ RSpec.describe "日付の種別（試合日の定義とノーゲーム）", type
       expect(response).to have_http_status(:ok)
       expect(schedule.schedule_details.pluck(:date_type)).to match_array(%w[game_day reserve_day])
     end
+
+    # AMB-11（Operator 裁定 2026-09-12）: 日程マスタのレギュラー（通常・交流戦）の試合日が 143 かを、upsert の後で検算する。cmd_1802
+    it "レギュラーの試合日が 143 でなければ、保存したうえで応答に warnings を付ける（止めない）" do
+      upsert(%w[game_day interleague_game_day reserve_day playoff_day])
+
+      expect(response).to have_http_status(:ok)
+      expect(response.parsed_body["warnings"].first).to include("レギュラー（通常・交流戦）の試合日が 2 日", "規定は 143 日")
+      expect(schedule.schedule_details.count).to eq(4)
+    end
+
+    it "レギュラーの試合日がちょうど 143 なら warnings は付けない（本文なしの 200）。予備日・プレーオフ日は数えない" do
+      upsert(Array.new(142, "game_day") + %w[interleague_game_day reserve_day playoff_day])
+
+      expect(response).to have_http_status(:ok)
+      expect(response.body).to be_blank
+    end
+
+    it "142 日・144 日でも warnings を付ける（境界の前後）" do
+      upsert(Array.new(142, "game_day"))
+      expect(response.parsed_body["warnings"].first).to include("142 日")
+
+      upsert(Array.new(144, "game_day"))
+      expect(response.parsed_body["warnings"].first).to include("144 日")
+    end
   end
 end

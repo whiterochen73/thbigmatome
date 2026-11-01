@@ -297,4 +297,70 @@ namespace :season_records do
       end
     end
   end
+
+  desc <<~DESC
+    日程マスタ（ペナント日程表）の余分な試合日 2016-09-26 を予備日（reserve_day）に直し、9/26 が試合日の既存シーズンにも波及させる（cmd_1802 段3。Operator 決定 2026-11-02）。
+    調査: context/thbig-dugout-schedule-extra-game-day.md。マスタの通常試合日が 126（規定 125）で 1 日多く、最後の通常試合日 9/26 が余分だった。
+    直す対象: schedule_details の 9/26（game_day）と、season_schedules の 9/26（game_day）。結果・登板・予告先発・ログ等の入力の痕跡がある行
+    （前橋: 9/26 に結果 3-1 と登板 7 行）は直さず、「keep」として理由つきで標準出力と CSV に出す。9/26 が試合日でないシーズンは触らない。
+    既定は試運転（DB を書かない）。APPLY=1 の時だけ書く。何度流しても同じ結果になる（直す対象が無ければ 0 件。keep の行は毎回出る）。
+      bundle exec rake season_records:fix_extra_game_day                    # 試運転
+      OUT=/path/to/before.csv bundle exec rake season_records:fix_extra_game_day  # 変更前後の値の CSV（逆向きに当てる材料）
+      TEAM_ID=3 bundle exec rake season_records:fix_extra_game_day          # チームのシーズンだけ（マスタは対象外）
+      APPLY=1 OUT=/path/to/before.csv bundle exec rake season_records:fix_extra_game_day  # 実際に書く
+      UNDO_FROM=/path/to/before.csv APPLY=1 bundle exec rake season_records:fix_extra_game_day  # CSV から元に戻す
+    CSV は kind(master/season), record_id, season_id, team_id, team, date, old_date_type, new_date_type, status(fix/keep), pitcher_count, reasons の列。
+    UNDO_FROM は status=fix の行のうち、今の値が new_date_type と一致する行だけ old_date_type に戻す（食い違う行は戻さず一覧に出す）。APPLY=1 でなければ試運転（読むだけ）。
+    書いた後に、日程マスタのレギュラーの試合日が 143 かを検算して出す（AMB-11。合わなければ WARN）。
+  DESC
+  task fix_extra_game_day: :environment do
+    apply = ENV["APPLY"] == "1"
+
+    if ENV["UNDO_FROM"].present?
+      csv_rows = CSV.read(ENV["UNDO_FROM"], headers: true).map(&:to_h).select { |r| r["status"] == "fix" }
+      puts "# mode: UNDO #{apply ? 'APPLY (DB updated)' : 'DRY-RUN (DB unchanged)'}"
+      if apply
+        result = ExtraGameDayFixer.revert!(csv_rows)
+        puts "# 戻した: #{result[:reverted]} 件 / 今の値が new_date_type と違うため戻さなかった: #{result[:skipped].size} 件 #{result[:skipped].inspect}"
+      else
+        current = csv_rows.count { |r| ExtraGameDayFixer.model_of(r["kind"]).find_by(id: r["record_id"])&.date_type == r["new_date_type"] }
+        puts "# 戻せる: #{current} 件 / 戻せない: #{csv_rows.size - current} 件（CSV #{csv_rows.size} 行）"
+      end
+      next
+    end
+
+    fixer = ExtraGameDayFixer.new(team_id: ENV["TEAM_ID"]).call
+    team_names = Team.where(id: fixer.rows.map(&:team_id).compact.uniq).pluck(:id, :name).to_h
+    csv = CSV.generate do |out|
+      out << %w[kind record_id season_id team_id team date old_date_type new_date_type status pitcher_count reasons]
+      fixer.rows.each do |r|
+        h = r.to_csv_h
+        out << [ h[:kind], h[:record_id], h[:season_id], h[:team_id], team_names[r.team_id], h[:date], h[:old_date_type], h[:new_date_type], h[:status], h[:pitcher_count], h[:reasons] ]
+      end
+    end
+    if ENV["OUT"].present?
+      File.write(ENV["OUT"], csv)
+      puts "# CSV written: #{ENV['OUT']}（#{fixer.rows.size} 行）"
+    else
+      puts csv
+    end
+
+    summary = fixer.summary
+    puts "# mode: #{apply ? 'APPLY (DB updated)' : 'DRY-RUN (DB unchanged)'}"
+    puts "# 対象: #{ENV['TEAM_ID'].present? ? "チーム #{ENV['TEAM_ID']}" : '全チーム＋日程マスタ'} / #{ExtraGameDayFixer::DATE} の #{ExtraGameDayFixer::FROM_TYPE} → #{ExtraGameDayFixer::TO_TYPE}"
+    puts "# 直す: マスタ #{summary.fetch(:master_fix, 0)} 行 / シーズン #{summary.fetch(:season_fix, 0)} 日 / 直さない（入力の痕跡あり）: シーズン #{summary.fetch(:season_keep, 0)} 日"
+    fixer.keeps.each do |r|
+      puts "# keep: season #{r.season_id} チーム #{r.team_id}（#{team_names[r.team_id]}） #{r.date} 痕跡 #{r.reasons.join('・')}（登板 #{r.pitcher_count} 件）"
+    end
+
+    if apply
+      fixer.apply!
+      puts "# 書いた: マスタ #{summary.fetch(:master_fix, 0)} 行 / シーズン #{summary.fetch(:season_fix, 0)} 日"
+    end
+
+    Schedule.order(:id).each do |schedule|
+      warnings = ScheduleMasterCheck.warnings(schedule)
+      puts "# 検算（AMB-11）日程表 #{schedule.id}「#{schedule.name}」: レギュラーの試合日 #{ScheduleMasterCheck.regular_game_days(schedule)} 日（規定 #{ScheduleMasterCheck::EXPECTED_REGULAR_GAME_DAYS}）#{warnings.empty? ? ' OK' : ' WARN'}"
+    end
+  end
 end

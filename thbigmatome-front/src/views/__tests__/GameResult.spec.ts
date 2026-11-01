@@ -1726,11 +1726,12 @@ describe.each(LAYOUTS)('GameResult 試合日ページ: $name', ({ width, kind })
         expect(ids(second)).toEqual(['step-setup', 'step-result', 'step-pitchers'])
       } else {
         expect(ids(first)).toEqual(['section-members', 'section-roster', 'section-absences'])
+        // 投手状態は試合前の段（予告先発・対戦設定）の直後。登板記録の段の中・後には置かない
         expect(ids(second)).toEqual([
           'section-setup',
+          'section-pitcher-status',
           'section-result',
           'section-pitchers',
-          'section-pitcher-status',
         ])
       }
     })
@@ -1789,9 +1790,9 @@ describe.each(LAYOUTS)('GameResult 試合日ページ: $name', ({ width, kind })
           'section-roster',
           'section-absences',
           'section-setup',
+          'section-pitcher-status',
           'section-result',
           'section-pitchers',
-          'section-pitcher-status',
         ])
         const text = wrapper.find('[data-testid="section-members"]').text()
         expect(text).toContain('選手登録・契約変更')
@@ -1843,6 +1844,13 @@ describe.each(LAYOUTS)('GameResult 試合日ページ: $name', ({ width, kind })
           })
           expect(wrapper.vm.openSections.pitchers).toBe(true)
           expect(wrapper.vm.openSections.pitcherStatus).toBe(false)
+        })
+
+        it('投手状態の段は、既定では閉じている（試合前の段の直後に別の段として並ぶ）', async () => {
+          const wrapper = await mountDay({ appearances: appearanceRows(1) })
+          expect(wrapper.vm.openSections.pitcherStatus).toBe(false)
+          expect(wrapper.find('[data-testid="section-pitcher-status"]').exists()).toBe(true)
+          expect(wrapper.find('pitcher-status-tab-stub').exists()).toBe(false)
         })
 
         it('pitcher_status は投手状態の段を開く', async () => {
@@ -1965,16 +1973,30 @@ describe.each(LAYOUTS)('GameResult 試合日ページ: $name', ({ width, kind })
           expect(visiblePanels(wrapper)).toEqual(['pitchers'])
         })
 
-        it('?tab=pitcher_status は登板記録を開き、その中の投手状態も開く', async () => {
+        // Test Basis: subtask_1806a（Operator 2026-11-02）投手状態は試合前の状態なので、試合前の段へ移す
+        it('?tab=pitcher_status は試合前の段（予告先発・対戦設定）を開き、その中の投手状態も開く', async () => {
           const wrapper = await mountDay({
             appearances: appearanceRows(1),
             query: { tab: 'pitcher_status' },
           })
-          expect(visiblePanels(wrapper)).toEqual(['pitchers'])
+          expect(visiblePanels(wrapper)).toEqual(['setup'])
           expect(wrapper.vm.openSections.pitcherStatus).toBe(true)
+          expect(wrapper.find('[data-testid="panel-setup"] pitcher-status-tab-stub').exists()).toBe(
+            true,
+          )
           expect(
             wrapper.find('[data-testid="panel-pitchers"] pitcher-status-tab-stub').exists(),
-          ).toBe(true)
+          ).toBe(false)
+        })
+
+        it('投手状態は試合前の段に最初から開いて出る。登板記録の段には出ない', async () => {
+          const wrapper = await mountDay({ appearances: appearanceRows(1) })
+          const setup = wrapper.find('[data-testid="panel-setup"]')
+          expect(setup.find('[data-testid="section-pitcher-status"]').exists()).toBe(true)
+          expect(setup.find('pitcher-status-tab-stub').exists()).toBe(true)
+          const pitchers = wrapper.find('[data-testid="panel-pitchers"]')
+          expect(pitchers.find('[data-testid="section-pitcher-status"]').exists()).toBe(false)
+          expect(pitchers.find('pitcher-status-tab-stub').exists()).toBe(false)
         })
 
         it('?tab=overview は、予告先発・対戦設定と結果のうち手の要る方（未入力があれば予告先発・対戦設定、無ければ結果）', async () => {

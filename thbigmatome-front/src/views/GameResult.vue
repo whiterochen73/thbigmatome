@@ -920,6 +920,12 @@ const steps = computed<GameDayStep[]>(() => {
       summary: setupSummary.value,
       state: setupState.value,
       hasBody: true,
+      // 投手状態は試合前の状態なので、試合前の段（予告先発・対戦設定）に置く。登板記録の段には、登板した投手の分だけを出す
+      sub: {
+        id: 'pitcherStatus',
+        slug: 'pitcher-status',
+        title: t('gameDay.sections.pitcherStatus'),
+      },
     },
     {
       id: 'result',
@@ -943,11 +949,6 @@ const steps = computed<GameDayStep[]>(() => {
       state: pitcherState.value,
       hasBody: true,
       lazy: true,
-      sub: {
-        id: 'pitcherStatus',
-        slug: 'pitcher-status',
-        title: t('gameDay.sections.pitcherStatus'),
-      },
     },
   ]
   return allSteps.filter((step) => isGameDay.value || step.group === 'registration')
@@ -966,7 +967,8 @@ const openSections = reactive<Record<string, boolean>>({
   setup: false,
   result: false,
   pitchers: false,
-  pitcherStatus: false,
+  // 試合前の段の投手状態。PC 幅（ステッパー）は試合前の判断材料としてそのまま見せ、狭い幅は他の段と同じく閉じておく
+  pitcherStatus: mdAndUp.value,
 })
 
 // 開くたびに離脱一覧を再取得する。
@@ -987,7 +989,7 @@ const setOpen = (id: string, value: boolean) => {
 const TAB_OPEN: Record<string, string[]> = {
   overview: ['setup', 'result'],
   pitchers: ['pitchers'],
-  pitcher_status: ['pitcherStatus'],
+  pitcher_status: ['pitcherStatus', 'setup'],
   absences: ['absences'],
   'in-game-absences': ['absences'],
 }
@@ -1003,9 +1005,11 @@ const attentionStep = (candidates: string[]): string | undefined =>
 const stepForTab = (tab: string): string =>
   tab === 'absences' || tab === 'in-game-absences'
     ? 'absences'
-    : tab === 'pitchers' || tab === 'pitcher_status'
+    : tab === 'pitchers'
       ? 'pitchers'
-      : (attentionStep(['setup', 'result']) ?? 'result')
+      : tab === 'pitcher_status'
+        ? 'setup'
+        : (attentionStep(['setup', 'result']) ?? 'result')
 
 const scrollToSection = (id: string) => {
   nextTick(() => {

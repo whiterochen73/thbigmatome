@@ -34,4 +34,6 @@ export interface PitcherAppearanceRecord extends PitcherAppearanceInput {
   // 登板の保存は止めず、1軍でない投手は試合日ページの要確認の帯に出す。取れない時は null
   roster_status?: RosterStatus | null
   pitcher_name?: string | null
+  // リリーフ・オープナーの、登板した日の翌日時点の累積イニング（サーバが保存した登板から求める。先発は null）
+  next_day_cumulative_innings?: number | null
 }

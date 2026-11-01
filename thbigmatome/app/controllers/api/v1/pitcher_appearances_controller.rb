@@ -13,6 +13,7 @@ class Api::V1::PitcherAppearancesController < Api::V1::BaseController
     appearances = PitcherGameState.on_day(team_id: team_id, date: schedule_date).order(:appearance_order).to_a
     roster_statuses = roster_statuses_for(team_id, schedule_date, appearances.map(&:pitcher_id))
     pitcher_names = Player.where(id: appearances.map(&:pitcher_id)).pluck(:id, :name).to_h
+    next_day_cumulative = next_day_cumulative_innings_for(team_id, schedule_date, appearances)
 
     render json: appearances.map { |a|
       {
@@ -38,7 +39,9 @@ class Api::V1::PitcherAppearancesController < Api::V1::BaseController
         appearance_order: a.appearance_order,
         # その試合日の試合中に 1軍にいたか（first / second / not_on_team / no_membership）。first 以外は試合日ページの要確認の帯に出す。
         # 登板の保存は止めない（設計書 §7 判断 5）。チームが引けない時は nil
-        roster_status: roster_statuses[a.pitcher_id]
+        roster_status: roster_statuses[a.pitcher_id],
+        # 登板による変化。リリーフ・オープナーの、登板した日の翌日時点の累積イニング（この登板の加算まで含む）。先発・日付が読めない時は nil
+        next_day_cumulative_innings: next_day_cumulative[a.id]
       }
     }
   end
@@ -190,6 +193,29 @@ class Api::V1::PitcherAppearancesController < Api::V1::BaseController
     PitcherRosterStatus.for(team: team, date: Date.iso8601(date.to_s), pitcher_ids: pitcher_ids)
   rescue ArgumentError
     {}
+  end
+
+  # リリーフ・オープナーの登板ごとの、翌日（登板日 + 1）時点の累積イニング { pitcher_game_state.id => 累積 }。
+  # 累積は PitcherRestStatus と同じ計算（加算・減衰・中10日リセット・負傷控除）で、投手の人数に依らない問い合わせ数で求める
+  def next_day_cumulative_innings_for(team_id, date, appearances)
+    relievers = appearances.select { |a| %w[reliever opener].include?(a.role) }
+    parsed = PitcherGameState.parse_schedule_date(date)
+    return {} if relievers.empty? || parsed.nil?
+
+    pitcher_ids = relievers.map(&:pitcher_id).uniq
+    by_pitcher = PitcherRestStatus.cumulative_innings_by_pitcher(
+      team_id, pitcher_ids, parsed + 1, injury_absences_by_pitcher(team_id, pitcher_ids)
+    )
+    relievers.to_h { |a| [ a.id, by_pitcher[a.pitcher_id] ] }
+  end
+
+  # 投手ごとの負傷の離脱期間 { player_id => [{ start_date:, end_date: }] }（出場停止・再調整は含めない。減衰を止めるのは負傷だけ）
+  def injury_absences_by_pitcher(team_id, pitcher_ids)
+    memberships = TeamMembership.where(team_id: team_id, player_id: pitcher_ids).pluck(:id, :player_id).to_h
+    return {} if memberships.empty?
+
+    by_membership = PitcherRestStatus.injury_absences(memberships.keys)
+    memberships.to_h { |membership_id, player_id| [ player_id, by_membership[membership_id] ] }
   end
 
   # 1軍でない投手の登板は止めずに警告にする（設計書 §7 判断 5）。試合日ページの要確認の帯は index の roster_status から出す

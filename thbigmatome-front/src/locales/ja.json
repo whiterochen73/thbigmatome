@@ -269,6 +269,7 @@
   },
   "promotionHistory": {
     "noHistory": "昇降格の履歴はありません。",
+    "fetchFailed": "昇降格履歴の取得に失敗しました",
     "promote": "昇格",
     "demote": "降格",
     "headers": {
@@ -583,7 +584,12 @@
       "edit": "{name}を編集",
       "editDetail": "{name}の日程を編集",
       "duplicate": "{name}を複製",
-      "delete": "{name}を削除"
+      "delete": "{name}を削除",
+      "menu": "{name}の操作",
+      "editShort": "編集",
+      "editDetailShort": "日程を編集",
+      "duplicateShort": "複製",
+      "deleteShort": "削除"
     },
     "pitchingStyle": {
       "title": "投手特徴",
@@ -777,6 +783,7 @@
         }
       },
       "notifications": {
+        "noData": "日程表が登録されていません。",
         "fetchFailed": "スケジュール一覧の取得に失敗しました。",
         "addSuccess": "スケジュールを追加しました。",
         "updateSuccess": "スケジュールを更新しました。",
@@ -873,6 +880,7 @@
       "fielder_only_cost": "野手専念コスト",
       "two_way_cost": "二刀流コスト"
     },
+    "noPlayers": "選手がいません",
     "notifications": {
       "fetchPlayersFailed": "選手情報の取得に失敗しました。"
     }
@@ -1113,6 +1121,10 @@
   "seasonAbsenceTab": {
     "currentAbsences": "現在の離脱者",
     "pastAbsences": "過去の離脱履歴（{count}件）",
+    "fetchFailed": "離脱者の取得に失敗しました",
+    "noActiveAbsences": "現在の離脱者はいません",
+    "editAbsence": "{name}の離脱を編集",
+    "deleteAbsence": "{name}の離脱を削除",
     "unknownRemaining": "未定",
     "unknownEndDate": "未定",
     "headers": {

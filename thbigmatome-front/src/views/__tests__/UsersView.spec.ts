@@ -33,6 +33,7 @@ vi.mock('@/composables/useSnackbar', () => ({
 }))
 
 import axios from 'axios'
+import { stackedLayout } from '@/components/shared/__tests__/tableLayout'
 
 const vuetify = createVuetify({ components, directives })
 const i18n = createI18n({
@@ -181,5 +182,22 @@ describe('UsersView', () => {
 
       expect(vm.roleDialog).toBe(false)
     })
+  })
+})
+
+// Test Basis: thbig-dugout-ui-unification-design.md §2.5（<600px は縦積み。1 行 = 名前＋要点 2 つ＋操作）/ §4.2 段 4
+describe('UsersView 表のスマホ対応（段 4）', () => {
+  it('縦積み: ID=lead・ログインID=title・表示名=sub1・ロール=sub2・操作=act（操作は 2 つなのでアイコンのまま）', async () => {
+    ;(axios.get as ReturnType<typeof vi.fn>).mockResolvedValue({
+      data: [{ id: 1, name: 'admin', display_name: '管理者', role: 'commissioner' }],
+    })
+    const wrapper = mount(UsersView, { global: { plugins: [i18n, vuetify] } })
+    await flushPromises()
+    expect(stackedLayout(wrapper)).toEqual({
+      mobileBreakpoint: 'sm',
+      rows: true,
+      roles: { id: 'lead', name: 'title', display_name: 'sub1', role: 'sub2', actions: 'act' },
+    })
+    expect(wrapper.find('.row-menu').exists()).toBe(false)
   })
 })

@@ -23,6 +23,7 @@ vi.mock('@/composables/useSnackbar', () => ({
 }))
 
 import axios from '@/plugins/axios'
+import { scrollLayout } from '@/components/shared/__tests__/tableLayout'
 
 const vuetify = createVuetify({ components, directives })
 const i18n = createI18n({
@@ -108,5 +109,34 @@ describe('CostAssignment', () => {
     await flushPromises()
     expect(axios.post).toHaveBeenCalledTimes(1)
     expect(mockShowSnackbar).toHaveBeenCalledWith('コスト一覧を保存しました', 'success')
+  })
+})
+
+// Test Basis: thbig-dugout-ui-unification-design.md §2.5（列を落とせない表は縦積みにせず横スクロール、先頭の名前列を固定）/ §2.7（状態）/ §4.2 段 4
+describe('CostAssignment 表のスマホ対応と状態（段 4）', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('入力欄の並ぶ 9 列の表なので縦積みにせず、選手名の列を固定して横スクロール', async () => {
+    mockApi(() => Promise.resolve({ data: assignments }))
+    const wrapper = await mountView()
+    expect(scrollLayout(wrapper, 'name')).toEqual({
+      mobileBreakpoint: undefined,
+      rows: false,
+      fixedKeys: ['name'],
+      allHaveMinWidth: true,
+    })
+  })
+
+  it('取得中はスケルトン（空状態を出さない）、0 件なら空状態', async () => {
+    mockApi(() => new Promise(() => {}))
+    const loading = await mountView()
+    expect(loading.find('[data-testid="state-loading"]').exists()).toBe(true)
+    expect(loading.find('[data-testid="state-empty"]').exists()).toBe(false)
+
+    mockApi(() => Promise.resolve({ data: [] }))
+    const empty = await mountView()
+    expect(empty.find('[data-testid="state-empty"]').text()).toContain('選手がいません')
   })
 })

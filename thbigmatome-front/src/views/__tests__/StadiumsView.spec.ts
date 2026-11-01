@@ -33,6 +33,7 @@ vi.mock('@/composables/useSnackbar', () => ({
 }))
 
 import axios from 'axios'
+import { stackedLayout } from '@/components/shared/__tests__/tableLayout'
 
 const vuetify = createVuetify({ components, directives })
 const i18n = createI18n({
@@ -69,5 +70,22 @@ describe('StadiumsView', () => {
     mount(StadiumsView, { global: { plugins: [i18n, vuetify] } })
     await flushPromises()
     expect(axios.get).toHaveBeenCalledWith('/stadiums')
+  })
+})
+
+// Test Basis: thbig-dugout-ui-unification-design.md §2.5（<600px は縦積み。1 行 = 名前＋要点 2 つ＋操作）/ §4.2 段 4
+describe('StadiumsView 表のスマホ対応（段 4）', () => {
+  it('縦積み: ID=lead・球場名=title・コード=sub1・屋内=sub2・操作=act。編集は .row-actions のアイコンボタン', async () => {
+    ;(axios.get as ReturnType<typeof vi.fn>).mockResolvedValue({
+      data: [{ id: 1, name: '甲子園', code: 'koushien', indoor: false, up_table_ids: [] }],
+    })
+    const wrapper = mount(StadiumsView, { global: { plugins: [i18n, vuetify] } })
+    await flushPromises()
+    expect(stackedLayout(wrapper)).toEqual({
+      mobileBreakpoint: 'sm',
+      rows: true,
+      roles: { id: 'lead', name: 'title', code: 'sub1', indoor: 'sub2', actions: 'act' },
+    })
+    expect(wrapper.find('.row-actions button').attributes('aria-label')).toBe('甲子園を編集')
   })
 })

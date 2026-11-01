@@ -4,14 +4,17 @@
       <v-card-text>
         <CostListSelect v-model="selectedCost" :label="t('costAssignment.costList')" />
         <AsyncState
+          :loading="loading"
           :error="fetchFailed"
           :error-message="t('costAssignment.notifications.fetchPlayersFailed')"
+          :empty="players.length === 0"
+          empty-icon="mdi-account-off-outline"
+          :empty-message="t('costAssignment.noPlayers')"
           @retry="fetchPlayers"
         >
           <v-data-table
             :headers="headers"
             :items="players"
-            :loading="loading"
             density="compact"
             items-per-page="-1"
             :row-props="rowProps"
@@ -61,7 +64,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { ref, computed, watch } from 'vue'
 import axios from '@/plugins/axios'
 import { useSnackbar } from '@/composables/useSnackbar'
 import { useI18n } from 'vue-i18n'
@@ -70,6 +73,7 @@ import type { CostPlayer } from '@/types/costPlayer'
 import AsyncState from '@/components/shared/AsyncState.vue'
 import CostListSelect from '@/components/shared/CostListSelect.vue'
 import PageLayout from '@/components/shared/PageLayout.vue'
+import { useColumnMinWidth } from '@/composables/useColumnMinWidth'
 
 const { t } = useI18n()
 const { showSnackbar } = useSnackbar()
@@ -87,14 +91,17 @@ const costDefinitions = [
   { key: 'two_way_cost', model: 'two_way_cost', requiredPlayerTypeId: 2 },
 ]
 
-const headers = ref([
-  { title: t('costAssignment.headers.number'), key: 'number' },
-  { title: t('costAssignment.headers.name'), key: 'name' },
-  { title: t('costAssignment.headers.player_types'), key: 'player_types' },
+const minW = useColumnMinWidth()
+const headers = computed(() => [
+  { title: t('costAssignment.headers.number'), key: 'number', minWidth: minW(64) },
+  // 横に比べる・入力する表なので縦積みにせず、スマホでは横スクロール。名前の列は左に固定する
+  { title: t('costAssignment.headers.name'), key: 'name', fixed: true, minWidth: minW(150) },
+  { title: t('costAssignment.headers.player_types'), key: 'player_types', minWidth: minW(140) },
   ...costDefinitions.map((cost) => ({
     title: t(`costAssignment.headers.${cost.key}`),
     key: cost.key,
     sortable: false,
+    minWidth: minW(110),
   })),
 ])
 

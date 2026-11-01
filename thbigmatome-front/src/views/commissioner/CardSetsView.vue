@@ -11,13 +11,21 @@
       @retry="fetchCardSets"
     >
       <v-card>
-        <v-data-table :headers="headers" :items="cardSets" class="ui-table" density="compact">
+        <v-data-table
+          :headers="headers"
+          :items="cardSets"
+          class="ui-table ui-table--rows"
+          density="compact"
+          mobile-breakpoint="sm"
+        >
           <template v-slot:[`item.actions`]="{ item }">
-            <RowIconButton
-              icon="mdi-eye-outline"
-              :label="`${item.name}の詳細`"
-              @click="showDetail(item)"
-            />
+            <div class="row-actions">
+              <RowIconButton
+                icon="mdi-eye-outline"
+                :label="`${item.name}の詳細`"
+                @click="showDetail(item)"
+              />
+            </div>
           </template>
         </v-data-table>
       </v-card>
@@ -54,6 +62,7 @@ import { useSnackbar } from '@/composables/useSnackbar'
 import AsyncState from '@/components/shared/AsyncState.vue'
 import PageLayout from '@/components/shared/PageLayout.vue'
 import RowIconButton from '@/components/shared/RowIconButton.vue'
+import { tableCell } from '@/components/shared/tableCells'
 
 interface CardSet {
   id: number
@@ -70,11 +79,11 @@ const fetchFailed = ref(false)
 const selectedCardSet = ref<CardSet | null>(null)
 
 const headers = [
-  { title: 'ID', key: 'id', width: '80px' },
-  { title: '年度', key: 'year' },
-  { title: '種別', key: 'set_type' },
-  { title: 'セット名', key: 'name' },
-  { title: '操作', key: 'actions', sortable: false, width: '80px' },
+  { title: 'ID', key: 'id', width: '80px', cellProps: tableCell.lead },
+  { title: '年度', key: 'year', cellProps: tableCell.sub1 },
+  { title: '種別', key: 'set_type', cellProps: tableCell.sub2 },
+  { title: 'セット名', key: 'name', cellProps: tableCell.title },
+  { title: '操作', key: 'actions', sortable: false, width: '80px', cellProps: tableCell.act },
 ]
 
 onMounted(fetchCardSets)

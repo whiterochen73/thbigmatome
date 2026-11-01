@@ -94,55 +94,56 @@
                     CSV出力
                   </v-btn>
                 </div>
-                <v-progress-circular
-                  v-if="loadingTeams.has(item.team_id)"
-                  indeterminate
-                  size="24"
-                  class="ma-2"
-                />
-                <v-data-table
-                  v-else
-                  :headers="detailHeaders"
-                  :items="teamDetails.get(item.team_id) || []"
-                  density="compact"
-                  no-data-text="選手なし"
-                  hide-default-footer
-                  :items-per-page="-1"
+                <AsyncState
+                  :loading="loadingTeams.has(item.team_id)"
+                  :error="failedTeams.has(item.team_id)"
+                  error-message="1軍選手一覧の取得に失敗しました"
+                  :empty="!teamDetails.has(item.team_id)"
+                  @retry="fetchTeamDetail(item.team_id)"
                 >
-                  <template #[`item.squad`]="{ item: player }">
-                    <v-chip
-                      :color="player.squad === 'first' ? 'zone-game' : 'state-neutral'"
-                      size="small"
-                      variant="flat"
-                      :prepend-icon="
-                        player.squad === 'first'
-                          ? 'mdi-numeric-1-box-outline'
-                          : 'mdi-numeric-2-box-outline'
-                      "
-                    >
-                      {{ player.squad === 'first' ? '1軍' : '2軍' }}
-                    </v-chip>
-                  </template>
-                  <template #[`item.is_outside_world`]="{ item: player }">
-                    <v-icon v-if="player.is_outside_world" class="on-state-info" size="small">
-                      mdi-earth
-                    </v-icon>
-                  </template>
-                  <template #[`item.absence`]="{ item: player }">
-                    <StatusChip
-                      v-if="player.is_absent && player.absence_info"
-                      :status="player.absence_info.absence_type"
-                      :label="absenceLabel(player.absence_info.absence_type)"
-                    />
-                    <span v-else class="text-caption on-surface-variant">—</span>
-                  </template>
-                  <template #[`item.cooldown_until`]="{ item: player }">
-                    <span v-if="player.cooldown_until" class="text-caption">
-                      {{ formatDate(player.cooldown_until) }}まで
-                    </span>
-                    <span v-else class="text-caption on-surface-variant">—</span>
-                  </template>
-                </v-data-table>
+                  <v-data-table
+                    :headers="detailHeaders"
+                    :items="teamDetails.get(item.team_id) || []"
+                    density="compact"
+                    no-data-text="選手なし"
+                    hide-default-footer
+                    :items-per-page="-1"
+                  >
+                    <template #[`item.squad`]="{ item: player }">
+                      <v-chip
+                        :color="player.squad === 'first' ? 'zone-game' : 'state-neutral'"
+                        size="small"
+                        variant="flat"
+                        :prepend-icon="
+                          player.squad === 'first'
+                            ? 'mdi-numeric-1-box-outline'
+                            : 'mdi-numeric-2-box-outline'
+                        "
+                      >
+                        {{ player.squad === 'first' ? '1軍' : '2軍' }}
+                      </v-chip>
+                    </template>
+                    <template #[`item.is_outside_world`]="{ item: player }">
+                      <v-icon v-if="player.is_outside_world" class="on-state-info" size="small">
+                        mdi-earth
+                      </v-icon>
+                    </template>
+                    <template #[`item.absence`]="{ item: player }">
+                      <StatusChip
+                        v-if="player.is_absent && player.absence_info"
+                        :status="player.absence_info.absence_type"
+                        :label="absenceLabel(player.absence_info.absence_type)"
+                      />
+                      <span v-else class="text-caption on-surface-variant">—</span>
+                    </template>
+                    <template #[`item.cooldown_until`]="{ item: player }">
+                      <span v-if="player.cooldown_until" class="text-caption">
+                        {{ formatDate(player.cooldown_until) }}まで
+                      </span>
+                      <span v-else class="text-caption on-surface-variant">—</span>
+                    </template>
+                  </v-data-table>
+                </AsyncState>
               </v-sheet>
             </td>
           </tr>
@@ -159,6 +160,7 @@ import AsyncState from '@/components/shared/AsyncState.vue'
 import DataCard from '@/components/shared/DataCard.vue'
 import StatusChip from '@/components/shared/StatusChip.vue'
 import type { RosterPlayer } from '@/types/rosterPlayer'
+import { useColumnMinWidth } from '@/composables/useColumnMinWidth'
 
 interface RosterStatusRecord {
   team_id: number
@@ -179,28 +181,31 @@ const fetchFailed = ref(false)
 const expanded = ref<string[]>([])
 const teamDetails = ref<Map<number, RosterPlayer[]>>(new Map())
 const loadingTeams = ref<Set<number>>(new Set())
+const failedTeams = ref<Set<number>>(new Set())
 
-const summaryHeaders = [
-  { title: 'チーム名', key: 'team_name' },
-  { title: 'タイプ', key: 'team_type', sortable: false },
-  { title: '1軍', key: 'first_count' },
-  { title: '2軍', key: 'second_count' },
-  { title: 'コスト / 上限', key: 'first_cost', sortable: false },
-  { title: '外枠 / 上限', key: 'outside_world_count', sortable: false },
-  { title: '状態', key: 'status', sortable: false },
-]
+const minW = useColumnMinWidth()
+const summaryHeaders = computed(() => [
+  // 横に比べる数値の表なので縦積みにせず、スマホでは横スクロール。チームの列は左に固定する
+  { title: 'チーム名', key: 'team_name', fixed: true, minWidth: minW(130) },
+  { title: 'タイプ', key: 'team_type', sortable: false, minWidth: minW(90) },
+  { title: '1軍', key: 'first_count', minWidth: minW(64) },
+  { title: '2軍', key: 'second_count', minWidth: minW(64) },
+  { title: 'コスト / 上限', key: 'first_cost', sortable: false, minWidth: minW(150) },
+  { title: '外枠 / 上限', key: 'outside_world_count', sortable: false, minWidth: minW(130) },
+  { title: '状態', key: 'status', sortable: false, minWidth: minW(100) },
+])
 
-const detailHeaders = [
-  { title: '背番号', key: 'number' },
-  { title: '選手名', key: 'player_name' },
-  { title: '軍', key: 'squad', sortable: false },
-  { title: '投打', key: 'handedness', sortable: false },
-  { title: 'ポジション', key: 'position', sortable: false },
-  { title: 'コスト', key: 'cost' },
-  { title: '外枠', key: 'is_outside_world', sortable: false },
-  { title: '離脱', key: 'absence', sortable: false },
-  { title: 'CD終了日', key: 'cooldown_until', sortable: false },
-]
+const detailHeaders = computed(() => [
+  { title: '背番号', key: 'number', minWidth: minW(72) },
+  { title: '選手名', key: 'player_name', fixed: true, minWidth: minW(130) },
+  { title: '軍', key: 'squad', sortable: false, minWidth: minW(80) },
+  { title: '投打', key: 'handedness', sortable: false, minWidth: minW(72) },
+  { title: 'ポジション', key: 'position', sortable: false, minWidth: minW(100) },
+  { title: 'コスト', key: 'cost', minWidth: minW(72) },
+  { title: '外枠', key: 'is_outside_world', sortable: false, minWidth: minW(64) },
+  { title: '離脱', key: 'absence', sortable: false, minWidth: minW(100) },
+  { title: 'CD終了日', key: 'cooldown_until', sortable: false, minWidth: minW(110) },
+])
 
 const absenceLabels: Record<string, string> = {
   injury: '負傷',
@@ -240,14 +245,22 @@ const fetchTeamDetail = async (teamId: number) => {
   const newLoadingSet = new Set(loadingTeams.value)
   newLoadingSet.add(teamId)
   loadingTeams.value = newLoadingSet
+  const newFailedSet = new Set(failedTeams.value)
+  newFailedSet.delete(teamId)
+  failedTeams.value = newFailedSet
 
   try {
-    const response = await axios.get<RosterPlayer[]>(`/teams/${teamId}/roster`)
+    // 応答は { roster: [...] }（cmd_1784 で配列から包みに変わった）。古い形（配列）も受ける
+    const response = await axios.get<RosterPlayer[] | { roster: RosterPlayer[] }>(
+      `/teams/${teamId}/roster`,
+    )
+    const players = Array.isArray(response.data) ? response.data : (response.data.roster ?? [])
     const newMap = new Map(teamDetails.value)
-    newMap.set(teamId, response.data)
+    newMap.set(teamId, players)
     teamDetails.value = newMap
   } catch (error) {
     console.error(`Failed to fetch roster for team ${teamId}:`, error)
+    failedTeams.value = new Set(failedTeams.value).add(teamId)
   } finally {
     const newSet = new Set(loadingTeams.value)
     newSet.delete(teamId)

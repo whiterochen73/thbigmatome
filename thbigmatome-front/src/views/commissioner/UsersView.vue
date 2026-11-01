@@ -30,7 +30,13 @@
       @retry="fetchUsers"
     >
       <v-card>
-        <v-data-table :headers="headers" :items="filteredUsers" class="ui-table" density="compact">
+        <v-data-table
+          :headers="headers"
+          :items="filteredUsers"
+          class="ui-table ui-table--rows"
+          density="compact"
+          mobile-breakpoint="sm"
+        >
           <template v-slot:[`item.role`]="{ item }">
             <v-chip :color="item.role === 'commissioner' ? 'link' : 'default'" size="small">
               {{ item.role === 'commissioner' ? 'コミッショナー' : '一般' }}
@@ -180,6 +186,7 @@ import { useSnackbar } from '@/composables/useSnackbar'
 import AsyncState from '@/components/shared/AsyncState.vue'
 import PageLayout from '@/components/shared/PageLayout.vue'
 import RowIconButton from '@/components/shared/RowIconButton.vue'
+import { tableCell } from '@/components/shared/tableCells'
 
 interface User {
   id: number
@@ -225,11 +232,11 @@ const roleOptions = [
 ]
 
 const headers = [
-  { title: 'ID', key: 'id', width: '80px' },
-  { title: 'ログインID', key: 'name' },
-  { title: '表示名', key: 'display_name' },
-  { title: 'ロール', key: 'role' },
-  { title: '操作', key: 'actions', sortable: false, nowrap: true },
+  { title: 'ID', key: 'id', width: '80px', cellProps: tableCell.lead },
+  { title: 'ログインID', key: 'name', cellProps: tableCell.title },
+  { title: '表示名', key: 'display_name', cellProps: tableCell.sub1 },
+  { title: 'ロール', key: 'role', cellProps: tableCell.sub2 },
+  { title: '操作', key: 'actions', sortable: false, nowrap: true, cellProps: tableCell.act },
 ]
 
 onMounted(fetchUsers)

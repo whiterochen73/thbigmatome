@@ -33,6 +33,7 @@ vi.mock('@/plugins/axios', () => {
 })
 
 import axios from 'axios'
+import { stackedLayout } from '@/components/shared/__tests__/tableLayout'
 
 const vuetify = createVuetify({ components, directives })
 
@@ -147,10 +148,12 @@ describe('CompetitionRosterView.vue', () => {
       add.forEach((button) => expect(button.props('color')).toBe('link'))
       const remove = buttons.filter((button) => button.attributes('data-testid') === 'remove-btn')
       expect(remove.length, squad).toBeGreaterThan(0)
+      // 行の操作はアイコンボタン（RowIconButton: 削除は danger-ink・塗らない・名前つきの aria-label）
       remove.forEach((button) => {
         expect(button.props('color')).toBe('danger-ink')
-        expect(button.props('variant')).toBe('outlined')
-        expect(button.props('prependIcon')).toBe('mdi-delete-outline')
+        expect(button.props('variant')).toBe('text')
+        expect(button.props('icon')).toBe('mdi-delete-outline')
+        expect(button.attributes('aria-label')).toMatch(/を除外$/)
       })
     }
   })
@@ -234,5 +237,37 @@ describe('CompetitionRosterView.vue', () => {
     expect(wrapper.find('[data-testid="state-error"]').exists()).toBe(false)
     expect(wrapper.text()).toContain('博麗霊夢')
     wrapper.unmount()
+  })
+})
+
+// Test Basis: thbig-dugout-ui-unification-design.md §2.5（<600px は縦積み）/ §2.4（行の操作はアイコンボタン）/ §4.2 段 4
+describe('CompetitionRosterView 表のスマホ対応（段 4）', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('1軍・2軍の表は縦積み（選手名=title・契約種別=sub1・コスト=sub2（見出し付き）・操作=act）', async () => {
+    const wrapper = await mountView()
+    for (const squad of ['first_squad', 'second_squad']) {
+      wrapper.vm.activeTab = squad
+      await flushPromises()
+      const table = wrapper.find(
+        `[data-testid="${squad === 'first_squad' ? 'first' : 'second'}-squad-table"]`,
+      )
+      expect(table.exists(), squad).toBe(true)
+    }
+    const layout = stackedLayout(wrapper, 'contract_type')
+    expect(layout).toEqual({
+      mobileBreakpoint: 'sm',
+      rows: true,
+      roles: { player_name: 'title', contract_type: 'sub1', cost: 'sub2', actions: 'act' },
+    })
+  })
+
+  it('除外は .row-actions の中のアイコンボタン', async () => {
+    const wrapper = await mountView()
+    const btn = wrapper.find('.row-actions [data-testid="remove-btn"]')
+    expect(btn.exists()).toBe(true)
+    expect(btn.attributes('aria-label')).toBe('博麗霊夢を除外')
   })
 })

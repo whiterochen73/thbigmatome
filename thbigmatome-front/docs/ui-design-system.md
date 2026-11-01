@@ -271,6 +271,8 @@ E 状態                            読み込み=スケルトン / 空=EmptyStat
 | `AsyncState`（`src/components/shared/AsyncState.vue`） | 読み込み中（内容が無ければスケルトン、あれば細い進捗線）・空（`EmptyState`）・失敗（アラート＋「再読み込み」）。読み込み中・失敗の間は空状態を出さない |
 | `EmptyState` | 空状態（アイコン 40px＋文言＋あれば操作） |
 | `RowIconButton`（`src/components/shared/RowIconButton.vue`） | 表の行の操作。名前（`aria-label`・`title`）を持つアイコンボタン。編集=`link`、削除=`danger-ink`、塗らない |
+| `RowMenu`（`src/components/shared/RowMenu.vue`） | 行の操作が 3 つ以上の時の操作メニュー（`mdi-dots-vertical`）。スマホ（<600px）の縦積み行で使い、PC は同じ操作を `RowIconButton` で並べる（アイコン側は `row-actions row-actions--full`、`PageLayout` が 600px 未満で隠す） |
+| `tableCell`（`src/components/shared/tableCells.ts`） | 縦積み行の列の役割（`lead` 番号 / `title` 名前 / `sub1`・`sub2` 要点 / `note` 補足 / `act` 操作）。列の定義の `cellProps` に渡す。`*Labeled` は列の見出しを値の前に小さく出す（開始日・終了日など、値だけでは何か分からない列） |
 | `MasterPanel` / `MasterAddButton`（`src/components/settings/`） | 設定画面のマスタの行（アイコン・名前・件数・追加（枠）・開閉）をそろえる |
 
 **埋め込める画面（`TeamMembers`）**: 単独の画面（`/teams/:teamId/members`）と、シーズンのタブ・試合日ページへの埋め込みの両方で使う画面は、`teamId` を props で受けたか（埋め込み）で分ける。単独の時だけ `PageLayout` とバーの宣言（チーム名・サブタイトル・戻り先「← シーズン」）を持ち、埋め込みの時はバーを変えず中身だけを出す（h1 は常に 1 つ）。
@@ -278,6 +280,15 @@ E 状態                            読み込み=スケルトン / 空=EmptyStat
 **集計画面**（数表が主役の画面。成績集計の画面は cmd_1795 で廃止したので、今は該当する画面が無い）は、アプリのテーマがダークでも明るい淡色背景に固定する。カードを `v-theme-provider theme="light"` で包む（文字色だけをテーマ追従にしない）。
 
 `PageHeader` は**非推奨**。まだ移していない画面のために残してあり、ヘッダーバーが同じ題を出している間は本文の h1 を省く（バーと二重にならない）。全画面を移したら削除する。
+
+**表のスマホ対応（段 4）**: `v-data-table` は 600px 未満で次のどちらかにする。
+
+| 表の種類 | スマホの扱い | 作り方 |
+|---|---|---|
+| 列を落とせる表（一覧・履歴） | 縦積みの行（名前＋要点 2 つ＋操作） | `class="ui-table ui-table--rows"` と `mobile-breakpoint="sm"`、列に `cellProps: tableCell.<役割>`。役割の無い列は出さない。操作が 3 つ以上なら `RowMenu` |
+| 横に比べる・入力する表（コスト登録・チームメンバー・コスト状況・1軍登録状況） | 縦積みにしない。横スクロールで、名前の列を左に固定 | `mobile-breakpoint` を付けない。名前の列に `fixed: true`、全列に `minWidth` |
+
+Vuetify 4 では `mobile-breakpoint` を付けない表は縦積みにならない（`mobile` の既定が false）。サーバページングの表は `v-data-table-server`（`:items-length` に総数、`:page` は一方向）。`server-items-length` は Vuetify 4 に無い。
 
 ### 2-3. タイトルの決め方（3 種類）
 

@@ -40,6 +40,7 @@ vi.mock('@/composables/useSnackbar', () => ({
 }))
 
 import axios from '@/plugins/axios'
+import { scrollLayout } from '@/components/shared/__tests__/tableLayout'
 
 // Stub child components
 const TeamNavigationStub = {
@@ -975,5 +976,25 @@ describe('TeamMembers.vue 日付つきの読み書き', () => {
 
     expect(wrapper.find('[data-testid="add-player-row"]').exists()).toBe(true)
     expect(wrapper.findAll('.v-btn').some((b) => b.text().includes('保存'))).toBe(true)
+  })
+})
+
+// Test Basis: thbig-dugout-ui-unification-design.md §2.5（列を落とせない表は縦積みにせず横スクロール、先頭の名前列を固定）/ §2.4（行の操作はアイコンボタン）/ §4.2 段 4
+describe('TeamMembers 表のスマホ対応（段 4）', () => {
+  it('入力欄の並ぶ 11 列の表なので縦積みにせず、選手名の列を固定して横スクロール', async () => {
+    const wrapper = await mountTeamMembers([makeTeamPlayer({ id: 3, name: '博麗霊夢' })])
+    expect(scrollLayout(wrapper, 'display_name')).toEqual({
+      mobileBreakpoint: undefined,
+      rows: false,
+      fixedKeys: ['name'],
+      allHaveMinWidth: true,
+    })
+  })
+
+  it('チームから除外は .row-actions の中の danger のアイコンボタン（名前つき）', async () => {
+    const wrapper = await mountTeamMembers([makeTeamPlayer({ id: 3, name: '博麗霊夢' })])
+    const btn = wrapper.find('.row-actions button')
+    expect(btn.attributes('aria-label')).toBe('博麗霊夢をチームから除外')
+    expect(btn.classes().join(' ')).toContain('text-danger-ink')
   })
 })

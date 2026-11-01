@@ -33,18 +33,21 @@
         <v-data-table
           :headers="headers"
           :items="filteredStadiums"
-          class="ui-table"
+          class="ui-table ui-table--rows"
           density="compact"
+          mobile-breakpoint="sm"
         >
           <template v-slot:[`item.indoor`]="{ item }">
             {{ item.indoor ? '屋内' : '屋外' }}
           </template>
           <template v-slot:[`item.actions`]="{ item }">
-            <RowIconButton
-              icon="mdi-pencil"
-              :label="`${item.name}を編集`"
-              @click="openEditDialog(item)"
-            />
+            <div class="row-actions">
+              <RowIconButton
+                icon="mdi-pencil"
+                :label="`${item.name}を編集`"
+                @click="openEditDialog(item)"
+              />
+            </div>
           </template>
         </v-data-table>
       </v-card>
@@ -147,6 +150,7 @@ import { useSnackbar } from '@/composables/useSnackbar'
 import AsyncState from '@/components/shared/AsyncState.vue'
 import PageLayout from '@/components/shared/PageLayout.vue'
 import RowIconButton from '@/components/shared/RowIconButton.vue'
+import { tableCell } from '@/components/shared/tableCells'
 
 interface Stadium {
   id: number
@@ -181,11 +185,11 @@ const editTarget = ref<Stadium | null>(null)
 const editForm = ref({ name: '', code: '', indoor: false })
 
 const headers = [
-  { title: 'ID', key: 'id', width: '80px' },
-  { title: '球場名', key: 'name' },
-  { title: 'コード', key: 'code' },
-  { title: '屋内', key: 'indoor' },
-  { title: '操作', key: 'actions', sortable: false, width: '80px' },
+  { title: 'ID', key: 'id', width: '80px', cellProps: tableCell.lead },
+  { title: '球場名', key: 'name', cellProps: tableCell.title },
+  { title: 'コード', key: 'code', cellProps: tableCell.sub1 },
+  { title: '屋内', key: 'indoor', cellProps: tableCell.sub2 },
+  { title: '操作', key: 'actions', sortable: false, width: '80px', cellProps: tableCell.act },
 ]
 
 onMounted(fetchStadiums)

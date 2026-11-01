@@ -17,6 +17,7 @@ vi.mock('axios', () => ({
 }))
 
 import axios from 'axios'
+import { dataTables, stackedLayout } from '@/components/shared/__tests__/tableLayout'
 
 const vuetify = createVuetify({ components, directives })
 const i18n = createI18n({
@@ -99,6 +100,17 @@ async function mountComponent(
 
 function tableText(wrapper: Awaited<ReturnType<typeof mountComponent>>, index: number) {
   return wrapper.findAll('.v-data-table')[index].text()
+}
+
+// 現在の離脱者が 0 件の時は表を出さず、空状態（AsyncState）を出す。その時は表の文字を空にする
+function currentText(wrapper: Awaited<ReturnType<typeof mountComponent>>) {
+  return wrapper.find('[data-testid="state-empty"]').exists() ? '' : tableText(wrapper, 0)
+}
+
+// 過去の履歴の表は常に最後の表（現在の離脱者が空状態の時は 1 つ目になる）
+function pastText(wrapper: Awaited<ReturnType<typeof mountComponent>>) {
+  const tables = wrapper.findAll('.v-data-table')
+  return tables[tables.length - 1]!.text()
 }
 
 async function expandPastAbsences(wrapper: Awaited<ReturnType<typeof mountComponent>>) {
@@ -193,17 +205,19 @@ describe('SeasonAbsenceTab', () => {
   it('復帰当日はpastに分類すること', async () => {
     const wrapper = await mountComponent([returnDay])
 
-    expect(tableText(wrapper, 0)).not.toContain('復帰当日')
+    expect(wrapper.find('[data-testid="state-empty"]').exists()).toBe(true)
+    expect(currentText(wrapper)).not.toContain('復帰当日')
     await expandPastAbsences(wrapper)
-    expect(tableText(wrapper, 1)).toContain('復帰当日')
+    expect(pastText(wrapper)).toContain('復帰当日')
   })
 
   it('復帰後はpastに分類すること', async () => {
     const wrapper = await mountComponent([recovered])
 
-    expect(tableText(wrapper, 0)).not.toContain('復帰後')
+    expect(wrapper.find('[data-testid="state-empty"]').exists()).toBe(true)
+    expect(currentText(wrapper)).not.toContain('復帰後')
     await expandPastAbsences(wrapper)
-    expect(tableText(wrapper, 1)).toContain('復帰後')
+    expect(pastText(wrapper)).toContain('復帰後')
   })
 
   it('終了日不明の離脱はactiveに分類すること', async () => {
@@ -291,7 +305,8 @@ describe('SeasonAbsenceTab', () => {
     it('asOfDate の日に有効な離脱を「現在の離脱者」に出す（シーズンの現在日ではない）', async () => {
       // 4/12 が復帰日の離脱: 現在日(4/11)なら現在の離脱者、4/12 以降なら過去の履歴
       const wrapper = await mountComponent([injured], { asOfDate: '2026-04-12' })
-      expect(tableText(wrapper, 0)).not.toContain('怪我中')
+      expect(wrapper.find('[data-testid="state-empty"]').exists()).toBe(true)
+      expect(currentText(wrapper)).not.toContain('怪我中')
       const earlier = await mountComponent([injured], { asOfDate: '2026-04-05' })
       expect(tableText(earlier, 0)).toContain('怪我中')
     })
@@ -361,5 +376,102 @@ describe('SeasonAbsenceTab', () => {
 
       expect(wrapper.emitted('changed')).toHaveLength(1)
     })
+  })
+})
+
+// Test Basis: thbig-dugout-ui-unification-design.md §2.5（<600px は縦積み）/ §2.4（行の操作はアイコンボタン）/ §2.7（状態）/ §4.2 段 4
+describe('SeasonAbsenceTab 表のスマホ対応と状態（段 4）', () => {
+  it('現在の離脱者: 縦積み（選手名=title・種別=sub1・区分=sub2・残り=note（見出し付き）・操作=act）', async () => {
+    const wrapper = await mountComponent([injured])
+    expect(stackedLayout(wrapper, 'remaining')).toEqual({
+      mobileBreakpoint: 'sm',
+      rows: true,
+      roles: {
+        player_name: 'title',
+        absence_type: 'sub1',
+        phase: 'sub2',
+        remaining: 'note',
+        actions: 'act',
+      },
+    })
+  })
+
+  it('残り・復帰日は値だけでは何か分からないので、見出しを値の前に出す（labeled）', async () => {
+    const wrapper = await mountComponent([injured, recovered])
+    await expandPastAbsences(wrapper)
+    const labeled = (key: string) =>
+      (
+        dataTables(wrapper)
+          .map((t) => t.props('headers') as { key: string; cellProps?: { class: string } }[])
+          .flat()
+          .find((h) => h.key === key)?.cellProps?.class ?? ''
+      ).includes('ui-cell--labeled')
+    expect(labeled('remaining')).toBe(true)
+    expect(labeled('effective_end_date')).toBe(true)
+    expect(labeled('absence_type')).toBe(false)
+  })
+
+  it('過去の履歴: 縦積み（選手名=title・種別=sub1・区分=sub2・復帰日=note）', async () => {
+    const wrapper = await mountComponent([injured, recovered])
+    await expandPastAbsences(wrapper)
+    expect(stackedLayout(wrapper, 'effective_end_date')).toEqual({
+      mobileBreakpoint: 'sm',
+      rows: true,
+      roles: {
+        player_name: 'title',
+        absence_type: 'sub1',
+        phase: 'sub2',
+        effective_end_date: 'note',
+      },
+    })
+  })
+
+  it('編集・削除は .row-actions のアイコンボタン（名前つき・削除は danger）。既存の data-testid は保つ', async () => {
+    const wrapper = await mountComponent([injured])
+    const actions = wrapper.find('.row-actions')
+    const edit = actions.find('[data-testid="edit-absence"]')
+    const del = actions.find('[data-testid="delete-absence"]')
+    expect(edit.attributes('aria-label')).toContain('seasonAbsenceTab.editAbsence')
+    expect(del.attributes('aria-label')).toContain('seasonAbsenceTab.deleteAbsence')
+    expect(del.classes().join(' ')).toContain('text-danger-ink')
+  })
+
+  it('取得中はスケルトン、現在の離脱者が 0 件なら空状態、取得に失敗したらアラート＋再読み込み', async () => {
+    vi.mocked(axios.get).mockReturnValue(new Promise(() => {}))
+    const loading = mount(SeasonAbsenceTab, {
+      props: { teamId: 1 },
+      global: { plugins: [vuetify, i18n] },
+    })
+    await flushPromises()
+    expect(loading.find('[data-testid="state-loading"]').exists()).toBe(true)
+    expect(loading.find('[data-testid="state-empty"]').exists()).toBe(false)
+
+    const empty = await mountComponent([])
+    expect(empty.find('[data-testid="state-empty"]').exists()).toBe(true)
+
+    vi.mocked(axios.get).mockRejectedValueOnce(new Error('network'))
+    const failed = mount(SeasonAbsenceTab, {
+      props: { teamId: 1 },
+      global: { plugins: [vuetify, i18n] },
+    })
+    await flushPromises()
+    expect(failed.find('[data-testid="state-error"]').exists()).toBe(true)
+    expect(failed.find('[data-testid="state-empty"]').exists()).toBe(false)
+  })
+
+  it('再読み込みで取り直して表を出す', async () => {
+    vi.mocked(axios.get).mockRejectedValueOnce(new Error('network'))
+    const wrapper = mount(SeasonAbsenceTab, {
+      props: { teamId: 1 },
+      global: { plugins: [vuetify, i18n], stubs: { PlayerAbsenceFormDialog: true } },
+    })
+    await flushPromises()
+    vi.mocked(axios.get).mockImplementation((url: string) =>
+      Promise.resolve({ data: url === '/teams/1/season' ? season : [injured] }),
+    )
+    await wrapper.find('[data-testid="state-retry"]').trigger('click')
+    await flushPromises()
+    expect(wrapper.find('[data-testid="state-error"]').exists()).toBe(false)
+    expect(wrapper.text()).toContain('怪我中')
   })
 })

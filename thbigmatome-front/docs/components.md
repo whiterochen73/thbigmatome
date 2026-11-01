@@ -175,6 +175,20 @@
 
 ---
 
+### `RowMenu.vue` (`src/components/shared/RowMenu.vue`)
+
+行の操作が 3 つ以上の時の操作メニュー（`mdi-dots-vertical`）。スマホ（<600px）でだけ出し、PC は `RowIconButton` を並べる。
+
+**props**: `label`（開くボタンの名前。必須）、`items`（`{ icon, label, danger?, onClick }` の配列）
+
+---
+
+### `tableCells.ts` (`src/components/shared/tableCells.ts`)
+
+縦積み行の列の役割を `cellProps` に渡すための定数 `tableCell`（`lead` / `title` / `sub1` / `sub2` / `note` / `act` と、見出し付きの `sub1Labeled` / `sub2Labeled` / `noteLabeled`）。配置の CSS は `PageLayout` にある。
+
+---
+
 ### `ConfirmDialog.vue` (`src/components/ConfirmDialog.vue`)
 
 確認ダイアログ。Promiseを使った非同期API（`open()`メソッド）で使用する。

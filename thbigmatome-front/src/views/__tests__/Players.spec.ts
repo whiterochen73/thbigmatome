@@ -32,6 +32,7 @@ vi.mock('@/components/players/PlayerDialog.vue', () => ({
 }))
 
 import axios from '@/plugins/axios'
+import { stackedLayout } from '@/components/shared/__tests__/tableLayout'
 
 const vuetify = createVuetify({ components, directives })
 
@@ -227,5 +228,29 @@ describe('Players', () => {
       expect(wrapper.find('[data-testid="state-error"]').exists()).toBe(false)
       expect(wrapper.text()).toContain('博麗霊夢')
     })
+  })
+})
+
+// Test Basis: thbig-dugout-ui-unification-design.md §2.5（5 列以上の表は <600px で縦積み。1 行 = 名前＋要点 2 つ＋操作）/ §4.2 段 4
+describe('Players 表のスマホ対応（段 4）', () => {
+  it('600px 未満で縦積み。番号=lead・名前=title・作品=sub1・カード数=sub2・操作=act', async () => {
+    vi.mocked(axios.get).mockResolvedValueOnce({ data: mockPlayers })
+    const router = createTestRouter()
+    await router.push('/players')
+    await router.isReady()
+    const wrapper = mount(Players, { global: { plugins: [vuetify, router, i18n, createPinia()] } })
+    await flushPromises()
+    expect(stackedLayout(wrapper)).toEqual({
+      mobileBreakpoint: 'sm',
+      rows: true,
+      roles: { number: 'lead', name: 'title', series: 'sub1', card_count: 'sub2', actions: 'act' },
+    })
+    // 行の操作は .row-actions に包んだアイコンボタン（名前つきの aria-label）
+    const actions = wrapper.findAll('.row-actions')
+    expect(actions).toHaveLength(2)
+    expect(actions[0]!.findAll('button').map((b) => b.attributes('aria-label'))).toEqual([
+      '博麗霊夢を編集',
+      '博麗霊夢を削除',
+    ])
   })
 })

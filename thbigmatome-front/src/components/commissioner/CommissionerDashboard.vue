@@ -23,7 +23,8 @@
       >
         <DataCard title="">
           <v-data-table
-            class="ui-table"
+            class="ui-table ui-table--rows"
+            mobile-breakpoint="sm"
             :headers="teamHeaders"
             :items="teams"
             density="compact"
@@ -64,7 +65,8 @@
               <span v-else class="text-caption on-surface-variant">-</span>
             </template>
             <template #[`item.actions`]="{ item }">
-              <div class="team-row-actions">
+              <!-- 操作が 4 つあるので、スマホ（<600px）では操作メニューにまとめる -->
+              <div class="row-actions row-actions--full">
                 <RowIconButton
                   icon="mdi-calendar-star"
                   :label="`${item.name}のシーズンポータル`"
@@ -87,6 +89,28 @@
                   @click="deleteTeam(item.id)"
                 />
               </div>
+              <RowMenu
+                :label="`${item.name}の操作`"
+                :items="[
+                  {
+                    icon: 'mdi-calendar-star',
+                    label: 'シーズンポータル',
+                    onClick: () => navigateToSeason(item),
+                  },
+                  {
+                    icon: 'mdi-account-group',
+                    label: 'メンバー編集',
+                    onClick: () => navigateToMembers(item.id),
+                  },
+                  { icon: 'mdi-pencil', label: 'チーム編集', onClick: () => openTeamDialog(item) },
+                  {
+                    icon: 'mdi-delete-outline',
+                    label: '削除',
+                    danger: true,
+                    onClick: () => deleteTeam(item.id),
+                  },
+                ]"
+              />
             </template>
           </v-data-table>
         </DataCard>
@@ -132,7 +156,8 @@
           </FilterBar>
 
           <v-data-table
-            class="ui-table"
+            class="ui-table ui-table--rows"
+            mobile-breakpoint="sm"
             :headers="absenceHeaders"
             :items="filteredAbsences"
             density="compact"
@@ -208,7 +233,8 @@
           </FilterBar>
 
           <v-data-table
-            class="ui-table"
+            class="ui-table ui-table--rows"
+            mobile-breakpoint="sm"
             :headers="cooldownHeaders"
             :items="filteredCooldowns"
             density="compact"
@@ -319,6 +345,8 @@ import axios from 'axios'
 import AsyncState from '@/components/shared/AsyncState.vue'
 import DataCard from '@/components/shared/DataCard.vue'
 import RowIconButton from '@/components/shared/RowIconButton.vue'
+import RowMenu from '@/components/shared/RowMenu.vue'
+import { tableCell } from '@/components/shared/tableCells'
 import FilterBar from '@/components/shared/FilterBar.vue'
 import StatusChip from '@/components/shared/StatusChip.vue'
 import TeamDialog from '@/components/TeamDialog.vue'
@@ -327,6 +355,7 @@ import RosterStatusTab from '@/components/commissioner/RosterStatusTab.vue'
 import { useSnackbar } from '@/composables/useSnackbar'
 import { useTeamSelectionStore } from '@/stores/teamSelection'
 import { type Team } from '@/types/team'
+import { useColumnMinWidth } from '@/composables/useColumnMinWidth'
 
 interface AbsenceRecord {
   id: number
@@ -384,15 +413,20 @@ const editingTeam = ref<Team | null>(null)
 const confirmDialog = ref<InstanceType<typeof ConfirmDialog> | null>(null)
 
 const teamHeaders = [
-  { title: 'ID', key: 'id', nowrap: true },
-  { title: 'チーム名', key: 'name' },
+  { title: 'ID', key: 'id', nowrap: true, cellProps: tableCell.lead },
+  { title: 'チーム名', key: 'name', cellProps: tableCell.title },
   { title: '略称', key: 'short_name', nowrap: true },
-  { title: '種別', key: 'team_type', sortable: false, nowrap: true },
-  { title: '監督', key: 'manager_name', sortable: false },
+  { title: '種別', key: 'team_type', sortable: false, nowrap: true, cellProps: tableCell.sub2 },
+  { title: '監督', key: 'manager_name', sortable: false, cellProps: tableCell.sub1 },
   { title: 'アクティブ', key: 'is_active', sortable: false, nowrap: true },
   { title: '最終試合日', key: 'last_game_real_date', nowrap: true },
-  { title: 'ゲーム内日付', key: 'season_current_date', nowrap: true },
-  { title: '操作', key: 'actions', sortable: false, nowrap: true },
+  {
+    title: 'ゲーム内日付',
+    key: 'season_current_date',
+    nowrap: true,
+    cellProps: tableCell.noteLabeled,
+  },
+  { title: '操作', key: 'actions', sortable: false, nowrap: true, cellProps: tableCell.act },
 ]
 
 // 離脱者
@@ -426,30 +460,32 @@ const absenceTypeLabels: Record<string, string> = {
 }
 
 const absenceHeaders = [
-  { title: 'チーム', key: 'team_name' },
-  { title: '選手名', key: 'player_name' },
-  { title: '離脱種別', key: 'absence_type' },
+  { title: 'チーム', key: 'team_name', cellProps: tableCell.sub1 },
+  { title: '選手名', key: 'player_name', cellProps: tableCell.title },
+  { title: '離脱種別', key: 'absence_type', cellProps: tableCell.sub2 },
   { title: '理由', key: 'reason' },
   { title: '開始日', key: 'start_date' },
   { title: '復帰予定日', key: 'effective_end_date' },
-  { title: '残り', key: 'remaining', sortable: false },
+  { title: '残り', key: 'remaining', sortable: false, cellProps: tableCell.noteLabeled },
 ]
 
-const costHeaders = [
-  { title: 'チーム', key: 'team_name' },
-  { title: '種別', key: 'team_type' },
-  { title: '合計コスト / 上限', key: 'total_cost', sortable: false },
-  { title: '1軍コスト / 上限', key: 'first_squad_cost', sortable: false },
-  { title: '1軍人数', key: 'first_squad_count' },
-  { title: 'コスト除外', key: 'exempt_count' },
-]
+const minW = useColumnMinWidth()
+const costHeaders = computed(() => [
+  // 横に比べる数値の表なので縦積みにせず、スマホでは横スクロール。チームの列は左に固定する
+  { title: 'チーム', key: 'team_name', fixed: true, minWidth: minW(130) },
+  { title: '種別', key: 'team_type', minWidth: minW(80) },
+  { title: '合計コスト / 上限', key: 'total_cost', sortable: false, minWidth: minW(260) },
+  { title: '1軍コスト / 上限', key: 'first_squad_cost', sortable: false, minWidth: minW(260) },
+  { title: '1軍人数', key: 'first_squad_count', minWidth: minW(90) },
+  { title: 'コスト除外', key: 'exempt_count', minWidth: minW(100) },
+])
 
 const cooldownHeaders = [
-  { title: 'チーム', key: 'team_name' },
-  { title: '選手名', key: 'player_name' },
+  { title: 'チーム', key: 'team_name', cellProps: tableCell.sub1 },
+  { title: '選手名', key: 'player_name', cellProps: tableCell.title },
   { title: '降格日', key: 'demotion_date' },
-  { title: 'CD終了日', key: 'cooldown_until' },
-  { title: '残り日数', key: 'remaining_days' },
+  { title: 'CD終了日', key: 'cooldown_until', cellProps: tableCell.noteLabeled },
+  { title: '残り日数', key: 'remaining_days', cellProps: tableCell.sub2 },
   { title: '同日免除', key: 'same_day_exempt', sortable: false },
 ]
 
@@ -594,11 +630,3 @@ onMounted(() => {
   fetchCooldowns()
 })
 </script>
-
-<style scoped>
-.team-row-actions {
-  display: flex;
-  flex-wrap: nowrap;
-  white-space: nowrap;
-}
-</style>

@@ -14,48 +14,58 @@
       >
         {{ t('settings.managedByConfigFile') }}
       </v-alert>
-      <v-data-table
-        :headers="tableHeaders"
-        :items="items"
+      <AsyncState
         :loading="loading"
-        :no-data-text="t(`${i18nKey}.notifications.noData`, t('teamList.noData'))"
-        density="compact"
-        mobile-breakpoint="sm"
+        :error="fetchFailed"
+        :error-message="t(`${i18nKey}.notifications.fetchFailed`)"
+        :empty="items.length === 0"
+        :empty-message="t(`${i18nKey}.notifications.noData`, t('teamList.noData'))"
+        @retry="loadItems"
       >
-        <!-- eslint-disable-next-line vue/valid-v-slot -->
-        <template v-if="hasDescriptionColumn" #item.description="{ item }">
-          <v-tooltip :text="item.description ?? ''" location="top">
-            <template #activator="{ props: activatorProps }">
-              <span
-                v-bind="activatorProps"
-                class="d-inline-block text-truncate"
-                :style="{ maxWidth: `min(${descriptionMaxWidth}, 28vw)` }"
-                >{{ item.description }}</span
-              >
-            </template>
-          </v-tooltip>
-        </template>
+        <v-data-table
+          :headers="tableHeaders"
+          :items="items"
+          density="compact"
+          class="ui-table--rows"
+          mobile-breakpoint="sm"
+        >
+          <!-- eslint-disable-next-line vue/valid-v-slot -->
+          <template v-if="hasDescriptionColumn" #item.description="{ item }">
+            <v-tooltip :text="item.description ?? ''" location="top">
+              <template #activator="{ props: activatorProps }">
+                <span
+                  v-bind="activatorProps"
+                  class="d-inline-block text-truncate"
+                  :style="{ maxWidth: `min(${descriptionMaxWidth}, 28vw)` }"
+                  >{{ item.description }}</span
+                >
+              </template>
+            </v-tooltip>
+          </template>
 
-        <!-- eslint-disable-next-line vue/valid-v-slot -->
-        <template v-for="(_, name) in $slots" v-slot:[name]="slotProps">
-          <slot :name="name" v-bind="slotProps"></slot>
-        </template>
+          <!-- eslint-disable-next-line vue/valid-v-slot -->
+          <template v-for="(_, name) in $slots" v-slot:[name]="slotProps">
+            <slot :name="name" v-bind="slotProps"></slot>
+          </template>
 
-        <!-- eslint-disable-next-line vue/valid-v-slot -->
-        <template v-if="!readonly" v-slot:item.actions="{ item }">
-          <RowIconButton
-            icon="mdi-pencil"
-            :label="t('settings.rowActions.edit', { name: item.name })"
-            @click="openEditDialog(item as T)"
-          />
-          <RowIconButton
-            icon="mdi-delete-outline"
-            danger
-            :label="t('settings.rowActions.delete', { name: item.name })"
-            @click="confirmDelete(item as T)"
-          />
-        </template>
-      </v-data-table>
+          <!-- eslint-disable-next-line vue/valid-v-slot -->
+          <template v-if="!readonly" v-slot:item.actions="{ item }">
+            <div class="row-actions">
+              <RowIconButton
+                icon="mdi-pencil"
+                :label="t('settings.rowActions.edit', { name: item.name })"
+                @click="openEditDialog(item as T)"
+              />
+              <RowIconButton
+                icon="mdi-delete-outline"
+                danger
+                :label="t('settings.rowActions.delete', { name: item.name })"
+                @click="confirmDelete(item as T)"
+              />
+            </div>
+          </template>
+        </v-data-table>
+      </AsyncState>
     </MasterPanel>
 
     <component
@@ -79,9 +89,11 @@ import { useI18n } from 'vue-i18n'
 import { useSnackbar } from '@/composables/useSnackbar'
 import axios from '@/plugins/axios'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
+import AsyncState from '@/components/shared/AsyncState.vue'
 import MasterPanel from '@/components/settings/MasterPanel.vue'
 import MasterAddButton from '@/components/settings/MasterAddButton.vue'
 import RowIconButton from '@/components/shared/RowIconButton.vue'
+import { tableCell } from '@/components/shared/tableCells'
 
 const props = withDefaults(
   defineProps<{
@@ -108,7 +120,8 @@ const { t } = useI18n()
 const { showSnackbar } = useSnackbar()
 const confirmDialog = ref<InstanceType<typeof ConfirmDialog> | null>(null)
 
-const loading = ref(false)
+const loading = ref(true)
+const fetchFailed = ref(false)
 const items = ref<T[]>([])
 const isDialogVisible = ref(false)
 const editingItem = ref<T | null>(null)
@@ -120,10 +133,17 @@ const tableHeaders = computed(() => {
     key: 'name',
     sortable: true,
     minWidth: '8em',
+    cellProps: tableCell.title,
   })
 
   if (props.additionalHeaders) {
-    headers.push(...props.additionalHeaders)
+    // 追加の列はスマホの縦積み行で要点 1・2 に、見出し付きで置く（呼び出し側が cellProps を決めていればそれを使う）
+    props.additionalHeaders.forEach((header, i) => {
+      headers.push({
+        cellProps: i === 0 ? tableCell.sub1Labeled : tableCell.sub2Labeled,
+        ...header,
+      })
+    })
   }
 
   if (props.hasDescriptionColumn) {
@@ -131,6 +151,7 @@ const tableHeaders = computed(() => {
       title: t(`${props.i18nKey}.headers.description`),
       key: 'description',
       sortable: false,
+      cellProps: tableCell.note,
     })
   }
 
@@ -140,6 +161,7 @@ const tableHeaders = computed(() => {
       key: 'actions',
       sortable: false,
       align: 'end' as const,
+      cellProps: tableCell.act,
     })
   }
 
@@ -148,11 +170,13 @@ const tableHeaders = computed(() => {
 
 const loadItems = async () => {
   loading.value = true
+  fetchFailed.value = false
   try {
     const response = await axios.get<T[]>(props.endpoint)
     items.value = response.data
   } catch {
-    showSnackbar(t(`${props.i18nKey}.notifications.fetchFailed`), 'error')
+    // 取得の失敗はその場のアラート（AsyncState）で出す。スナックバーは削除の成否だけ
+    fetchFailed.value = true
   } finally {
     loading.value = false
   }

@@ -91,6 +91,127 @@ withDefaults(
   flex-wrap: nowrap;
   white-space: nowrap;
 }
+/* 操作が 3 つ以上の行は、スマホ（<600px）でアイコンを隠して操作メニュー（RowMenu）に替える */
+@media (max-width: 599.98px) {
+  .page-layout :deep(.row-actions--full) {
+    display: none;
+  }
+}
+
+/* スマホ（<600px）の縦積み行（class="ui-table ui-table--rows" ＋ mobile-breakpoint="sm"）。
+   1 行 = 名前（太字）＋要点 2 つ＋操作。列の class（tableCell）で置き場所を決め、class の無い列は 600px 未満では出さない。
+   lead … 左の番号・画像 / title … 名前 / sub1・sub2 … 要点 / note … 補足 1 行 / act … 操作（labeled は列の見出しを値の前に出す） */
+/* 行を grid にすると、table のままでは匿名のセルに包まれて幅が中身なりに縮み、ホバーの塗りや下線が操作側まで届かない。縦積みの時だけ table を block にして行を幅いっぱいにする */
+.page-layout :deep(.ui-table--rows table:has(tr.v-data-table__tr--mobile)),
+.page-layout :deep(.ui-table--rows table:has(tr.v-data-table__tr--mobile) > tbody),
+.page-layout :deep(.ui-table--rows table:has(tr.v-data-table__tr--mobile) > thead) {
+  display: block;
+}
+.page-layout :deep(.ui-table--rows tbody > tr.v-data-table__tr--mobile) {
+  display: grid;
+  grid-template-columns: auto auto minmax(0, 1fr) auto;
+  grid-template-areas:
+    'lead title title act'
+    'lead sub1 sub2 act'
+    'lead note note act';
+  align-items: center;
+  padding: 8px 12px;
+  border-bottom: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
+}
+.page-layout :deep(.ui-table--rows tbody > tr.v-data-table__tr--mobile > td) {
+  display: none;
+  min-width: 0;
+  min-height: 0;
+  padding: 0 4px;
+  border: 0;
+  background: transparent !important;
+}
+/* ホバーは行全体に 1 枚。Vuetify は行のホバーを td ごとの ::after で塗るので、grid の隙間・余白・操作側が塗れない。td の ::after を止め、tr の ::before を行いっぱいに重ねる。行の地（bg-state-done など）は残す */
+.page-layout :deep(.ui-table--rows tbody > tr.v-data-table__tr--mobile > td::after) {
+  content: none !important;
+}
+.page-layout :deep(.ui-table--rows tbody > tr.v-data-table__tr--mobile) {
+  position: relative;
+}
+.page-layout :deep(.ui-table--rows tbody > tr.v-data-table__tr--mobile:hover::before) {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: rgba(var(--v-theme-on-surface), var(--v-hover-opacity));
+  pointer-events: none;
+}
+.page-layout :deep(.ui-table--rows tbody > tr.v-data-table__tr--mobile > td.ui-cell) {
+  display: block;
+}
+.page-layout :deep(.ui-table--rows .ui-cell .v-data-table__td-title) {
+  display: none;
+}
+.page-layout :deep(.ui-table--rows .ui-cell .v-data-table__td-value) {
+  text-align: start;
+}
+.page-layout :deep(.ui-table--rows tbody > tr.v-data-table__tr--mobile > td.ui-cell--labeled) {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  column-gap: 4px;
+}
+.page-layout :deep(.ui-table--rows .ui-cell--labeled .v-data-table__td-title) {
+  display: block;
+  color: rgb(var(--v-theme-on-surface-variant));
+  font-size: 0.75rem;
+  font-weight: 400;
+}
+.page-layout :deep(.ui-table--rows tbody > tr.v-data-table__tr--mobile > td.ui-cell--lead) {
+  grid-area: lead;
+  box-sizing: border-box;
+  width: 2.8em;
+  min-width: 2.8em;
+  color: rgb(var(--v-theme-on-surface-variant));
+  font-variant-numeric: tabular-nums;
+  text-align: end;
+}
+.page-layout :deep(.ui-table--rows .ui-cell--lead .v-data-table__td-value) {
+  text-align: end;
+}
+.page-layout :deep(.ui-table--rows tbody > tr.v-data-table__tr--mobile > td.ui-cell--title) {
+  grid-area: title;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+.page-layout :deep(.ui-table--rows tbody > tr.v-data-table__tr--mobile > td.ui-cell--sub1) {
+  grid-area: sub1;
+}
+.page-layout :deep(.ui-table--rows tbody > tr.v-data-table__tr--mobile > td.ui-cell--sub2) {
+  grid-area: sub2;
+  font-size: 0.8125rem;
+}
+/* 長い説明（text-truncate）は、スマホの縦積み行の中だけ PC 用の最大幅の指定を外してセルの幅で省略する（PC の表は変えない） */
+.page-layout :deep(.ui-table--rows tbody > tr.v-data-table__tr--mobile .ui-cell .text-truncate) {
+  display: block;
+  max-width: 100% !important;
+}
+.page-layout :deep(.ui-table--rows tbody > tr.v-data-table__tr--mobile > td.ui-cell--note) {
+  grid-area: note;
+  color: rgb(var(--v-theme-on-surface-variant));
+  font-size: 0.8125rem;
+}
+/* note2 は note の右隣（同じ 3 行目）。note2 のある行だけ note を 1 列に縮める */
+.page-layout :deep(.ui-table--rows tbody > tr.v-data-table__tr--mobile > td.ui-cell--note2) {
+  grid-row: 3;
+  grid-column: 3;
+  color: rgb(var(--v-theme-on-surface-variant));
+  font-size: 0.8125rem;
+}
+.page-layout
+  :deep(
+    .ui-table--rows tbody > tr.v-data-table__tr--mobile:has(> td.ui-cell--note2) > td.ui-cell--note
+  ) {
+  grid-column: 2;
+}
+.page-layout :deep(.ui-table--rows tbody > tr.v-data-table__tr--mobile > td.ui-cell--act) {
+  grid-area: act;
+  padding-inline-start: 8px;
+}
 
 /* 選択中の v-btn-toggle（selected-class="bg-primary"）。active のオーバーレイが白を重ねて地を明るくし、dark で白文字が 3.81 まで落ちる（実測）ので、オーバーレイを消して地の色をそのまま出す */
 .page-layout :deep(.v-btn-toggle .v-btn--active > .v-btn__overlay) {

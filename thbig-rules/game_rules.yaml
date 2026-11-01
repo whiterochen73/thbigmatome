@@ -5,10 +5,15 @@
 #
 # 参照: thbig-rules/README.md, thbig-rules/docs/
 
-version: "1.4"
+version: "1.5"
 created_at: "2026-04-01"
 format_updated: "2026-04-04"
 changelog:
+  - version: "1.5"
+    date: "2026-11-02"
+    breaking: false
+    changes:
+      - "outside_world.balance に role_counting 追加（専任契約・二刀流の投手/野手の数え方。救援専任は投手専任と同じ扱い。AMB-29）"
   - version: "1.4"
     date: "2026-04-04"
     breaking: false
@@ -186,6 +191,13 @@ lpena:
       balance:
         trigger_count: 4
         requirement: "投手1名以上 AND 野手1名以上"
+        role_counting:
+          pitcher_only_cost: "投手専任コストで契約した選手は投手だけに数える（二刀流でも野手には数えない）"
+          relief_only_cost: "救援専任コストで契約した選手は投手としての専任契約なので投手だけに数える（二刀流でも野手には数えない）"
+          fielder_only_cost: "野手専任コストで契約した選手は野手だけに数える（二刀流でも投手には数えない）"
+          two_way: "専任契約でない二刀流は投手・野手のどちらにも数える（都合の良い方）"
+          others: "それ以外は選んだカードで判定（投手カードなら投手、野手カードなら野手）"
+          why: "専任契約は契約した役で数える（AMB-29、Operator 裁定 2026-11-02）。4人全員が投手のみ・野手のみの編成を禁止するのが目的で、二刀流はどちらの枠も埋められる"
       why: "外の世界（他シリーズ）選手の無制限参加を制限し、ゲームの世界観整合性を保つ。4名フル活用時は混成を必須とし多様な戦術を促す"
       exception: "チームタイプ（normal/hachinai）によって外の世界の定義が反転する。team_typesセクション参照"
       related:

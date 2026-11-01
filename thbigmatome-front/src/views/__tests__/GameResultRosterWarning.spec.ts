@@ -183,6 +183,15 @@ describe('GameResult 試合日ページ: 1軍でない投手の登板の要確�
     expect(pitcherState(wrapper)).toBe('warn')
   })
 
+  it('帯は役割色 state-warn の flat（tonal や error 色ではない。文字は on-state-warn で読める）', async () => {
+    const wrapper = await mountDay({ appearances: [row(1, 'second')] })
+    const classes = banner(wrapper).classes()
+    expect(classes).toContain('bg-state-warn')
+    expect(classes).toContain('v-alert--variant-flat')
+    expect(classes).not.toContain('v-alert--variant-tonal')
+    expect(classes).not.toContain('bg-error')
+  })
+
   it('在籍なし・チームの登録なしの投手も、それぞれの言い方で帯に並べる（複数は読点区切り）', async () => {
     const wrapper = await mountDay({
       appearances: [

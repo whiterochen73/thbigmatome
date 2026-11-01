@@ -379,7 +379,7 @@
 - **Path Params**: `:id` (SeasonSchedule ID)
 - **Body Params**: `announced_starter_id, stadium, home_away, designated_hitter_enabled, score, opponent_score, no_game, opponent_team_id, winning_pitcher_id, losing_pitcher_id, save_pitcher_id, scoreboard: { home: [], away: [] }, starting_lineup: [{ player_id, position, order }], opponent_starting_lineup: [...]`
 - **Response**: SeasonSchedule JSON
-- **no_game**: ノーゲーム（試合が成立しなかった）。得点では表せないので試合概要に持つ。true の日は登板記録の `result_category` が全員 `no_game` になり、先発の次回の休養は KO・ノーゲームの表（rulebook 08 §8.3.1）で計算される。得点・`no_game` のどちらかが変わった保存で、その日の先発の判定と、区分が変わった投手の後続の先発が作り直される（`PitcherResultCategoryRebuilder`）
+- **no_game**: ノーゲーム（試合が成立しなかった）。得点では表せないので試合概要に持つ。true の日は登板記録の `result_category` が全員 `no_game` になり、先発の次回の休養は KO・ノーゲームの表（rulebook 08 §8.3.1）で計算される。得点・`no_game` のどちらかが変わった保存で、その日の先発の投手に絞って、その試合日以降の先発の保存値（結果区分・疲労P・連続中4日回数）が作り直される（`PitcherHistoryRebuild`。保存値の作り直しの 1 入口で、中身は `PitcherResultCategoryRebuilder`）。得点が未入力の先発は、その日の分だけ「負けではない」として作り直し、それ以降の未入力の先発の保存値は動かさない。作り直しが失敗しても保存は取り消さず、警告を返す
 
 ---
 

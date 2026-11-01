@@ -95,6 +95,18 @@ RSpec.describe PitcherHistoryRebuild, :pitcher_fatigue do
     end
   end
 
+  describe ".from の unscored_not_loss_on" do
+    it "得点未入力の先発のうち、その日の分だけ負けではないとして作り直し、ほかの未入力は動かさない" do
+      create_schedule(season, "2026-06-01")
+      create_schedule(season, "2026-06-11")
+      on_day = create_start(team: team, pitcher: pitcher, date: "2026-06-01", innings: 9.0, category: "long_loss", fatigue_p_used: 0)
+      later = create_start(team: team, pitcher: pitcher, date: "2026-06-11", innings: 9.0, category: "long_loss", fatigue_p_used: 0)
+      described_class.from(team_id: team.id, unscored_not_loss_on: Date.new(2026, 6, 1))
+      expect(on_day.reload.result_category).to eq("normal")
+      expect(later.reload).to have_attributes(result_category: "long_loss", fatigue_p_used: 0)
+    end
+  end
+
   describe ".guarded" do
     it "成功したら error なし・rebuilder を返す" do
       seed(pitcher)

@@ -5,7 +5,7 @@
 #
 #   - 登板の保存・削除        : 保存した日の翌日から（その日の値は保存時に求めている）。登板を入れた・消した投手
 #   - 離脱の作成・変更・削除  : 開始日（変更前の開始日の早い方）から。その選手
-#   - 得点・ノーゲームの変更  : その試合日から。その日の先発（SeasonSchedule）
+#   - 得点・ノーゲームの変更  : その試合日から。その日の先発（SeasonSchedule）。得点未入力の先発はその日の分だけ作り直し、それ以降は動かさない
 #   - カードの変更            : 変更の日から。その選手（TeamMembershipWriter）。疲労P がカードで決まるため
 #   - 過去分の一括            : date を渡さない（rake pitcher_game_states:recalculate_result_category）
 #
@@ -20,8 +20,9 @@ class PitcherHistoryRebuild
 
   # 作り直す。date が nil なら全期間、pitcher_ids が nil なら投手を絞らない（空配列なら誰も作り直さない）。
   # 失敗は例外のまま上げる（rake・試運転向け）。書き込みの途中で呼ぶ側は guarded を使う
-  def self.from(team_id: nil, date: nil, pitcher_ids: nil, apply: true, unscored: :skip, recompute_no_game_on: nil)
-    rebuilder = PitcherResultCategoryRebuilder.new(apply: apply, unscored: unscored)
+  # unscored_not_loss_on: 得点未入力の先発のうちこの日の分だけ「負けではない」として作り直す（それ以外の未入力は unscored に従う）
+  def self.from(team_id: nil, date: nil, pitcher_ids: nil, apply: true, unscored: :skip, unscored_not_loss_on: nil, recompute_no_game_on: nil)
+    rebuilder = PitcherResultCategoryRebuilder.new(apply: apply, unscored: unscored, unscored_not_loss_on: unscored_not_loss_on)
     rebuilder.rebuild_from(team_id: team_id, date: date, pitcher_ids: pitcher_ids, recompute_no_game_on: recompute_no_game_on)
     rebuilder
   end

@@ -11,7 +11,7 @@ RSpec.describe PitcherResultCategoryRebuilder, :pitcher_fatigue do
     described_class.new(apply: true, **opts)
   end
 
-  describe "E2: 得点の変更で作り直す（rebuild_for_schedule）" do
+  describe "E2: 得点・ノーゲームの変更で作り直す（SeasonSchedule の after_save → PitcherHistoryRebuild.guarded）" do
     it "負け→勝ちに直すと long_loss が normal に作り直される" do
       schedule = create_schedule(season, "2026-06-10", score: 2, opponent_score: 5)
       state = create_start(team: team, pitcher: pitcher, date: "2026-06-10", innings: 9.0, category: "long_loss")
@@ -48,6 +48,40 @@ RSpec.describe PitcherResultCategoryRebuilder, :pitcher_fatigue do
       state = create_start(team: team, pitcher: pitcher, date: "2026-06-10", innings: 9.0, category: "long_loss")
       schedule.update!(score: nil, opponent_score: nil)
       expect(state.reload.result_category).to eq("normal")
+    end
+
+    it "得点を消した日より後の、得点未入力の先発は保存値を動かさない（その日の先発だけ負けではないとして作り直す。cmd_1784 段3 QC）" do
+      schedule = create_schedule(season, "2026-06-01", score: 2, opponent_score: 5)
+      create_schedule(season, "2026-06-11") # 得点未入力の先発（まだ得点を入れていない試合）
+      first = create_start(team: team, pitcher: pitcher, date: "2026-06-01", innings: 9.0, category: "long_loss")
+      # 保存値が「負け・疲労P 0」のままの古い行。:not_loss で作り直すと normal・疲労P 7 に動いてしまう
+      later = create_start(team: team, pitcher: pitcher, date: "2026-06-11", innings: 9.0, category: "long_loss", fatigue_p_used: 0)
+      schedule.update!(score: nil, opponent_score: nil)
+      expect(first.reload.result_category).to eq("normal")
+      expect(later.reload).to have_attributes(result_category: "long_loss", fatigue_p_used: 0)
+    end
+
+    it "得点を入れた日より後の、得点未入力の先発も保存値を動かさない。得点入力済みの後の先発は作り直す" do
+      schedule = create_schedule(season, "2026-06-01")
+      create_schedule(season, "2026-06-06") # 得点未入力
+      create_schedule(season, "2026-06-11", score: 0, opponent_score: 1)
+      first = create_start(team: team, pitcher: pitcher, date: "2026-06-01", innings: 9.0, category: "normal")
+      unscored = create_start(team: team, pitcher: pitcher, date: "2026-06-06", innings: 9.0, category: "long_loss", fatigue_p_used: 0)
+      scored = create_start(team: team, pitcher: pitcher, date: "2026-06-11", innings: 9.0, category: "normal", fatigue_p_used: 0)
+      schedule.update!(score: 0, opponent_score: 3)
+      expect(first.reload.result_category).to eq("long_loss")
+      expect(unscored.reload).to have_attributes(result_category: "long_loss", fatigue_p_used: 0)
+      expect(scored.reload.fatigue_p_used).not_to eq(0)
+    end
+
+    it "ノーゲームを立てた日より後の、得点未入力の先発は保存値を動かさない" do
+      schedule = create_schedule(season, "2026-06-01")
+      create_schedule(season, "2026-06-11")
+      first = create_start(team: team, pitcher: pitcher, date: "2026-06-01", innings: 9.0, category: "long_loss")
+      later = create_start(team: team, pitcher: pitcher, date: "2026-06-11", innings: 9.0, category: "long_loss", fatigue_p_used: 0)
+      schedule.update!(no_game: true)
+      expect(first.reload.result_category).to eq("no_game")
+      expect(later.reload).to have_attributes(result_category: "long_loss", fatigue_p_used: 0)
     end
 
     it "区分が変わると次の登板の補正も連鎖して作り直される（変わらなくなった所より後も日付順に作り直す。設計書 §4.5）" do

@@ -28,9 +28,12 @@ class PitcherResultCategoryRebuilder
 
   # apply: false なら DB を書かない（試運転）
   # unscored: :skip（得点未入力は変えない）/ :not_loss（負けではないとして扱う。得点が消された時用）
-  def initialize(apply: false, unscored: :skip)
+  # unscored_not_loss_on: 得点未入力の先発のうち、この日（"YYYY-MM-DD" か Date）の分だけ :not_loss にする。
+  #   得点を消した日の先発は作り直し、それ以降の得点未入力の先発（まだ得点を入れていない試合）の保存値は動かさない（cmd_1784 段3 QC）
+  def initialize(apply: false, unscored: :skip, unscored_not_loss_on: nil)
     @apply = apply
     @unscored = unscored
+    @unscored_not_loss_on = unscored_not_loss_on&.to_s
     @overrides = {}
     @count_overrides = {}
     @rows = []
@@ -86,7 +89,7 @@ class PitcherResultCategoryRebuilder
     }
     return add(base, :skipped_no_game) if state.result_category == "no_game" && outcome.result != "no_game" && !recompute_no_game
     return add(base, outcome.note == :ambiguous ? :skipped_ambiguous_schedule : :skipped_no_schedule) unless outcome.found
-    return add(base, :skipped_unscored) if !outcome.scored && @unscored == :skip
+    return add(base, :skipped_unscored) if !outcome.scored && skip_unscored?(state)
 
     games = PitcherGameState.where(game_id: state.game_id, team_id: state.team_id)
     prior_outs = games.where("appearance_order < ?", state.appearance_order)
@@ -108,6 +111,13 @@ class PitcherResultCategoryRebuilder
     end
     state.update!(result_category: res.category, fatigue_p_used: res.fatigue_p) if @apply && status != :unchanged
     add(attrs, status)
+  end
+
+  # 得点未入力の先発を変えずに飛ばすか。:not_loss 指定か、unscored_not_loss_on の日なら飛ばさない
+  def skip_unscored?(state)
+    return false if @unscored_not_loss_on && state.schedule_date == @unscored_not_loss_on
+
+    @unscored == :skip
   end
 
   def add(attrs, status, reason: nil)

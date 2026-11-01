@@ -95,12 +95,13 @@ class SeasonSchedule < ApplicationRecord
 
   # 作り直しは得点の保存と同じトランザクションの中で走る。落ちた時に得点ごと取り消さないよう、PitcherHistoryRebuild.guarded が
   # セーブポイントの中で走らせ、例外を握ってログに残す（pitcher_rebuild_error に持つ。作り直しは後で rake で再実行できる）。
-  # 作り直す範囲はその試合日の先発と、その投手のそれ以降の先発
+  # 作り直す範囲はその試合日の先発と、その投手のそれ以降の先発。ただし得点未入力の先発は、その試合日の分だけ「負けではない」として
+  # 作り直し、それ以降の得点未入力の先発（まだ得点を入れていない試合）の保存値は動かさない
   def rebuild_pitcher_result_categories
     outcome = PitcherHistoryRebuild.guarded(
       team_id: season.team_id, date: date,
       pitcher_ids: PitcherGameState.on_day(team_id: season.team_id, date: date).where(role: "starter").distinct.pluck(:pitcher_id),
-      unscored: :not_loss, recompute_no_game_on: saved_change_to_no_game? ? date : nil
+      unscored: :skip, unscored_not_loss_on: date, recompute_no_game_on: saved_change_to_no_game? ? date : nil
     )
     @pitcher_rebuild_error = outcome.error
   end

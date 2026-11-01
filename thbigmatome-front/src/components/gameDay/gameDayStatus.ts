@@ -37,16 +37,15 @@ export const SCHEDULE_DATE_TYPES = [
   'interleague_reserve_day',
   'no_game_day',
   'postponed',
-  'no_game',
 ] as const
 
-export function isGameType(dateType?: string | null): boolean {
-  return (
-    dateType === 'game_day' ||
-    dateType === 'interleague_game_day' ||
-    dateType === 'playoff_day' ||
-    dateType === 'no_game'
-  )
+// 試合日とみなす種別かどうか。種別の集合はサーバが決める（GET /teams/:id/season の game_date_types。
+// SeasonSchedule::GAME_DATE_TYPES）。ノーゲームは種別ではなく真偽値 no_game で表すので、種別 no_game は日付の種類に無い
+export function isGameType(
+  dateType: string | null | undefined,
+  gameDateTypes: readonly string[],
+): boolean {
+  return !!dateType && gameDateTypes.includes(dateType)
 }
 
 // 得点と登板記録の食い違い

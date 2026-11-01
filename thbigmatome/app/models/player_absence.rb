@@ -33,7 +33,7 @@ class PlayerAbsence < ApplicationRecord
       effective_start_date + duration.days
     else
       game_dates = season.season_schedules
-        .where(date_type: %w[game_day interleague_game_day])
+        .counted_games
         .where("date >= ?", effective_start_date)
         .order(:date)
         .limit(duration)

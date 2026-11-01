@@ -285,6 +285,29 @@ RSpec.describe PlayerAbsence, type: :model do
         expect(absence.effective_end_date).to eq(Date.new(2026, 4, 6))
       end
 
+      it 'プレーオフ日もカウントする（試合日の定義は SeasonSchedule::GAME_DATE_TYPES の 1 つ）' do
+        create(:season_schedule, season: season, date: Date.new(2026, 4, 1), date_type: "game_day")
+        create(:season_schedule, season: season, date: Date.new(2026, 4, 3), date_type: "playoff_day")
+        create(:season_schedule, season: season, date: Date.new(2026, 4, 5), date_type: "game_day")
+        absence = build(:player_absence, team_membership: team_membership, season: season, start_date: Date.new(2026, 4, 1), duration: 3, duration_unit: "games")
+
+        expect(absence.effective_end_date).to eq(Date.new(2026, 4, 6))
+      end
+
+      # ノーゲームになった試合は試合数に数えない（Operator 2026-11-01）。振り替えた試合は 1 試合として数える
+      it 'ノーゲームの日はカウントせず、振り替えた試合（予備日を試合日にした日）はカウントする' do
+        create(:season_schedule, season: season, date: Date.new(2026, 4, 1), date_type: "game_day")
+        create(:season_schedule, season: season, date: Date.new(2026, 4, 2), date_type: "game_day", no_game: true)
+        replay = create(:season_schedule, season: season, date: Date.new(2026, 4, 3), date_type: "reserve_day")
+        create(:season_schedule, season: season, date: Date.new(2026, 4, 4), date_type: "game_day")
+        absence = build(:player_absence, team_membership: team_membership, season: season, start_date: Date.new(2026, 4, 1), duration: 2, duration_unit: "games")
+
+        expect(absence.effective_end_date).to eq(Date.new(2026, 4, 5)) # 4/1 と 4/4
+
+        replay.update!(date_type: "game_day")
+        expect(absence.effective_end_date).to eq(Date.new(2026, 4, 4)) # 4/1 と 4/3
+      end
+
       it 'off_day, event_day はカウントしない' do
         create(:season_schedule, season: season, date: Date.new(2026, 4, 1), date_type: "game_day")
         create(:season_schedule, season: season, date: Date.new(2026, 4, 2), date_type: "off_day")

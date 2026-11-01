@@ -261,7 +261,7 @@
                     </span>
 
                     <!-- 試合情報 -->
-                    <template v-if="isGameType(day.schedule.date_type)">
+                    <template v-if="isGameType(day.schedule.date_type, gameDateTypes)">
                       <div
                         v-if="day.schedule.game_result && !isCancelledType(day.schedule.date_type)"
                         class="game-info"
@@ -445,7 +445,7 @@
                         }"
                       >
                         {{
-                          isGameType(row.schedule.date_type)
+                          isGameType(row.schedule.date_type, gameDateTypes)
                             ? t('seasonPortal.gameResultInput')
                             : t('seasonPortal.openSchedule')
                         }}
@@ -575,7 +575,7 @@
               {{ t(`settings.schedule.dateTypes.${selectedDay.schedule.date_type}`) }}
             </span>
           </div>
-          <template v-if="isGameType(selectedDay.schedule.date_type)">
+          <template v-if="isGameType(selectedDay.schedule.date_type, gameDateTypes)">
             <template
               v-if="
                 selectedDay.schedule.game_result && !isCancelledType(selectedDay.schedule.date_type)
@@ -650,7 +650,7 @@
             @click="isDayDetailOpen = false"
           >
             {{
-              isGameType(selectedDay.schedule.date_type)
+              isGameType(selectedDay.schedule.date_type, gameDateTypes)
                 ? t('seasonPortal.gameResultInput')
                 : t('seasonPortal.openSchedule')
             }}
@@ -702,6 +702,8 @@ const teamSelectionStore = useTeamSelectionStore()
 const { isCommissioner } = useAuth()
 const loading = ref(true)
 const season = ref<SeasonDetail | null>(null)
+// 試合日とみなす種別（サーバが返す。取得前は空）
+const gameDateTypes = computed(() => season.value?.game_date_types ?? [])
 // 現在日 = 今の範囲の最後の試合日（サーバが日程の結果から導く。season.current_date）。カレンダーの表示月とは別に持つ
 const currentDate = computed(() =>
   season.value?.current_date ? new Date(season.value.current_date) : new Date(),
@@ -967,7 +969,6 @@ const legendItems = [
   { type: 'interleague_reserve_day' },
   { type: 'travel_day' },
   { type: 'no_game_day' },
-  { type: 'no_game' },
 ]
 
 const getTypeCategory = (dateType?: string) =>
@@ -979,7 +980,11 @@ const isCancelledType = (dateType?: string) => dateTypeAppearance(dateType).canc
 
 // 試合日のセルの印: 得点と登板記録の食い違い（要確認・赤）、試合日が来ているのに結果が未入力（黄）
 const dayMark = (schedule?: SeasonSchedule | null): 'warn' | 'todo' | null => {
-  if (!schedule || !isGameType(schedule.date_type) || isCancelledType(schedule.date_type)) {
+  if (
+    !schedule ||
+    !isGameType(schedule.date_type, gameDateTypes.value) ||
+    isCancelledType(schedule.date_type)
+  ) {
     return null
   }
   return calendarDayMark({
@@ -1037,7 +1042,7 @@ const currentDaySchedule = computed(() => {
 
 const isGameDayToday = computed(() => {
   if (!currentDaySchedule.value) return false
-  return isGameType(currentDaySchedule.value.date_type)
+  return isGameType(currentDaySchedule.value.date_type, gameDateTypes.value)
 })
 
 const gameResultRoute = computed(() => {
@@ -1056,7 +1061,7 @@ const tableRows = computed(() => calendarDays.value.filter((d) => d.isCurrentMon
 
 const filteredTableRows = computed(() => {
   if (tableFilter.value === 'game') {
-    return tableRows.value.filter((d) => isGameType(d.schedule?.date_type))
+    return tableRows.value.filter((d) => isGameType(d.schedule?.date_type, gameDateTypes.value))
   }
   return tableRows.value
 })

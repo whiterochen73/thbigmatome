@@ -31,14 +31,14 @@ RSpec.describe "season_records:audit", :pitcher_fatigue do
   end
 
   before do
-    create(:season_schedule, season: season, date: "2026-06-05", date_type: "no_game")
-    create(:season_schedule, season: season, date: "2026-06-02", date_type: "no_game")
+    legacy_no_game_schedule(season: season, date: "2026-06-05")
+    legacy_no_game_schedule(season: season, date: "2026-06-02")
   end
 
   it "項目ごとの件数・定義・実行時間を標準出力に出す" do
     out = run_task("OUT" => nil, "TEAM_ID" => nil, "SKIP_RECOMPUTE" => nil)
     SeasonRecordAudit::ITEMS.each_key { |code| expect(out).to match(/^#{code} .*: \d+ 件/) }
-    expect(out).to include("S10 ノーゲームの表し方の食い違い: 2 件（チーム 1 / 選手 0）")
+    expect(out).to include("S10 日程の種別に no_game が残っている日（ノーゲームの表し方が 2 通りある）: 2 件（チーム 1 / 選手 0）")
     expect(out).to include("type_no_game_flag_false: 2")
     expect(out).to include("定義:")
     expect(out).to match(/# elapsed: \d+\.\d 秒/)
@@ -59,7 +59,7 @@ RSpec.describe "season_records:audit", :pitcher_fatigue do
 
   it "TEAM_ID= で絞る" do
     other_team, other_season = create_team_with_season
-    create(:season_schedule, season: other_season, date: "2026-06-01", date_type: "no_game")
+    legacy_no_game_schedule(season: other_season, date: "2026-06-01")
     Dir.mktmpdir do |dir|
       path = File.join(dir, "audit.csv")
       run_task("OUT" => path, "TEAM_ID" => other_team.id.to_s, "SKIP_RECOMPUTE" => nil)

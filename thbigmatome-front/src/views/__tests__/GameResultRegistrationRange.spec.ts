@@ -85,7 +85,11 @@ const gameResponse = {
   starting_lineup: null,
 }
 
+// サーバが返す試合日とみなす種別（SeasonSchedule::GAME_DATE_TYPES）
+const GAME_DATE_TYPES = ['game_day', 'interleague_game_day', 'playoff_day']
+
 const seasonResponse = {
+  game_date_types: GAME_DATE_TYPES,
   current_date: '2026-06-10',
   // 今の範囲: 6/9 の結果の翌日〜次の試合日(6/10)。登録・離脱を操作できるのは 6/10 だけ
   current_range: { start_date: '2026-06-10', end_date: '2026-06-10' },

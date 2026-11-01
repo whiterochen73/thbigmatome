@@ -285,25 +285,33 @@ RSpec.describe SeasonRecordAudit, :pitcher_fatigue do
     end
   end
 
-  describe "S10: ノーゲームの表し方" do
+  # Test Basis: 設計書 §1.3 S10 / §4.6、段4（種別 no_game を真偽値に一本化。裁定 D-11）
+  describe "S10: 日程の種別に no_game が残っている日" do
     it "種別だけ no_game の日を数え、その日の登板件数を evidence に出す" do
       pitcher, = create_card_pitcher(team: team, starter_stamina: 7)
-      create(:season_schedule, season: season, date: "2026-06-01", date_type: "no_game", no_game: false)
+      legacy_no_game_schedule(season: season, date: "2026-06-01", no_game: false)
       create_start(team: team, pitcher: pitcher, date: "2026-06-01", innings: 3.0)
       f = found("S10")
       expect(f.map(&:category)).to eq([ "type_no_game_flag_false" ])
       expect(f.first.evidence).to include("登板 1 件")
     end
 
-    it "真偽値だけ真の日は flag_true_type_other" do
+    it "真偽値だけ真の日（ノーゲームの正しい形）は数えない。予備日などの種別のままでも数えない" do
       create(:season_schedule, season: season, date: "2026-06-01", date_type: "game_day", no_game: true)
-      expect(found("S10").map(&:category)).to eq([ "flag_true_type_other" ])
+      create(:season_schedule, season: season, date: "2026-06-02", date_type: "reserve_day", no_game: true)
+      expect(found("S10")).to be_empty
     end
 
-    it "種別も真偽値も一致する日は数えない（境界）" do
-      create(:season_schedule, season: season, date: "2026-06-01", date_type: "no_game", no_game: true)
+    it "種別も真偽値も no_game の日は type_no_game_flag_true として数える（種別だけ戻し損ねた日）" do
+      legacy_no_game_schedule(season: season, date: "2026-06-01", no_game: true)
       create(:season_schedule, season: season, date: "2026-06-02", date_type: "game_day", no_game: false)
-      expect(found("S10")).to be_empty
+      expect(found("S10").map(&:category)).to eq([ "type_no_game_flag_true" ])
+    end
+
+    it "参考に、真偽値が真で種別が試合日でない日数を出す（予備日のまま）" do
+      create(:season_schedule, season: season, date: "2026-06-02", date_type: "reserve_day", no_game: true)
+      create(:season_schedule, season: season, date: "2026-06-03", date_type: "game_day", no_game: true)
+      expect(audit.reference["S10"]["真偽値 no_game が真で種別が試合日でない日数（予備日などのまま）"]).to eq(1)
     end
   end
 
@@ -319,11 +327,20 @@ RSpec.describe SeasonRecordAudit, :pitcher_fatigue do
       expect(found("S11")).to be_empty
     end
 
+    it "ノーゲームの日（種別は試合日のまま真偽値）の登板は数えない。予備日のまま真偽値が立った日は種別が試合日でないので数える" do
+      create(:season_schedule, season: season, date: "2026-06-01", date_type: "game_day", no_game: true)
+      create(:season_schedule, season: season, date: "2026-06-02", date_type: "reserve_day", no_game: true)
+      %w[2026-06-01 2026-06-02].each { |date| create_start(team: team, pitcher: pitcher, date: date, innings: 3.0) }
+      expect(found("S11").map(&:category)).to eq([ "reserve_day" ])
+    end
+
     it "移動日・雨天中止・ノーゲームの種別の登板は種別ごとに数える。日程が無い日は no_schedule" do
-      { "travel_day" => "2026-06-01", "postponed" => "2026-06-02", "no_game" => "2026-06-03" }.each do |type, date|
+      { "travel_day" => "2026-06-01", "postponed" => "2026-06-02" }.each do |type, date|
         create(:season_schedule, season: season, date: date, date_type: type)
         create_start(team: team, pitcher: pitcher, date: date, innings: 3.0)
       end
+      legacy_no_game_schedule(season: season, date: "2026-06-03") # 段4 の適用前の種別 no_game
+      create_start(team: team, pitcher: pitcher, date: "2026-06-03", innings: 3.0)
       create_start(team: team, pitcher: pitcher, date: "2026-06-09", innings: 3.0)
       expect(found("S11").map(&:category)).to contain_exactly("travel_day", "postponed", "no_game", "no_schedule")
     end
@@ -431,22 +448,22 @@ RSpec.describe SeasonRecordAudit, :pitcher_fatigue do
   describe "範囲と並び" do
     it "team_id を指定すれば他チームの食い違いを含めない" do
       other_team, other_season = create_team_with_season
-      create(:season_schedule, season: season, date: "2026-06-01", date_type: "no_game")
-      create(:season_schedule, season: other_season, date: "2026-06-01", date_type: "no_game")
+      legacy_no_game_schedule(season: season, date: "2026-06-01")
+      legacy_no_game_schedule(season: other_season, date: "2026-06-01")
       expect(found("S10").map(&:team_id)).to contain_exactly(team.id, other_team.id)
       expect(found("S10", team_id: other_team.id).map(&:team_id)).to eq([ other_team.id ])
     end
 
     it "並びは項目・チーム・日付の順で、同じデータなら何度回しても同じ" do
-      create(:season_schedule, season: season, date: "2026-06-05", date_type: "no_game")
-      create(:season_schedule, season: season, date: "2026-06-02", date_type: "no_game")
+      legacy_no_game_schedule(season: season, date: "2026-06-05")
+      legacy_no_game_schedule(season: season, date: "2026-06-02")
       first = audit.findings.map(&:to_a)
       expect(first.map { |r| r[4] }).to eq(%w[2026-06-02 2026-06-05])
       expect(audit.findings.map(&:to_a)).to eq(first)
     end
 
     it "summary は項目ごとの件数・チーム数・選手数・分類別件数を返す" do
-      create(:season_schedule, season: season, date: "2026-06-05", date_type: "no_game")
+      legacy_no_game_schedule(season: season, date: "2026-06-05")
       s = audit.summary
       expect(s.keys).to eq(SeasonRecordAudit::ITEMS.keys)
       expect(s["S10"]).to include(count: 1, teams: 1, players: 0, categories: { "type_no_game_flag_false" => 1 })
@@ -458,7 +475,7 @@ RSpec.describe SeasonRecordAudit, :pitcher_fatigue do
     it "全項目が該当する状態で回しても、INSERT/UPDATE/DELETE を発行せず、件数・updated_at が変わらない" do
       pitcher, membership = create_card_pitcher(team: team, starter_stamina: 7)
       create_schedule(season, "2026-06-01", score: 0, opponent_score: 1)
-      create(:season_schedule, season: season, date: "2026-06-02", date_type: "no_game")
+      legacy_no_game_schedule(season: season, date: "2026-06-02")
       create_start(team: team, pitcher: pitcher, date: "2026-06-01", innings: 8.0, category: "long_loss")
       create_start(team: team, pitcher: pitcher, date: "2026-06-02", innings: 3.0)
       record(membership, "first", "2026-05-01")

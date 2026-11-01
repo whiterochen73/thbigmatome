@@ -820,7 +820,7 @@
 | id | bigint | NO | (auto) | 主キー |
 | season_id | bigint | NO | — | seasons FK |
 | date | date | NO | — | 試合日 |
-| date_type | string | YES | — | 日付種別 (game_day/interleague_game_day/off等) |
+| date_type | string | YES | — | 日付種別 (game_day/interleague_game_day/playoff_day/off等)。種別 `no_game` は廃止（cmd_1784 段4。ノーゲームは `no_game` 列で表す） |
 | home_away | string | YES | — | 主客区分 (home/visitor) |
 | game_number | integer | YES | — | 試合番号 |
 | opponent_team_id | bigint | YES | — | teams FK（対戦チーム） |

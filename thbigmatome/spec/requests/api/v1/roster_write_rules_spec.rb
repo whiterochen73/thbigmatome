@@ -9,12 +9,13 @@ RSpec.describe "昇降格の書き込みの規則（日付・区分・検査し�
   let(:season) { create(:season, team: team) }
   let(:start_day) { Date.new(2026, 4, 1) }
 
-  # シーズン初日(4/1)・5/10・5/20 が試合日。5/5・5/12・5/15 は試合のない日
+  # シーズン初日(4/1)・5/10・5/15（プレーオフ日）・5/20 が試合日。5/5・5/12 は試合のない日
   before do
     [ "2026-04-01", "2026-05-10", "2026-05-20" ].each do |date|
       create(:season_schedule, season: season, date: date, date_type: "game_day")
     end
-    # 現在日(5/15): 5/10 の結果の翌日〜次の試合日(5/15 = playoff_day)。1軍人数の検査は game_day だけを見るので 5/15 は「試合のない日」のまま
+    # 現在日(5/15): 5/10 の結果の翌日〜次の試合日(5/15 = playoff_day)。プレーオフ日も試合日（SeasonSchedule::GAME_DATE_TYPES）なので、
+    # 1軍人数の検査は 5/15 の試合前にも掛かる（cmd_1784 段4）
     pin_current_date(season, Date.new(2026, 5, 15))
   end
 
@@ -63,7 +64,7 @@ RSpec.describe "昇降格の書き込みの規則（日付・区分・検査し�
         expect(response).to have_http_status(:unprocessable_content)
         expect(response.parsed_body["error"]).to include("2026-05-10")
         expect(violations.first).to include("date" => "2026-05-10", "kind" => "first_squad_min")
-        expect(violations.map { |v| v["date"] }).to eq(%w[2026-05-10 2026-05-20])
+        expect(violations.map { |v| v["date"] }).to eq(%w[2026-05-10 2026-05-15 2026-05-20]) # 5/15 はプレーオフ日（試合日）
         expect(firsts.first.reload.squad).to eq("first")
       end
 
@@ -199,7 +200,8 @@ RSpec.describe "昇降格の書き込みの規則（日付・区分・検査し�
       it "悪化する保存(24→23 人)は、保存の前から外れていた 5/20 でも止める" do
         post_roster([ move(firsts.first, "second") ], date: Date.new(2026, 5, 12))
         expect(response).to have_http_status(:unprocessable_content)
-        expect(violations.first).to include("date" => "2026-05-20", "kind" => "first_squad_min")
+        expect(violations.first).to include("date" => "2026-05-15", "kind" => "first_squad_min") # プレーオフ日も試合日
+        expect(violations.map { |v| v["date"] }).to eq(%w[2026-05-15 2026-05-20])
         expect(firsts.first.reload.squad).to eq("first")
       end
     end
@@ -217,13 +219,14 @@ RSpec.describe "昇降格の書き込みの規則（日付・区分・検査し�
         expect(RosterState.at(team, Date.new(2026, 5, 10), "post_game")[firsts.first.id].squad).to eq("second")
       end
 
-      it "試合日の試合後に 25→24 人になる抹消は、書き込んだ時点では通るが、次の試合日(5/20)の下限割れで止める" do
+      it "試合日の試合後に 25→24 人になる抹消は、書き込んだ時点では通るが、次の試合日(5/15 プレーオフ日・5/20)の下限割れで止める" do
         firsts = add_firsts(25)
 
         post_roster([ move(firsts.first, "second") ], date: Date.new(2026, 5, 10), phase: "post_game")
 
         expect(response).to have_http_status(:unprocessable_content)
-        expect(violations.first).to include("date" => "2026-05-20", "kind" => "first_squad_min")
+        expect(violations.first).to include("date" => "2026-05-15", "kind" => "first_squad_min")
+        expect(violations.map { |v| v["date"] }).to eq(%w[2026-05-15 2026-05-20])
       end
 
       it "試合前の昇格と同日の試合後の抹消は、続けて保存でき、同日の昇降格は再昇格のクールダウンを免除する" do

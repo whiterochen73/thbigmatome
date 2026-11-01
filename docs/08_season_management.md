@@ -36,7 +36,7 @@
 | 要素 | 色 | 動作 | 条件 |
 |------|-----|------|------|
 | タイトル（h1） | — | 表示のみ。シーズンに題は付けないので、チーム名（`GET /teams/:teamId` の `name`）を出す | — |
-| 試合結果入力ボタン | primary（outlined） | `GameResult` 画面へ遷移 | 当日が試合日（`game_day`, `interleague_game_day`, `playoff_day`, `no_game`）の場合のみ有効 |
+| 試合結果入力ボタン | primary（outlined） | `GameResult` 画面へ遷移 | 当日が試合日（`game_day`, `interleague_game_day`, `playoff_day`。サーバが `game_date_types` で返す）の場合のみ有効 |
 | 離脱登録ボタン | teal（outlined） | `PlayerAbsenceFormDialog` を開く | 常時有効。アイコン: `mdi-hospital-box` |
 | 現在日付表示 | — | `ja-JP` ロケールで「○月○日」形式。日程の結果から導いた現在日（今の範囲の最後の日）を表示するだけで、手で動かす操作は無い | — |
 
@@ -66,7 +66,7 @@
 | `interleague_reserve_day` | brown | なし |
 | `no_game_day` | red | なし |
 | `postponed` | indigo | なし |
-| `no_game` | indigo | あり |
+| `no_game`（廃止。移行前の行の表示のみ） | indigo | なし |
 
 - `current_date` より前の日付のボタンは `disabled`（変更不可）
 - 日程種別変更時: `PATCH /teams/:teamId/season/season_schedules/:id` を呼び出し、ローカルの `season_schedules` 配列も即時更新
@@ -183,7 +183,7 @@ GET /api/v1/teams/:team_id/season
 
 - **今の範囲** = 最後に結果が入った日の翌日〜次の試合日（移動日・予備日などを含む）。レスポンスの `current_range` は `{ start_date, end_date }`。最終試合日の後など範囲が無い時は `null`
 - **現在日** `current_date` = 範囲の最後の日（次の試合日）。範囲が無い時は最後に結果が入った日
-- 「結果が入った」= 得点（自軍・相手とも）が保存済み、または `no_game`。結果を保存すると、範囲は次へ進む
+- 「結果が入った」= 得点（自軍・相手とも）が保存済み、または真偽値 `no_game`。結果を保存すると、範囲は次へ進む
 - 列 `seasons.current_date` は、日程が 1 行も無いシーズンの初期値としてだけ読む
 
 ### シーズン日程種別更新
@@ -329,7 +329,7 @@ resources :seasons, only: [:create]
 | `interleague_reserve_day` | 交流戦予備日 |
 | `no_game_day` | 試合なし日 |
 | `postponed` | 延期 |
-| `no_game` | ノーゲーム（中止等。試合結果入力画面へのリンクあり） |
+| `no_game`（廃止） | cmd_1784 段4 で廃止。ノーゲームは試合結果の真偽値 `no_game` で表し、日付の種類は元のまま |
 
 ### リレーション
 
@@ -365,12 +365,12 @@ Team
 
 #### `calculated_game_number`
 
-試合番号を返す。`game_number` カラムに値が設定されている場合はそれを返し、未設定の場合はシーズン内の `game_day` / `interleague_game_day` タイプの日程のうち、当該日付より前のレコード数 + 1 を動的に計算して返す。
+試合番号を返す。`game_number` カラムに値が設定されている場合はそれを返し、未設定の場合はシーズン内の試合日（`game_day` / `interleague_game_day` / `playoff_day`）のうちノーゲームでない日程のうち、当該日付より前のレコード数 + 1 を動的に計算して返す。
 
 ```ruby
 def calculated_game_number
   game_number || season.season_schedules
-    .where(date_type: ["game_day", "interleague_game_day"])
+    .counted_games # 試合日の種別で、no_game が偽の日
     .where("date < ?", date)
     .count + 1
 end

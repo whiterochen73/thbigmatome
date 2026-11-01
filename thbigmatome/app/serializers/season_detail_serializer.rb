@@ -1,5 +1,5 @@
 class SeasonDetailSerializer < ActiveModel::Serializer
-  attributes :id, :current_date, :current_range, :start_date, :end_date, :key_player_id, :key_player_name
+  attributes :id, :current_date, :current_range, :start_date, :end_date, :key_player_id, :key_player_name, :game_date_types
   has_many :season_schedules, serializer: SeasonScheduleSerializer
 
   # 各試合日の登板記録の件数を 1 回の問い合わせでまとめて入れる（SeasonSchedule#pitcher_appearance_count）。
@@ -34,6 +34,11 @@ class SeasonDetailSerializer < ActiveModel::Serializer
   # 範囲が無い時（最終試合日の後など）は nil
   def current_range
     range&.start_date && range.to_h
+  end
+
+  # 試合日とみなす種別（サーバの定義 SeasonSchedule::GAME_DATE_TYPES をそのまま返す。画面の isGameType が使う）
+  def game_date_types
+    SeasonSchedule::GAME_DATE_TYPES
   end
 
   def start_date

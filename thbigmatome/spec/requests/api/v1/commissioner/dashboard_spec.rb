@@ -90,6 +90,20 @@ RSpec.describe "Api::V1::Commissioner::Dashboard", type: :request do
           expect(entry["remaining_days"]).to eq(1)
         end
 
+        # ノーゲームになった試合は試合数に数えない（Operator 2026-11-01）。振り替えた試合（予備日を試合日にした日）は 1 試合として数える
+        it "試合数: ノーゲームの日は残り試合に数えず、振り替えた試合は数える" do
+          [ [ 10, "game_day", false ], [ 11, "game_day", true ], [ 12, "reserve_day", false ], [ 13, "game_day", false ] ].each do |day, type, no_game|
+            create(:season_schedule, season: season, date: Date.new(2026, 6, day), date_type: type, no_game: no_game)
+          end
+          create(:player_absence, team_membership: tm, season: season, start_date: current, duration: 2, duration_unit: "games")
+          # 6/10 と 6/13 の 2 試合（6/11 はノーゲーム、6/12 は予備日のまま）。ノーゲームの結果が入ったので現在日は 6/13 になり、残りは 6/13 の 1 試合
+          expect(entry).to include("remaining_games" => 1, "effective_end_date" => "2026-06-14")
+
+          # 振替: 予備日 6/12 を試合日にする。6/10 と 6/12 の 2 試合。現在日は次の試合日 6/12 で、残りは 6/12 の 1 試合
+          SeasonSchedule.find_by!(season: season, date: Date.new(2026, 6, 12)).update!(date_type: "game_day")
+          expect(entry).to include("remaining_games" => 1, "effective_end_date" => "2026-06-13")
+        end
+
         it "試合数: 試合中は試合日の試合を残りに数えない（移動日をはさんでも次の試合日から）" do
           [ [ 10, "game_day" ], [ 11, "off_day" ], [ 12, "game_day" ], [ 13, "game_day" ] ].each do |day, type|
             create(:season_schedule, season: season, date: Date.new(2026, 6, day), date_type: type)

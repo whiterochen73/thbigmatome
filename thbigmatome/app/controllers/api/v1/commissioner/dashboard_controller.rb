@@ -178,8 +178,9 @@ class Api::V1::Commissioner::DashboardController < Api::V1::Commissioner::BaseCo
     first_squad = first_squad_memberships(team)
     second_squad = memberships - first_squad
 
-    native_series = Team::NATIVE_SERIES[team.team_type] || Team::NATIVE_SERIES["normal"]
-    outside_world_count = first_squad.count { |tm| !native_series.include?(tm.player.series) }
+    # 外の世界枠は保存時の検査（Team / RosterConstraintChecker）と同じく、登録カードの series を優先して判定する
+    outside_world = first_squad.select { |tm| team.outside_world_membership?(tm) }
+    outside_world_count = outside_world.size
 
     first_cost = 0
     if current_cost
@@ -205,6 +206,7 @@ class Api::V1::Commissioner::DashboardController < Api::V1::Commissioner::BaseCo
       first_cost_limit: first_cost_limit,
       outside_world_count: outside_world_count,
       outside_world_limit: Team::OUTSIDE_WORLD_LIMIT,
+      outside_world_breakdown: Team.outside_world_breakdown(outside_world),
       warnings: warnings
     }
   end

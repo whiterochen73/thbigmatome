@@ -36,6 +36,17 @@ class PlayerCard < ApplicationRecord
       player_card_defenses.any? { |d| d.position&.upcase == "P" }
   end
 
+  # カードの主な位置（画面の primary_position と同じ定義）。守備位置の 1 つ目（id 順）。外の世界枠の投手・野手の数え方（AMB-29 改訂）で使う。
+  # 取込 CSV の position（投手/内野手/外野手/捕手）と、投手（P）かどうかが一致することを開発 DB の全カードで確認済み（cmd_1808）。守備が 1 つも無いカードは nil
+  def primary_position
+    player_card_defenses.to_a.min_by { |d| d.id || Float::INFINITY }&.position
+  end
+
+  # 主な位置が投手（P）か。can_pitch? とは別（card_type が pitcher でも主な位置が内野手のカードがある）
+  def primary_position_pitcher?
+    primary_position&.upcase == "P"
+  end
+
   # スラッシュ選手: 先発もリリーフもできるカード（先発疲労P とリリーフ疲労P の両方があり、リリーフ専門でない）。
   # 先発→リリーフ・リリーフ→先発の休養表（rulebook 08 §8.3.3 / §8.3.4）がスラッシュ用に変わる。
   def slash_pitcher?

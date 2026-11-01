@@ -33,7 +33,7 @@ RSpec.describe "コミッショナーのダッシュボードの 1軍判定", ty
 
     expect(record).to include("first_count" => 1, "second_count" => 1, "first_cost" => 7, "game_date" => "2026-05-15")
     expect(record.keys).to match_array(%w[team_id team_name team_type game_date first_count second_count first_cost first_cost_limit
-                                          outside_world_count outside_world_limit warnings])
+                                          outside_world_count outside_world_limit outside_world_breakdown warnings])
   end
 
   it "基準日は現在日カーソル(5/15)。5/15 の試合前の記録は含み、同日の試合後と翌日の記録は含まない" do

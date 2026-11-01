@@ -186,6 +186,7 @@
     "key_player_id": int|null,
     "key_player_selectable": bool,
     "previous_game_date": date|null,
+    "outside_world_breakdown": { "pitcher_only": int, "fielder_only": int, "two_way": int, "balance_ok": bool },
     "roster": [
       {
         "team_membership_id": int,
@@ -200,6 +201,8 @@
         "cooldown_until": date|null,
         "same_day_exempt": boolean,
         "is_outside_world": boolean,
+        "is_pitcher": boolean,
+        "pitcher_fielder_kind": "pitcher_only"|"fielder_only"|"two_way"|null,
         "is_starter_pitcher": boolean,
         "is_relief_only": boolean,
         "is_absent": boolean,
@@ -208,6 +211,8 @@
     ]
   }
   ```
+
+- **外の世界枠の内訳**（`outside_world_breakdown`）: 指定時点の 1軍にいる外の世界枠の選手を、`pitcher_only`（投手だけに数える）・`fielder_only`（野手だけに数える）・`two_way`（両方に数える）に分けた人数。`balance_ok` は 4 人以上の時に投手に数える人・野手に数える人がどちらも 1 人以上いること（3 人以下は常に true。`Team.outside_world_breakdown`）。各行の `pitcher_fielder_kind` が同じ区分（`TeamMembership#pitcher_fielder_kind` = `pitcher_role?` / `fielder_role?` の組み合わせ。どちらにも数えない選手は null）で、画面が 1軍を入れ替えた時は行の区分から数え直せる。数え方は AMB-29 の改訂（2026-11-02・暫定）: ①専任契約が最優先（投手専任・救援専任＝投手のみ、野手専任＝野手のみ）、②二刀流契約（`two_way_cost`）のときだけ両方に数える（選んだコスト区分で決める。`hachinai_two_way?` かどうかでは決めない）、③それ以外の契約は選んだカードの主な位置（`PlayerCard#primary_position` = 守備位置の 1 つ目・id 順。画面の `primary_position` と同じ）で、P＝投手・それ以外＝野手（`card_type` や P 守備の有無では決めない）。カードが無い選手は決められないので、どちらにも数えない（`pitcher_fielder_kind` が null）。`is_pitcher`（画面の表示・先発/救援の判定）は従来のまま
 
 ### POST /api/v1/teams/:team_id/roster
 
@@ -980,7 +985,7 @@
 
 - **Controller**: `Api::V1::Commissioner::DashboardController#roster_status`
 - **Query Params**: `team_id` (integer, optional — 指定時は対象チームのみ), `format` ("csv" でCSVダウンロード)
-- **Response**: 全アクティブチームのロスター状況（コスト・1軍/2軍人数・外の世界枠・警告等）。1軍/2軍・クールダウンは写しでなく、シーズンの現在日カーソル・試合前の時点の変更記録（`RosterState`）から求める（`/costs`・`/cooldowns` も同じ）
+- **Response**: 全アクティブチームのロスター状況（コスト・1軍/2軍人数・外の世界枠・警告等）。`outside_world_breakdown: { pitcher_only, fielder_only, two_way, balance_ok }` に外の世界枠の内訳を返す（`GET /teams/:team_id/roster` と同じ形・同じ数え方。`outside_world_count` は 3 つの人数に「どちらにも数えない選手」を足した数）。外の世界枠の判定は登録カードの series を優先する（保存時の検査と同じ。以前は選手の series だった）。1軍/2軍・クールダウンは写しでなく、シーズンの現在日カーソル・試合前の時点の変更記録（`RosterState`）から求める（`/costs`・`/cooldowns` も同じ）
 - **CSV**: `format=csv` 指定時はCSVファイルをダウンロード
 
 ---

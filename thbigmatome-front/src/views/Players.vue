@@ -41,7 +41,7 @@
           :headers="headers"
           :items="filteredPlayers"
           :no-data-text="t('playerList.noData')"
-          :class="[displayClasses, 'ui-table']"
+          :class="[displayClasses, 'ui-table', 'ui-table--rows']"
           item-value="id"
           mobile-breakpoint="sm"
         >
@@ -60,17 +60,19 @@
             </a>
           </template>
           <template #item.actions="{ item }">
-            <RowIconButton
-              icon="mdi-pencil"
-              :label="t('settings.rowActions.edit', { name: item.name })"
-              @click="openDialog(item)"
-            />
-            <RowIconButton
-              icon="mdi-delete-outline"
-              danger
-              :label="t('settings.rowActions.delete', { name: item.name })"
-              @click="deletePlayer(item.id!)"
-            />
+            <div class="row-actions">
+              <RowIconButton
+                icon="mdi-pencil"
+                :label="t('settings.rowActions.edit', { name: item.name })"
+                @click="openDialog(item)"
+              />
+              <RowIconButton
+                icon="mdi-delete-outline"
+                danger
+                :label="t('settings.rowActions.delete', { name: item.name })"
+                @click="deletePlayer(item.id!)"
+              />
+            </div>
           </template>
         </v-data-table>
       </v-card>
@@ -95,6 +97,7 @@ import AsyncState from '@/components/shared/AsyncState.vue'
 import PageLayout from '@/components/shared/PageLayout.vue'
 import RowIconButton from '@/components/shared/RowIconButton.vue'
 import StatusChip from '@/components/shared/StatusChip.vue'
+import { tableCell } from '@/components/shared/tableCells'
 import type { PlayerDetail } from '@/types/playerDetail'
 import { usePlayersSearchStore } from '@/stores/playersSearch'
 
@@ -131,11 +134,23 @@ const seriesOptions = computed(() => [
 ])
 
 const headers = computed(() => [
-  { title: t('playerList.headers.number'), key: 'number', width: '10%' },
-  { title: t('playerList.headers.name'), key: 'name', width: '40%' },
-  { title: '所属作品', key: 'series', sortable: false, width: '20%' },
-  { title: 'カード数', key: 'card_count', sortable: false, width: '15%' },
-  { title: t('playerList.headers.actions'), key: 'actions', sortable: false, width: '15%' },
+  { title: t('playerList.headers.number'), key: 'number', width: '10%', cellProps: tableCell.lead },
+  { title: t('playerList.headers.name'), key: 'name', width: '40%', cellProps: tableCell.title },
+  { title: '所属作品', key: 'series', sortable: false, width: '20%', cellProps: tableCell.sub1 },
+  {
+    title: 'カード数',
+    key: 'card_count',
+    sortable: false,
+    width: '15%',
+    cellProps: tableCell.sub2,
+  },
+  {
+    title: t('playerList.headers.actions'),
+    key: 'actions',
+    sortable: false,
+    width: '15%',
+    cellProps: tableCell.act,
+  },
 ])
 
 const filteredPlayers = computed(() => {

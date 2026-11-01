@@ -11,8 +11,8 @@
         clearable
         class="cards-filter cards-filter--search"
         data-testid="player-cards-search"
-        @keyup.enter="fetchPlayerCards"
-        @click:clear="fetchPlayerCards"
+        @keyup.enter="searchByName"
+        @click:clear="searchByName"
       />
       <v-select
         v-model="filterCardSetId"
@@ -71,15 +71,17 @@
     >
       <!-- テーブル表示 -->
       <v-card v-if="viewMode === 'table'">
-        <v-data-table
+        <!-- サーバページング。総数は items-length（Vuetify 4 に server-items-length は無い）、page は一方向（絞り込みで 1 ページ目へ戻す時のため） -->
+        <v-data-table-server
           :headers="headers"
           :items="playerCards"
-          :server-items-length="totalCount"
-          v-model:page="currentPage"
+          :items-length="totalCount"
+          :page="currentPage"
           :items-per-page="perPage"
           :items-per-page-options="[{ value: 50, title: '50' }]"
-          class="ui-table"
-          @update:page="fetchPlayerCards"
+          class="ui-table ui-table--rows"
+          mobile-breakpoint="sm"
+          @update:page="onPageChange"
           density="compact"
           hover
           @click:row="(_: Event, { item }: { item: PlayerCard }) => navigateToDetail(item.id)"
@@ -100,7 +102,7 @@
               {{ item.card_type === 'pitcher' ? '投手' : '野手' }}
             </v-chip>
           </template>
-        </v-data-table>
+        </v-data-table-server>
       </v-card>
 
       <!-- グリッド表示 -->
@@ -132,6 +134,7 @@ import axios from '@/plugins/axios'
 import PlayerCardItem from '@/components/PlayerCardItem.vue'
 import AsyncState from '@/components/shared/AsyncState.vue'
 import PageLayout from '@/components/shared/PageLayout.vue'
+import { tableCell } from '@/components/shared/tableCells'
 import { usePlayerCardsSearchStore } from '@/stores/playerCardsSearch'
 
 interface CardSet {
@@ -159,13 +162,31 @@ interface PlayerCard {
 
 const headers = [
   { title: '', key: 'image_url', sortable: false, width: 50 },
-  { title: '背番号', key: 'player_number', sortable: false, width: 70 },
-  { title: '選手名', key: 'player_name', sortable: false },
-  { title: '種別', key: 'card_type', sortable: false, width: 90 },
-  { title: 'ポジション', key: 'primary_position', sortable: false, width: 90 },
+  { title: '背番号', key: 'player_number', sortable: false, width: 70, cellProps: tableCell.lead },
+  { title: '選手名', key: 'player_name', sortable: false, cellProps: tableCell.title },
+  { title: '種別', key: 'card_type', sortable: false, width: 90, cellProps: tableCell.sub1 },
+  {
+    title: 'ポジション',
+    key: 'primary_position',
+    sortable: false,
+    width: 90,
+    cellProps: tableCell.sub2,
+  },
   { title: '走力', key: 'speed', sortable: false, width: 60 },
-  { title: 'コスト', key: 'cost', sortable: false, width: 80 },
-  { title: 'カードセット', key: 'card_set_name', sortable: false, width: 110 },
+  {
+    title: 'コスト',
+    key: 'cost',
+    sortable: false,
+    width: 80,
+    cellProps: tableCell.note2Labeled,
+  },
+  {
+    title: 'カードセット',
+    key: 'card_set_name',
+    sortable: false,
+    width: 110,
+    cellProps: tableCell.note,
+  },
 ]
 
 const router = useRouter()
@@ -238,6 +259,17 @@ async function fetchPlayerCards() {
   } finally {
     loading.value = false
   }
+}
+
+// 名前で絞り込む時は 1 ページ目へ戻す（絞った後の件数より後ろのページに居ると空になる）
+function searchByName() {
+  currentPage.value = 1
+  fetchPlayerCards()
+}
+
+function onPageChange(page: number) {
+  currentPage.value = page
+  fetchPlayerCards()
 }
 
 function navigateToDetail(id: number) {

@@ -33,11 +33,12 @@
         <v-data-table
           :headers="headers"
           :items="filteredCompetitions"
-          class="ui-table"
+          class="ui-table ui-table--rows"
           density="compact"
+          mobile-breakpoint="sm"
         >
           <template v-slot:[`item.actions`]="{ item }">
-            <div class="row-actions">
+            <div class="row-actions row-actions--full">
               <RowIconButton
                 icon="mdi-pencil"
                 :label="`${item.name}を編集`"
@@ -46,13 +47,7 @@
               <RowIconButton
                 icon="mdi-clipboard-list-outline"
                 :label="`${item.name}のロスター管理`"
-                @click="
-                  userTeamId &&
-                  router.push({
-                    name: 'CompetitionRoster',
-                    params: { id: item.id, teamId: userTeamId },
-                  })
-                "
+                @click="openRoster(item)"
               />
               <RowIconButton
                 icon="mdi-delete-outline"
@@ -61,6 +56,23 @@
                 @click="deleteCompetition(item)"
               />
             </div>
+            <RowMenu
+              :label="`${item.name}の操作`"
+              :items="[
+                { icon: 'mdi-pencil', label: '編集', onClick: () => openEditDialog(item) },
+                {
+                  icon: 'mdi-clipboard-list-outline',
+                  label: 'ロスター管理',
+                  onClick: () => openRoster(item),
+                },
+                {
+                  icon: 'mdi-delete-outline',
+                  label: '削除',
+                  danger: true,
+                  onClick: () => deleteCompetition(item),
+                },
+              ]"
+            />
           </template>
         </v-data-table>
       </v-card>
@@ -164,6 +176,8 @@ import { useSnackbar } from '@/composables/useSnackbar'
 import AsyncState from '@/components/shared/AsyncState.vue'
 import PageLayout from '@/components/shared/PageLayout.vue'
 import RowIconButton from '@/components/shared/RowIconButton.vue'
+import RowMenu from '@/components/shared/RowMenu.vue'
+import { tableCell } from '@/components/shared/tableCells'
 
 interface Competition {
   id: number
@@ -197,12 +211,12 @@ const updating = ref(false)
 const editTarget = ref<Partial<Competition>>({})
 
 const headers = [
-  { title: 'ID', key: 'id', width: '80px' },
-  { title: '大会名', key: 'name' },
-  { title: '年度', key: 'year', width: '100px' },
-  { title: '種別', key: 'competition_type' },
+  { title: 'ID', key: 'id', width: '80px', cellProps: tableCell.lead },
+  { title: '大会名', key: 'name', cellProps: tableCell.title },
+  { title: '年度', key: 'year', width: '100px', cellProps: tableCell.sub1 },
+  { title: '種別', key: 'competition_type', cellProps: tableCell.sub2 },
   { title: '参加数', key: 'entry_count', width: '100px' },
-  { title: '操作', key: 'actions', sortable: false, nowrap: true },
+  { title: '操作', key: 'actions', sortable: false, nowrap: true, cellProps: tableCell.act },
 ]
 
 onMounted(async () => {
@@ -284,6 +298,14 @@ async function updateCompetition() {
   } finally {
     updating.value = false
   }
+}
+
+function openRoster(competition: Competition) {
+  if (!userTeamId.value) return
+  router.push({
+    name: 'CompetitionRoster',
+    params: { id: competition.id, teamId: userTeamId.value },
+  })
 }
 
 async function deleteCompetition(competition: Competition) {

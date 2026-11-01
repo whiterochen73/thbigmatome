@@ -33,6 +33,7 @@ vi.mock('@/composables/useSnackbar', () => ({
 }))
 
 import axios from 'axios'
+import { stackedLayout } from '@/components/shared/__tests__/tableLayout'
 
 const vuetify = createVuetify({ components, directives })
 const i18n = createI18n({
@@ -69,5 +70,22 @@ describe('CardSetsView', () => {
     mount(CardSetsView, { global: { plugins: [i18n, vuetify] } })
     await flushPromises()
     expect(axios.get).toHaveBeenCalledWith('/card_sets')
+  })
+})
+
+// Test Basis: thbig-dugout-ui-unification-design.md §2.5（<600px は縦積み。1 行 = 名前＋要点 2 つ＋操作）/ §4.2 段 4
+describe('CardSetsView 表のスマホ対応（段 4）', () => {
+  it('縦積み: ID=lead・セット名=title・年度=sub1・種別=sub2・操作=act', async () => {
+    ;(axios.get as ReturnType<typeof vi.fn>).mockResolvedValue({
+      data: [{ id: 1, year: 2025, set_type: 'annual', name: '2025年度版' }],
+    })
+    const wrapper = mount(CardSetsView, { global: { plugins: [i18n, vuetify] } })
+    await flushPromises()
+    expect(stackedLayout(wrapper)).toEqual({
+      mobileBreakpoint: 'sm',
+      rows: true,
+      roles: { id: 'lead', name: 'title', year: 'sub1', set_type: 'sub2', actions: 'act' },
+    })
+    expect(wrapper.find('.row-actions button').attributes('aria-label')).toBe('2025年度版の詳細')
   })
 })

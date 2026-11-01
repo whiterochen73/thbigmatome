@@ -94,6 +94,8 @@
                     :items="firstSquadPlayers"
                     :loading="loading"
                     density="compact"
+                    class="ui-table--rows"
+                    mobile-breakpoint="sm"
                     data-testid="first-squad-table"
                   >
                     <template v-slot:[`item.player_name`]="{ item }">
@@ -108,16 +110,15 @@
                       {{ item.is_reliever ? '中継ぎ' : '先発' }}
                     </template>
                     <template v-slot:[`item.actions`]="{ item }">
-                      <v-btn
-                        size="small"
-                        variant="outlined"
-                        color="danger-ink"
-                        prepend-icon="mdi-delete-outline"
-                        @click="removePlayer(item.player_card_id)"
-                        data-testid="remove-btn"
-                      >
-                        除外
-                      </v-btn>
+                      <div class="row-actions">
+                        <RowIconButton
+                          icon="mdi-delete-outline"
+                          danger
+                          :label="`${item.player_name}を除外`"
+                          data-testid="remove-btn"
+                          @click="removePlayer(item.player_card_id)"
+                        />
+                      </div>
                     </template>
                   </v-data-table>
                 </v-tabs-window-item>
@@ -139,6 +140,8 @@
                     :items="secondSquadPlayers"
                     :loading="loading"
                     density="compact"
+                    class="ui-table--rows"
+                    mobile-breakpoint="sm"
                     data-testid="second-squad-table"
                   >
                     <template v-slot:[`item.player_name`]="{ item }">
@@ -153,16 +156,15 @@
                       {{ item.is_reliever ? '中継ぎ' : '先発' }}
                     </template>
                     <template v-slot:[`item.actions`]="{ item }">
-                      <v-btn
-                        size="small"
-                        variant="outlined"
-                        color="danger-ink"
-                        prepend-icon="mdi-delete-outline"
-                        @click="removePlayer(item.player_card_id)"
-                        data-testid="remove-btn"
-                      >
-                        除外
-                      </v-btn>
+                      <div class="row-actions">
+                        <RowIconButton
+                          icon="mdi-delete-outline"
+                          danger
+                          :label="`${item.player_name}を除外`"
+                          data-testid="remove-btn"
+                          @click="removePlayer(item.player_card_id)"
+                        />
+                      </div>
                     </template>
                   </v-data-table>
                 </v-tabs-window-item>
@@ -229,6 +231,8 @@ import PlayerNameLink from '@/components/shared/PlayerNameLink.vue'
 import PromotionHistoryTab from '@/components/season/PromotionHistoryTab.vue'
 import AsyncState from '@/components/shared/AsyncState.vue'
 import PageLayout from '@/components/shared/PageLayout.vue'
+import RowIconButton from '@/components/shared/RowIconButton.vue'
+import { tableCell } from '@/components/shared/tableCells'
 import { useAppBarTitle } from '@/composables/useAppBarTitle'
 
 interface RosterPlayer {
@@ -297,10 +301,16 @@ const searching = ref(false)
 const adding = ref(false)
 
 const rosterHeaders = [
-  { title: '選手名', key: 'player_name' },
-  { title: '契約種別', key: 'contract_type', sortable: false },
-  { title: 'コスト', key: 'cost', width: '80px' },
-  { title: 'アクション', key: 'actions', sortable: false, width: '100px' },
+  { title: '選手名', key: 'player_name', cellProps: tableCell.title },
+  { title: '契約種別', key: 'contract_type', sortable: false, cellProps: tableCell.sub1 },
+  { title: 'コスト', key: 'cost', width: '80px', cellProps: tableCell.sub2Labeled },
+  {
+    title: 'アクション',
+    key: 'actions',
+    sortable: false,
+    width: '100px',
+    cellProps: tableCell.act,
+  },
 ]
 
 const searchHeaders = [

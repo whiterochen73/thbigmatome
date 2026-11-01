@@ -340,18 +340,14 @@
                 />
               </template>
               <template #item.actions="{ item }">
-                <v-tooltip v-if="!readonly" text="チームから除外" location="top">
-                  <template #activator="{ props }">
-                    <v-btn
-                      v-bind="props"
-                      :icon="gameDayActions ? 'mdi-delete-outline' : 'mdi-delete'"
-                      size="small"
-                      :variant="gameDayActions ? 'outlined' : 'text'"
-                      :color="gameDayActions ? 'danger-ink' : undefined"
-                      @click="removePlayer(item)"
-                    />
-                  </template>
-                </v-tooltip>
+                <div v-if="!readonly" class="row-actions">
+                  <RowIconButton
+                    icon="mdi-delete-outline"
+                    danger
+                    :label="`${item.name}をチームから除外`"
+                    @click="removePlayer(item)"
+                  />
+                </div>
               </template>
             </v-data-table>
           </v-card-text>
@@ -391,11 +387,13 @@ import type { PlayerCost } from '@/types/playerCost'
 import type { CostList } from '@/types/costList'
 import type { PlayerType } from '@/types/playerType'
 import FilterBar from '@/components/shared/FilterBar.vue'
+import RowIconButton from '@/components/shared/RowIconButton.vue'
 import AsyncState from '@/components/shared/AsyncState.vue'
 import PageLayout from '@/components/shared/PageLayout.vue'
 import PlayerNameLink from '@/components/shared/PlayerNameLink.vue'
 import ViolationList from '@/components/season/ViolationList.vue'
 import type { RosterViolation } from '@/types/rosterViolation'
+import { useColumnMinWidth } from '@/composables/useColumnMinWidth'
 
 type CostType =
   | 'normal_cost'
@@ -545,23 +543,37 @@ const loadFailed = ref(false)
 const MAX_PLAYERS = 50
 const TEAM_TOTAL_MAX_COST = 200
 
+const minW = useColumnMinWidth()
 const headers = computed(() => [
-  { title: t('teamMembers.headers.number'), key: 'number' },
-  { title: t('teamMembers.headers.name'), key: 'name' },
-  { title: t('teamMembers.headers.display_name'), key: 'display_name', sortable: false },
-  { title: t('teamMembers.headers.player_types'), key: 'player_type_ids' },
-  { title: t('teamMembers.headers.position'), key: 'position' },
-  { title: t('teamMembers.headers.throws'), key: 'throws' },
-  { title: t('teamMembers.headers.bats'), key: 'bats' },
-  { title: 'カードver.', key: 'player_card_info', sortable: false },
-  { title: t('teamMembers.headers.cost'), value: 'cost' },
+  { title: t('teamMembers.headers.number'), key: 'number', minWidth: minW(64) },
+  // 横に比べる・入力する表なので縦積みにせず、スマホでは横スクロール。名前の列は左に固定する
+  { title: t('teamMembers.headers.name'), key: 'name', fixed: true, minWidth: minW(150) },
+  {
+    title: t('teamMembers.headers.display_name'),
+    key: 'display_name',
+    sortable: false,
+    minWidth: minW(140),
+  },
+  { title: t('teamMembers.headers.player_types'), key: 'player_type_ids', minWidth: minW(140) },
+  { title: t('teamMembers.headers.position'), key: 'position', minWidth: minW(96) },
+  { title: t('teamMembers.headers.throws'), key: 'throws', minWidth: minW(64) },
+  { title: t('teamMembers.headers.bats'), key: 'bats', minWidth: minW(64) },
+  { title: 'カードver.', key: 'player_card_info', sortable: false, minWidth: minW(150) },
+  { title: t('teamMembers.headers.cost'), value: 'cost', minWidth: minW(130) },
   {
     title: t('teamMembers.headers.costExcluded'),
     key: 'excluded_from_team_total',
     sortable: false,
     width: '80px',
+    minWidth: minW(80),
   },
-  { title: t('teamMembers.headers.actions'), key: 'actions', sortable: false, width: '100px' },
+  {
+    title: t('teamMembers.headers.actions'),
+    key: 'actions',
+    sortable: false,
+    width: '100px',
+    minWidth: minW(80),
+  },
 ])
 
 // --- Computed properties ---

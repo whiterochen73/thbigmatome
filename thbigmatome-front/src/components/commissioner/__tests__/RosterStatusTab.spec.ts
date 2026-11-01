@@ -20,6 +20,7 @@ vi.mock('axios', () => ({
 }))
 
 import axios from 'axios'
+import { scrollLayout } from '@/components/shared/__tests__/tableLayout'
 
 const vuetify = createVuetify({ components, directives })
 const i18n = createI18n({
@@ -145,5 +146,63 @@ describe('RosterStatusTab', () => {
     expect(wrapper.find('[data-testid="state-empty"]').exists()).toBe(false)
     await flushPromises()
     expect(wrapper.find('[data-testid="state-empty"]').exists()).toBe(true)
+  })
+})
+
+// Test Basis: thbig-dugout-ui-unification-design.md §2.5（列を落とせる表は <600px で縦積み、列を落とせない表は横スクロールで名前の列を固定）/ §4.2 段 4
+describe('RosterStatusTab 表のスマホ対応（段 4）', () => {
+  it('1軍登録状況: 横に比べる数値の表なので縦積みにせず、チーム名の列を固定して横スクロール', async () => {
+    vi.mocked(axios.get).mockResolvedValueOnce({ data: mockRosterStatus })
+    const wrapper = mountComponent()
+    await flushPromises()
+    expect(scrollLayout(wrapper, 'first_cost')).toEqual({
+      mobileBreakpoint: undefined,
+      rows: false,
+      fixedKeys: ['team_name'],
+      allHaveMinWidth: true,
+    })
+  })
+
+  it('チームを展開すると、読み込み中はスケルトン、失敗はアラート＋再読み込み、取れたら選手の表（選手名を固定）', async () => {
+    vi.mocked(axios.get).mockImplementation((url: string) =>
+      url.includes('/teams/')
+        ? Promise.reject(new Error('network'))
+        : Promise.resolve({ data: mockRosterStatus }),
+    )
+    const wrapper = mountComponent()
+    await flushPromises()
+    await wrapper.find('tbody tr').trigger('click')
+    await flushPromises()
+    expect(wrapper.find('[data-testid="state-error"]').text()).toContain(
+      '1軍選手一覧の取得に失敗しました',
+    )
+    vi.mocked(axios.get).mockImplementation((url: string) =>
+      Promise.resolve({
+        data: url.includes('/teams/')
+          ? [{ number: '1', player_name: '投手A', squad: 'first', is_outside_world: false }]
+          : mockRosterStatus,
+      }),
+    )
+    await wrapper.find('[data-testid="state-retry"]').trigger('click')
+    await flushPromises()
+    expect(wrapper.find('[data-testid="state-error"]').exists()).toBe(false)
+    expect(wrapper.text()).toContain('投手A')
+    expect(scrollLayout(wrapper, 'is_outside_world').fixedKeys).toEqual(['player_name'])
+  })
+
+  // Test Basis: team_rosters_controller#show は { season_id, ..., roster: [...] } を返す。配列だと思って読むと表が描けず空白になる（実機で確認）
+  it('展開した行の選手一覧は、API が返す { roster: [...] } の包みから読む（配列の旧い形も受ける）', async () => {
+    const players = [{ number: '1', player_name: '投手A', squad: 'first', is_outside_world: false }]
+    for (const body of [{ season_id: 1, roster: players }, players]) {
+      vi.mocked(axios.get).mockImplementation((url: string) =>
+        Promise.resolve({ data: url.includes('/teams/') ? body : mockRosterStatus }),
+      )
+      const wrapper = mountComponent()
+      await flushPromises()
+      await wrapper.find('tbody tr').trigger('click')
+      await flushPromises()
+      expect(wrapper.text()).toContain('投手A')
+      expect(wrapper.find('[data-testid="state-error"]').exists()).toBe(false)
+    }
   })
 })

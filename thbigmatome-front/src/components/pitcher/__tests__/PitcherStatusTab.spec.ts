@@ -5,7 +5,9 @@ import { createVuetify } from 'vuetify'
 import * as components from 'vuetify/components'
 import * as directives from 'vuetify/directives'
 import { createRouter, createWebHistory } from 'vue-router'
+import { createI18n } from 'vue-i18n'
 import PitcherStatusTab from '../PitcherStatusTab.vue'
+import ja from '@/locales/ja.json'
 
 const router = createRouter({
   history: createWebHistory(),
@@ -26,6 +28,11 @@ vi.mock('axios', () => ({
 import axios from 'axios'
 
 const vuetify = createVuetify({ components, directives })
+const i18n = createI18n({
+  legacy: false,
+  locale: 'ja',
+  messages: { ja: { asyncState: ja.asyncState } },
+})
 
 const mockPitchers = [
   {
@@ -119,7 +126,7 @@ const mountComponent = (props = {}) =>
       ...props,
     },
     global: {
-      plugins: [vuetify, router],
+      plugins: [vuetify, router, i18n],
     },
   })
 
@@ -434,11 +441,36 @@ describe('PitcherStatusTab', () => {
     expect(marisaIdx).toBeLessThan(reimuIdx)
   })
 
-  it('ローディング中はスピナーが表示されること', async () => {
+  // Test Basis: thbig-dugout-ui-unification-design.md §2.7（初回はスケルトン。読み込みが終わるまで空状態を出さない）
+  it('ローディング中はスケルトンを表示し、空状態は出さないこと', async () => {
     vi.mocked(axios.get).mockReturnValue(new Promise(() => {}))
     const wrapper = mountComponent()
     await nextTick()
-    expect(wrapper.find('[data-testid="loading-spinner"]').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="state-loading"]').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="state-empty"]').exists()).toBe(false)
+  })
+
+  it('取得に失敗したらアラートと再読み込みを出し、押すと取り直すこと', async () => {
+    vi.mocked(axios.get).mockRejectedValueOnce(new Error('Network Error'))
+    const wrapper = mountComponent()
+    await flushPromises()
+    expect(wrapper.find('[data-testid="state-error"]').text()).toContain(
+      '投手状態の取得に失敗しました',
+    )
+    expect(wrapper.find('[data-testid="state-empty"]').exists()).toBe(false)
+    vi.mocked(axios.get).mockResolvedValueOnce({ data: mockPitchers })
+    await wrapper.find('[data-testid="state-retry"]').trigger('click')
+    await flushPromises()
+    expect(axios.get).toHaveBeenCalledTimes(2)
+    expect(wrapper.find('[data-testid="state-error"]').exists()).toBe(false)
+    expect(wrapper.text()).toContain('霊夢')
+  })
+
+  it('投手が 0 人なら空状態を出すこと', async () => {
+    vi.mocked(axios.get).mockResolvedValue({ data: [] })
+    const wrapper = mountComponent()
+    await flushPromises()
+    expect(wrapper.find('[data-testid="state-empty"]').exists()).toBe(true)
   })
 
   it('teamIdが変わると再フェッチすること', async () => {

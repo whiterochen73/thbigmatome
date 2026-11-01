@@ -1,6 +1,7 @@
 // authGuard.ts
 import { type RouteLocationNormalized } from 'vue-router'
 import { useAuth } from '@/composables/useAuth'
+import { loginLocation } from './loginRedirect'
 
 export async function authGuard(to: RouteLocationNormalized, from: RouteLocationNormalized) {
   const { isAuthenticated, checkAuth, isCommissioner } = useAuth()
@@ -23,7 +24,7 @@ export async function authGuard(to: RouteLocationNormalized, from: RouteLocation
   }
 
   if (to.meta.requiresAuth && !isAuthenticated.value) {
-    return '/login'
+    return loginLocation(to.fullPath)
   }
   if (to.meta.requiresCommissioner && !isCommissioner.value) {
     return '/'

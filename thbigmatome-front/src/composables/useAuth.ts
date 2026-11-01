@@ -68,6 +68,16 @@ export function useAuth() {
     }
   }
 
+  // サーバ側でセッションが無効になった時（401）に、画面側の認証状態を消す。
+  // user を消さないと authGuard が「ログイン済み」とみなして /login から '/' へ戻してしまう。
+  // 別のユーザーが次にログインした時に前のチーム一覧が残らないよう、チームの store も空にする
+  const clearAuth = (): void => {
+    user.value = null
+    const teamStore = useTeamSelectionStore()
+    teamStore.clearTeam()
+    teamStore.resetTeams()
+  }
+
   const logout = async (): Promise<void> => {
     loading.value = true
     try {
@@ -103,5 +113,6 @@ export function useAuth() {
     login,
     logout,
     checkAuth,
+    clearAuth,
   }
 }

@@ -98,12 +98,12 @@
 
 - **画面名**: ホームポータル / HomePortalView
 - **ルートパス**: `/`
-- **主要機能・目的**: ログイン後の入口。チームが1件の場合は自動的にSeasonPortalへリダイレクト。複数チームの場合はチーム選択へ
-- **使用APIエンドポイント**:
-  - GET `/teams`
-- **主要なcomposable/store**: `useTeamSelectionStore`（Pinia）
-- **画面構成**: チーム一覧表示 → チーム選択
-- **他画面への遷移先**: `/teams/:teamId/season`（SeasonPortal）
+- **主要機能・目的**: ログイン後の入口。コミッショナーはダッシュボード（CommissionerDashboard）を出す。それ以外はチームが1件なら SeasonPortal をその場に埋め込み、2件以上ならチーム切り替えのタブの下に SeasonPortal を置く
+- **使用APIエンドポイント**: なし（チームは `useAuth` がログイン時に `useTeamSelectionStore` へ読み込み済み）
+- **主要なcomposable/store**: `useTeamSelectionStore`（Pinia）, `useAuth`
+- **ヘッダーバー**: コミッショナーとチーム0件は `route.meta.title`（ホーム）。チームを出している時は、埋め込んだ SeasonPortal が宣言するチーム名＋「シーズン」
+- **画面構成**: `PageLayout`（コミッショナー: ダッシュボード / チーム0件: 空状態 `AsyncState`（コミッショナーへの問い合わせを示す））。SeasonPortal は自分の骨格を持つので二重に包まない。チーム2件以上のタブだけは下余白を詰めた `PageLayout` に置く
+- **他画面への遷移先**: `/teams/:teamId/season`（SeasonPortal、埋め込み）
 
 ---
 
@@ -116,7 +116,8 @@
   - GET `/competitions`
   - GET `/home/summary?competition_id=N`
 - **主要なcomposable/store**: なし（直接axios）
-- **画面構成**: 大会選択タブ・試合サマリーカード
+- **ヘッダーバー**: `route.meta.title`（ホーム（旧））
+- **画面構成**: `PageLayout`（大会選択・試合サマリーカード）
 - **他画面への遷移先**: なし（参照のみ）
 
 ---
@@ -161,9 +162,10 @@
 - **使用APIエンドポイント**:
   - GET `/players/:id`
   - PATCH `/players/:id`（PlayerDialog経由）
-- **主要なcomposable/store**: `useRoute`, `useRouter`
-- **画面構成**: 選手基本情報（名前・背番号）・選手カード一覧テーブル・PlayerDialogコンポーネント
-- **他画面への遷移先**: `/player-cards/:id`（PlayerCardDetailView）
+- **主要なcomposable/store**: `useRoute`, `useRouter`, `useAppBarTitle`
+- **ヘッダーバー**: タイトル=選手名、サブタイトル=`#背番号`、戻り先=「← 選手一覧」（`/players`）。取得前・取得失敗でも戻り先は出る
+- **画面構成**: `PageLayout` ＋ `AsyncState`（読み込み=スケルトン、失敗=アラート＋再読み込み）。基本情報（背番号・選手名・略称・所属作品）・コスト表・選手カード一覧テーブルを1枚のカードに収め、PlayerDialog で編集
+- **他画面への遷移先**: `/player-cards/:id`（PlayerCardDetailView）、`/players`（バーの戻り先）
 
 ---
 
@@ -194,9 +196,10 @@
   - POST `/teams/:id/team_players`
   - GET `/costs`
   - GET `/player-types`
-- **主要なcomposable/store**: `useSnackbar`
-- **画面構成**: 登録済みメンバーテーブル・選手追加UI・コスト/タイプ選択
-- **他画面への遷移先**: なし
+- **主要なcomposable/store**: `useSnackbar`, `useAppBarTitle`
+- **ヘッダーバー**: 単独の画面として開いた時（props に `teamId` が無い）のみ、タイトル=チーム名（`GET /teams/:id`）、サブタイトル=チーム編成、戻り先=「← シーズン」。シーズンのタブ・試合日ページへ埋め込まれた時（`teamId` を props で受ける）はバーを変えず、骨格（`PageLayout`）も持たず中身だけを出す
+- **画面構成**: 違反表示・選手追加UI（ポジション絞り込み・選手選択・カード版・追加ボタン）・メンバー表（人数/コストのゲージ付き）・保存/キャンセル。表は `AsyncState` で包み、読み込み中は「選手が登録されていません」を出さず、取得失敗はアラート＋再読み込み
+- **他画面への遷移先**: `/teams/:teamId/season`（バーの戻り先）
 
 ---
 
@@ -287,10 +290,11 @@
 - **使用APIエンドポイント**:
   - GET `/games/:id`
 - **主要なcomposable/store**: なし（直接axios）
-- **画面構成**: 試合基本情報・イニング別スコア・打席結果テーブル
+- **ヘッダーバー**: タイトル=`試合 #ID`、サブタイトル=日付（`real_date`）、戻り先=「← 試合記録」（`/games`）
+- **画面構成**: `PageLayout` ＋ `AsyncState`。試合基本情報・イニング別スコア・打席結果テーブルをカードで積む。「オーダー確認」はツールバー行の右
 - **他画面への遷移先**:
   - `/games/:id/lineup`（GameLineupView）
-  - `/games`（GamesView、戻るボタン）
+  - `/games`（GamesView、バーの戻り先）
 
 ---
 
@@ -302,8 +306,9 @@
 - **使用APIエンドポイント**:
   - GET `/games/:id/lineup`
 - **主要なcomposable/store**: なし（直接axios）
-- **画面構成**: ホーム/ビジターのラインナップテーブル（打順/名前/ポジション）
-- **他画面への遷移先**: `/games/:id`（GameDetailView、戻るボタン）
+- **ヘッダーバー**: タイトル=オーダー確認、サブタイトル=`試合 #ID`、戻り先=「← 試合詳細」（`/games/:id`）
+- **画面構成**: `PageLayout` ＋ `AsyncState`。スタメン・ベンチ・オフ・指定選手の4枚のカード
+- **他画面への遷移先**: `/games/:id`（GameDetailView、バーの戻り先）
 
 ---
 
@@ -318,7 +323,8 @@
   - GET `/stats/pitching`（大会IDパラメータ）
   - GET `/stats/team`（大会IDパラメータ）
 - **主要なcomposable/store**: なし（直接axios）
-- **画面構成**: 大会選択・タブ（打撃成績/投手成績/チーム成績）・各成績テーブル
+- **ヘッダーバー**: `route.meta.title`（成績集計）
+- **画面構成**: `PageLayout` の1枚のカード。集計画面は明るい淡色背景に固定する（`v-theme-provider theme="light"` で包み、アプリがダークでも追従しない）。大会選択、未選択の間は空状態（「大会を選んでください」）、選択後にタブ（打撃成績/投手成績/チーム成績）・各成績テーブル。取得失敗はアラート＋再読み込み
 - **他画面への遷移先**: なし
 
 ---
@@ -332,7 +338,8 @@
   - GET `/cost_assignments?cost_id=N`
   - POST `/cost_assignments`
 - **主要なcomposable/store**: `useSnackbar`
-- **画面構成**: コスト区分選択・未割り当て/割り当て済みカードテーブル・割り当てボタン
+- **ヘッダーバー**: `route.meta.title`（コスト登録）
+- **画面構成**: `PageLayout`（wide）の1枚のカード。コスト一覧の選択・選手ごとのコスト入力表・保存。取得失敗はアラート＋再読み込み、保存の成否はスナックバー
 - **他画面への遷移先**: なし
 
 ---
@@ -362,8 +369,9 @@
   - DELETE `/competitions/:id/roster/players/:id`
   - GET `/player_cards`
 - **主要なcomposable/store**: `useSnackbar`
-- **画面構成**: 大会情報・登録済みロスターテーブル・選手カード追加UI・コストチェック表示
-- **他画面への遷移先**: なし
+- **ヘッダーバー**: タイトル=大会名、サブタイトル=大会ロスター、戻り先=「← 大会管理」（`/commissioner/competitions`）
+- **画面構成**: `PageLayout`（wide）。コストサマリー・コスト超過アラート・タブ（ロスター/昇降格履歴）・1軍/2軍の登録済みロスターテーブル・選手追加ダイアログ。ロスターの取得失敗はアラート＋再読み込み
+- **他画面への遷移先**: `/commissioner/competitions`（バーの戻り先）
 
 ---
 
@@ -389,18 +397,19 @@
 
 - **画面名**: 選手カード詳細 / PlayerCardDetailView
 - **ルートパス**: `/player-cards/:id`
-- **主要機能・目的**: 選手カードの詳細情報表示・編集（基本情報・守備・特殊スキル）
+- **主要機能・目的**: 選手カードの詳細情報表示・編集（基本情報・守備値・特徴/能力）
 - **使用APIエンドポイント**:
   - GET `/player_cards/:id`
-  - PATCH `/player_cards/:id`（基本情報、守備情報、特殊スキル各セクションで個別保存）
-- **主要なcomposable/store**: `useSnackbar`
-- **画面構成**:
-  - カード基本情報（選手名/背番号/種別/カードセット/コスト/画像）
-  - 共通能力（走力/盗塁/負傷率）
-  - 投手能力（球種・コントロール等）または野手能力（打撃・守備等）
-  - 守備位置テーブル
-  - 特殊スキル一覧
-- **他画面への遷移先**: `/player-cards`（PlayerCardsView、戻るボタン）
+  - PATCH `/player_cards/:id`（基本情報・守備値・特徴/能力の各編集ダイアログで個別保存）
+- **主要なcomposable/store**: `useAppBarTitle`
+- **ヘッダーバー**: タイトル=選手名、サブタイトル=`#背番号 ・ カードセット名`、戻り先=「← 選手カード」（`/player-cards`）。取得前・取得失敗でも戻り先は出る
+- **画面構成**: `PageLayout` ＋ `AsyncState`。1枚のカードに次を積む
+  - 基本情報（種別チップ・画像・走力/バント/盗塁開始・終了/怪我レベル/利き腕・打席/スタミナ/バイオリズム・クローザー等のフラグ）
+  - 守備値テーブル
+  - 特徴・能力（特徴と能力のチップ、固有特徴テキスト `unique_traits`、怪我特徴）
+  - コスト一覧（現行コストを強調）
+  - 投球P列（投手のみ）・打撃結果表
+- **他画面への遷移先**: `/player-cards`（PlayerCardsView、バーの戻り先）
 
 ---
 
@@ -427,8 +436,9 @@
   - PATCH `/at_bat_records/:id`（打席結果修正）
   - POST `/game_records/:id/confirm`（レコード確定）
 - **主要なcomposable/store**: `useSnackbar`
-- **画面構成**: ゲーム基本情報・イニング別打席結果テーブル・結果編集モーダル・確定ボタン
-- **他画面への遷移先**: `/game-records`（GameRecordListView、戻るボタン）
+- **ヘッダーバー**: タイトル=`vs 対戦相手`、サブタイトル=日付、戻り先=「← 試合記録」（`/games`。パーサーレビュー一覧ではなく試合記録へ戻る）
+- **画面構成**: `PageLayout` ＋ `AsyncState`。状態（確定済み/未確定）・日付・スコア・球場・打席数の概要カード、レビュー進捗、絞り込み、イニング別の打席カード、全打席確定・このゲームを確定
+- **他画面への遷移先**: `/games`（GamesView、バーの戻り先）
 
 ---
 
@@ -565,11 +575,11 @@
   /games (GamesView)
       ├─ /games/:id (GameDetailView)
       │       └─ /games/:id/lineup (GameLineupView)
-      └─ 戻る → /games
+      └─ バーの「← 試合記録」→ /games
 
   /game-records (GameRecordListView)
       └─ /game-records/:id (GameRecordDetailView)
-              └─ 戻る → /game-records
+              └─ バーの「← 試合記録」→ /games
 
   /stats (StatsView)
   /cost_assignment (CostAssignment)

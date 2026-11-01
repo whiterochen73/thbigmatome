@@ -20,7 +20,7 @@
 | LP-1 | CRUD一覧 | 12 | v-container > v-card > v-data-table + Dialog |
 | LP-2 | マルチカード | 4 | v-container > 複数v-card（セクション分割） |
 | LP-3 | タブポータル | 3 | v-toolbar + v-tabs + v-tabs-window |
-| LP-4 | カスタム詳細 | 3 | 独自CSS + ヘッダー帯 + セクション分割 |
+| LP-4 | 詳細（C 詳細） | 6 | `PageLayout` + `AsyncState` + バーへ宣言（独自の帯・戻るボタンなし）。LoginForm は含めない |
 | LP-5 | デュアルカラム | 2 | v-row > v-col×2（1軍/2軍等の対比表示） |
 | LP-6 | セレクションポータル | 1 | 中央寄せ単一カード + 選択UI |
 
@@ -163,37 +163,32 @@
 
 ---
 
-### LP-4: カスタム詳細パターン（3件）
+### LP-4: 詳細パターン（C 詳細。選手詳細・選手カード詳細・試合詳細・オーダー確認・パーサーレビュー詳細・大会ロスター）
 
-個別性の高い詳細画面。独自CSSでブランディング。
-
-**該当View**: PlayerDetailView, PlayerCardDetailView, LoginForm
+個別性の高い詳細画面。画面独自の帯・戻るボタン・h1 は持たず、タイトルと戻り先はヘッダーバーへ宣言する（§2）。
 
 **共通骨格**:
 ```vue
-<v-container>
-  <!-- ヘッダー帯（カスタムCSS） -->
-  <div class="detail-card-header">
-    <v-btn icon="mdi-arrow-left" variant="text" @click="goBack" />
-    <h1 class="text-h5">{{ title }}</h1>
-    <v-spacer />
-    <v-btn icon="mdi-pencil" @click="edit" />
-  </div>
+<PageLayout>
+  <!-- 読み込み=スケルトン、失敗=アラート＋再読み込み、対象が無い=空状態 -->
+  <AsyncState :loading="loading" :error="fetchFailed" :empty="!item" @retry="fetch">
+    <v-card>
+      <!-- 見出し行（任意）・セクション群 -->
+    </v-card>
+  </AsyncState>
+</PageLayout>
 
-  <!-- コンテンツセクション群 -->
-  <v-card class="mb-4">
-    <v-card-title>基本情報</v-card-title>
-    <v-card-text>
-      <v-table density="compact">...</v-table>
-    </v-card-text>
-  </v-card>
-
-  <v-card class="mb-4">
-    <v-card-title>詳細データ</v-card-title>
-    <v-card-text>...</v-card-text>
-  </v-card>
-</v-container>
+<script setup lang="ts">
+// 取得前・取得失敗でも戻れるよう、戻り先は常に宣言する（タイトルは取得後に対象の名前へ変わる）
+useAppBarTitle(() => ({
+  title: item.value?.name ?? '選手詳細',
+  subtitle: item.value?.number ? `#${item.value.number}` : null,
+  back: { to: '/players', label: '選手一覧' },
+}))
+</script>
 ```
+
+戻り先は行き先固定の `router-link`（`router.back()` は使わない）。LoginForm はこのパターンに含めない（バーの外の画面）。
 
 ---
 
@@ -278,6 +273,10 @@ E 状態                            読み込み=スケルトン / 空=EmptyStat
 | `EmptyState` | 空状態（アイコン 40px＋文言＋あれば操作） |
 | `RowIconButton`（`src/components/shared/RowIconButton.vue`） | 表の行の操作。名前（`aria-label`・`title`）を持つアイコンボタン。編集=`link`、削除=`danger-ink`、塗らない |
 | `MasterPanel` / `MasterAddButton`（`src/components/settings/`） | 設定画面のマスタの行（アイコン・名前・件数・追加（枠）・開閉）をそろえる |
+
+**埋め込める画面（`TeamMembers`）**: 単独の画面（`/teams/:teamId/members`）と、シーズンのタブ・試合日ページへの埋め込みの両方で使う画面は、`teamId` を props で受けたか（埋め込み）で分ける。単独の時だけ `PageLayout` とバーの宣言（チーム名・サブタイトル・戻り先「← シーズン」）を持ち、埋め込みの時はバーを変えず中身だけを出す（h1 は常に 1 つ）。
+
+**集計画面**（`StatsView` など数表が主役の画面）は、アプリのテーマがダークでも明るい淡色背景に固定する。カードを `v-theme-provider theme="light"` で包む（文字色だけをテーマ追従にしない）。
 
 `PageHeader` は**非推奨**。まだ移していない画面のために残してあり、ヘッダーバーが同じ題を出している間は本文の h1 を省く（バーと二重にならない）。全画面を移したら削除する。
 

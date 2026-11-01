@@ -31,5 +31,7 @@ describe('route.meta.title', () => {
     expect(title('/teams/:teamId/season')).toBe('シーズン')
     expect(title('/teams')).toBe('チーム一覧')
     expect(title('/players')).toBe('選手一覧')
+    // チーム編成は、バーにチーム名が宣言されるまで（宣言できない時）の題
+    expect(title('/teams/:teamId/members')).toBe('チーム編成')
   })
 })

@@ -295,7 +295,7 @@
 | `injury_rate` | `number` | ✓ | 故障率 |
 | `cost` | `number \| null \| undefined` | - | コスト |
 | `defenses` | `Defense[] \| undefined` | - | 守備情報 |
-| `unique_traits` | `string \| null \| undefined` | - | 特殊能力テキスト |
+| `unique_traits` | `string \| null \| undefined` | - | 固有特徴テキスト |
 | `image_url` | `string \| null \| undefined` | - | カード画像URL |
 
 **使用箇所**: `PlayerCardItem.vue`, `PlayerCardsView.vue`, `PlayerCardDetailView.vue`

@@ -1,10 +1,13 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { mount, flushPromises } from '@vue/test-utils'
 import { createVuetify } from 'vuetify'
+import { createI18n } from 'vue-i18n'
+import ja from '@/locales/ja.json'
 import * as components from 'vuetify/components'
 import * as directives from 'vuetify/directives'
 import { createRouter, createMemoryHistory } from 'vue-router'
 import GameRecordDetailView from '../GameRecordDetailView.vue'
+import { appBarTitle } from '@/composables/useAppBarTitle'
 
 vi.mock('@/plugins/axios', () => {
   return {
@@ -28,6 +31,13 @@ vi.mock('@/plugins/axios', () => {
 import axios from '@/plugins/axios'
 
 const vuetify = createVuetify({ components, directives })
+
+// AsyncState（読み込み・空・失敗の出し方）が文言を引く
+const i18n = createI18n({
+  legacy: false,
+  locale: 'ja',
+  messages: { ja: { asyncState: ja.asyncState } },
+})
 
 function createTestRouter(id = '1') {
   const router = createRouter({
@@ -121,7 +131,7 @@ describe('GameRecordDetailView', () => {
     })
     const router = createTestRouter()
     await router.isReady()
-    const wrapper = mount(GameRecordDetailView, { global: { plugins: [vuetify, router] } })
+    const wrapper = mount(GameRecordDetailView, { global: { plugins: [vuetify, i18n, router] } })
     await flushPromises()
     const discrepancy = wrapper
       .findAllComponents(components.VChip)
@@ -150,7 +160,7 @@ describe('GameRecordDetailView', () => {
       vi.mocked(axios.get).mockResolvedValue({ data: cloneMock({ status }) })
       const router = createTestRouter()
       await router.isReady()
-      const wrapper = mount(GameRecordDetailView, { global: { plugins: [vuetify, router] } })
+      const wrapper = mount(GameRecordDetailView, { global: { plugins: [vuetify, i18n, router] } })
       await flushPromises()
       const chips = wrapper
         .findAllComponents(components.VChip)
@@ -172,7 +182,7 @@ describe('GameRecordDetailView', () => {
   it('コンポーネントがマウントされること', async () => {
     const router = createTestRouter()
     await router.isReady()
-    const wrapper = mount(GameRecordDetailView, { global: { plugins: [vuetify, router] } })
+    const wrapper = mount(GameRecordDetailView, { global: { plugins: [vuetify, i18n, router] } })
     await flushPromises()
     expect(wrapper.exists()).toBe(true)
   })
@@ -180,7 +190,7 @@ describe('GameRecordDetailView', () => {
   it('マウント時にgame_recordを取得すること', async () => {
     const router = createTestRouter()
     await router.isReady()
-    mount(GameRecordDetailView, { global: { plugins: [vuetify, router] } })
+    mount(GameRecordDetailView, { global: { plugins: [vuetify, i18n, router] } })
     await flushPromises()
     expect(axios.get).toHaveBeenCalledWith('/game_records/1')
   })
@@ -188,16 +198,26 @@ describe('GameRecordDetailView', () => {
   it('試合サマリーが表示されること', async () => {
     const router = createTestRouter()
     await router.isReady()
-    const wrapper = mount(GameRecordDetailView, { global: { plugins: [vuetify, router] } })
+    const wrapper = mount(GameRecordDetailView, { global: { plugins: [vuetify, i18n, router] } })
     await flushPromises()
-    expect(wrapper.text()).toContain('霧雨チーム')
+    // 対戦相手と日付はヘッダーバー、本文には日付・スコア・球場・状態を出す
+    expect(appBarTitle.value).toEqual({
+      title: 'vs 霧雨チーム',
+      subtitle: '2024/05/01',
+      back: { to: { name: '試合記録' }, label: '試合記録' },
+    })
+    expect(wrapper.find('h1').exists()).toBe(false)
     expect(wrapper.text()).toContain('幻想郷球場')
+    expect(wrapper.text()).toContain('1 - 3')
+    expect(wrapper.find('[data-testid="game-record-status"]').text()).toBe('未確定')
+    wrapper.unmount()
+    expect(appBarTitle.value).toBeNull()
   })
 
   it('打者名が表示されること', async () => {
     const router = createTestRouter()
     await router.isReady()
-    const wrapper = mount(GameRecordDetailView, { global: { plugins: [vuetify, router] } })
+    const wrapper = mount(GameRecordDetailView, { global: { plugins: [vuetify, i18n, router] } })
     await flushPromises()
     expect(wrapper.text()).toContain('博麗霊夢')
     expect(wrapper.text()).toContain('霧雨魔理沙')
@@ -206,7 +226,7 @@ describe('GameRecordDetailView', () => {
   it('イニングラベルが表示されること', async () => {
     const router = createTestRouter()
     await router.isReady()
-    const wrapper = mount(GameRecordDetailView, { global: { plugins: [vuetify, router] } })
+    const wrapper = mount(GameRecordDetailView, { global: { plugins: [vuetify, i18n, router] } })
     await flushPromises()
     expect(wrapper.text()).toContain('1回表')
   })
@@ -214,7 +234,7 @@ describe('GameRecordDetailView', () => {
   it('draft状態では確定ボタンが表示されること', async () => {
     const router = createTestRouter()
     await router.isReady()
-    const wrapper = mount(GameRecordDetailView, { global: { plugins: [vuetify, router] } })
+    const wrapper = mount(GameRecordDetailView, { global: { plugins: [vuetify, i18n, router] } })
     await flushPromises()
     expect(wrapper.text()).toContain('このゲームを確定')
   })
@@ -223,7 +243,7 @@ describe('GameRecordDetailView', () => {
     vi.mocked(axios.get).mockResolvedValue({ data: cloneMock({ status: 'confirmed' }) })
     const router = createTestRouter()
     await router.isReady()
-    const wrapper = mount(GameRecordDetailView, { global: { plugins: [vuetify, router] } })
+    const wrapper = mount(GameRecordDetailView, { global: { plugins: [vuetify, i18n, router] } })
     await flushPromises()
     expect(wrapper.text()).not.toContain('このゲームを確定')
   })
@@ -232,7 +252,7 @@ describe('GameRecordDetailView', () => {
     vi.mocked(axios.get).mockRejectedValue(new Error('Network Error'))
     const router = createTestRouter()
     await router.isReady()
-    const wrapper = mount(GameRecordDetailView, { global: { plugins: [vuetify, router] } })
+    const wrapper = mount(GameRecordDetailView, { global: { plugins: [vuetify, i18n, router] } })
     await flushPromises()
     expect(wrapper.text()).toContain('試合記録の取得に失敗しました')
   })
@@ -240,7 +260,7 @@ describe('GameRecordDetailView', () => {
   it('is_modified=trueの打席には修正済みアイコンが表示されること', async () => {
     const router = createTestRouter()
     await router.isReady()
-    const wrapper = mount(GameRecordDetailView, { global: { plugins: [vuetify, router] } })
+    const wrapper = mount(GameRecordDetailView, { global: { plugins: [vuetify, i18n, router] } })
     await flushPromises()
     const icons = wrapper.findAll('.mdi-pencil-circle')
     expect(icons.length).toBeGreaterThan(0)
@@ -252,7 +272,7 @@ describe('GameRecordDetailView', () => {
     })
     const router = createTestRouter()
     await router.isReady()
-    const wrapper = mount(GameRecordDetailView, { global: { plugins: [vuetify, router] } })
+    const wrapper = mount(GameRecordDetailView, { global: { plugins: [vuetify, i18n, router] } })
     await flushPromises()
 
     const btns = wrapper.findAll('button')
@@ -268,7 +288,7 @@ describe('GameRecordDetailView', () => {
     vi.mocked(axios.get).mockResolvedValue({ data: cloneMock({ status: 'draft' }) })
     const router = createTestRouter()
     await router.isReady()
-    const wrapper = mount(GameRecordDetailView, { global: { plugins: [vuetify, router] } })
+    const wrapper = mount(GameRecordDetailView, { global: { plugins: [vuetify, i18n, router] } })
     await flushPromises()
     // is_reviewed=true が1件、合計2件
     expect(wrapper.text()).toContain('1 / 2')
@@ -278,7 +298,7 @@ describe('GameRecordDetailView', () => {
     vi.mocked(axios.get).mockResolvedValue({ data: cloneMock({ status: 'draft' }) })
     const router = createTestRouter()
     await router.isReady()
-    const wrapper = mount(GameRecordDetailView, { global: { plugins: [vuetify, router] } })
+    const wrapper = mount(GameRecordDetailView, { global: { plugins: [vuetify, i18n, router] } })
     await flushPromises()
     expect(wrapper.text()).toContain('全打席確定')
   })
@@ -289,7 +309,7 @@ describe('GameRecordDetailView', () => {
     await router.isReady()
     // v-dialog は teleport で body に描画されるため attachTo: document.body が必要
     const wrapper = mount(GameRecordDetailView, {
-      global: { plugins: [vuetify, router] },
+      global: { plugins: [vuetify, i18n, router] },
       attachTo: document.body,
     })
     await flushPromises()
@@ -308,7 +328,7 @@ describe('GameRecordDetailView', () => {
     vi.mocked(axios.get).mockResolvedValue({ data: cloneMock({ status: 'confirmed' }) })
     const router = createTestRouter()
     await router.isReady()
-    const wrapper = mount(GameRecordDetailView, { global: { plugins: [vuetify, router] } })
+    const wrapper = mount(GameRecordDetailView, { global: { plugins: [vuetify, i18n, router] } })
     await flushPromises()
     expect(wrapper.text()).not.toContain('全打席確定')
     expect(wrapper.text()).not.toContain('このゲームを確定')

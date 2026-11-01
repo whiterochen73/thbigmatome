@@ -863,7 +863,6 @@
     }
   },
   "costAssignment": {
-    "title": "コスト登録",
     "costList": "コスト一覧",
     "save": "保存",
     "headers": {

@@ -174,14 +174,14 @@ it('outlined の表示・絞り込みトグルは選択中の primary 塗りを�
   expect(violations).toEqual([])
 })
 
-// Test Basis: subtask_1790c §2 / thbig-dugout-visual-refresh-design.md §6.2
-it('選手詳細の見出し帯は on-primary を透過させない', () => {
-  const source = readFileSync(resolve(srcDir, 'views/PlayerDetailView.vue'), 'utf8')
-  const css = source.match(/<style scoped>([\s\S]*?)<\/style>/)?.[1] ?? ''
-  for (const selector of ['.detail-player-sub', '.header-badge']) {
-    const block =
-      css.match(new RegExp(`${selector.replace('.', '\\.')}\\s*\\{([^}]*)\\}`))?.[1] ?? ''
-    expect(block, selector).not.toMatch(/\bopacity\s*:/)
+// Test Basis: thbig-dugout-ui-unification-design.md §2.1（画面独自の帯をやめ、タイトルと戻り先はヘッダーバーへ。subtask_1790c の「帯は on-primary を透過させない」は帯ごと無くなった）
+it('選手詳細・選手カード詳細は画面独自の見出し帯・戻るボタンを持たない（on-primary の帯はバーだけ）', () => {
+  for (const path of ['views/PlayerDetailView.vue', 'views/PlayerCardDetailView.vue']) {
+    const source = readFileSync(resolve(srcDir, path), 'utf8')
+    expect(source, path).not.toContain('detail-card-header')
+    expect(source, path).not.toContain('detail-back-btn')
+    expect(source, path).not.toContain('--v-theme-on-primary')
+    expect(source, path).toContain('useAppBarTitle')
   }
 })
 
@@ -190,11 +190,8 @@ it('ブランド色の旧変数を残さず見出しはテーマ色を使う', (
   const base = readFileSync(resolve(srcDir, 'assets/base.css'), 'utf8')
   const app = readFileSync(resolve(srcDir, 'App.vue'), 'utf8')
   const pageHeader = readFileSync(resolve(srcDir, 'components/shared/PageHeader.vue'), 'utf8')
-  const playerDetail = readFileSync(resolve(srcDir, 'views/PlayerDetailView.vue'), 'utf8')
   expect(base).not.toMatch(/--color-(?:home|visitor)/)
   expect(app).not.toContain('--ai: var(--color-visitor)')
   expect(pageHeader).toContain('color: rgb(var(--v-theme-link));')
   expect(pageHeader).toContain('border-left: 3px solid rgb(var(--v-theme-link));')
-  expect(playerDetail).toContain('background: rgb(var(--v-theme-primary));')
-  expect(playerDetail).toContain('color: rgb(var(--v-theme-on-primary));')
 })

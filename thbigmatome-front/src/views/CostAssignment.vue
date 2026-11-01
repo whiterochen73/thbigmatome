@@ -1,52 +1,54 @@
 <template>
-  <v-container fluid>
+  <PageLayout width="wide">
     <v-card>
-      <v-card-title>
-        {{ t('costAssignment.title') }}
-      </v-card-title>
       <v-card-text>
         <CostListSelect v-model="selectedCost" :label="t('costAssignment.costList')" />
-        <v-data-table
-          :headers="headers"
-          :items="players"
-          :loading="loading"
-          class="elevation-1"
-          density="compact"
-          items-per-page="-1"
-          :row-props="rowProps"
+        <AsyncState
+          :error="fetchFailed"
+          :error-message="t('costAssignment.notifications.fetchPlayersFailed')"
+          @retry="fetchPlayers"
         >
-          <template
-            v-for="costDef in costDefinitions"
-            :key="costDef.key"
-            v-slot:[`item.${costDef.key}`]="{ item }"
+          <v-data-table
+            :headers="headers"
+            :items="players"
+            :loading="loading"
+            density="compact"
+            items-per-page="-1"
+            :row-props="rowProps"
           >
-            <v-text-field
-              v-model.number="item[costDef.model]"
-              type="number"
-              min="1"
-              :rules="[rules.positiveInteger]"
-              :disabled="!item.available_cost_types?.includes(costDef.model)"
-              style="width: 80px"
-              density="compact"
-              hide-details="auto"
-            ></v-text-field>
-          </template>
-          <template #[`item.name`]="{ item }">
-            <span>{{ item.name }}</span>
-            <v-chip
-              v-if="item.variant"
-              size="x-small"
-              color="state-neutral"
-              variant="flat"
-              class="ml-1"
+            <template
+              v-for="costDef in costDefinitions"
+              :key="costDef.key"
+              v-slot:[`item.${costDef.key}`]="{ item }"
             >
-              {{ item.variant }}
-            </v-chip>
-          </template>
-          <template #[`item.player_types`]="{ item }">
-            <v-chip v-for="type in item.player_types" :key="type.id">{{ type.name }}</v-chip>
-          </template>
-        </v-data-table>
+              <v-text-field
+                v-model.number="item[costDef.model]"
+                type="number"
+                min="1"
+                :rules="[rules.positiveInteger]"
+                :disabled="!item.available_cost_types?.includes(costDef.model)"
+                style="width: 80px"
+                density="compact"
+                hide-details="auto"
+              ></v-text-field>
+            </template>
+            <template #[`item.name`]="{ item }">
+              <span>{{ item.name }}</span>
+              <v-chip
+                v-if="item.variant"
+                size="x-small"
+                color="state-neutral"
+                variant="flat"
+                class="ml-1"
+              >
+                {{ item.variant }}
+              </v-chip>
+            </template>
+            <template #[`item.player_types`]="{ item }">
+              <v-chip v-for="type in item.player_types" :key="type.id">{{ type.name }}</v-chip>
+            </template>
+          </v-data-table>
+        </AsyncState>
       </v-card-text>
       <v-card-actions>
         <v-spacer></v-spacer>
@@ -55,7 +57,7 @@
         </v-btn>
       </v-card-actions>
     </v-card>
-  </v-container>
+  </PageLayout>
 </template>
 
 <script setup lang="ts">
@@ -65,7 +67,9 @@ import { useSnackbar } from '@/composables/useSnackbar'
 import { useI18n } from 'vue-i18n'
 import type { CostList } from '@/types/costList'
 import type { CostPlayer } from '@/types/costPlayer'
+import AsyncState from '@/components/shared/AsyncState.vue'
 import CostListSelect from '@/components/shared/CostListSelect.vue'
+import PageLayout from '@/components/shared/PageLayout.vue'
 
 const { t } = useI18n()
 const { showSnackbar } = useSnackbar()
@@ -73,6 +77,7 @@ const { showSnackbar } = useSnackbar()
 const players = ref<CostPlayer[]>([])
 const selectedCost = ref<CostList | null>(null)
 const loading = ref(false)
+const fetchFailed = ref(false)
 
 const costDefinitions = [
   { key: 'cost', model: 'normal_cost', requiredPlayerTypeId: null },
@@ -121,6 +126,7 @@ watch(
 const fetchPlayers = async () => {
   if (!selectedCost.value) return
   loading.value = true
+  fetchFailed.value = false
   try {
     const response = await axios.get<CostPlayer[]>(
       `/cost_assignments?cost_id=${selectedCost.value.id}`,
@@ -134,7 +140,8 @@ const fetchPlayers = async () => {
       two_way_cost: player.two_way_cost || null,
     }))
   } catch {
-    showSnackbar('選手情報の取得に失敗しました。', 'error')
+    // 取得の失敗はページ内のアラート（AsyncState）で出す。スナックバーは保存の成否だけ
+    fetchFailed.value = true
   } finally {
     loading.value = false
   }

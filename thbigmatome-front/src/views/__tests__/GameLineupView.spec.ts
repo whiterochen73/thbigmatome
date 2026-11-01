@@ -1,9 +1,12 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { mount, flushPromises } from '@vue/test-utils'
 import { createVuetify } from 'vuetify'
+import { createI18n } from 'vue-i18n'
+import ja from '@/locales/ja.json'
 import * as components from 'vuetify/components'
 import * as directives from 'vuetify/directives'
 import GameLineupView from '../GameLineupView.vue'
+import { appBarTitle } from '@/composables/useAppBarTitle'
 
 // Mock axios
 vi.mock('axios', () => {
@@ -32,6 +35,13 @@ vi.mock('vue-router', () => ({
 import axios from 'axios'
 
 const vuetify = createVuetify({ components, directives })
+
+// AsyncState（読み込み・空・失敗の出し方）が文言を引く
+const i18n = createI18n({
+  legacy: false,
+  locale: 'ja',
+  messages: { ja: { asyncState: ja.asyncState } },
+})
 
 const mockLineupData = {
   lineup: [
@@ -92,7 +102,7 @@ async function mountView() {
   ;(axios.get as ReturnType<typeof vi.fn>).mockResolvedValue({ data: mockLineupData })
   const wrapper = mount(GameLineupView, {
     global: {
-      plugins: [vuetify],
+      plugins: [vuetify, i18n],
     },
   })
   await flushPromises()
@@ -154,5 +164,33 @@ describe('GameLineupView.vue', () => {
     const wrapper = await mountView()
     expect(wrapper.text()).toContain('東風谷早苗')
     expect(wrapper.text()).toContain('（指定）')
+  })
+
+  it('ヘッダーバー: タイトル=オーダー確認、サブタイトル=試合 #ID、戻り先=試合詳細（行き先固定）', async () => {
+    const wrapper = await mountView()
+    expect(appBarTitle.value).toEqual({
+      title: 'オーダー確認',
+      subtitle: '試合 #42',
+      back: { to: { name: '試合詳細', params: { id: '42' } }, label: '試合詳細' },
+    })
+    expect(wrapper.find('h1').exists()).toBe(false)
+    expect(wrapper.text()).not.toContain('試合詳細へ戻る')
+    wrapper.unmount()
+    expect(appBarTitle.value).toBeNull()
+  })
+
+  it('取得に失敗した時はページ内のアラートを出し、再読み込みで取り直す', async () => {
+    ;(axios.get as ReturnType<typeof vi.fn>).mockRejectedValueOnce(new Error('boom'))
+    const wrapper = mount(GameLineupView, { global: { plugins: [vuetify, i18n] } })
+    await flushPromises()
+    expect(wrapper.find('[data-testid="state-error"]').text()).toContain(
+      'オーダーデータの取得に失敗しました',
+    )
+    ;(axios.get as ReturnType<typeof vi.fn>).mockResolvedValue({ data: mockLineupData })
+    await wrapper.find('[data-testid="state-retry"]').trigger('click')
+    await flushPromises()
+    expect(wrapper.find('[data-testid="state-error"]').exists()).toBe(false)
+    expect(wrapper.text()).toContain('博麗霊夢')
+    wrapper.unmount()
   })
 })

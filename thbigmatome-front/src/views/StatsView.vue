@@ -1,60 +1,73 @@
 <template>
-  <v-container>
-    <v-card>
-      <v-card-title>成績集計</v-card-title>
-      <v-card-text>
-        <v-select
-          v-model="selectedCompetitionId"
-          :items="competitions"
-          item-title="name"
-          item-value="id"
-          label="大会"
-          density="compact"
-          clearable
-          class="mb-4"
-          @update:model-value="fetchStats"
-        ></v-select>
+  <PageLayout>
+    <!-- 集計画面は明るい淡色背景に固定する（ダークでも追従しない） -->
+    <v-theme-provider theme="light">
+      <v-card data-testid="stats-light-surface">
+        <v-card-text>
+          <v-select
+            v-model="selectedCompetitionId"
+            :items="competitions"
+            item-title="name"
+            item-value="id"
+            label="大会"
+            density="compact"
+            clearable
+            class="mb-4"
+            @update:model-value="fetchStats"
+          ></v-select>
 
-        <v-tabs v-model="activeTab">
-          <v-tab value="batting">打撃成績</v-tab>
-          <v-tab value="pitching">投手成績</v-tab>
-          <v-tab value="team">チーム成績</v-tab>
-        </v-tabs>
+          <AsyncState
+            :error="fetchFailed"
+            error-message="成績の取得に失敗しました"
+            :empty="selectedCompetitionId === null"
+            empty-icon="mdi-chart-box-outline"
+            empty-message="大会を選んでください"
+            @retry="fetchStats"
+          >
+            <v-tabs v-model="activeTab" color="link">
+              <v-tab value="batting">打撃成績</v-tab>
+              <v-tab value="pitching">投手成績</v-tab>
+              <v-tab value="team">チーム成績</v-tab>
+            </v-tabs>
 
-        <v-tabs-window v-model="activeTab">
-          <v-tabs-window-item value="batting">
-            <v-data-table
-              :headers="battingHeaders"
-              :items="battingStats"
-              :loading="loading"
-              density="compact"
-            />
-          </v-tabs-window-item>
-          <v-tabs-window-item value="pitching">
-            <v-data-table
-              :headers="pitchingHeaders"
-              :items="pitchingStats"
-              :loading="loading"
-              density="compact"
-            />
-          </v-tabs-window-item>
-          <v-tabs-window-item value="team">
-            <v-data-table
-              :headers="teamHeaders"
-              :items="teamStats"
-              :loading="loading"
-              density="compact"
-            />
-          </v-tabs-window-item>
-        </v-tabs-window>
-      </v-card-text>
-    </v-card>
-  </v-container>
+            <v-tabs-window v-model="activeTab">
+              <v-tabs-window-item value="batting">
+                <v-data-table
+                  :headers="battingHeaders"
+                  :items="battingStats"
+                  :loading="loading"
+                  density="compact"
+                />
+              </v-tabs-window-item>
+              <v-tabs-window-item value="pitching">
+                <v-data-table
+                  :headers="pitchingHeaders"
+                  :items="pitchingStats"
+                  :loading="loading"
+                  density="compact"
+                />
+              </v-tabs-window-item>
+              <v-tabs-window-item value="team">
+                <v-data-table
+                  :headers="teamHeaders"
+                  :items="teamStats"
+                  :loading="loading"
+                  density="compact"
+                />
+              </v-tabs-window-item>
+            </v-tabs-window>
+          </AsyncState>
+        </v-card-text>
+      </v-card>
+    </v-theme-provider>
+  </PageLayout>
 </template>
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import axios from 'axios'
+import AsyncState from '@/components/shared/AsyncState.vue'
+import PageLayout from '@/components/shared/PageLayout.vue'
 
 interface Competition {
   id: number
@@ -101,6 +114,7 @@ const selectedCompetitionId = ref<number | null>(null)
 const competitions = ref<Competition[]>([])
 const activeTab = ref('batting')
 const loading = ref(false)
+const fetchFailed = ref(false)
 
 const battingStats = ref<BattingStat[]>([])
 const pitchingStats = ref<PitchingStat[]>([])
@@ -158,6 +172,7 @@ async function fetchCompetitions() {
 async function fetchStats() {
   if (selectedCompetitionId.value === null) return
   loading.value = true
+  fetchFailed.value = false
   try {
     const params = { competition_id: selectedCompetitionId.value }
     const [battingRes, pitchingRes, teamRes] = await Promise.all([
@@ -169,6 +184,7 @@ async function fetchStats() {
     pitchingStats.value = pitchingRes.data.pitching_stats
     teamStats.value = teamRes.data.team_stats
   } catch (error) {
+    fetchFailed.value = true
     console.error('Error fetching stats:', error)
   } finally {
     loading.value = false

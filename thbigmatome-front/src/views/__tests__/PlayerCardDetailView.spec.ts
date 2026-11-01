@@ -1,10 +1,13 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { mount, flushPromises } from '@vue/test-utils'
 import { createVuetify } from 'vuetify'
+import { createI18n } from 'vue-i18n'
+import ja from '@/locales/ja.json'
 import * as components from 'vuetify/components'
 import * as directives from 'vuetify/directives'
 import { createRouter, createMemoryHistory } from 'vue-router'
 import PlayerCardDetailView from '../PlayerCardDetailView.vue'
+import { appBarTitle } from '@/composables/useAppBarTitle'
 
 vi.mock('@/plugins/axios', () => {
   return {
@@ -27,6 +30,13 @@ vi.mock('@/plugins/axios', () => {
 import axios from '@/plugins/axios'
 
 const vuetify = createVuetify({ components, directives })
+
+// AsyncState（読み込み・空・失敗の出し方）が文言を引く
+const i18n = createI18n({
+  legacy: false,
+  locale: 'ja',
+  messages: { ja: { asyncState: ja.asyncState } },
+})
 
 function createTestRouter(cardId = '1') {
   const router = createRouter({
@@ -96,39 +106,63 @@ describe('PlayerCardDetailView', () => {
   it('コンポーネントがマウントされること', async () => {
     const router = createTestRouter()
     await router.isReady()
-    const wrapper = mount(PlayerCardDetailView, { global: { plugins: [vuetify, router] } })
+    const wrapper = mount(PlayerCardDetailView, { global: { plugins: [vuetify, i18n, router] } })
     await flushPromises()
     expect(wrapper.exists()).toBe(true)
   })
 
-  it('タイトルが表示されること', async () => {
+  // Test Basis: thbig-dugout-ui-unification-design.md §2.2 C 型（タイトル=対象の名前、サブタイトル=補足、戻り先=「← 一覧名」）
+  it('ヘッダーバーに選手名・背番号とカードセット・戻り先（選手カード）を宣言する', async () => {
     const router = createTestRouter()
     await router.isReady()
-    const wrapper = mount(PlayerCardDetailView, { global: { plugins: [vuetify, router] } })
+    const wrapper = mount(PlayerCardDetailView, { global: { plugins: [vuetify, i18n, router] } })
     await flushPromises()
-    expect(wrapper.text()).toContain('選手カード詳細')
+    expect(appBarTitle.value).toEqual({
+      title: '博麗霊夢',
+      subtitle: '#1 ・ ハチナイ2024',
+      back: { to: '/player-cards', label: '選手カード' },
+    })
+    wrapper.unmount()
+    expect(appBarTitle.value).toBeNull()
   })
 
-  it('選手名が表示されること', async () => {
+  it('本文に画面独自の帯・戻るボタン・h1 を持たない（タイトルはバーだけ）', async () => {
     const router = createTestRouter()
     await router.isReady()
-    const wrapper = mount(PlayerCardDetailView, { global: { plugins: [vuetify, router] } })
+    const wrapper = mount(PlayerCardDetailView, { global: { plugins: [vuetify, i18n, router] } })
     await flushPromises()
-    expect(wrapper.text()).toContain('博麗霊夢')
+    expect(wrapper.find('h1').exists()).toBe(false)
+    expect(wrapper.find('.detail-card-header').exists()).toBe(false)
+    expect(wrapper.find('.detail-back-btn').exists()).toBe(false)
+    expect(wrapper.text()).not.toContain('一覧に戻る')
+    expect(wrapper.find('[data-testid="card-type-chip"]').text()).toBe('投手')
+    wrapper.unmount()
   })
 
-  it('カードセット名が表示されること', async () => {
+  it('取得前・取得失敗でも戻り先は宣言され、失敗はページ内のアラート＋再読み込みで出す', async () => {
+    vi.mocked(axios.get).mockRejectedValueOnce(new Error('Network Error'))
     const router = createTestRouter()
     await router.isReady()
-    const wrapper = mount(PlayerCardDetailView, { global: { plugins: [vuetify, router] } })
+    const wrapper = mount(PlayerCardDetailView, { global: { plugins: [vuetify, i18n, router] } })
+    expect(appBarTitle.value?.back).toEqual({ to: '/player-cards', label: '選手カード' })
     await flushPromises()
-    expect(wrapper.text()).toContain('ハチナイ2024')
+    expect(appBarTitle.value?.title).toBe('選手カード詳細')
+    expect(wrapper.find('[data-testid="state-error"]').text()).toContain(
+      '選手カードの取得に失敗しました',
+    )
+    // 再読み込みで取り直せる
+    await wrapper.find('[data-testid="state-retry"]').trigger('click')
+    await flushPromises()
+    expect(axios.get).toHaveBeenCalledTimes(2)
+    expect(wrapper.find('[data-testid="state-error"]').exists()).toBe(false)
+    expect(appBarTitle.value?.title).toBe('博麗霊夢')
+    wrapper.unmount()
   })
 
   it('基本情報セクションが表示されること', async () => {
     const router = createTestRouter()
     await router.isReady()
-    const wrapper = mount(PlayerCardDetailView, { global: { plugins: [vuetify, router] } })
+    const wrapper = mount(PlayerCardDetailView, { global: { plugins: [vuetify, i18n, router] } })
     await flushPromises()
     expect(wrapper.text()).toContain('基本情報')
     expect(wrapper.text()).toContain('走力')
@@ -138,7 +172,7 @@ describe('PlayerCardDetailView', () => {
   it('バイオリズムが表示されること', async () => {
     const router = createTestRouter()
     await router.isReady()
-    const wrapper = mount(PlayerCardDetailView, { global: { plugins: [vuetify, router] } })
+    const wrapper = mount(PlayerCardDetailView, { global: { plugins: [vuetify, i18n, router] } })
     await flushPromises()
     expect(wrapper.text()).toContain('バイオリズム')
     expect(wrapper.text()).toContain('小暑')
@@ -147,7 +181,7 @@ describe('PlayerCardDetailView', () => {
   it('バントが表示されること', async () => {
     const router = createTestRouter()
     await router.isReady()
-    const wrapper = mount(PlayerCardDetailView, { global: { plugins: [vuetify, router] } })
+    const wrapper = mount(PlayerCardDetailView, { global: { plugins: [vuetify, i18n, router] } })
     await flushPromises()
     expect(wrapper.text()).toContain('バント')
   })
@@ -155,7 +189,7 @@ describe('PlayerCardDetailView', () => {
   it('利き腕/打席が表示されること', async () => {
     const router = createTestRouter()
     await router.isReady()
-    const wrapper = mount(PlayerCardDetailView, { global: { plugins: [vuetify, router] } })
+    const wrapper = mount(PlayerCardDetailView, { global: { plugins: [vuetify, i18n, router] } })
     await flushPromises()
     expect(wrapper.text()).toContain('利き腕/打席')
     expect(wrapper.text()).toContain('右')
@@ -164,7 +198,7 @@ describe('PlayerCardDetailView', () => {
   it('クローザーチップが表示されること', async () => {
     const router = createTestRouter()
     await router.isReady()
-    const wrapper = mount(PlayerCardDetailView, { global: { plugins: [vuetify, router] } })
+    const wrapper = mount(PlayerCardDetailView, { global: { plugins: [vuetify, i18n, router] } })
     await flushPromises()
     expect(wrapper.text()).toContain('クローザー')
   })
@@ -172,7 +206,7 @@ describe('PlayerCardDetailView', () => {
   it('守備値セクションが表示されること', async () => {
     const router = createTestRouter()
     await router.isReady()
-    const wrapper = mount(PlayerCardDetailView, { global: { plugins: [vuetify, router] } })
+    const wrapper = mount(PlayerCardDetailView, { global: { plugins: [vuetify, i18n, router] } })
     await flushPromises()
     expect(wrapper.text()).toContain('守備値')
     expect(wrapper.text()).toContain('ポジション')
@@ -181,7 +215,7 @@ describe('PlayerCardDetailView', () => {
   it('特徴セクションが表示されること', async () => {
     const router = createTestRouter()
     await router.isReady()
-    const wrapper = mount(PlayerCardDetailView, { global: { plugins: [vuetify, router] } })
+    const wrapper = mount(PlayerCardDetailView, { global: { plugins: [vuetify, i18n, router] } })
     await flushPromises()
     expect(wrapper.text()).toContain('特徴')
     expect(wrapper.text()).toContain('変化球投手')
@@ -190,7 +224,7 @@ describe('PlayerCardDetailView', () => {
   it('特徴に条件分岐（対左/変化球投手）が表示されること', async () => {
     const router = createTestRouter()
     await router.isReady()
-    const wrapper = mount(PlayerCardDetailView, { global: { plugins: [vuetify, router] } })
+    const wrapper = mount(PlayerCardDetailView, { global: { plugins: [vuetify, i18n, router] } })
     await flushPromises()
     expect(wrapper.text()).toContain('対左')
   })
@@ -198,7 +232,7 @@ describe('PlayerCardDetailView', () => {
   it('打撃結果表が表示されること', async () => {
     const router = createTestRouter()
     await router.isReady()
-    const wrapper = mount(PlayerCardDetailView, { global: { plugins: [vuetify, router] } })
+    const wrapper = mount(PlayerCardDetailView, { global: { plugins: [vuetify, i18n, router] } })
     await flushPromises()
     expect(wrapper.text()).toContain('打撃結果表')
     expect(wrapper.text()).toContain('出目')
@@ -207,7 +241,7 @@ describe('PlayerCardDetailView', () => {
   it('投球P列が表示されること', async () => {
     const router = createTestRouter()
     await router.isReady()
-    const wrapper = mount(PlayerCardDetailView, { global: { plugins: [vuetify, router] } })
+    const wrapper = mount(PlayerCardDetailView, { global: { plugins: [vuetify, i18n, router] } })
     await flushPromises()
     expect(wrapper.text()).toContain('投球P列')
   })
@@ -215,7 +249,7 @@ describe('PlayerCardDetailView', () => {
   it('基本情報の編集ボタンが存在すること', async () => {
     const router = createTestRouter()
     await router.isReady()
-    const wrapper = mount(PlayerCardDetailView, { global: { plugins: [vuetify, router] } })
+    const wrapper = mount(PlayerCardDetailView, { global: { plugins: [vuetify, i18n, router] } })
     await flushPromises()
     const editBtns = wrapper.findAll('.v-btn').filter((b) => b.text().includes('編集'))
     expect(editBtns.length).toBeGreaterThanOrEqual(1)
@@ -225,7 +259,7 @@ describe('PlayerCardDetailView', () => {
     vi.mocked(axios.get).mockRejectedValue(new Error('Network Error'))
     const router = createTestRouter()
     await router.isReady()
-    const wrapper = mount(PlayerCardDetailView, { global: { plugins: [vuetify, router] } })
+    const wrapper = mount(PlayerCardDetailView, { global: { plugins: [vuetify, i18n, router] } })
     await flushPromises()
     expect(wrapper.text()).toContain('選手カードの取得に失敗しました')
   })
@@ -236,7 +270,7 @@ describe('PlayerCardDetailView', () => {
     })
     const router = createTestRouter()
     await router.isReady()
-    const wrapper = mount(PlayerCardDetailView, { global: { plugins: [vuetify, router] } })
+    const wrapper = mount(PlayerCardDetailView, { global: { plugins: [vuetify, i18n, router] } })
     await flushPromises()
     expect(wrapper.text()).not.toContain('打撃結果表')
   })

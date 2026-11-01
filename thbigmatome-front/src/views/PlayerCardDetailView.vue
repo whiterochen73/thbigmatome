@@ -1,47 +1,24 @@
 <template>
-  <v-container style="max-width: 1080px">
-    <v-progress-linear
-      v-if="loading"
-      indeterminate
-      color="primary"
-      class="mb-3"
-    ></v-progress-linear>
-
-    <v-alert
-      v-if="errorMessage"
-      type="error"
-      variant="tonal"
-      class="mb-3"
-      closable
-      @click:close="errorMessage = ''"
+  <PageLayout>
+    <AsyncState
+      framed
+      skeleton="article"
+      :loading="loading"
+      :error="fetchFailed"
+      :error-message="errorMessage"
+      :empty="!card"
+      empty-icon="mdi-card-off-outline"
+      empty-message="選手カードが見つかりません"
+      @retry="fetchCard"
     >
-      {{ errorMessage }}
-    </v-alert>
-
-    <!-- 戻るボタン -->
-    <button class="detail-back-btn" @click="router.back()">← 一覧に戻る</button>
-
-    <template v-if="card">
-      <div class="detail-wrap">
-        <!-- カードヘッダー (藍色帯) -->
-        <div class="detail-card-header">
-          <div>
-            <div class="detail-player-name">#{{ card.player?.number }} {{ card.player?.name }}</div>
-            <div class="detail-player-sub">
-              {{ card.card_set?.name }} ／ {{ handednessToJa(card.handedness) }}
-            </div>
-          </div>
-          <span class="type-chip-header" :class="card.card_type">
-            {{ card.card_type === 'pitcher' ? '投手' : '野手' }}
-          </span>
-          <div style="flex: 1"></div>
-          <span class="header-badge">選手カード詳細</span>
-        </div>
-
+      <v-card v-if="card" class="detail-card">
         <div class="detail-body">
           <!-- 基本情報セクションヘッダー -->
           <div class="section-header-row">
             <span class="section-header-title">基本情報</span>
+            <span class="type-chip-header" :class="card.card_type" data-testid="card-type-chip">
+              {{ card.card_type === 'pitcher' ? '投手' : '野手' }}
+            </span>
             <v-btn
               size="x-small"
               variant="outlined"
@@ -295,9 +272,8 @@
           </div>
         </div>
         <!-- /detail-body -->
-      </div>
-      <!-- /detail-wrap -->
-    </template>
+      </v-card>
+    </AsyncState>
 
     <!-- ■ 基本情報編集ダイアログ -->
     <v-dialog v-model="basicEditDialog" max-width="640px" persistent>
@@ -628,14 +604,17 @@
         </v-card-actions>
       </v-card>
     </v-dialog>
-  </v-container>
+  </PageLayout>
 </template>
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { useRoute } from 'vue-router'
 import axios from '@/plugins/axios'
 import BattingTable from '@/components/BattingTable.vue'
+import AsyncState from '@/components/shared/AsyncState.vue'
+import PageLayout from '@/components/shared/PageLayout.vue'
+import { useAppBarTitle } from '@/composables/useAppBarTitle'
 
 const HANDEDNESS_MAP: Record<string, string> = {
   right_throw: '右投',
@@ -724,10 +703,22 @@ interface PlayerCardDetail {
 }
 
 const route = useRoute()
-const router = useRouter()
 const card = ref<PlayerCardDetail | null>(null)
-const loading = ref(false)
-const errorMessage = ref('')
+const loading = ref(true)
+const fetchFailed = ref(false)
+const errorMessage = '選手カードの取得に失敗しました'
+
+// ヘッダーバー: タイトル=選手名、サブタイトル=背番号 ・ カードセット、戻り先=選手カード（取得前・失敗時も戻れるよう常に宣言する）
+useAppBarTitle(() => {
+  const number = card.value?.player?.number
+  const cardSet = card.value?.card_set?.name
+  const subtitle = [number ? `#${number}` : '', cardSet ?? ''].filter(Boolean).join(' ・ ')
+  return {
+    title: card.value?.player?.name ?? '選手カード詳細',
+    subtitle: subtitle || null,
+    back: { to: '/player-cards', label: '選手カード' },
+  }
+})
 const saving = ref(false)
 const editError = ref('')
 const imageDialog = ref(false)
@@ -774,13 +765,13 @@ onMounted(() => {
 
 async function fetchCard() {
   loading.value = true
-  errorMessage.value = ''
+  fetchFailed.value = false
   try {
     const id = route.params.id
     const response = await axios.get<PlayerCardDetail>(`/player_cards/${id}`)
     card.value = response.data
   } catch (error) {
-    errorMessage.value = '選手カードの取得に失敗しました'
+    fetchFailed.value = true
     console.error('Error fetching player card:', error)
   } finally {
     loading.value = false
@@ -1002,62 +993,7 @@ function extractErrorMessage(error: unknown): string {
 </script>
 
 <style scoped>
-/* ── 戻るボタン ── */
-.detail-back-btn {
-  background: none;
-  border: 1px solid rgb(var(--v-theme-border-strong));
-  padding: 3px 10px;
-  border-radius: 3px;
-  cursor: pointer;
-  font-size: 0.79em;
-  margin-bottom: 8px;
-  color: rgb(var(--v-theme-on-surface-variant));
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-}
-
-.detail-back-btn:hover {
-  background: rgb(var(--v-theme-surface-variant));
-  border-color: rgb(var(--v-theme-border-strong));
-}
-
-/* ── 詳細ラッパー ── */
-.detail-wrap {
-  color: rgb(var(--v-theme-on-surface));
-  background: rgb(var(--v-theme-surface));
-  border: 1px solid rgb(var(--v-theme-border-strong));
-  border-radius: 6px;
-  overflow: hidden;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
-}
-
-/* ── カードヘッダー (藍色帯) ── */
-.detail-card-header {
-  background: rgb(var(--v-theme-primary));
-  color: rgb(var(--v-theme-on-primary));
-  padding: 7px 14px;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  border-top: 3px solid rgb(var(--v-theme-border-strong));
-  box-shadow: 0 3px 6px rgba(0, 0, 0, 0.4);
-}
-
-.detail-player-name {
-  font-size: 1.05em;
-  font-weight: bold;
-}
-
-.detail-player-sub {
-  font-size: 0.76em;
-  margin-top: 1px;
-}
-
-.header-badge {
-  font-size: 0.72em;
-}
-
+/* ── 種別チップ（基本情報の見出し行） ── */
 .type-chip-header {
   padding: 2px 9px;
   border-radius: 10px;

@@ -6,6 +6,7 @@ import * as directives from 'vuetify/directives'
 import { createI18n } from 'vue-i18n'
 import { createRouter, createMemoryHistory } from 'vue-router'
 import TeamMembers from '../TeamMembers.vue'
+import { appBarTitle } from '@/composables/useAppBarTitle'
 import realJa from '@/locales/ja.json'
 
 const { mockShowSnackbar } = vi.hoisted(() => ({
@@ -56,6 +57,8 @@ const i18n = createI18n({
       // 違反の欄（ViolationList）は実際の文言で見る
       violationList: realJa.violationList,
       asOfBar: realJa.asOfBar,
+      asyncState: realJa.asyncState,
+      seasonPortal: { shortTitle: realJa.seasonPortal.shortTitle, tabs: realJa.seasonPortal.tabs },
       teamMembers: {
         title: 'チーム「{teamName}」の選手登録',
         selectCostList: 'コスト一覧表を選択',
@@ -262,6 +265,161 @@ describe('TeamMembers.vue', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockShowSnackbar.mockClear()
+  })
+
+  // Test Basis: thbig-dugout-ui-unification-design.md §4.3（SeasonPortal のタブ内に別画面が入る件）・モック §5（チーム名をバーへ、「← シーズン」で戻る）
+  describe('ヘッダーバーと骨格（単独の画面 / 埋め込み）', () => {
+    it('単独の画面: タイトル=チーム名、サブタイトル=チーム編成、戻り先=シーズン。本文に h1 を持たない', async () => {
+      const wrapper = await mountTeamMembers()
+      expect(appBarTitle.value).toEqual({
+        title: '紅魔館',
+        subtitle: 'チーム編成',
+        back: { to: { name: 'SeasonPortal', params: { teamId: 1 } }, label: 'シーズン' },
+      })
+      expect(wrapper.find('h1').exists()).toBe(false)
+      expect(wrapper.find('[data-testid="page-layout"]').exists()).toBe(true)
+      wrapper.unmount()
+      expect(appBarTitle.value).toBeNull()
+    })
+
+    it('チーム名が届くまでも、戻り先（シーズン）はバーに出ている', async () => {
+      setupDefaultMocks()
+      const pending = new Promise<{ data: unknown }>(() => {})
+      const base = vi.mocked(axios.get).getMockImplementation()!
+      vi.mocked(axios.get).mockImplementation((url: string, config?: unknown) =>
+        /\/teams\/\d+$/.test(url) ? pending : base(url, config as never),
+      )
+      const router = createTestRouter()
+      router.push('/teams/1/members')
+      await router.isReady()
+      const wrapper = mount(TeamMembers, { global: { plugins: [vuetify, i18n, router] } })
+      await flushPromises()
+      expect(appBarTitle.value).toEqual({
+        title: 'チーム編成',
+        subtitle: null,
+        back: { to: { name: 'SeasonPortal', params: { teamId: 1 } }, label: 'シーズン' },
+      })
+      wrapper.unmount()
+    })
+
+    it('チーム名の取得に失敗しても画面は使え、バーは「チーム編成」と戻り先を出す', async () => {
+      setupDefaultMocks()
+      const base = vi.mocked(axios.get).getMockImplementation()!
+      vi.mocked(axios.get).mockImplementation((url: string, config?: unknown) =>
+        /\/teams\/\d+$/.test(url) ? Promise.reject(new Error('boom')) : base(url, config as never),
+      )
+      const router = createTestRouter()
+      router.push('/teams/1/members')
+      await router.isReady()
+      const wrapper = mount(TeamMembers, { global: { plugins: [vuetify, i18n, router] } })
+      await flushPromises()
+      expect(appBarTitle.value?.title).toBe('チーム編成')
+      expect(appBarTitle.value?.back?.label).toBe('シーズン')
+      expect(wrapper.text()).toContain('チームメンバー')
+      wrapper.unmount()
+    })
+
+    it('埋め込み（teamId を props で受ける）: バーを変えず、骨格（PageLayout）も持たない', async () => {
+      setupDefaultMocks()
+      appBarTitle.value = { title: 'シーズン側の題', subtitle: 'シーズン' }
+      const router = createTestRouter()
+      router.push('/teams/1/members')
+      await router.isReady()
+      const wrapper = mount(TeamMembers, {
+        props: { teamId: 1, asOfDate: '2026-05-01', phase: 'pre_game' },
+        global: { plugins: [vuetify, i18n, router] },
+      })
+      await flushPromises()
+      expect(appBarTitle.value).toEqual({ title: 'シーズン側の題', subtitle: 'シーズン' })
+      expect(wrapper.find('[data-testid="page-layout"]').exists()).toBe(false)
+      expect(wrapper.find('h1').exists()).toBe(false)
+      // 埋め込みでもチーム名は取りに行かない（バーを持たないため）
+      expect(
+        vi.mocked(axios.get).mock.calls.some(([url]) => /\/teams\/\d+$/.test(String(url))),
+      ).toBe(false)
+      wrapper.unmount()
+      appBarTitle.value = null
+    })
+  })
+
+  describe('読み込み中・失敗の出し方', () => {
+    it('読み込み中は「選手が登録されていません」を出さない。終わってから出す', async () => {
+      setupDefaultMocks()
+      let resolvePlayers!: (value: { data: unknown[] }) => void
+      const pending = new Promise<{ data: unknown[] }>((resolve) => {
+        resolvePlayers = resolve
+      })
+      const base = vi.mocked(axios.get).getMockImplementation()!
+      vi.mocked(axios.get).mockImplementation((url: string, config?: unknown) =>
+        url.endsWith('/team_players') ? pending : base(url, config as never),
+      )
+      const router = createTestRouter()
+      router.push('/teams/1/members')
+      await router.isReady()
+      const wrapper = mount(TeamMembers, { global: { plugins: [vuetify, i18n, router] } })
+      await flushPromises()
+      expect(wrapper.text()).not.toContain('選手が登録されていません')
+      resolvePlayers({ data: [] })
+      await flushPromises()
+      expect(wrapper.text()).toContain('選手が登録されていません')
+      wrapper.unmount()
+    })
+
+    it('選手の取得に失敗した時はページ内のアラートを出し、再読み込みで取り直す', async () => {
+      setupDefaultMocks([makeTeamPlayer({ id: 7, name: '再取得の選手' })])
+      const base = vi.mocked(axios.get).getMockImplementation()!
+      let failOnce = true
+      vi.mocked(axios.get).mockImplementation((url: string, config?: unknown) => {
+        if (failOnce && url.endsWith('/team_players')) {
+          failOnce = false
+          return Promise.reject(new Error('boom'))
+        }
+        return base(url, config as never)
+      })
+      const router = createTestRouter()
+      router.push('/teams/1/members')
+      await router.isReady()
+      const wrapper = mount(TeamMembers, { global: { plugins: [vuetify, i18n, router] } })
+      await flushPromises()
+      expect(wrapper.find('[data-testid="state-error"]').text()).toContain(
+        'チームの選手一覧の取得に失敗しました',
+      )
+      // 取得の失敗はスナックバーでなくページ内のアラート
+      expect(mockShowSnackbar).not.toHaveBeenCalledWith(
+        'チームの選手一覧の取得に失敗しました。',
+        'error',
+      )
+      await wrapper.find('[data-testid="state-retry"]').trigger('click')
+      await flushPromises()
+      expect(wrapper.find('[data-testid="state-error"]').exists()).toBe(false)
+      expect(wrapper.text()).toContain('再取得の選手')
+      wrapper.unmount()
+    })
+
+    it('コスト表の取得に失敗した時の再読み込みは、最初から取り直す', async () => {
+      setupDefaultMocks([makeTeamPlayer({ id: 8, name: '最初からの選手' })])
+      const base = vi.mocked(axios.get).getMockImplementation()!
+      let failOnce = true
+      vi.mocked(axios.get).mockImplementation((url: string, config?: unknown) => {
+        if (failOnce && url === '/costs') {
+          failOnce = false
+          return Promise.reject(new Error('boom'))
+        }
+        return base(url, config as never)
+      })
+      const router = createTestRouter()
+      router.push('/teams/1/members')
+      await router.isReady()
+      const wrapper = mount(TeamMembers, { global: { plugins: [vuetify, i18n, router] } })
+      await flushPromises()
+      expect(wrapper.find('[data-testid="state-error"]').exists()).toBe(true)
+      expect(wrapper.text()).not.toContain('選手が登録されていません')
+      await wrapper.find('[data-testid="state-retry"]').trigger('click')
+      await flushPromises()
+      expect(wrapper.find('[data-testid="state-error"]').exists()).toBe(false)
+      expect(wrapper.text()).toContain('最初からの選手')
+      wrapper.unmount()
+    })
   })
 
   it('チームメンバー一覧のタイトルが表示される', async () => {

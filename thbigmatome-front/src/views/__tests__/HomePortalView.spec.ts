@@ -2,6 +2,8 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { ref } from 'vue'
 import { mount, flushPromises } from '@vue/test-utils'
 import { createVuetify } from 'vuetify'
+import { createI18n } from 'vue-i18n'
+import ja from '@/locales/ja.json'
 import * as components from 'vuetify/components'
 import * as directives from 'vuetify/directives'
 import { createRouter, createMemoryHistory } from 'vue-router'
@@ -57,6 +59,13 @@ import { useTeamSelectionStore } from '@/stores/teamSelection'
 
 const vuetify = createVuetify({ components, directives })
 
+// AsyncState（読み込み・空・失敗の出し方）が文言を引く
+const i18n = createI18n({
+  legacy: false,
+  locale: 'ja',
+  messages: { ja: { asyncState: ja.asyncState } },
+})
+
 function createTestRouter() {
   return createRouter({
     history: createMemoryHistory(),
@@ -103,7 +112,7 @@ describe('HomePortalView', () => {
     teamStore.setMyTeams([teamA])
 
     const router = createTestRouter()
-    const wrapper = mount(HomePortalView, { global: { plugins: [vuetify, router, pinia] } })
+    const wrapper = mount(HomePortalView, { global: { plugins: [vuetify, i18n, router, pinia] } })
     await flushPromises()
 
     expect(wrapper.find('.season-portal-stub').exists()).toBe(true)
@@ -117,7 +126,7 @@ describe('HomePortalView', () => {
     teamStore.setMyTeams([teamA, teamB])
 
     const router = createTestRouter()
-    const wrapper = mount(HomePortalView, { global: { plugins: [vuetify, router, pinia] } })
+    const wrapper = mount(HomePortalView, { global: { plugins: [vuetify, i18n, router, pinia] } })
     await flushPromises()
 
     // タブが表示される
@@ -134,7 +143,7 @@ describe('HomePortalView', () => {
     teamStore.setMyTeams([])
 
     const router = createTestRouter()
-    const wrapper = mount(HomePortalView, { global: { plugins: [vuetify, router, pinia] } })
+    const wrapper = mount(HomePortalView, { global: { plugins: [vuetify, i18n, router, pinia] } })
     await flushPromises()
 
     expect(wrapper.find('.season-portal-stub').exists()).toBe(false)
@@ -148,7 +157,7 @@ describe('HomePortalView', () => {
     teamStore.setMyTeams([teamA])
 
     const router = createTestRouter()
-    mount(HomePortalView, { global: { plugins: [vuetify, router, pinia] } })
+    mount(HomePortalView, { global: { plugins: [vuetify, i18n, router, pinia] } })
     await flushPromises()
 
     // HomePortalViewはaxiosを直接呼ばない（useAuthが処理済み）
@@ -165,7 +174,7 @@ describe('HomePortalView', () => {
     teamStore.setMyTeams([teamA])
 
     const router = createTestRouter()
-    const wrapper = mount(HomePortalView, { global: { plugins: [vuetify, router, pinia] } })
+    const wrapper = mount(HomePortalView, { global: { plugins: [vuetify, i18n, router, pinia] } })
     await flushPromises()
 
     // リリース向けUI整理: タブは非表示、ダッシュボードを直接表示
@@ -182,9 +191,58 @@ describe('HomePortalView', () => {
     teamStore.setMyTeams([teamA])
 
     const router = createTestRouter()
-    const wrapper = mount(HomePortalView, { global: { plugins: [vuetify, router, pinia] } })
+    const wrapper = mount(HomePortalView, { global: { plugins: [vuetify, i18n, router, pinia] } })
     await flushPromises()
 
     expect(wrapper.find('.commissioner-dashboard-stub').exists()).toBe(false)
+  })
+
+  // Test Basis: thbig-dugout-ui-unification-design.md §2.1（本文に画面タイトルを置かない）・§4.3（埋め込みの SeasonPortal は自分の骨格を持つ）
+  describe('骨格', () => {
+    async function mountHome(teams: (typeof teamA)[], commissioner = false) {
+      mockIsCommissioner.value = commissioner
+      const pinia = createPinia()
+      setActivePinia(pinia)
+      useTeamSelectionStore().setMyTeams(teams)
+      const router = createTestRouter()
+      const wrapper = mount(HomePortalView, {
+        global: { plugins: [vuetify, i18n, router, pinia] },
+      })
+      await flushPromises()
+      return wrapper
+    }
+
+    it('コミッショナー: 骨格（PageLayout）の中にダッシュボードを置き、h1 は持たない', async () => {
+      const wrapper = await mountHome([teamA], true)
+      const layouts = wrapper.findAll('[data-testid="page-layout"]')
+      expect(layouts).toHaveLength(1)
+      expect(layouts[0].find('.commissioner-dashboard-stub').exists()).toBe(true)
+      expect(wrapper.find('h1').exists()).toBe(false)
+      expect(wrapper.find('.v-container').exists()).toBe(false)
+    })
+
+    it('チーム1件: SeasonPortal が自分の骨格を持つので、ホームは骨格で二重に包まない', async () => {
+      const wrapper = await mountHome([teamA])
+      expect(wrapper.find('.season-portal-stub').exists()).toBe(true)
+      expect(wrapper.find('[data-testid="page-layout"]').exists()).toBe(false)
+    })
+
+    it('チーム2件: タブだけの帯（骨格）の下に SeasonPortal を置く', async () => {
+      const wrapper = await mountHome([teamA, teamB])
+      const layout = wrapper.find('[data-testid="page-layout"]')
+      expect(layout.find('[data-testid="page-tabs"]').exists()).toBe(true)
+      expect(layout.find('.season-portal-stub').exists()).toBe(false)
+      expect(wrapper.find('.season-portal-stub').exists()).toBe(true)
+    })
+
+    it('チーム0件: 空状態（EmptyState）で次の一手（コミッショナーへの問い合わせ）を示す', async () => {
+      const wrapper = await mountHome([])
+      expect(wrapper.find('[data-testid="state-empty"]').text()).toContain(
+        'チームが割り当てられていません',
+      )
+      expect(wrapper.find('[data-testid="state-empty"]').text()).toContain(
+        'コミッショナーにお問い合わせください',
+      )
+    })
   })
 })

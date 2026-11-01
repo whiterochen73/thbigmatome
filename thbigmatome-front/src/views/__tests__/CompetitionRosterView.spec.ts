@@ -1,10 +1,13 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { mount, flushPromises } from '@vue/test-utils'
 import { createVuetify } from 'vuetify'
+import { createI18n } from 'vue-i18n'
+import ja from '@/locales/ja.json'
 import * as components from 'vuetify/components'
 import * as directives from 'vuetify/directives'
 import { createRouter, createMemoryHistory } from 'vue-router'
 import CompetitionRosterView from '../CompetitionRosterView.vue'
+import { appBarTitle } from '@/composables/useAppBarTitle'
 
 // Mock axios
 vi.mock('axios', () => {
@@ -32,6 +35,13 @@ vi.mock('@/plugins/axios', () => {
 import axios from 'axios'
 
 const vuetify = createVuetify({ components, directives })
+
+// AsyncState（読み込み・空・失敗の出し方）が文言を引く
+const i18n = createI18n({
+  legacy: false,
+  locale: 'ja',
+  messages: { ja: { asyncState: ja.asyncState } },
+})
 
 function createTestRouter() {
   return createRouter({
@@ -110,7 +120,7 @@ async function mountView(costCheck = mockCostCheckOk) {
   await router.isReady()
   const wrapper = mount(CompetitionRosterView, {
     global: {
-      plugins: [vuetify, router],
+      plugins: [vuetify, i18n, router],
     },
   })
   await flushPromises()
@@ -186,5 +196,43 @@ describe('CompetitionRosterView.vue', () => {
     expect(vi.mocked(axios.delete)).toHaveBeenCalledWith(
       expect.stringContaining('/roster/players/'),
     )
+  })
+
+  it('ヘッダーバー: タイトル=大会名、サブタイトル=大会ロスター、戻り先=大会管理', async () => {
+    const wrapper = await mountView()
+    expect(appBarTitle.value).toEqual({
+      title: 'テスト大会',
+      subtitle: '大会ロスター',
+      back: { to: '/commissioner/competitions', label: '大会管理' },
+    })
+    expect(wrapper.find('h1').exists()).toBe(false)
+    wrapper.unmount()
+    expect(appBarTitle.value).toBeNull()
+  })
+
+  it('ロスターの取得に失敗した時はページ内のアラートを出し、再読み込みで取り直す', async () => {
+    setupDefaultMocks(mockCostCheckOk)
+    const base = vi.mocked(axios.get).getMockImplementation()!
+    let failOnce = true
+    vi.mocked(axios.get).mockImplementation((url: string, config?: unknown) => {
+      if (failOnce && url.endsWith('/roster')) {
+        failOnce = false
+        return Promise.reject(new Error('boom'))
+      }
+      return base(url, config as never)
+    })
+    const router = createTestRouter()
+    router.push('/competitions/1/roster/10')
+    await router.isReady()
+    const wrapper = mount(CompetitionRosterView, { global: { plugins: [vuetify, i18n, router] } })
+    await flushPromises()
+    expect(wrapper.find('[data-testid="state-error"]').text()).toContain(
+      'ロスターの取得に失敗しました',
+    )
+    await wrapper.find('[data-testid="state-retry"]').trigger('click')
+    await flushPromises()
+    expect(wrapper.find('[data-testid="state-error"]').exists()).toBe(false)
+    expect(wrapper.text()).toContain('博麗霊夢')
+    wrapper.unmount()
   })
 })

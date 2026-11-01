@@ -1,5 +1,5 @@
 <template>
-  <v-container>
+  <PageLayout>
     <!-- チーム未割り当て状態 -->
     <template v-if="!loadingTeams && myTeams.length === 0">
       <v-empty-state
@@ -20,19 +20,19 @@
         label="大会"
         density="compact"
         clearable
-        class="mb-4"
+        hide-details
         @update:model-value="fetchSummary"
       />
 
       <!-- ローディング中 -->
       <template v-if="loading">
-        <v-skeleton-loader type="card" class="mb-4" />
-        <v-skeleton-loader type="card" class="mb-4" />
-        <v-skeleton-loader type="card" class="mb-4" />
+        <v-skeleton-loader type="card" />
+        <v-skeleton-loader type="card" />
+        <v-skeleton-loader type="card" />
       </template>
 
       <!-- シーズン進行カード -->
-      <v-card v-if="!loading" class="mb-4" elevation="1">
+      <v-card v-if="!loading">
         <v-card-title class="text-h6">シーズン進行</v-card-title>
         <v-card-text>
           <div v-if="summary" class="mb-2">
@@ -61,7 +61,7 @@
       </v-card>
 
       <!-- 直近の試合結果 -->
-      <v-card v-if="!loading" class="mb-4" elevation="1">
+      <v-card v-if="!loading">
         <v-card-title class="text-h6">直近の試合結果</v-card-title>
         <v-card-text class="pa-0">
           <v-list density="compact" v-if="summary && summary.recent_games.length > 0">
@@ -91,7 +91,7 @@
       </v-card>
 
       <!-- 成績サマリー -->
-      <v-card v-if="!loading" class="mb-4" elevation="1">
+      <v-card v-if="!loading">
         <v-card-title class="text-h6">成績サマリー</v-card-title>
         <v-card-text>
           <div v-if="summary && summary.team_summary" class="mb-4">
@@ -168,20 +168,21 @@
       </v-card>
 
       <!-- お知らせエリア -->
-      <v-card v-if="!loading" elevation="1">
+      <v-card v-if="!loading">
         <v-card-title class="text-h6">お知らせ</v-card-title>
         <v-card-text>
           <span class="text-caption text-medium-emphasis">お知らせはありません</span>
         </v-card-text>
       </v-card>
     </template>
-  </v-container>
+  </PageLayout>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import axios from 'axios'
 import { useTeamSelectionStore } from '@/stores/teamSelection'
+import PageLayout from '@/components/shared/PageLayout.vue'
 
 interface MyTeam {
   id: number

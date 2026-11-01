@@ -1,157 +1,136 @@
 <template>
-  <v-container>
-    <!-- エラー（常時表示） -->
-    <v-alert
-      v-if="errorMessage"
-      type="error"
-      variant="tonal"
-      class="mb-3"
-      closable
-      @click:close="errorMessage = ''"
+  <PageLayout>
+    <AsyncState
+      framed
+      skeleton="article"
+      :loading="loading"
+      :error="fetchFailed"
+      :error-message="errorMessage"
+      :empty="!gameRecord"
+      empty-icon="mdi-baseball-bat"
+      empty-message="試合記録が見つかりません"
+      @retry="fetchGameRecord"
     >
-      {{ errorMessage }}
-    </v-alert>
+      <template v-if="gameRecord">
+        <v-card variant="outlined" density="compact" data-testid="game-record-summary">
+          <v-card-text class="py-2">
+            <v-row no-gutters>
+              <v-col cols="auto" class="mr-4">
+                <span class="text-caption on-surface-variant">状態</span><br />
+                <v-chip
+                  :color="gameRecord.status === 'confirmed' ? 'state-done' : 'state-todo'"
+                  size="small"
+                  label
+                  variant="flat"
+                  :prepend-icon="
+                    gameRecord.status === 'confirmed' ? 'mdi-check-circle' : 'mdi-circle-outline'
+                  "
+                  data-testid="game-record-status"
+                >
+                  {{ gameRecord.status === 'confirmed' ? '確定済み' : '未確定' }}
+                </v-chip>
+              </v-col>
+              <v-col cols="auto" class="mr-4">
+                <span class="text-caption on-surface-variant">日付</span><br />
+                <span>{{ formatDate(gameRecord.game_date) }}</span>
+              </v-col>
+              <v-col cols="auto" class="mr-4">
+                <span class="text-caption on-surface-variant">スコア</span><br />
+                <span class="font-weight-bold">
+                  {{ gameRecord.score_away ?? '?' }} - {{ gameRecord.score_home ?? '?' }}
+                </span>
+              </v-col>
+              <v-col cols="auto" class="mr-4" v-if="gameRecord.stadium">
+                <span class="text-caption on-surface-variant">球場</span><br />
+                <span>{{ gameRecord.stadium }}</span>
+              </v-col>
+              <v-col cols="auto">
+                <span class="text-caption on-surface-variant">打席数</span><br />
+                <span>{{ gameRecord.at_bat_records?.length ?? '-' }}</span>
+              </v-col>
+            </v-row>
+          </v-card-text>
+        </v-card>
 
-    <!-- ローディング -->
-    <v-row v-if="loading">
-      <v-col class="text-center py-8">
-        <v-progress-circular indeterminate color="primary" />
-      </v-col>
-    </v-row>
+        <!-- 成功通知 -->
+        <v-snackbar v-model="snackbar" :color="snackbarColor" timeout="3000" location="bottom">
+          {{ snackbarMessage }}
+        </v-snackbar>
 
-    <template v-else-if="gameRecord">
-      <!-- ヘッダー: 試合サマリー -->
-      <v-row>
-        <v-col cols="12" class="d-flex align-center flex-wrap gap-2">
-          <v-btn
-            variant="text"
-            icon="mdi-arrow-left"
-            size="small"
-            @click="router.push({ name: '試合記録' })"
-          />
-          <h1 class="text-h5">vs {{ gameRecord.opponent_team_name }}</h1>
-          <v-chip
-            :color="gameRecord.status === 'confirmed' ? 'state-done' : 'state-todo'"
-            size="small"
-            label
-            variant="flat"
-            :prepend-icon="
-              gameRecord.status === 'confirmed' ? 'mdi-check-circle' : 'mdi-circle-outline'
-            "
-            class="ml-1"
-          >
-            {{ gameRecord.status === 'confirmed' ? '確定済み' : '未確定' }}
-          </v-chip>
-        </v-col>
-      </v-row>
-
-      <v-row class="mb-2">
-        <v-col cols="12">
-          <v-card variant="outlined" density="compact">
-            <v-card-text class="py-2">
-              <v-row no-gutters>
-                <v-col cols="auto" class="mr-4">
-                  <span class="text-caption on-surface-variant">日付</span><br />
-                  <span>{{ formatDate(gameRecord.game_date) }}</span>
-                </v-col>
-                <v-col cols="auto" class="mr-4">
-                  <span class="text-caption on-surface-variant">スコア</span><br />
-                  <span class="font-weight-bold">
-                    {{ gameRecord.score_away ?? '?' }} - {{ gameRecord.score_home ?? '?' }}
-                  </span>
-                </v-col>
-                <v-col cols="auto" class="mr-4" v-if="gameRecord.stadium">
-                  <span class="text-caption on-surface-variant">球場</span><br />
-                  <span>{{ gameRecord.stadium }}</span>
-                </v-col>
-                <v-col cols="auto">
-                  <span class="text-caption on-surface-variant">打席数</span><br />
-                  <span>{{ gameRecord.at_bat_records?.length ?? '-' }}</span>
-                </v-col>
-              </v-row>
-            </v-card-text>
-          </v-card>
-        </v-col>
-      </v-row>
-
-      <!-- 成功通知 -->
-      <v-snackbar v-model="snackbar" :color="snackbarColor" timeout="3000" location="bottom">
-        {{ snackbarMessage }}
-      </v-snackbar>
-
-      <!-- レビュー進捗バー (draft時のみ) -->
-      <div v-if="gameRecord.status === 'draft'" class="review-progress mb-3">
-        <div class="d-flex align-center justify-space-between mb-1">
-          <span class="text-caption on-surface-variant">確認済み打席</span>
-          <span class="text-caption font-weight-bold">{{ reviewedCount }} / {{ totalCount }}</span>
-        </div>
-        <v-progress-linear
-          :model-value="reviewProgress"
-          color="success"
-          bg-color="surface-variant"
-          rounded
-          height="8"
-        />
-      </div>
-
-      <!-- フィルタバー -->
-      <div class="filter-bar mb-3">
-        <v-chip-group v-model="activeFilter" mandatory>
-          <v-chip value="all" label variant="outlined" filter>全て</v-chip>
-          <v-chip value="declaration" label variant="outlined" filter>📢 宣言のみ</v-chip>
-          <v-chip value="dice" label variant="outlined" filter>🎲 ダイスのみ</v-chip>
-          <v-chip value="discrepancy" label variant="outlined" filter color="danger-ink"
-            >⚠️ 差異あり</v-chip
-          >
-        </v-chip-group>
-      </div>
-
-      <!-- イニング別タイムライン -->
-      <div v-for="group in inningGroups" :key="group.key" class="inning-section mb-4">
-        <!-- イニングサマリーバー -->
-        <div
-          class="inning-header d-flex align-center gap-3 px-3 py-2 cursor-pointer"
-          :class="group.half === 'top' ? 'top-header' : 'bot-header'"
-          @click="toggleInning(group.key)"
-        >
-          <span class="text-subtitle-2 font-weight-bold">{{ group.label }}</span>
-          <span class="text-caption inning-meta">投手: {{ group.pitcher }}</span>
-          <span class="text-caption inning-meta">打席数: {{ group.records.length }}</span>
-          <span class="text-caption inning-meta">得点: {{ group.totalRuns }}</span>
-          <v-chip
-            v-if="group.discrepancyCount > 0"
-            color="state-warn"
-            variant="flat"
-            size="x-small"
-            label
-            class="ml-1"
-          >
-            ⚠️ 差異 {{ group.discrepancyCount }}
-          </v-chip>
-          <v-spacer />
-          <v-icon size="small">
-            {{ collapsedInnings[group.key] ? 'mdi-chevron-right' : 'mdi-chevron-down' }}
-          </v-icon>
-        </div>
-
-        <!-- 打席カード群 -->
-        <div v-show="!collapsedInnings[group.key]" class="inning-body pa-3">
-          <AtBatCard
-            v-for="ab in filteredRecords(group.records)"
-            :key="ab.id"
-            :ab="ab"
-            :game-status="gameRecord.status"
-            :active-filter="activeFilter"
-            class="mb-3"
-            @updated="onAtBatUpdated"
-            @error="showSnackbar($event, 'error')"
+        <!-- レビュー進捗バー (draft時のみ) -->
+        <div v-if="gameRecord.status === 'draft'" class="review-progress mb-3">
+          <div class="d-flex align-center justify-space-between mb-1">
+            <span class="text-caption on-surface-variant">確認済み打席</span>
+            <span class="text-caption font-weight-bold"
+              >{{ reviewedCount }} / {{ totalCount }}</span
+            >
+          </div>
+          <v-progress-linear
+            :model-value="reviewProgress"
+            color="success"
+            bg-color="surface-variant"
+            rounded
+            height="8"
           />
         </div>
-      </div>
 
-      <!-- アクションバー (draft時) -->
-      <v-row v-if="gameRecord.status === 'draft'" class="mt-2">
-        <v-col cols="12" class="d-flex justify-end gap-3">
+        <!-- フィルタバー -->
+        <div class="filter-bar mb-3">
+          <v-chip-group v-model="activeFilter" mandatory>
+            <v-chip value="all" label variant="outlined" filter>全て</v-chip>
+            <v-chip value="declaration" label variant="outlined" filter>📢 宣言のみ</v-chip>
+            <v-chip value="dice" label variant="outlined" filter>🎲 ダイスのみ</v-chip>
+            <v-chip value="discrepancy" label variant="outlined" filter color="danger-ink"
+              >⚠️ 差異あり</v-chip
+            >
+          </v-chip-group>
+        </div>
+
+        <!-- イニング別タイムライン -->
+        <div v-for="group in inningGroups" :key="group.key" class="inning-section mb-4">
+          <!-- イニングサマリーバー -->
+          <div
+            class="inning-header d-flex align-center gap-3 px-3 py-2 cursor-pointer"
+            :class="group.half === 'top' ? 'top-header' : 'bot-header'"
+            @click="toggleInning(group.key)"
+          >
+            <span class="text-subtitle-2 font-weight-bold">{{ group.label }}</span>
+            <span class="text-caption inning-meta">投手: {{ group.pitcher }}</span>
+            <span class="text-caption inning-meta">打席数: {{ group.records.length }}</span>
+            <span class="text-caption inning-meta">得点: {{ group.totalRuns }}</span>
+            <v-chip
+              v-if="group.discrepancyCount > 0"
+              color="state-warn"
+              variant="flat"
+              size="x-small"
+              label
+              class="ml-1"
+            >
+              ⚠️ 差異 {{ group.discrepancyCount }}
+            </v-chip>
+            <v-spacer />
+            <v-icon size="small">
+              {{ collapsedInnings[group.key] ? 'mdi-chevron-right' : 'mdi-chevron-down' }}
+            </v-icon>
+          </div>
+
+          <!-- 打席カード群 -->
+          <div v-show="!collapsedInnings[group.key]" class="inning-body pa-3">
+            <AtBatCard
+              v-for="ab in filteredRecords(group.records)"
+              :key="ab.id"
+              :ab="ab"
+              :game-status="gameRecord.status"
+              :active-filter="activeFilter"
+              class="mb-3"
+              @updated="onAtBatUpdated"
+              @error="showSnackbar($event, 'error')"
+            />
+          </div>
+        </div>
+
+        <!-- アクションバー (draft時) -->
+        <div v-if="gameRecord.status === 'draft'" class="d-flex justify-end ga-3">
           <v-btn
             :style="{ borderColor: 'rgb(var(--v-theme-border-strong))' }"
             variant="outlined"
@@ -169,12 +148,9 @@
           >
             このゲームを確定
           </v-btn>
-        </v-col>
-      </v-row>
-    </template>
-
-    <!-- not found -->
-    <EmptyState v-else-if="!loading" icon="mdi-baseball-bat" message="試合記録が見つかりません" />
+        </div>
+      </template>
+    </AsyncState>
 
     <!-- 全打席確定ダイアログ -->
     <v-dialog v-model="bulkConfirmDialog" max-width="400px" persistent>
@@ -193,15 +169,17 @@
         </v-card-actions>
       </v-card>
     </v-dialog>
-  </v-container>
+  </PageLayout>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, onMounted, reactive } from 'vue'
-import { useRouter, useRoute } from 'vue-router'
+import { useRoute } from 'vue-router'
 import axios from '@/plugins/axios'
 import AtBatCard from '@/components/AtBatCard.vue'
-import EmptyState from '@/components/EmptyState.vue'
+import AsyncState from '@/components/shared/AsyncState.vue'
+import PageLayout from '@/components/shared/PageLayout.vue'
+import { useAppBarTitle } from '@/composables/useAppBarTitle'
 import type { AtBatRecord } from '@/types/game-record'
 
 interface GameRecord {
@@ -226,21 +204,28 @@ interface InningGroup {
   records: AtBatRecord[]
 }
 
-const router = useRouter()
 const route = useRoute()
 
 const gameRecord = ref<GameRecord | null>(null)
-const loading = ref(false)
+const loading = ref(true)
 const confirming = ref(false)
 const bulkConfirming = ref(false)
 const bulkConfirmDialog = ref(false)
-const errorMessage = ref('')
+const fetchFailed = ref(false)
+const errorMessage = '試合記録の取得に失敗しました'
 const snackbar = ref(false)
 const snackbarMessage = ref('')
 const snackbarColor = ref('success')
 
 const activeFilter = ref('all')
 const collapsedInnings = reactive<Record<string, boolean>>({})
+
+// ヘッダーバー: タイトル=対戦相手、サブタイトル=日付、戻り先=試合記録（取得前・失敗時も戻れるよう常に宣言する）
+useAppBarTitle(() => ({
+  title: gameRecord.value ? `vs ${gameRecord.value.opponent_team_name}` : 'パーサーレビュー詳細',
+  subtitle: gameRecord.value ? formatDate(gameRecord.value.game_date) : null,
+  back: { to: { name: '試合記録' }, label: '試合記録' },
+}))
 
 const reviewedCount = computed(() => {
   return gameRecord.value?.at_bat_records?.filter((ab) => ab.is_reviewed).length ?? 0
@@ -355,19 +340,21 @@ async function confirmGameRecord() {
   }
 }
 
-onMounted(async () => {
+async function fetchGameRecord() {
   loading.value = true
-  errorMessage.value = ''
+  fetchFailed.value = false
   try {
     const id = route.params.id
     const response = await axios.get<GameRecord>(`/game_records/${id}`)
     gameRecord.value = response.data
   } catch {
-    errorMessage.value = '試合記録の取得に失敗しました'
+    fetchFailed.value = true
   } finally {
     loading.value = false
   }
-})
+}
+
+onMounted(fetchGameRecord)
 </script>
 
 <style scoped>

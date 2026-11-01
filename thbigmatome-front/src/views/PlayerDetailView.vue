@@ -1,40 +1,17 @@
 <template>
-  <v-container style="max-width: 1080px">
-    <v-progress-linear
-      v-if="loading"
-      indeterminate
-      color="primary"
-      class="mb-3"
-    ></v-progress-linear>
-
-    <v-alert
-      v-if="errorMessage"
-      type="error"
-      variant="tonal"
-      class="mb-3"
-      closable
-      @click:close="errorMessage = ''"
+  <PageLayout>
+    <AsyncState
+      framed
+      skeleton="article"
+      :loading="loading"
+      :error="fetchFailed"
+      :error-message="errorMessage"
+      :empty="!player"
+      empty-icon="mdi-account-off-outline"
+      empty-message="選手が見つかりません"
+      @retry="fetchPlayer"
     >
-      {{ errorMessage }}
-    </v-alert>
-
-    <!-- 戻るボタン -->
-    <button class="detail-back-btn" @click="router.push('/players')">← 一覧に戻る</button>
-
-    <template v-if="player">
-      <div class="detail-wrap">
-        <!-- ヘッダー (藍色帯) -->
-        <div class="detail-card-header">
-          <div>
-            <div class="detail-player-name">#{{ player.number }} {{ player.name }}</div>
-            <div class="detail-player-sub" v-if="player.short_name">
-              {{ player.short_name }}
-            </div>
-          </div>
-          <div style="flex: 1"></div>
-          <span class="header-badge">選手一覧</span>
-        </div>
-
+      <v-card v-if="player" class="detail-card">
         <div class="detail-body">
           <!-- 基本情報セクション -->
           <div class="section-header-row">
@@ -146,13 +123,12 @@
           <div v-else class="on-surface-variant text-caption pa-2">選手カードなし</div>
         </div>
         <!-- /detail-body -->
-      </div>
-      <!-- /detail-wrap -->
-    </template>
+      </v-card>
+    </AsyncState>
 
     <!-- 編集ダイアログ -->
     <PlayerDialog v-model="editDialog" :item="player" @save="onSave" />
-  </v-container>
+  </PageLayout>
 </template>
 
 <script setup lang="ts">
@@ -160,6 +136,9 @@ import { ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import axios from '@/plugins/axios'
 import PlayerDialog from '@/components/players/PlayerDialog.vue'
+import AsyncState from '@/components/shared/AsyncState.vue'
+import PageLayout from '@/components/shared/PageLayout.vue'
+import { useAppBarTitle } from '@/composables/useAppBarTitle'
 import type { PlayerDetail } from '@/types/playerDetail'
 
 const SERIES_LABEL_MAP: Record<string, string> = {
@@ -193,9 +172,17 @@ function handednessToJa(val: string | null | undefined): string {
 const route = useRoute()
 const router = useRouter()
 const player = ref<PlayerDetail | null>(null)
-const loading = ref(false)
-const errorMessage = ref('')
+const loading = ref(true)
+const fetchFailed = ref(false)
+const errorMessage = '選手情報の取得に失敗しました'
 const editDialog = ref(false)
+
+// ヘッダーバー: タイトル=選手名、サブタイトル=背番号、戻り先=選手一覧（取得前・失敗時も戻れるよう常に宣言する）
+useAppBarTitle(() => ({
+  title: player.value?.name ?? '選手詳細',
+  subtitle: player.value?.number ? `#${player.value.number}` : null,
+  back: { to: '/players', label: '選手一覧' },
+}))
 
 onMounted(() => {
   fetchPlayer()
@@ -203,13 +190,13 @@ onMounted(() => {
 
 async function fetchPlayer() {
   loading.value = true
-  errorMessage.value = ''
+  fetchFailed.value = false
   try {
     const id = route.params.id
     const response = await axios.get<PlayerDetail>(`/players/${id}`)
     player.value = response.data
   } catch {
-    errorMessage.value = '選手情報の取得に失敗しました'
+    fetchFailed.value = true
   } finally {
     loading.value = false
   }
@@ -225,60 +212,6 @@ function onSave() {
 </script>
 
 <style scoped>
-/* ── 戻るボタン ── */
-.detail-back-btn {
-  background: none;
-  border: 1px solid rgb(var(--v-theme-border-strong));
-  padding: 3px 10px;
-  border-radius: 3px;
-  cursor: pointer;
-  font-size: 0.79em;
-  margin-bottom: 8px;
-  color: rgb(var(--v-theme-on-surface));
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-}
-
-.detail-back-btn:hover {
-  background: rgb(var(--v-theme-surface-variant));
-  border-color: rgb(var(--v-theme-border-strong));
-}
-
-/* ── 詳細ラッパー ── */
-.detail-wrap {
-  background: rgb(var(--v-theme-surface));
-  color: rgb(var(--v-theme-on-surface));
-  border: 1px solid rgb(var(--v-theme-border-strong));
-  border-radius: 6px;
-  overflow: hidden;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
-}
-
-/* ── ヘッダー (藍色帯) ── */
-.detail-card-header {
-  background: rgb(var(--v-theme-primary));
-  color: rgb(var(--v-theme-on-primary));
-  padding: 7px 14px;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.detail-player-name {
-  font-size: 1.05em;
-  font-weight: bold;
-}
-
-.detail-player-sub {
-  font-size: 0.76em;
-  margin-top: 1px;
-}
-
-.header-badge {
-  font-size: 0.72em;
-}
-
 /* ── デタイルボディ ── */
 .detail-body {
   padding: 10px 14px;

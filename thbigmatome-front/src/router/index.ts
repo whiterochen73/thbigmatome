@@ -48,7 +48,7 @@ const routes: RouteRecordRaw[] = [
         path: '/teams/:teamId/members',
         name: 'TeamMembers',
         component: () => import('@/views/TeamMembers.vue'),
-        meta: { requiresAuth: true, title: 'チームメンバー登録' },
+        meta: { requiresAuth: true, title: 'チーム編成' },
       },
       {
         path: '/players',

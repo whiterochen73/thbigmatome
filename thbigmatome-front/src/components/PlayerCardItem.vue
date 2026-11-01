@@ -70,7 +70,7 @@
 </template>
 
 <script setup lang="ts">
-import type { PlayerCard } from '@/types/game-record'
+import type { PlayerCard } from '@/types/playerCard'
 
 interface Props {
   card: PlayerCard

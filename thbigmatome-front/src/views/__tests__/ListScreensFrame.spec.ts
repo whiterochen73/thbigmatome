@@ -15,9 +15,7 @@ import StadiumsView from '../commissioner/StadiumsView.vue'
 import CompetitionsView from '../commissioner/CompetitionsView.vue'
 import UsersView from '../commissioner/UsersView.vue'
 import CardSetsView from '../commissioner/CardSetsView.vue'
-import GamesView from '../GamesView.vue'
 import PlayerCardsView from '../PlayerCardsView.vue'
-import GameRecordListView from '../GameRecordListView.vue'
 
 // 2 つの axios（直接 / プラグイン）を同じ関数にして、画面ごとの違いを吸収する
 const api = vi.hoisted(() => ({ get: vi.fn() }))
@@ -161,16 +159,6 @@ const screens: Screen[] = [
     search: null,
   },
   {
-    name: '試合記録',
-    component: GamesView,
-    rows: [{ id: 1, real_date: '2026-05-08', status: 'confirmed', competition_id: 1 }],
-    none: [],
-    emptyText: '該当する試合がありません',
-    rowText: '2026-05-08',
-    primary: '検索',
-    search: null,
-  },
-  {
     name: '選手カード',
     component: PlayerCardsView,
     rows: {
@@ -197,30 +185,6 @@ const screens: Screen[] = [
     rowText: '博麗霊夢',
     primary: null,
     search: 'player-cards-search',
-  },
-  {
-    name: 'パーサーレビュー',
-    component: GameRecordListView,
-    rows: {
-      game_records: [
-        {
-          id: 1,
-          game_date: '2026-05-08',
-          team_id: 1,
-          opponent_team_name: '紅魔館',
-          score_home: 3,
-          score_away: 2,
-          status: 'draft',
-          stadium: null,
-        },
-      ],
-      pagination: {},
-    },
-    none: { game_records: [], pagination: {} },
-    emptyText: 'パーサー結果がありません',
-    rowText: '紅魔館',
-    primary: null,
-    search: null,
   },
 ]
 
@@ -476,17 +440,9 @@ describe('行の操作は名前を持つアイコンボタン', () => {
 describe('絞り込み・検索の結果が 0 件でも、条件欄（ツールバー）は残る', () => {
   beforeEach(() => api.get.mockReset())
 
-  it('試合記録: 検索の結果が空なら空状態を出し、検索欄と検索ボタンは残る', async () => {
-    api.get.mockResolvedValue({ data: [] })
-    const w = (mounted = await mountScreen(screens[6]!))
-    expect(has(w, 'state-empty')).toBe(true)
-    expect(w.find('.page-layout__filters').exists()).toBe(true)
-    expect(w.find('.page-layout__actions').text()).toContain('検索')
-  })
-
   it('選手カード: 並び替えの表示切替と件数もツールバーに残る', async () => {
-    respond(screens[7]!, screens[7]!.none)
-    const w = (mounted = await mountScreen(screens[7]!))
+    respond(screens[6]!, screens[6]!.none)
+    const w = (mounted = await mountScreen(screens[6]!))
     const filters = w.find('.page-layout__filters')
     expect(filters.text()).toContain('0件')
     expect(filters.find('button[aria-label="グリッド表示"]').exists()).toBe(true)

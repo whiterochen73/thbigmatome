@@ -30,7 +30,7 @@
 
 最も多いパターン。マスタ管理・一覧表示画面の標準形。
 
-**該当View**: Players, TeamList, GamesView, GameDetailView, StatsView, CostAssignment, GameRecordListView, ManagerList, CompetitionsView, UsersView, CardSetsView, StadiumsView
+**該当View**: Players, TeamList, CostAssignment, ManagerList, CompetitionsView, UsersView, CardSetsView, StadiumsView
 
 **共通骨格**:
 ```vue
@@ -82,8 +82,7 @@
 **バリエーション**:
 | サブタイプ | 追加要素 | 例 |
 |-----------|---------|-----|
-| フィルタ付き | v-select / v-text-field をカードタイトル内に配置 | GamesView, Players |
-| タブ切替付き | v-tabs でデータソース切替 | StatsView (打撃/投手/チーム) |
+| フィルタ付き | v-select / v-text-field をカードタイトル内に配置 | Players |
 | 展開行付き | show-expand + expanded-row slot | ManagerList |
 | 読み取り専用 | 作成/編集ボタンなし | CardSetsView |
 
@@ -93,7 +92,7 @@
 
 複数のセクションを縦に積む構成。情報集約型画面。
 
-**該当View**: HomeView, GameRecordDetailView, GameResult, ScoreSheet
+**該当View**: HomeView, GameResult, ScoreSheet
 
 **共通骨格**:
 ```vue
@@ -276,7 +275,7 @@ E 状態                            読み込み=スケルトン / 空=EmptyStat
 
 **埋め込める画面（`TeamMembers`）**: 単独の画面（`/teams/:teamId/members`）と、シーズンのタブ・試合日ページへの埋め込みの両方で使う画面は、`teamId` を props で受けたか（埋め込み）で分ける。単独の時だけ `PageLayout` とバーの宣言（チーム名・サブタイトル・戻り先「← シーズン」）を持ち、埋め込みの時はバーを変えず中身だけを出す（h1 は常に 1 つ）。
 
-**集計画面**（`StatsView` など数表が主役の画面）は、アプリのテーマがダークでも明るい淡色背景に固定する。カードを `v-theme-provider theme="light"` で包む（文字色だけをテーマ追従にしない）。
+**集計画面**（数表が主役の画面。成績集計の画面は cmd_1795 で廃止したので、今は該当する画面が無い）は、アプリのテーマがダークでも明るい淡色背景に固定する。カードを `v-theme-provider theme="light"` で包む（文字色だけをテーマ追従にしない）。
 
 `PageHeader` は**非推奨**。まだ移していない画面のために残してあり、ヘッダーバーが同じ題を出している間は本文の h1 を省く（バーと二重にならない）。全画面を移したら削除する。
 
@@ -404,7 +403,7 @@ E 状態                            読み込み=スケルトン / 空=EmptyStat
 </template>
 ```
 
-**該当View**: Players (検索), PlayerCardsView (カードセット+種別+検索+表示切替), GamesView (大会+日付範囲), TeamMembers (ポジションフィルタ), GameRecordListView (ステータスフィルタ), StatsView (大会選択)
+**該当View**: Players (検索), PlayerCardsView (カードセット+種別+検索+表示切替), TeamMembers (ポジションフィルタ)
 
 ---
 
@@ -619,12 +618,12 @@ const headers = [
 **適用順序**（依存度が低い画面から）:
 1. コミッショナー系4画面（CompetitionsView, StadiumsView, CardSetsView, UsersView）
 2. マスタ系（ManagerList, Settings内の各タブ）
-3. 一般一覧系（Players, TeamList, GamesView, GameRecordListView）
-4. 複合系（CostAssignment, StatsView）
+3. 一般一覧系（Players, TeamList）
+4. 複合系（CostAssignment）
 
 ### Phase 4: FilterBar + 高度な共通化
 
-**スコープ**: FilterBar作成 + PlayerCardsView/GamesView等のフィルタUI統一
+**スコープ**: FilterBar作成 + PlayerCardsView等のフィルタUI統一
 **工数目安**: 足軽1名 × 2タスク
 **前提**: Phase 3完了後
 
@@ -658,17 +657,11 @@ const headers = [
 | SeasonPortal | LP-3 | B | 各タブ内 | 複数 | タブ |
 | GameResult | LP-2 | B | v-table | StartingMemberDialog | なし |
 | ScoreSheet | LP-2 | B | v-table | なし | なし |
-| GamesView | LP-1 | A | v-data-table | なし | v-select + 日付 |
-| GameDetailView | LP-1変形 | C | v-table | なし | なし |
-| GameLineupView | LP-1変形 | C | v-table | なし | なし |
-| StatsView | LP-1 | A | v-data-table (tabs) | なし | v-select |
 | CostAssignment | LP-1 | A | v-data-table | なし | CostListSelect |
 | Settings | LP-3 | A | GenericMaster内 | 各種Dialog | タブ |
 | CompetitionRosterView | LP-3 | A | v-data-table (tabs) | なし | なし |
 | PlayerCardsView | LP-1 | A | v-data-table / grid | なし | 複合フィルタ |
 | PlayerCardDetailView | LP-4 | D | v-table + BattingTable | なし | なし |
-| GameRecordListView | LP-1 | A | v-data-table | なし | v-chip-group |
-| GameRecordDetailView | LP-2 | A | なし | なし | v-chip-group |
 | ActiveRoster | LP-5 | A | v-data-table ×2 | なし | なし |
 | PlayerAbsenceHistory | LP-1 | なし | v-data-table | PlayerAbsenceFormDialog | なし |
 | CompetitionsView | LP-1 | A | v-data-table | CompetitionDialog | なし |

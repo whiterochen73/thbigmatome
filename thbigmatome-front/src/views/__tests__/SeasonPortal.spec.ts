@@ -85,7 +85,6 @@ const i18n = createI18n({
           absences: '離脱者',
           members: 'メンバー',
           lineup: 'オーダー',
-          stats: '成績',
           promotionHistory: '昇降格履歴',
         },
         calendarMark: {

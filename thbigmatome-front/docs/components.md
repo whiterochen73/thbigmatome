@@ -18,7 +18,6 @@
 - `src/components/TeamDialog.vue`
 - `src/components/ManagerDialog.vue`
 - `src/components/Scoreboard.vue`
-- `src/components/AtBatCard.vue`
 - `src/components/BattingTable.vue`
 - `src/components/PlayerCardItem.vue`
 - `src/components/AbsenceInfo.vue`
@@ -138,7 +137,7 @@
 **スロット**: 既定スロット（任意）。空状態の下に操作（主ボタンなど）を置く。アイコンは 40px。
 
 **emits**: なし
-**使用箇所**: `AsyncState`（空状態）、パーサーレビュー詳細。他の画面は段 2 以降で `AsyncState` 経由に移す
+**使用箇所**: `AsyncState`（空状態）。他の画面は段 2 以降で `AsyncState` 経由に移す
 
 ---
 
@@ -296,39 +295,7 @@
 - イニング追加・削除ボタン
 - サヨナラ（コールドゲーム）チェックボックス（ホーム最終イニングを削除）
 
-**使用箇所**: `GameResult.vue`（view）, `GameDetailView.vue`（view）
-
----
-
-### `AtBatCard.vue` (`src/components/AtBatCard.vue`)
-
-1打席分の詳細表示・編集カードコンポーネント。折りたたみ式で詳細を開閉する。
-
-**props**:
-
-| 名前 | 型 | 必須 | 説明 |
-|------|-----|------|------|
-| `ab` | `AtBatRecord` | ✓ | 打席記録データ |
-| `gameStatus` | `'draft' \| 'confirmed'` | ✓ | 試合ステータス（draftのみ編集可） |
-| `activeFilter` | `string \| undefined` | - | 表示フィルタ（`all` / `declaration` / `dice` / `discrepancy`） |
-
-**emits**:
-
-| イベント名 | payload | 説明 |
-|-----------|---------|------|
-| `updated` | `AtBatRecord` | 打席記録更新完了 |
-| `error` | `string` | エラーメッセージ |
-
-**主要機能・責務**:
-- ヘッダー: 打者名・投手名・結果コード・差異/確認済みバッジ表示
-- ボディ: `source_events`あり → タイムライン表示（宣言/ダイス/自動計算/スキップセクション）
-- ボディ: `source_events`なし → レガシーフィールド表示
-- 差異（discrepancy）バナー: 原因ラベル・解決策バッジ
-- 編集フォーム: 結果コード・得点・走者前後・レビューメモ（`gameStatus === 'draft'`時のみ）
-- PATCH `/at_bat_records/:id` で保存
-- 結果コードに応じた色分け（HR=紫、安打=緑、四死球=青、アウト=赤等）
-
-**使用箇所**: `GameRecordDetailView.vue`（view）
+**使用箇所**: `GameResult.vue`（view）
 
 ---
 

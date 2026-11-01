@@ -65,12 +65,7 @@
         <v-card-title class="text-h6">直近の試合結果</v-card-title>
         <v-card-text class="pa-0">
           <v-list density="compact" v-if="summary && summary.recent_games.length > 0">
-            <v-list-item
-              v-for="game in summary.recent_games"
-              :key="game.id"
-              :to="`/games/${game.id}`"
-              link
-            >
+            <v-list-item v-for="game in summary.recent_games" :key="game.id">
               <template v-slot:prepend>
                 <span class="text-caption text-medium-emphasis mr-3">{{ game.real_date }}</span>
               </template>

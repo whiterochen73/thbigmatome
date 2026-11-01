@@ -9,7 +9,6 @@
 - `app/serializers/competition_serializer.rb`
 - `app/serializers/cost_player_serializer.rb`
 - `app/serializers/cost_serializer.rb`
-- `app/serializers/game_lineup_entry_serializer.rb`
 - `app/serializers/game_serializer.rb`
 - `app/serializers/manager_serializer.rb`
 - `app/serializers/player_absence_serializer.rb`
@@ -146,37 +145,11 @@
 
 ---
 
-### GameLineupEntrySerializer
-
-**ファイル**: `app/serializers/game_lineup_entry_serializer.rb`
-
-**使用箇所**: `GameLineupEntriesController#show`, `#create`, `#update`
-
-**属性**:
-
-| 属性 | 説明 |
-|------|------|
-| `id` | エントリーID |
-| `player_card_id` | 選手カードID |
-| `player_id` | 選手ID（computed） |
-| `player_name` | 選手名（computed） |
-| `role` | 役割（starter/reliever等） |
-| `batting_order` | 打順 |
-| `position` | 守備位置 |
-| `is_dh_pitcher` | DH投手フラグ |
-| `is_reliever` | リリーフフラグ |
-
-**computed属性の計算ロジック**:
-- `player_name`: `object.player_card.player.name` — 関連PlayerCardからPlayer名を取得
-- `player_id`: `object.player_card.player_id` — 関連PlayerCardからPlayer IDを取得
-
----
-
 ### GameSerializer
 
 **ファイル**: `app/serializers/game_serializer.rb`
 
-**使用箇所**: `GamesController#index`, `#show`, `#create`, `#confirm`
+**使用箇所**: `GamesController#index`, `#show`
 
 **属性**:
 
@@ -670,7 +643,6 @@ ActiveModel::Serializer
 ├── CompetitionSerializer
 ├── CostPlayerSerializer
 ├── CostSerializer
-├── GameLineupEntrySerializer
 ├── GameSerializer
 │   └── has_many :at_bats → AtBatSerializer
 ├── ManagerSerializer
@@ -712,8 +684,7 @@ ActiveModel::Serializer
 | CompetitionSerializer | CompetitionsController#index, #show, #create, #update |
 | CostPlayerSerializer | PlayerSerializer経由（TeamRegistrationPlayersController#index） |
 | CostSerializer | CostsController#index, #create, #update |
-| GameLineupEntrySerializer | GameLineupEntriesController#show, #create, #update |
-| GameSerializer | GamesController#index, #show, #create, #confirm |
+| GameSerializer | GamesController#index, #show |
 | PlayerAbsenceSerializer | PlayerAbsencesController#index, #create, #update |
 | PlayerCardDetailSerializer | PlayerCardsController#show, #update |
 | PlayerCardSerializer | PlayerCardsController#index |

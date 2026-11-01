@@ -40,22 +40,8 @@ Rails.application.routes.draw do
       end
 
       resources :game, only: [ :show, :update ]
-      # 試合記録（v1 API）
-      resources :games, only: [ :index, :show, :create ] do
-        member do
-          post :confirm
-        end
-        resource :lineup, only: [ :show, :create, :update ],
-                          controller: "game_lineup_entries"
-      end
-
-      # パーサー結果のレビュー（取り込み口は廃止済み。既存データの閲覧・確定のみ）
-      resources :game_records, only: [ :index, :show ] do
-        member do
-          post :confirm
-        end
-      end
-      resources :at_bat_records, only: [ :update ]
+      # 試合（Clubhouse の games:pull が読む。作成・確定・オーダーの API は無い）
+      resources :games, only: [ :index, :show ]
 
       # 選手一覧
       resources :players, only: [ :index, :show, :create, :update, :destroy ]
@@ -104,11 +90,6 @@ Rails.application.routes.draw do
 
       # ホーム画面
       get "home/summary", to: "home#summary"
-
-      # 成績集計
-      get "stats/batting",  to: "stats#batting"
-      get "stats/pitching", to: "stats#pitching"
-      get "stats/team",     to: "stats#team"
 
       # コストアサインメント
       resources :cost_assignments, only: [ :index, :create ]

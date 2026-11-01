@@ -54,7 +54,7 @@ docker exec "${DB_CONTAINER}" \
     > "${SAFETY_BACKUP}"
 
 echo "Railsコンテナ停止中..."
-docker compose -f "${COMPOSE_FILE}" stop rails parser
+docker compose -f "${COMPOSE_FILE}" stop rails
 
 echo "リストア実行中..."
 docker exec -i "${DB_CONTAINER}" \
@@ -62,7 +62,7 @@ docker exec -i "${DB_CONTAINER}" \
     < "${DUMP_FILE}"
 
 echo "Railsコンテナ起動中..."
-docker compose -f "${COMPOSE_FILE}" start rails parser
+docker compose -f "${COMPOSE_FILE}" start rails
 
 echo ""
 echo "=== リストア完了 ==="

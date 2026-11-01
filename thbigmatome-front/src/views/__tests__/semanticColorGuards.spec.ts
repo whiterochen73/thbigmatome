@@ -56,11 +56,6 @@ it('役割色を使う v-btn と v-chip は flat または明示した分岐を�
     /['"](?:state-[\w-]+|absence-[\w-]+|zone-[\w-]+|date-[\w-]+|result-[\w-]+|tag-[\w-]+|action)['"]/
   const allowedElevated = [
     {
-      path: 'components/AtBatCard.vue',
-      marker: 'saveEdit',
-      reason: '編集フォームの保存は既存の elevated 塗り',
-    },
-    {
       path: 'components/pitcher/PitcherAppearanceTab.vue',
       marker: 'saveAll',
       reason: '登板記録の保存は既存の elevated 塗り',
@@ -112,7 +107,7 @@ it('四つのトグル群は border-strong の枠を持つ', () => {
 })
 
 // Test Basis: subtask_1790a §2 / thbig-dugout-local-test-recipe.md v-btn-toggle の枠
-it('八つのトグル群は outlined の border-strong 枠を持つ', () => {
+it('七つのトグル群は outlined の border-strong 枠を持つ', () => {
   const toggles = vueFiles(srcDir).flatMap((file) => {
     const source = readFileSync(file, 'utf8')
     const path = relative(srcDir, file).split(sep).join('/')
@@ -121,8 +116,8 @@ it('八つのトグル群は outlined の border-strong 枠を持つ', () => {
       location: `${path}:${source.slice(0, match.index).split('\n').length}`,
     }))
   })
-  // 7 → 8: cmd_1784 段2b の AsOfDateBar（過去分の修正の試合前／試合後の切り替え）
-  expect(toggles).toHaveLength(8)
+  // 7 → 8: cmd_1784 段2b の AsOfDateBar（過去分の修正の試合前／試合後の切り替え）。8 → 7: cmd_1795 でパーサーレビュー一覧を廃止
+  expect(toggles).toHaveLength(7)
   const violations = toggles
     .filter(
       ({ tag }) =>
@@ -136,11 +131,9 @@ it('八つのトグル群は outlined の border-strong 枠を持つ', () => {
 // Test Basis: subtask_1790c §1, §4 / thbig-dugout-visual-refresh-design.md §6.2
 it('対象の scoped CSS に固定の明るい背景を残さない', () => {
   const violations = [
-    'components/AtBatCard.vue',
     'components/PlayerCardItem.vue',
     'views/PlayerDetailView.vue',
     'views/PlayerCardDetailView.vue',
-    'views/GameRecordDetailView.vue',
     'views/LoginForm.vue',
   ].flatMap((path) => {
     const source = readFileSync(resolve(srcDir, path), 'utf8')
@@ -156,11 +149,7 @@ it('対象の scoped CSS に固定の明るい背景を残さない', () => {
 
 // Test Basis: subtask_1790c §3, §4 / thbig-dugout-visual-stage5-mapping.md §2 R3
 it('outlined の表示・絞り込みトグルは選択中の primary 塗りを持つ', () => {
-  const paths = [
-    'views/PlayerCardsView.vue',
-    'views/GameRecordListView.vue',
-    'views/SeasonPortal.vue',
-  ]
+  const paths = ['views/PlayerCardsView.vue', 'views/SeasonPortal.vue']
   const violations = paths.flatMap((path) => {
     const source = readFileSync(resolve(srcDir, path), 'utf8')
     return [...source.matchAll(/<v-btn-toggle\b(?:"[^"]*"|'[^']*'|[^>"'])*>/g)]

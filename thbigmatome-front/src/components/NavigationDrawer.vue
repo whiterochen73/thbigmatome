@@ -10,18 +10,6 @@
       <!-- ホーム（単独） -->
       <v-list-item prepend-icon="mdi-home" title="ホーム" value="dashboard" to="/" link />
 
-      <!-- 試合グループ -->
-      <v-list-subheader v-if="!rail && gameMenuItems.length > 0">試合</v-list-subheader>
-      <v-list-item
-        v-for="item in gameMenuItems"
-        :key="item.value"
-        :prepend-icon="item.icon"
-        :title="item.title"
-        :value="item.value"
-        :to="item.to"
-        link
-      />
-
       <!-- チームグループ（コミッショナーモード時は常に表示、通常時はチーム所持時のみ） -->
       <template v-if="showTeamMenu">
         <v-list-subheader v-if="!rail">チーム</v-list-subheader>
@@ -31,15 +19,6 @@
           :title="'シーズン'"
           value="season"
           :to="`/teams/${teamSelectionStore.selectedTeamId}/season`"
-          link
-        />
-        <v-list-item
-          v-for="item in teamMenuItems"
-          :key="item.value"
-          :prepend-icon="item.icon"
-          :title="item.title"
-          :value="item.value"
-          :to="item.to"
           link
         />
       </template>
@@ -125,15 +104,6 @@ const showTeamMenu = computed(() => {
   if (isCommissioner.value) return true
   return !teamSelectionStore.teamsLoaded || teamSelectionStore.hasTeam
 })
-
-const gameMenuItems: { title: string; icon: string; value: string; to: string }[] = [
-  // { title: 'レビュー', icon: 'mdi-clipboard-check', value: 'gameRecords', to: '/game-records' }, // リリース非表示
-  // { title: '試合一覧', icon: 'mdi-scoreboard', value: 'games', to: '/games' }, // リリース非表示
-]
-
-const teamMenuItems: { title: string; icon: string; value: string; to: string }[] = [
-  // { title: '成績', icon: 'mdi-chart-bar', value: 'stats', to: '/stats' }, // リリース非表示
-]
 
 const playerMenuItems = [
   {

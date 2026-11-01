@@ -7,15 +7,14 @@
 ```
 [thbigmatome-front]  ←HTTP→  [thbigmatome (Rails API)]  ←→  [PostgreSQL]
    Vue.js 3 + Vuetify              Rails 8.1 / port 3000           port 5433 (Docker)
-                                         ↓ HTTP
-                               [thbig-irc-parser (Flask)]
-                                  Python / port 5000
 ```
+
+パーサーとの HTTP 連携は廃止した（cmd_1791 でログ取り込み、cmd_1795 でパーサー経由の画面と API）。`thbig-irc-parser` はカード読み取り（PDF → CSV）の道具として残り、プロジェクトとしては凍結している。
 
 モノレポ構成（`/home/morinaga/projects/` 配下）:
 - `thbigmatome/` — 本リポジトリ（Rails API）
 - `thbigmatome-front/` — Vue 3 フロントエンド
-- `thbig-irc-parser/` — 打席ログパーサー（Flask HTTP API）
+- `thbig-irc-parser/` — 凍結。選手カードの PDF 読み取り・画像の切り出しに使う（Rails とは繋がらない）
 
 ## 主な技術スタック
 
@@ -38,9 +37,9 @@
 ## 主な機能
 
 - **チーム・選手管理**: チーム登録、選手カード管理、ロスター編成、コスト管理
-- **試合記録**: 試合ログインポート、打席記録、投手登板記録、試合スコア
+- **試合記録**: 試合日ページでの結果入力、投手登板記録、試合スコア
 - **日程管理**: シーズン日程、大会管理、スケジュール詳細
-- **スタッツ集計**: 打撃・投手・チーム成績の集計API
+- **ホーム画面（旧）**: 大会ごとの成績サマリ（`/api/v1/home/summary`）
 - **コミッショナー機能**: ユーザー管理、離脱状況横断確認、コスト確認、クールダウン確認
 - **投手疲労管理**: 登板状態追跡、疲労サマリー API
 
@@ -61,7 +60,6 @@ docker compose up
 サービス起動後:
 - Rails API: `http://localhost:3000`
 - フロントエンド: `http://localhost:5173`
-- パーサーAPI: `http://localhost:5000`
 
 ### ローカル直接セットアップ
 

@@ -67,7 +67,6 @@
     },
     "teamMembers": "メンバー管理",
     "registerAbsence": "離脱者登録",
-    "goToStats": "成績集計",
     "absenceInfo": "離脱者情報",
     "noAbsenceInfo": "離脱者情報はありません。",
     "noSeasonData": "シーズンデータが見つかりません",
@@ -124,7 +123,6 @@
       "absences": "離脱者",
       "members": "チーム編成",
       "lineup": "オーダー",
-      "stats": "成績集計",
       "promotionHistory": "昇降格履歴"
     }
   },

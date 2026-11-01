@@ -36,13 +36,27 @@ describe('route.meta.title', () => {
   })
 
   // Test Basis: thbig-dugout-ui-unification-design.md §2.2（ナビ名 = バータイトル = meta.title）。段 2 で画面の見出しとそろえた名前
-  it('段 2 で名前をそろえた画面の題（カードセット・選手カード・パーサーレビュー）', () => {
+  it('段 2 で名前をそろえた画面の題（カードセット・選手カード）', () => {
     const title = (path: string) => router.getRoutes().find((r) => r.path === path)?.meta.title
     expect(title('/commissioner/card_sets')).toBe('カードセット')
     expect(title('/player-cards')).toBe('選手カード')
-    expect(title('/game-records')).toBe('パーサーレビュー')
     expect(title('/commissioner/dashboard')).toBe('ダッシュボード')
     expect(title('/managers')).toBe('監督一覧')
     expect(title('/commissioner/users')).toBe('ユーザー管理')
+  })
+
+  // Test Basis: Operator 決定 2026-11-01（cmd_1795）「パーサー経由の試合記録・試合詳細・成績集計・レビューは廃止」
+  it('パーサー経由の画面（試合記録・試合詳細・オーダー確認・成績集計・パーサーレビュー）の route は無い', () => {
+    const paths = router.getRoutes().map((r) => r.path)
+    for (const path of [
+      '/games',
+      '/games/:id',
+      '/games/:id/lineup',
+      '/stats',
+      '/game-records',
+      '/game-records/:id',
+    ]) {
+      expect(paths).not.toContain(path)
+    }
   })
 })

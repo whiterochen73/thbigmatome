@@ -37,10 +37,7 @@ const vuetify = createVuetify({ components, directives })
 function createTestRouter() {
   return createRouter({
     history: createMemoryHistory(),
-    routes: [
-      { path: '/home', component: { template: '<div />' } },
-      { path: '/games/:id', name: '試合詳細', component: { template: '<div />' } },
-    ],
+    routes: [{ path: '/home', component: { template: '<div />' } }],
   })
 }
 

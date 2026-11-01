@@ -87,73 +87,25 @@ RSpec.describe "Api::V1::GamesController", type: :request do
     end
   end
 
-  describe "POST /api/v1/games" do
-    include_context "authenticated user"
-
-    let(:competition) { create(:competition) }
-    let(:home_team) { create(:team) }
-    let(:visitor_team) { create(:team) }
-    let(:stadium) { create(:stadium) }
-
-    let(:valid_params) do
-      {
-        game: {
-          competition_id: competition.id,
-          home_team_id: home_team.id,
-          visitor_team_id: visitor_team.id,
-          stadium_id: stadium.id,
-          real_date: Date.today.to_s,
-          status: "draft",
-          source: "live"
-        }
-      }
-    end
-
-    it "creates a game and returns 201" do
-      expect {
-        post "/api/v1/games", params: valid_params, as: :json
-      }.to change(Game, :count).by(1)
-
-      expect(response).to have_http_status(:created)
-      json = response.parsed_body
-      expect(json["competition_id"]).to eq(competition.id)
-    end
-
-    it "returns 422 with invalid params" do
-      post "/api/v1/games", params: { game: { status: "invalid_status" } }, as: :json
-
-      expect(response).to have_http_status(:unprocessable_content)
-      json = response.parsed_body
-      expect(json["errors"]).to be_present
-    end
-  end
-
-  describe "POST /api/v1/games/:id/confirm" do
+  # Test Basis: Operator 決定 2026-11-01（cmd_1795）。作成・確定・オーダーの API は廃止し、Clubhouse の games:pull が読む GET だけを残す
+  describe "廃止した操作" do
     include_context "authenticated user"
 
     let(:game) { create(:game, status: "draft") }
-    let(:batter) { create(:player) }
-    let(:pitcher) { create(:player, :pitcher) }
 
-    it "confirm成功: draft at_batsがconfirmedに変更されること" do
-      draft_ab = create(:at_bat, game: game, status: :draft, seq: 1)
-
-      post "/api/v1/games/#{game.id}/confirm", as: :json
-
-      expect(response).to have_http_status(:ok)
-      json = response.parsed_body
-      expect(json["confirmed_count"]).to eq(1)
-
-      draft_ab.reload
-      expect(draft_ab.status).to eq("confirmed")
+    it "POST /api/v1/games は無い" do
+      post "/api/v1/games", params: { game: { status: "draft" } }, as: :json
+      expect(response).to have_http_status(:not_found)
     end
 
-    it "confirm済みgameは再confirmできないこと" do
-      confirmed_game = create(:game, status: "confirmed")
+    it "POST /api/v1/games/:id/confirm は無い" do
+      post "/api/v1/games/#{game.id}/confirm", as: :json
+      expect(response).to have_http_status(:not_found)
+    end
 
-      post "/api/v1/games/#{confirmed_game.id}/confirm", as: :json
-
-      expect(response).to have_http_status(:unprocessable_content)
+    it "GET /api/v1/games/:id/lineup は無い" do
+      get "/api/v1/games/#{game.id}/lineup"
+      expect(response).to have_http_status(:not_found)
     end
   end
 end

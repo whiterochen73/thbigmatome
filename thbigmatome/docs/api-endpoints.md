@@ -21,9 +21,6 @@
 - `app/controllers/api/v1/roster_changes_controller.rb`
 - `app/controllers/api/v1/game_controller.rb`
 - `app/controllers/api/v1/games_controller.rb`
-- `app/controllers/api/v1/game_lineup_entries_controller.rb`
-- `app/controllers/api/v1/game_records_controller.rb`
-- `app/controllers/api/v1/at_bat_records_controller.rb`
 - `app/controllers/api/v1/players_controller.rb`
 - `app/controllers/api/v1/player_cards_controller.rb`
 - `app/controllers/api/v1/team_registration_players_controller.rb`
@@ -43,7 +40,6 @@
 - `app/controllers/api/v1/managers_controller.rb`
 - `app/controllers/api/v1/stadiums_controller.rb`
 - `app/controllers/api/v1/home_controller.rb`
-- `app/controllers/api/v1/stats_controller.rb`
 - `app/controllers/api/v1/users_controller.rb`
 
 ---
@@ -396,78 +392,7 @@
 - **Controller**: `Api::V1::GamesController#show`
 - **Response**: `GameSerializer` (includes at_bats)
 
-### POST /api/v1/games
-
-- **Controller**: `Api::V1::GamesController#create`
-- **Body Params**: `game: { competition_id, home_team_id, visitor_team_id, real_date, stadium_id, status, source }`
-- **Response**: `GameSerializer` 201
-
-### POST /api/v1/games/:id/confirm
-
-- **Controller**: `Api::V1::GamesController#confirm`
-- **挙動**: draft → confirmed ステータス変更、配下AtBatsも confirmed に
-- **Response**: `{ game: GameSerializer, confirmed_count }`
-
----
-
-## 試合オーダーエントリ (Game Lineup Entries)
-
-### GET /api/v1/games/:game_id/lineup
-
-- **Controller**: `Api::V1::GameLineupEntriesController#show`
-- **Response**: `{ lineup: [...GameLineupEntrySerializer] }`
-
-### POST /api/v1/games/:game_id/lineup
-
-- **Controller**: `Api::V1::GameLineupEntriesController#create`
-- **Body Params**: `lineup: [{ player_card_id, role, batting_order, position, is_dh_pitcher, is_reliever }]`
-- **挙動**: 既存エントリを全削除して再作成
-- **Response**: `{ lineup: [...GameLineupEntrySerializer] }` 201
-
-### PUT /api/v1/games/:game_id/lineup
-
-- **Controller**: `Api::V1::GameLineupEntriesController#update`
-- **Body Params**: POST と同じ
-- **挙動**: 既存エントリを全削除して再作成
-- **Response**: `{ lineup: [...GameLineupEntrySerializer] }`
-
----
-
-## 試合記録 (Game Records)
-
-### GET /api/v1/game_records
-
-- **Controller**: `Api::V1::GameRecordsController#index`
-- **Query Params**: `team_id` (integer), `status` (string), `game_date_from` (date), `game_date_to` (date), `page` (integer, default: 1), `per_page` (integer, default: 20, max: 100)
-- **Response**:
-  ```json
-  {
-    "game_records": [...],
-    "pagination": { "page", "per_page", "total", "total_pages" }
-  }
-  ```
-
-### GET /api/v1/game_records/:id
-
-- **Controller**: `Api::V1::GameRecordsController#show`
-- **Response**: game_record JSON with at_bat_records included
-
-### POST /api/v1/game_records/:id/confirm
-
-- **Controller**: `Api::V1::GameRecordsController#confirm`
-- **挙動**: draft → confirmed、全AtBatRecordをis_reviewed=true、打撃・投球成績を計算・保存
-- **Response**: game_record JSON
-
----
-
-## 打席記録 (At Bat Records)
-
-### PATCH /api/v1/at_bat_records/:id
-
-- **Controller**: `Api::V1::AtBatRecordsController#update`
-- **Body Params**: `result_code, runs_scored, outs_before, outs_after, pitcher_name, pitcher_id, batter_name, batter_id, pitch_roll, pitch_result, bat_roll, bat_result, strategy, play_description, is_reviewed, review_notes, runners_before: [], runners_after: [], extra_data: {}`
-- **挙動**: is_modified=true、modified_fieldsに差分記録、discrepanciesにresolution追加、adopted_value更新、後続レコードgsm_value再計算
-- **Response**: at_bat_record JSON
+廃止（cmd_1795）: `POST /api/v1/games`・`POST /api/v1/games/:id/confirm`・`/api/v1/games/:game_id/lineup`（GET/POST/PUT）・`/api/v1/game_records`（一覧・詳細・確定）・`PATCH /api/v1/at_bat_records/:id` は、パーサー経由の画面（試合記録・試合詳細・オーダー確認・パーサーレビュー）と一緒に削除した。`GET /api/v1/games` と `GET /api/v1/games/:id` は Clubhouse の `games:pull` が読むので残している。
 
 ---
 
@@ -829,23 +754,7 @@
 
 ## 成績集計 (Stats)
 
-### GET /api/v1/stats/batting
-
-- **Controller**: `Api::V1::StatsController#batting`
-- **Query Params**: `competition_id` (integer, 必須)
-- **Response**: `{ batting_stats: [...] }` (BattingStatsCalculator)。ノーゲームの試合は集計に入れない（台帳 D-11）
-
-### GET /api/v1/stats/pitching
-
-- **Controller**: `Api::V1::StatsController#pitching`
-- **Query Params**: `competition_id` (integer, 必須)
-- **Response**: `{ pitching_stats: [...] }` (PitchingStatsCalculator)。ノーゲームの試合は集計に入れない（台帳 D-11）
-
-### GET /api/v1/stats/team
-
-- **Controller**: `Api::V1::StatsController#team`
-- **Query Params**: `competition_id` (integer, 必須)
-- **Response**: `{ team_stats: [...] }` (TeamStatsCalculator)。ノーゲームの試合は集計に入れない（台帳 D-11）
+廃止（cmd_1795）: `GET /api/v1/stats/batting|pitching|team` は成績集計画面と一緒に削除した。集計の計算（`BattingStatsCalculator` / `PitchingStatsCalculator` / `TeamStatsCalculator`）は `GET /api/v1/home/summary`（旧ホーム画面）が使うので残っている。
 
 ---
 

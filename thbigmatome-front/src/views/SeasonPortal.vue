@@ -70,12 +70,6 @@
           {{ t('seasonPortal.tabs.lineup') }}
         </v-tab>
         -->
-        <!-- リリース非表示: 成績タブ
-        <v-tab value="stats">
-          <v-icon start>mdi-chart-bar</v-icon>
-          {{ t('seasonPortal.tabs.stats') }}
-        </v-tab>
-        -->
       </v-tabs>
     </template>
 
@@ -752,10 +746,6 @@ const isCalendarTab = computed(() => activeTab.value === 'calendar')
 // const lineupSubTab = ref('template')
 
 watch(activeTab, (newTab) => {
-  if (newTab === 'stats') {
-    router.push({ name: '成績集計' })
-    return
-  }
   router.replace({ query: { ...route.query, tab: newTab } })
 })
 

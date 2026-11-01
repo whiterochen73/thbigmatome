@@ -34,14 +34,6 @@
 | `/teams/:teamId/season/games/:scheduleId/scoresheet` | ScoreSheet | `ScoreSheet.vue` | スコアシート | 要 |
 | `/teams/:teamId/season/player_absences` | — | リダイレクト → SeasonPortal `?tab=absences` | 旧離脱管理画面 | — |
 
-### 試合記録（パーサー連携・全体閲覧用）
-
-| ルート | name | View | 用途 | 認証 |
-|--------|------|------|------|------|
-| `/games` | 試合記録 | `GamesView.vue` | 試合一覧（パーサー取り込み後の全試合） | 要 |
-| `/games/:id` | 試合詳細 | `GameDetailView.vue` | 試合詳細閲覧（打席データ表示） | 要 |
-| `/games/:id/lineup` | GameLineup | `GameLineupView.vue` | オーダー確認 | 要 |
-
 ### 選手
 
 | ルート | name | View | 用途 | 認証 |
@@ -51,20 +43,12 @@
 | `/player-cards` | PlayerCards | `PlayerCardsView.vue` | 選手カード一覧 | 要 |
 | `/player-cards/:id` | PlayerCardDetail | `PlayerCardDetailView.vue` | 選手カード詳細 | 要 |
 
-### コスト・成績
+### コスト
 
 | ルート | name | View | 用途 | 認証 |
 |--------|------|------|------|------|
 | `/cost_assignment` | CostAssignment | `CostAssignment.vue` | コスト登録 | 要 |
-| `/stats` | 成績集計 | `StatsView.vue` | 成績集計 | 要 |
 | `/competitions/:id/roster/:teamId` | CompetitionRoster | `CompetitionRosterView.vue` | 大会ロースター | 要 |
-
-### パーサーレビュー
-
-| ルート | name | View | 用途 | 認証 |
-|--------|------|------|------|------|
-| `/game-records` | GameRecordList | `GameRecordListView.vue` | パーサーレビュー一覧 | 要 |
-| `/game-records/:id` | GameRecordDetail | `GameRecordDetailView.vue` | パーサーレビュー詳細 | 要 |
 
 ### コミッショナー（管理者専用）
 
@@ -87,17 +71,6 @@
 ---
 
 ## 紛らわしい画面の区別
-
-### GameResult.vue vs GameDetailView.vue
-
-| | GameResult.vue | GameDetailView.vue |
-|---|---|---|
-| **ルート** | `/teams/:teamId/season/games/:scheduleId` | `/games/:id` |
-| **用途** | シーズン管理からの**試合結果入力**（編集画面） | パーサー取り込み後の**試合詳細閲覧**（読み取り専用） |
-| **アクセス元** | SeasonPortal → カレンダーの試合日クリック | GamesView → 試合一覧クリック |
-| **パラメータ** | teamId + scheduleId（チーム日程ベース） | id（game_idベース） |
-| **データソース** | `/game/:scheduleId` API | `/games/:id` API |
-| **編集機能** | あり（保存ボタン） | なし（閲覧のみ） |
 
 ### SeasonPortal.vue のタブ構成
 

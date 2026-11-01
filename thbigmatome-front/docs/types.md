@@ -10,7 +10,7 @@
 - `src/types/playerCost.ts`
 - `src/types/team.ts`
 - `src/types/manager.ts`
-- `src/types/game-record.ts`
+- `src/types/playerCard.ts`
 - `src/types/gameData.ts`
 - `src/types/scoreboard.ts`
 - `src/types/seasonDetail.ts`
@@ -210,75 +210,13 @@
 
 ---
 
-## 試合記録関連
+## 選手カード関連
 
-### `AtBatRecord` (`src/types/game-record.ts`)
-
-| 属性 | 型 | 必須 | 説明 |
-|------|-----|------|------|
-| `id` | `number` | ✓ | 打席ID |
-| `game_record_id` | `number` | ✓ | 試合記録ID |
-| `inning` | `number` | ✓ | イニング |
-| `half` | `'top' \| 'bottom'` | ✓ | 表/裏 |
-| `ab_num` | `number` | ✓ | 打席番号 |
-| `batter_name` | `string` | ✓ | 打者名 |
-| `pitcher_name` | `string` | ✓ | 投手名 |
-| `result_code` | `string \| null` | ✓ | 結果コード |
-| `runs_scored` | `number \| null` | ✓ | 得点 |
-| `runners_before` | `unknown` | ✓ | 打席前走者 |
-| `runners_after` | `unknown` | ✓ | 打席後走者 |
-| `outs_before` | `number \| null` | ✓ | 打席前アウト数 |
-| `outs_after` | `number \| null` | ✓ | 打席後アウト数 |
-| `strategy` | `string \| null` | ✓ | 作戦 |
-| `play_description` | `string \| null` | ✓ | 原文テキスト |
-| `is_modified` | `boolean` | ✓ | 修正済みフラグ |
-| `is_reviewed` | `boolean` | ✓ | 確認済みフラグ |
-| `review_notes` | `string \| null` | ✓ | レビューメモ |
-| `modified_fields` | `unknown` | ✓ | 修正フィールド |
-| `discrepancies` | `Discrepancy[]` | ✓ | 差異一覧 |
-| `source_events` | `SourceEvent[] \| null` | ✓ | ソースイベント列 |
-
-**使用箇所**: `AtBatCard.vue`, `GameRecordDetailView.vue`
-
-**BEシリアライザ対応**: `AtBatRecordSerializer`
+`AtBatRecord` / `SourceEvent` / `Discrepancy`（パーサーレビュー用の型）は cmd_1795 で削除した。
 
 ---
 
-### `SourceEvent` (`src/types/game-record.ts`)
-
-| 属性 | 型 | 必須 | 説明 |
-|------|-----|------|------|
-| `seq` | `number \| undefined` | - | シーケンス番号 |
-| `type` | `'declaration' \| 'dice' \| 'auto' \| 'skip'` | ✓ | イベント種別 |
-| `dice_type` | `string \| undefined` | - | ダイス種別 |
-| `action` | `string \| undefined` | - | アクション |
-| `text` | `string \| undefined` | - | テキスト |
-| `roll` | `number \| number[] \| undefined` | - | ダイス出目 |
-| `result` | `string \| undefined` | - | 結果 |
-| `reason` | `string \| undefined` | - | スキップ理由 |
-| `from` | `string \| undefined` | - | 起点（走者移動等） |
-| `to` | `string \| undefined` | - | 終点 |
-| `[key]` | `unknown` | - | 拡張フィールド |
-
-**使用箇所**: `AtBatCard.vue`の表示フィルタリング
-
----
-
-### `Discrepancy` (`src/types/game-record.ts`)
-
-| 属性 | 型 | 必須 | 説明 |
-|------|-----|------|------|
-| `field` | `string` | ✓ | フィールド名 |
-| `text_value` | `unknown` | ✓ | テキスト解析値 |
-| `gsm_value` | `unknown` | ✓ | GSM計算値 |
-| `cause` | `'parser_misread' \| 'human_error' \| 'gsm_limitation' \| 'ambiguous' \| 'unknown'` | ✓ | 原因種別 |
-| `resolution` | `'gsm' \| 'text' \| 'manual' \| null` | ✓ | 解決策 |
-| `resolution_value` | `unknown \| undefined` | - | 解決値 |
-| `note` | `string \| undefined` | - | 備考 |
-
----
-
-### `PlayerCard` (`src/types/game-record.ts`)
+### `PlayerCard` (`src/types/playerCard.ts`)
 
 | 属性 | 型 | 必須 | 説明 |
 |------|-----|------|------|
@@ -304,7 +242,7 @@
 
 ---
 
-### `Defense` (`src/types/game-record.ts`)
+### `Defense` (`src/types/playerCard.ts`)
 
 | 属性 | 型 | 必須 | 説明 |
 |------|-----|------|------|
@@ -341,7 +279,7 @@
 | `scoreboard` | `Scoreboard \| null` | ✓ | スコアボード |
 | `starting_lineup` | `LineupItem[] \| null` | ✓ | スターティングラインナップ |
 
-**使用箇所**: `GameResult.vue`, `GameDetailView.vue`, `GameLineupView.vue`
+**使用箇所**: `GameResult.vue`
 
 **BEシリアライザ対応**: `GameDataSerializer`
 

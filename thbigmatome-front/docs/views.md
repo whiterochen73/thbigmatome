@@ -16,17 +16,11 @@
 - `src/views/SeasonPortal.vue`
 - `src/views/GameResult.vue`
 - `src/views/ScoreSheet.vue`
-- `src/views/GamesView.vue`
-- `src/views/GameDetailView.vue`
-- `src/views/GameLineupView.vue`
-- `src/views/StatsView.vue`
 - `src/views/CostAssignment.vue`
 - `src/views/Settings.vue`
 - `src/views/CompetitionRosterView.vue`
 - `src/views/PlayerCardsView.vue`
 - `src/views/PlayerCardDetailView.vue`
-- `src/views/GameRecordListView.vue`
-- `src/views/GameRecordDetailView.vue`
 - `src/views/ActiveRoster.vue` ※ルーター未登録（レガシー）
 - `src/views/PlayerAbsenceHistory.vue` ※ルーター未登録（レガシー）
 - `src/views/commissioner/CardSetsView.vue`
@@ -53,15 +47,9 @@
 | `/teams/:teamId/season` | `SeasonPortal` | `SeasonPortal` | `teamId` | 要（authGuard） |
 | `/teams/:teamId/season/games/:scheduleId` | `GameResult` | `GameResult` | `teamId`, `scheduleId` | 要（authGuard） |
 | `/teams/:teamId/season/games/:scheduleId/scoresheet` | `ScoreSheet` | `ScoreSheet` | `teamId`, `scheduleId` | 要（authGuard） |
-| `/games` | `試合記録` | `GamesView` | — | 要（authGuard） |
-| `/games/:id` | `試合詳細` | `GameDetailView` | `id` | 要（authGuard） |
-| `/games/:id/lineup` | `GameLineup` | `GameLineupView` | `id` | 要（authGuard） |
-| `/stats` | `成績集計` | `StatsView` | — | 要（authGuard） |
 | `/competitions/:id/roster/:teamId` | `CompetitionRoster` | `CompetitionRosterView` | `id`, `teamId` | 要（authGuard） |
 | `/player-cards` | `PlayerCards` | `PlayerCardsView` | — | 要（authGuard） |
 | `/player-cards/:id` | `PlayerCardDetail` | `PlayerCardDetailView` | `id` | 要（authGuard） |
-| `/game-records` | `GameRecordList` | `GameRecordListView` | — | 要（authGuard） |
-| `/game-records/:id` | `GameRecordDetail` | `GameRecordDetailView` | `id` | 要（authGuard） |
 | `commissioner/stadiums` | `Stadiums` | `StadiumsView` | — | 要（requiresCommissioner） |
 | `commissioner/card_sets` | `CardSets` | `CardSetsView` | — | 要（requiresCommissioner） |
 | `commissioner/competitions` | `Competitions` | `CompetitionsView` | — | 要（requiresCommissioner） |
@@ -118,7 +106,8 @@
 - **主要なcomposable/store**: なし（直接axios）
 - **ヘッダーバー**: `route.meta.title`（ホーム（旧））
 - **画面構成**: `PageLayout`（大会選択・試合サマリーカード）
-- **他画面への遷移先**: なし（参照のみ）
+- **他画面への遷移先**: なし（参照のみ）。直近の試合結果の行は、行き先の画面（`/games/:id`）が無くなったのでリンクにしていない（cmd_1795）
+- **備考**: 成績サマリーの元になる集計（`/home/summary`）は、パーサー経由で入った打席を使う。旧ホームを残すか消すかは未決
 
 ---
 
@@ -207,7 +196,7 @@
 
 - **画面名**: シーズンポータル / SeasonPortal
 - **ルートパス**: `/teams/:teamId/season`
-- **主要機能・目的**: チームのシーズン管理ハブ。6つのタブでカレンダー・ロスター・欠場履歴・メンバー・オーダー・成績を管理
+- **主要機能・目的**: チームのシーズン管理ハブ。タブでカレンダー・ロスター・欠場履歴・メンバー・昇降格履歴を管理（オーダー・成績のタブは非表示にしていたが、成績の分は cmd_1795 で記述ごと削除）
 - **使用APIエンドポイント**:
   - GET `/teams/:id/season`
   - PATCH `/teams/:id/season/season_schedules/:id`（試合日程更新）
@@ -219,7 +208,6 @@
   - `absences` タブ: 欠場履歴（PlayerAbsenceHistoryコンポーネント）
   - `members` タブ: チームメンバー
   - `lineup` タブ: 試合オーダー
-  - `stats` タブ: シーズン成績
 - **他画面への遷移先**:
   - `/teams/:teamId/season/games/:scheduleId`（GameResult）
   - `/teams/:teamId/season/games/:scheduleId/scoresheet`（ScoreSheet）
@@ -260,19 +248,9 @@
 
 ---
 
-### 2.12 試合一覧
+### 2.12 （欠番）試合一覧
 
-- **画面名**: 試合一覧 / GamesView
-- **ルートパス**: `/games`
-- **主要機能・目的**: 全試合の一覧表示・大会フィルタリング
-- **使用APIエンドポイント**:
-  - GET `/games`（フィルタパラメータあり）
-  - GET `/competitions`
-- **主要なcomposable/store**: なし（直接axios）
-- **画面構成**: 大会フィルター・試合一覧テーブル（日付/対戦/スコア/大会）
-- **他画面への遷移先**:
-  - `/games/:id`（GameDetailView）
-  - `/games/:id/lineup`（GameLineupView）
+廃止済み（cmd_1795）。画面 `/games`（GamesView）を削除した。番号は他の節の参照を保つため欠番にしている。
 
 ---
 
@@ -282,50 +260,21 @@
 
 ---
 
-### 2.14 試合詳細
+### 2.14 （欠番）試合詳細
 
-- **画面名**: 試合詳細 / GameDetailView
-- **ルートパス**: `/games/:id`
-- **主要機能・目的**: 個別試合の詳細情報表示（スコア・打席結果等）
-- **使用APIエンドポイント**:
-  - GET `/games/:id`
-- **主要なcomposable/store**: なし（直接axios）
-- **ヘッダーバー**: タイトル=`試合 #ID`、サブタイトル=日付（`real_date`）、戻り先=「← 試合記録」（`/games`）
-- **画面構成**: `PageLayout` ＋ `AsyncState`。試合基本情報・イニング別スコア・打席結果テーブルをカードで積む。「オーダー確認」はツールバー行の右
-- **他画面への遷移先**:
-  - `/games/:id/lineup`（GameLineupView）
-  - `/games`（GamesView、バーの戻り先）
+廃止済み（cmd_1795）。画面 `/games/:id`（GameDetailView）を削除した。番号は他の節の参照を保つため欠番にしている。
 
 ---
 
-### 2.15 試合ラインナップ
+### 2.15 （欠番）試合ラインナップ
 
-- **画面名**: 試合ラインナップ / GameLineupView
-- **ルートパス**: `/games/:id/lineup`
-- **主要機能・目的**: 試合ごとのラインナップ（打順・ポジション）表示
-- **使用APIエンドポイント**:
-  - GET `/games/:id/lineup`
-- **主要なcomposable/store**: なし（直接axios）
-- **ヘッダーバー**: タイトル=オーダー確認、サブタイトル=`試合 #ID`、戻り先=「← 試合詳細」（`/games/:id`）
-- **画面構成**: `PageLayout` ＋ `AsyncState`。スタメン・ベンチ・オフ・指定選手の4枚のカード
-- **他画面への遷移先**: `/games/:id`（GameDetailView、バーの戻り先）
+廃止済み（cmd_1795）。画面 `/games/:id/lineup`（GameLineupView）と、裏の `/games/:game_id/lineup` API を削除した。番号は他の節の参照を保つため欠番にしている。
 
 ---
 
-### 2.16 成績集計
+### 2.16 （欠番）成績集計
 
-- **画面名**: 成績集計 / StatsView
-- **ルートパス**: `/stats`
-- **主要機能・目的**: 大会別の打撃・投手・チーム成績集計表示
-- **使用APIエンドポイント**:
-  - GET `/competitions`
-  - GET `/stats/batting`（大会IDパラメータ）
-  - GET `/stats/pitching`（大会IDパラメータ）
-  - GET `/stats/team`（大会IDパラメータ）
-- **主要なcomposable/store**: なし（直接axios）
-- **ヘッダーバー**: `route.meta.title`（成績集計）
-- **画面構成**: `PageLayout` の1枚のカード。集計画面は明るい淡色背景に固定する（`v-theme-provider theme="light"` で包み、アプリがダークでも追従しない）。大会選択、未選択の間は空状態（「大会を選んでください」）、選択後にタブ（打撃成績/投手成績/チーム成績）・各成績テーブル。取得失敗はアラート＋再読み込み
-- **他画面への遷移先**: なし
+廃止済み（cmd_1795）。画面 `/stats`（StatsView）と、裏の `/stats/batting|pitching|team` API を削除した。番号は他の節の参照を保つため欠番にしている。
 
 ---
 
@@ -413,32 +362,15 @@
 
 ---
 
-### 2.22 ゲームレコード一覧
+### 2.22 （欠番）ゲームレコード一覧
 
-- **画面名**: ゲームレコード一覧 / GameRecordListView
-- **ルートパス**: `/game-records`
-- **主要機能・目的**: ゲームレコード（IRC試合ログ）の一覧表示
-- **使用APIエンドポイント**:
-  - GET `/game_records`
-- **主要なcomposable/store**: なし（直接axios）
-- **画面構成**: ゲームレコード一覧テーブル（日付/対戦チーム/スコア/ステータス）
-- **他画面への遷移先**: `/game-records/:id`（GameRecordDetailView）
+廃止済み（cmd_1795）。画面 `/game-records`（GameRecordListView）を削除した。番号は他の節の参照を保つため欠番にしている。
 
 ---
 
-### 2.23 ゲームレコード詳細
+### 2.23 （欠番）ゲームレコード詳細
 
-- **画面名**: ゲームレコード詳細 / GameRecordDetailView
-- **ルートパス**: `/game-records/:id`
-- **主要機能・目的**: 個別ゲームレコードの打席結果確認・修正・確定
-- **使用APIエンドポイント**:
-  - GET `/game_records/:id`
-  - PATCH `/at_bat_records/:id`（打席結果修正）
-  - POST `/game_records/:id/confirm`（レコード確定）
-- **主要なcomposable/store**: `useSnackbar`
-- **ヘッダーバー**: タイトル=`vs 対戦相手`、サブタイトル=日付、戻り先=「← 試合記録」（`/games`。パーサーレビュー一覧ではなく試合記録へ戻る）
-- **画面構成**: `PageLayout` ＋ `AsyncState`。状態（確定済み/未確定）・日付・スコア・球場・打席数の概要カード、レビュー進捗、絞り込み、イニング別の打席カード、全打席確定・このゲームを確定
-- **他画面への遷移先**: `/games`（GamesView、バーの戻り先）
+廃止済み（cmd_1795）。画面 `/game-records/:id`（GameRecordDetailView）と AtBatCard を削除した。番号は他の節の参照を保つため欠番にしている。
 
 ---
 
@@ -572,16 +504,6 @@
   /teams (TeamList)
   /teams/:teamId/members (TeamMembers)
 
-  /games (GamesView)
-      ├─ /games/:id (GameDetailView)
-      │       └─ /games/:id/lineup (GameLineupView)
-      └─ バーの「← 試合記録」→ /games
-
-  /game-records (GameRecordListView)
-      └─ /game-records/:id (GameRecordDetailView)
-              └─ バーの「← 試合記録」→ /games
-
-  /stats (StatsView)
   /cost_assignment (CostAssignment)
   /managers (ManagerList)
   /settings (Settings)

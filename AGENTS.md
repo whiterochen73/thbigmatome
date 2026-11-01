@@ -92,13 +92,13 @@ README に独立した build script は確認できない。DB を要するテ�
 README で確認できる品質コマンドは次のとおり。
 
 ```bash
-cd /home/morinaga/projects/thbigmatome-front && npm run test:run
-cd /home/morinaga/projects/thbigmatome-front && npm run type-check
-cd /home/morinaga/projects/thbigmatome-front && npm run build
-cd /home/morinaga/projects/thbigmatome-front && npm run lint
+cd /home/morinaga/projects/thbigmatome-front && yarn test:run
+cd /home/morinaga/projects/thbigmatome-front && yarn type-check
+cd /home/morinaga/projects/thbigmatome-front && yarn build
+cd /home/morinaga/projects/thbigmatome-front && yarn lint
 ```
 
-`npm run lint` は `eslint . --fix` であり、変更を生むので diff を確認する。UI 文言は `locales/`
+`yarn lint` は `eslint . --fix` であり、変更を生むので diff を確認する。UI 文言は `locales/`
 以下のキーを `t('key.name')` 形式で参照し、コンポーネントは PascalCase、状態は Composition API
 と Vue 標準のリアクティビティで扱う。新規の状態管理ライブラリは追加しない。詳細な lint / format
 設定は `eslint.config.ts` と `.prettierrc.json` に従う。

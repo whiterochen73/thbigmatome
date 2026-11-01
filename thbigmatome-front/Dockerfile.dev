@@ -4,9 +4,14 @@ FROM node:20-alpine
 
 WORKDIR /app
 
+# Yarn Berry は corepack 経由（package.json の packageManager で版を固定）
+RUN corepack enable
+
 # Install dependencies (cached layer)
-COPY package.json yarn.lock ./
-RUN yarn install --frozen-lockfile
+# .yarnrc.yml（enableScripts: false / npmMinimalAgeGate）は install より前に COPY する。
+# 届かないと docker build の中で lifecycle script が走る。
+COPY package.json yarn.lock .yarnrc.yml ./
+RUN yarn install --immutable
 
 # Copy application code (bind mount in development)
 COPY . .

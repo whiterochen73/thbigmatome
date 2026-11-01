@@ -52,6 +52,20 @@ export function costBarColor(level: CostLevel): string {
   return 'link'
 }
 
+/** 外の世界枠の内訳の規定違反として足す文言（サーバの warnings には内訳の違反が載らない） */
+export const OUTSIDE_WORLD_BALANCE_WARNING = '外の世界枠は投手と野手の両方が必要です'
+
+/**
+ * 1軍の規定違反の一覧。サーバの warnings（コスト超過・外の世界枠の人数超過）に、
+ * 外の世界枠の内訳の違反（投手側・野手側のどちらかが 0 人）を足す。内訳が無い古い応答は warnings のまま。
+ */
+export function rosterWarnings(record: RosterStatusRecord): string[] {
+  if (record.outside_world_breakdown?.balance_ok === false) {
+    return [...record.warnings, OUTSIDE_WORLD_BALANCE_WARNING]
+  }
+  return record.warnings
+}
+
 export function remainingCount(absence: AbsenceRecord): number | null {
   return absence.duration_unit === 'days' ? absence.remaining_days : absence.remaining_games
 }
@@ -92,11 +106,11 @@ export function buildCheckRows(
     }
   }
   const violation = rosterStatus
-    .filter((r) => r.warnings.length > 0)
+    .filter((r) => rosterWarnings(r).length > 0)
     .map((r) => ({
       team_id: r.team_id,
       team_name: r.team_name,
-      warnings: r.warnings,
+      warnings: rosterWarnings(r),
       overBy: overBy.get(r.team_id) ?? null,
     }))
   const violationIds = new Set(violation.map((r) => r.team_id))
@@ -142,7 +156,7 @@ export interface DashboardSummary {
   activeTeams: number
   totalTeams: number
   inactiveTeams: number
-  /** 規定違反（roster_status の warnings あり）のチーム数 */
+  /** 規定違反（roster_status の warnings、または外の世界枠の内訳の違反）のチーム数 */
   violationTeams: number
   /** 要確認のチーム数。規定違反、または合計コスト超過（100% 超）のチーム。同じチームは 1 回 */
   checkTeams: number
@@ -168,7 +182,7 @@ export function summarize(src: DashboardSources): DashboardSummary {
     activeTeams,
     totalTeams: src.teams.length,
     inactiveTeams: src.teams.length - activeTeams,
-    violationTeams: src.rosterStatus.filter((r) => r.warnings.length > 0).length,
+    violationTeams: src.rosterStatus.filter((r) => rosterWarnings(r).length > 0).length,
     checkTeams,
     absenceCount: src.absences.length,
     absenceTeams: new Set(src.absences.map((a) => a.team_id)).size,
@@ -223,7 +237,7 @@ export function buildTeamRows(src: TeamRowSources): TeamRow[] {
     const absenceCount = src.absences.filter((a) => a.team_id === t.id).length
     const cooldownCount = src.cooldowns.filter((c) => c.team_id === t.id).length
     const level = cost ? costLevel(cost.total_cost, cost.total_cost_limit) : 'normal'
-    const warnings = roster?.warnings ?? []
+    const warnings = roster ? rosterWarnings(roster) : []
     const games = src.gameProgress.find((g) => g.team_id === t.id) ?? null
     return {
       id: t.id,

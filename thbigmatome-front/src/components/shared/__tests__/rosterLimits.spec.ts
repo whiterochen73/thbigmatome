@@ -11,6 +11,9 @@ import {
   costLimitState,
   countLimitState,
   outsideWorldLimitState,
+  outsideWorldBreakdownFromKinds,
+  formatOutsideWorldBreakdown,
+  outsideWorldImbalance,
   LIMIT_APPEARANCE,
 } from '../rosterLimits'
 import LimitMark from '../LimitMark.vue'
@@ -74,6 +77,90 @@ describe('outsideWorldLimitState（0〜上限 4）', () => {
   it('上限を引数で渡せる（API の outside_world_limit）', () => {
     expect(outsideWorldLimitState(2, 2)).toBe('ok')
     expect(outsideWorldLimitState(3, 2)).toBe('ng')
+  })
+})
+
+// Test Basis: Operator 決定 2026-11-02（cmd_1808）AMB-29 再改訂。4 人以上のとき投手側・野手側が 1 人以上ずつ。3 人以下は内訳を問わない
+describe('outsideWorldLimitState（内訳つき）', () => {
+  it('人数が上限以下でも内訳が外れたら ng', () => {
+    expect(outsideWorldLimitState(4, 4, false)).toBe('ng')
+    expect(outsideWorldLimitState(4, 4, true)).toBe('ok')
+  })
+  it('人数が上限超えなら内訳が良くても ng', () => {
+    expect(outsideWorldLimitState(5, 4, true)).toBe('ng')
+  })
+  it('内訳を渡さない時は人数だけ', () => {
+    expect(outsideWorldLimitState(4)).toBe('ok')
+  })
+})
+
+describe('outsideWorldBreakdownFromKinds（1軍の入れ替えで数え直す）', () => {
+  it('投・野・二刀流の数を数える。カードの無い選手（null）はどれにも数えない', () => {
+    const b = outsideWorldBreakdownFromKinds(['pitcher_only', 'pitcher_only', 'fielder_only', null])
+    expect(b).toMatchObject({ pitcher_only: 2, fielder_only: 1, two_way: 0 })
+  })
+  it('4 人全員が投手 → balance_ok false', () => {
+    const b = outsideWorldBreakdownFromKinds(Array(4).fill('pitcher_only'))
+    expect(b.balance_ok).toBe(false)
+  })
+  it('4 人全員が野手 → balance_ok false', () => {
+    expect(outsideWorldBreakdownFromKinds(Array(4).fill('fielder_only')).balance_ok).toBe(false)
+  })
+  it('4 人で二刀流が 1 人いれば、残りが全員投手でも balance_ok true', () => {
+    const b = outsideWorldBreakdownFromKinds([
+      'two_way',
+      'pitcher_only',
+      'pitcher_only',
+      'pitcher_only',
+    ])
+    expect(b.balance_ok).toBe(true)
+  })
+  it('投手 3・野手 1 → ok', () => {
+    const b = outsideWorldBreakdownFromKinds([
+      'pitcher_only',
+      'pitcher_only',
+      'pitcher_only',
+      'fielder_only',
+    ])
+    expect(b.balance_ok).toBe(true)
+  })
+  it('3 人以下は内訳を問わず ok（全員投手でも）', () => {
+    expect(outsideWorldBreakdownFromKinds(Array(3).fill('pitcher_only')).balance_ok).toBe(true)
+    expect(outsideWorldBreakdownFromKinds([]).balance_ok).toBe(true)
+  })
+  it('4 人のうち 1 人がカード無し（null）で残り 3 人が投手 → 野手側が 0 で ng', () => {
+    const b = outsideWorldBreakdownFromKinds(['pitcher_only', 'pitcher_only', 'pitcher_only', null])
+    expect(b.balance_ok).toBe(false)
+  })
+})
+
+describe('formatOutsideWorldBreakdown / outsideWorldImbalance', () => {
+  const b = (pitcher_only: number, fielder_only: number, two_way: number, balance_ok: boolean) => ({
+    pitcher_only,
+    fielder_only,
+    two_way,
+    balance_ok,
+  })
+  it('全部の内訳は「投：n/野：n/二刀流：n」', () => {
+    expect(formatOutsideWorldBreakdown(b(2, 1, 1, true))).toBe('投：2/野：1/二刀流：1')
+    expect(formatOutsideWorldBreakdown(b(0, 0, 0, true))).toBe('投：0/野：0/二刀流：0')
+  })
+  it('投手 4 人 → 「投 4」、野手 4 人 → 「野 4」。足りない側（野 0）は出さない', () => {
+    expect(outsideWorldImbalance(b(4, 0, 0, false))).toMatchObject({
+      side: 'pitcher',
+      label: '投 4',
+    })
+    expect(outsideWorldImbalance(b(0, 4, 0, false))).toMatchObject({
+      side: 'fielder',
+      label: '野 4',
+    })
+  })
+  it('規定内は null（ふだんは内訳を出さない）', () => {
+    expect(outsideWorldImbalance(b(4, 0, 0, true))).toBeNull()
+    expect(outsideWorldImbalance(b(2, 2, 0, true))).toBeNull()
+  })
+  it('どちらにも数えられる人がいない（全員カード無し）は添える側が無いので null', () => {
+    expect(outsideWorldImbalance(b(0, 0, 0, false))).toBeNull()
   })
 })
 

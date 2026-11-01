@@ -1,3 +1,5 @@
+import type { OutsideWorldBreakdown } from '@/components/shared/rosterLimits'
+
 // コミッショナーのダッシュボード API（/commissioner/dashboard/*）の応答の形
 
 export interface AbsenceRecord {
@@ -51,6 +53,8 @@ export interface RosterStatusRecord {
   first_cost_limit: number | null
   outside_world_count: number
   outside_world_limit: number
+  /** 外の世界枠の内訳。古い応答には無い */
+  outside_world_breakdown?: OutsideWorldBreakdown
   warnings: string[]
 }
 

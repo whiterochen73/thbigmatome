@@ -1106,8 +1106,7 @@
     "outsideWorldLabel": "外の世界",
     "specialLabel": "特例",
     "groups": {
-      "starter": "★ 先発ローテーション",
-      "reliever": "◎ 中継ぎ / クローザー",
+      "pitcher": "投手",
       "fielder": "野手"
     },
     "absenceLabel": {

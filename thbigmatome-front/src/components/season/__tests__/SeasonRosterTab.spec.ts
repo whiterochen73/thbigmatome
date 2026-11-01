@@ -401,7 +401,13 @@ describe('SeasonRosterTab 1軍の規定判定の記号', () => {
   })
 
   // count 人の 1軍。コストの合計が total になるよう 1 人目に残りを寄せる。外の世界枠は先頭から outside 人
-  const squad = (count: number, total: number, outside = 0): RosterPlayer[] =>
+  // 外の世界枠の区分（pitcher_fielder_kind）は kinds で指定。省略時は投・野を交互に（4 人で投 2・野 2 = 内訳は規定内）
+  const squad = (
+    count: number,
+    total: number,
+    outside = 0,
+    kinds?: NonNullable<RosterPlayer['pitcher_fielder_kind']>[],
+  ): RosterPlayer[] =>
     Array.from({ length: count }, (_, i) => ({
       team_membership_id: i + 1,
       player_id: i + 1,
@@ -414,6 +420,8 @@ describe('SeasonRosterTab 1軍の規定判定の記号', () => {
       position: null,
       player_types: [],
       is_outside_world: i < outside,
+      pitcher_fielder_kind:
+        i < outside ? (kinds?.[i] ?? (i % 2 === 0 ? 'pitcher_only' : 'fielder_only')) : null,
     }))
 
   async function mountWith(roster: RosterPlayer[]) {
@@ -500,5 +508,169 @@ describe('SeasonRosterTab 1軍の規定判定の記号', () => {
     expect(w.find('[data-testid="outside-status"]').classes()).toContain(
       state === 'ok' ? 'text-meter-ok' : 'text-meter-ng',
     )
+  })
+
+  // cmd_1808 subtask_1808j: 外枠の人数の横に内訳（投：n/野：n/二刀流：n）を常に出す。
+  // 記号は「人数が 4 以下 かつ 内訳が規定内」で緑のチェック、どちらか外れたら赤の✕。
+  // Test Basis: Operator 決定 2026-11-02（cmd_1808）/ AMB-29 再改訂
+  describe('外の世界枠の内訳', () => {
+    const breakdownText = (w: Awaited<ReturnType<typeof mountWith>>) =>
+      w.find('[data-testid="outside-breakdown"]').text()
+    const P = 'pitcher_only' as const
+    const F = 'fielder_only' as const
+    const T = 'two_way' as const
+
+    it('外枠の人数の横に「（投：n/野：n/二刀流：n）」を常に出す（0 人でも）', async () => {
+      expect(breakdownText(await mountWith(squad(26, 26, 0)))).toBe('（投：0/野：0/二刀流：0）')
+      expect(breakdownText(await mountWith(squad(26, 26, 3, [P, P, F])))).toBe(
+        '（投：2/野：1/二刀流：0）',
+      )
+      expect(breakdownText(await mountWith(squad(26, 26, 4, [P, F, T, F])))).toBe(
+        '（投：1/野：2/二刀流：1）',
+      )
+    })
+
+    it('4 人全員が投手 → ✕、全員が野手 → ✕', async () => {
+      expect(
+        mark(await mountWith(squad(26, 26, 4, [P, P, P, P])), 'outside-status').attributes(
+          'data-state',
+        ),
+      ).toBe('ng')
+      expect(
+        mark(await mountWith(squad(26, 26, 4, [F, F, F, F])), 'outside-status').attributes(
+          'data-state',
+        ),
+      ).toBe('ng')
+    })
+
+    it('4 人で二刀流が補う → ✓。投 3・野 1 → ✓', async () => {
+      expect(
+        mark(await mountWith(squad(26, 26, 4, [P, P, P, T])), 'outside-status').attributes(
+          'data-state',
+        ),
+      ).toBe('ok')
+      expect(
+        mark(await mountWith(squad(26, 26, 4, [P, P, P, F])), 'outside-status').attributes(
+          'data-state',
+        ),
+      ).toBe('ok')
+    })
+
+    it('3 人以下は内訳を問わず ✓（全員投手でも）', async () => {
+      const w = await mountWith(squad(26, 26, 3, [P, P, P]))
+      expect(mark(w, 'outside-status').attributes('data-state')).toBe('ok')
+      expect(breakdownText(w)).toBe('（投：3/野：0/二刀流：0）')
+    })
+
+    it('5 人は人数で ✕（内訳が良くても）', async () => {
+      const w = await mountWith(squad(26, 26, 5, [P, P, F, F, T]))
+      expect(mark(w, 'outside-status').attributes('data-state')).toBe('ng')
+    })
+
+    it('カードの無い選手（kind=null）は内訳に数えない', async () => {
+      const roster = squad(26, 26, 3, [P, F, P])
+      roster[1]!.pitcher_fielder_kind = null
+      expect(breakdownText(await mountWith(roster))).toBe('（投：2/野：0/二刀流：0）')
+    })
+
+    it('2軍の外の世界枠の選手は数えない（1軍だけ）', async () => {
+      const roster = squad(26, 26, 2, [P, P])
+      roster.push({
+        ...roster[0]!,
+        team_membership_id: 99,
+        player_id: 99,
+        squad: 'second',
+        is_outside_world: true,
+        pitcher_fielder_kind: F,
+      })
+      expect(breakdownText(await mountWith(roster))).toBe('（投：2/野：0/二刀流：0）')
+    })
+
+    it('1軍を画面で入れ替えると内訳と記号が追従する（降格→昇格で数え直す）', async () => {
+      // 1軍の外枠は投手 4 人（✕）。2軍に外の世界の野手 1 人
+      const roster = squad(26, 26, 4, [P, P, P, P])
+      roster.push({
+        ...roster[0]!,
+        team_membership_id: 99,
+        player_id: 99,
+        player_name: '二軍の野手',
+        squad: 'second',
+        is_outside_world: true,
+        pitcher_fielder_kind: F,
+      })
+      const w = await mountWith(roster)
+      expect(breakdownText(w)).toBe('（投：4/野：0/二刀流：0）')
+      expect(mark(w, 'outside-status').attributes('data-state')).toBe('ng')
+
+      // 外の世界の投手 1 人を降格 → 3 人（✓）
+      await w.findAll('.demote-btn')[0]!.trigger('click')
+      await flushPromises()
+      expect(breakdownText(w)).toBe('（投：3/野：0/二刀流：0）')
+      expect(mark(w, 'outside-status').attributes('data-state')).toBe('ok')
+
+      // 2軍の外の世界の野手を昇格 → 投 3・野 1（4 人で規定内）
+      await w
+        .findAll('.promote-btn')
+        .find((b) => b.element.closest('tr')?.textContent?.includes('二軍の野手'))!
+        .trigger('click')
+      await flushPromises()
+      expect(breakdownText(w)).toBe('（投：3/野：1/二刀流：0）')
+      expect(mark(w, 'outside-status').attributes('data-state')).toBe('ok')
+    })
+  })
+
+  // cmd_1811 subtask_1811a: 投手は先発・救援を分けず「投手」1 つのまとまり。野手はそのまま。並びは従来（救援専任以外 → 救援専任）
+  describe('1軍の区分（投手 / 野手）', () => {
+    const row = (id: number, over: Partial<RosterPlayer>): RosterPlayer => ({
+      team_membership_id: id,
+      player_id: id,
+      player_name: `選手${id}`,
+      number: `${id}`,
+      squad: 'first',
+      cost: 1,
+      selected_cost_type: 'normal_cost',
+      handedness: null,
+      position: null,
+      player_types: [],
+      ...over,
+    })
+    const headers = (w: Awaited<ReturnType<typeof mountWith>>) =>
+      w.findAll('tr.group-header-row').map((r) => r.text())
+    // 1軍の表（最初の .roster-table）の選手行の名前の列
+    const firstTableNames = (w: Awaited<ReturnType<typeof mountWith>>) =>
+      w
+        .findAll('.roster-table')[0]!
+        .findAll('tbody tr')
+        .filter((r) => !r.classes().includes('group-header-row'))
+        .map((r) => r.findAll('td')[1]!.text())
+
+    it('見出しは「投手」「野手」の 2 つだけ（旧「先発ローテーション」「中継ぎ / クローザー」は出ない）', async () => {
+      const w = await mountWith([
+        row(1, { is_pitcher: true }),
+        row(2, { is_pitcher: true, selected_cost_type: 'relief_only_cost' }),
+        row(3, {}),
+      ])
+      expect(headers(w)).toEqual(['投手', '野手'])
+      expect(w.text()).not.toContain('先発ローテーション')
+      expect(w.text()).not.toContain('中継ぎ / クローザー')
+    })
+
+    it('先発と救援専任は同じ「投手」の中。並びは救援専任以外 → 救援専任', async () => {
+      const w = await mountWith([
+        row(1, { is_pitcher: true, selected_cost_type: 'relief_only_cost', player_name: '救援' }),
+        row(2, { is_pitcher: true, player_name: '先発' }),
+        row(3, { player_name: '野手' }),
+      ])
+      expect(firstTableNames(w).slice(0, 3)).toEqual([
+        expect.stringContaining('先発'),
+        expect.stringContaining('救援'),
+        expect.stringContaining('野手'),
+      ])
+    })
+
+    it('投手がいなければ「投手」の見出しを出さない。野手がいなければ「野手」を出さない', async () => {
+      expect(headers(await mountWith([row(1, {}), row(2, {})]))).toEqual(['野手'])
+      expect(headers(await mountWith([row(1, { position: 'pitcher' })]))).toEqual(['投手'])
+    })
   })
 })

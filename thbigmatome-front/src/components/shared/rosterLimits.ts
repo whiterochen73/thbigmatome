@@ -31,9 +31,66 @@ export function countLimitState(count: number): LimitState {
   return count >= FIRST_SQUAD_MIN_PLAYERS && count <= MAX_FIRST_SQUAD_PLAYERS ? 'ok' : 'ng'
 }
 
-/** 外の世界枠は上限（既定 4）までが ok。下限は無い */
-export function outsideWorldLimitState(count: number, limit = OUTSIDE_WORLD_LIMIT): LimitState {
-  return count <= limit ? 'ok' : 'ng'
+/**
+ * 外の世界枠は、人数が上限（既定 4）以下で、かつ投手・野手の内訳が規定内（balanceOk）なら ok。下限は無い。
+ * balanceOk を渡さない時は人数だけで判定する。
+ */
+export function outsideWorldLimitState(
+  count: number,
+  limit = OUTSIDE_WORLD_LIMIT,
+  balanceOk = true,
+): LimitState {
+  return count <= limit && balanceOk ? 'ok' : 'ng'
+}
+
+/** 外の世界枠の選手の区分（サーバの TeamMembership#pitcher_fielder_kind）。カードが無い選手は null で、どちらにも数えない */
+export type PitcherFielderKind = 'pitcher_only' | 'fielder_only' | 'two_way'
+
+/** 外の世界枠の内訳（サーバの Team.outside_world_breakdown と同じ形） */
+export interface OutsideWorldBreakdown {
+  pitcher_only: number
+  fielder_only: number
+  two_way: number
+  /** 4 人以上の時、投手に数える人と野手に数える人がそれぞれ 1 人以上いる（3 人以下は常に true） */
+  balance_ok: boolean
+}
+
+/**
+ * 1軍の外の世界枠の各選手の区分から内訳を数える。ロスター画面で 1軍を入れ替えた時に数え直すためのもの。
+ * 区分そのものはサーバが決めた値をそのまま使い、画面では決め直さない。
+ * 規定は Team.outside_world_balance_ok? と同じ（4 人以上なら、投手側・野手側の両方が 1 人以上）。
+ */
+export function outsideWorldBreakdownFromKinds(
+  kinds: (PitcherFielderKind | null | undefined)[],
+): OutsideWorldBreakdown {
+  const pitcher_only = kinds.filter((k) => k === 'pitcher_only').length
+  const fielder_only = kinds.filter((k) => k === 'fielder_only').length
+  const two_way = kinds.filter((k) => k === 'two_way').length
+  const balance_ok =
+    kinds.length < OUTSIDE_WORLD_LIMIT || (pitcher_only + two_way > 0 && fielder_only + two_way > 0)
+  return { pitcher_only, fielder_only, two_way, balance_ok }
+}
+
+/** 内訳の全部の表記「投：n/野：n/二刀流：n」 */
+export function formatOutsideWorldBreakdown(b: OutsideWorldBreakdown): string {
+  return `投：${b.pitcher_only}/野：${b.fielder_only}/二刀流：${b.two_way}`
+}
+
+/**
+ * 内訳が規定外の時に添える「4 人いる側」。投手側だけ・野手側だけに偏っている時の、いる側と人数（例 投 4）。
+ * 規定内・どちらにも数えられる人がいない時は null。
+ */
+export function outsideWorldImbalance(
+  b: OutsideWorldBreakdown,
+): { side: 'pitcher' | 'fielder'; label: string; count: number } | null {
+  if (b.balance_ok) return null
+  if (b.pitcher_only + b.two_way === 0 && b.fielder_only > 0) {
+    return { side: 'fielder', label: `野 ${b.fielder_only}`, count: b.fielder_only }
+  }
+  if (b.fielder_only + b.two_way === 0 && b.pitcher_only > 0) {
+    return { side: 'pitcher', label: `投 ${b.pitcher_only}`, count: b.pitcher_only }
+  }
+  return null
 }
 
 /**

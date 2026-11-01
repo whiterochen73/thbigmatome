@@ -293,6 +293,28 @@ describe('DashboardOverview 要確認（規定違反 または 合計コスト�
     expect(g.find('[data-testid="check-cost-pending"]').exists()).toBe(false)
   })
 
+  // cmd_1808 subtask_1808j: 外の世界枠の内訳の違反は、サーバの warnings が空でも規定違反として要確認に入る
+  it('外の世界枠の内訳の違反（4 人全員が投手）は規定違反として要確認に入る。内訳が規定内なら入らない', () => {
+    const bad = {
+      ...roster(1),
+      outside_world_count: 4,
+      outside_world_breakdown: { pitcher_only: 4, fielder_only: 0, two_way: 0, balance_ok: false },
+    }
+    const good = {
+      ...roster(2),
+      outside_world_count: 4,
+      outside_world_breakdown: { pitcher_only: 3, fielder_only: 0, two_way: 1, balance_ok: true },
+    }
+    const w = mountOverview(baseProps({ rosterStatus: ok([bad, good]), costs: ok([cost(1, 100)]) }))
+    const rows = w.find('[data-testid="attention-violation"]').findAll('.attention-row')
+    expect(rows).toHaveLength(1)
+    expect(rows[0]!.attributes('data-testid')).toBe('check-row-violation')
+    expect(rows[0]!.text()).toContain('チーム1')
+    expect(rows[0]!.text()).toContain('外の世界枠は投手と野手の両方が必要です')
+    expect(warnTone(w)).toEqual(['bg-state-warn'])
+    expect(tile(w, 'violation').text()).toContain('規定を外れたチーム')
+  })
+
   it('コストが読み込み中: 違反 0 件なら緑にせず中立色で「確認中」。違反があれば警告色のまま', () => {
     const zero = mountOverview(baseProps({ rosterStatus: ok([roster(1)]), costs: pending() }))
     expect(warnTone(zero)).toEqual(['bg-state-neutral'])

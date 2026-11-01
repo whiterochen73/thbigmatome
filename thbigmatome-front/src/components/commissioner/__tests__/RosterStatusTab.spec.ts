@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { mount, flushPromises } from '@vue/test-utils'
 import { createVuetify } from 'vuetify'
 import * as components from 'vuetify/components'
@@ -155,6 +155,147 @@ describe('RosterStatusTab', () => {
       const chips = w.findAllComponents(components.VChip).map((c) => c.text())
       expect(chips.filter((t) => t === '超過')).toHaveLength(2)
       expect(chips.filter((t) => t === '警告あり')).toHaveLength(1)
+    })
+  })
+
+  // cmd_1808 subtask_1808j: 外の世界枠の内訳。ふだんは「n / 4」＋記号、違反時だけ 4 人いる側を添える。
+  // 記号（セル）に触れる・フォーカスすると全部の内訳。Test Basis: Operator 決定 2026-11-02（cmd_1808）
+  describe('外の世界枠の内訳', () => {
+    const bd = (
+      pitcher_only: number,
+      fielder_only: number,
+      two_way: number,
+      balance_ok: boolean,
+    ) => ({ pitcher_only, fielder_only, two_way, balance_ok })
+    const rec = (over: Partial<(typeof mockRosterStatus)[number]> & Record<string, unknown>) => ({
+      ...mockRosterStatus[0]!,
+      ...over,
+    })
+    const cell = (w: ReturnType<typeof mountComponent>, row = 0) =>
+      w.findAll('tbody tr')[row]!.find('[data-testid="outside-cell"]')
+
+    it('ふだん（規定内）は「n / 4」＋✓のまま。内訳（投 4 など）は出さない', async () => {
+      const w = mountComponent({
+        records: [rec({ outside_world_count: 4, outside_world_breakdown: bd(2, 1, 1, true) })],
+      })
+      await flushPromises()
+      expect(cell(w).text()).toBe('4 / 4')
+      expect(cell(w).find('.mdi-check-circle').exists()).toBe(true)
+      expect(cell(w).find('[data-testid="outside-imbalance"]').exists()).toBe(false)
+    })
+
+    it('4 人全員が投手 → ✕＋「投 4」', async () => {
+      const w = mountComponent({
+        records: [rec({ outside_world_count: 4, outside_world_breakdown: bd(4, 0, 0, false) })],
+      })
+      await flushPromises()
+      expect(cell(w).find('.mdi-close-circle').exists()).toBe(true)
+      expect(cell(w).find('[data-testid="outside-imbalance"]').text()).toBe('投 4')
+      expect(cell(w).text()).toBe('4 / 4 投 4')
+    })
+
+    it('4 人全員が野手 → ✕＋「野 4」', async () => {
+      const w = mountComponent({
+        records: [rec({ outside_world_count: 4, outside_world_breakdown: bd(0, 4, 0, false) })],
+      })
+      await flushPromises()
+      expect(cell(w).find('.mdi-close-circle').exists()).toBe(true)
+      expect(cell(w).find('[data-testid="outside-imbalance"]').text()).toBe('野 4')
+    })
+
+    it('二刀流で補えば ✓（投 3・二刀流 1）', async () => {
+      const w = mountComponent({
+        records: [rec({ outside_world_count: 4, outside_world_breakdown: bd(3, 0, 1, true) })],
+      })
+      await flushPromises()
+      expect(cell(w).find('.mdi-check-circle').exists()).toBe(true)
+      expect(cell(w).find('[data-testid="outside-imbalance"]').exists()).toBe(false)
+    })
+
+    it('3 人以下は内訳を問わず ✓（全員投手でも）', async () => {
+      const w = mountComponent({
+        records: [rec({ outside_world_count: 3, outside_world_breakdown: bd(3, 0, 0, true) })],
+      })
+      await flushPromises()
+      expect(cell(w).find('.mdi-check-circle').exists()).toBe(true)
+    })
+
+    it('5 人は人数で✕（内訳が良くても）。「超過」チップも出る', async () => {
+      const w = mountComponent({
+        records: [rec({ outside_world_count: 5, outside_world_breakdown: bd(3, 2, 0, true) })],
+      })
+      await flushPromises()
+      expect(cell(w).find('.mdi-close-circle').exists()).toBe(true)
+      expect(cell(w).find('[data-testid="outside-imbalance"]').exists()).toBe(false)
+      expect(w.findAllComponents(components.VChip).map((c) => c.text())).toContain('超過')
+    })
+
+    it('内訳が無い古い応答は人数だけで判定し、内訳は出さない', async () => {
+      const w = mountComponent({ records: [rec({ outside_world_count: 4 })] })
+      await flushPromises()
+      expect(cell(w).find('.mdi-check-circle').exists()).toBe(true)
+      expect(cell(w).attributes('tabindex')).toBeUndefined()
+    })
+
+    it('内訳の違反は「状態」の列で「警告あり」になる（サーバの warnings が空でも）', async () => {
+      const w = mountComponent({
+        records: [rec({ outside_world_count: 4, outside_world_breakdown: bd(4, 0, 0, false) })],
+      })
+      await flushPromises()
+      expect(w.findAllComponents(components.VChip).map((c) => c.text())).toContain('警告あり')
+    })
+
+    describe('ツールチップ', () => {
+      afterEach(() => {
+        document.body.innerHTML = ''
+      })
+      const openTexts = () =>
+        Array.from(document.body.querySelectorAll('.v-tooltip .v-overlay__content')).map(
+          (el) => el.textContent ?? '',
+        )
+
+      async function mountAttached(rec0: Record<string, unknown>) {
+        const w = mount(RosterStatusTab, {
+          attachTo: document.body,
+          props: { records: [rec(rec0)], loading: false, failed: false },
+          global: { plugins: [i18n, vuetify] },
+        })
+        await flushPromises()
+        return w
+      }
+
+      it('セルは Tab で届く（tabindex=0）', async () => {
+        const w = await mountAttached({
+          outside_world_count: 4,
+          outside_world_breakdown: bd(4, 0, 0, false),
+        })
+        expect(cell(w).attributes('tabindex')).toBe('0')
+        w.unmount()
+      })
+
+      it('フォーカスすると「投：n/野：n/二刀流：n」が出る（キーボード）', async () => {
+        const w = await mountAttached({
+          outside_world_count: 4,
+          outside_world_breakdown: bd(2, 1, 1, true),
+        })
+        await cell(w).trigger('focus')
+        await flushPromises()
+        await new Promise((r) => setTimeout(r, 50))
+        expect(openTexts()).toContain('投：2/野：1/二刀流：1')
+        w.unmount()
+      })
+
+      it('触れる（ホバー）と出る。違反の行は全部の内訳（投：4/野：0/二刀流：0）', async () => {
+        const w = await mountAttached({
+          outside_world_count: 4,
+          outside_world_breakdown: bd(4, 0, 0, false),
+        })
+        await cell(w).trigger('mouseenter')
+        await flushPromises()
+        await new Promise((r) => setTimeout(r, 50))
+        expect(openTexts()).toContain('投：4/野：0/二刀流：0')
+        w.unmount()
+      })
     })
   })
 

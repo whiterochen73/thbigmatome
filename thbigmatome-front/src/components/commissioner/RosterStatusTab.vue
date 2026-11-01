@@ -76,11 +76,31 @@
         </template>
         <template #[`item.outside_world_count`]="{ item }">
           <div class="d-flex align-center gap-2">
-            <span class="d-inline-flex align-center ga-1">
-              <LimitMark
-                :state="outsideWorldLimitState(item.outside_world_count, item.outside_world_limit)"
-                :size="16"
-              />
+            <!-- 記号（セル）に触れる・フォーカスすると内訳の全部。違反の時だけ、4 人いる側を短く添える -->
+            <v-tooltip v-if="item.outside_world_breakdown" location="top" :open-delay="0">
+              <template #activator="{ props: tipProps }">
+                <span
+                  v-bind="tipProps"
+                  class="d-inline-flex align-center ga-1"
+                  tabindex="0"
+                  data-testid="outside-cell"
+                >
+                  <LimitMark :state="outsideState(item)" :size="16" />
+                  {{ item.outside_world_count }} / {{ item.outside_world_limit }}
+                  <strong
+                    v-if="outsideWorldImbalance(item.outside_world_breakdown)"
+                    class="text-meter-ng text-no-wrap"
+                    data-testid="outside-imbalance"
+                    >{{ outsideWorldImbalance(item.outside_world_breakdown)?.label }}</strong
+                  >
+                </span>
+              </template>
+              <span data-testid="outside-breakdown">{{
+                formatOutsideWorldBreakdown(item.outside_world_breakdown)
+              }}</span>
+            </v-tooltip>
+            <span v-else class="d-inline-flex align-center ga-1" data-testid="outside-cell">
+              <LimitMark :state="outsideState(item)" :size="16" />
               {{ item.outside_world_count }} / {{ item.outside_world_limit }}
             </span>
             <v-chip
@@ -97,7 +117,7 @@
         <template #[`item.status`]="{ item }">
           <!-- 違反の無い行は何も出さない（「OK」を毎行出すと、違反の行が埋もれる） -->
           <v-chip
-            v-if="item.warnings && item.warnings.length > 0"
+            v-if="rosterWarnings(item).length > 0"
             color="state-warn"
             variant="flat"
             size="small"
@@ -197,8 +217,11 @@ import LimitMark from '@/components/shared/LimitMark.vue'
 import {
   costLimitState,
   countLimitState,
+  formatOutsideWorldBreakdown,
+  outsideWorldImbalance,
   outsideWorldLimitState,
 } from '@/components/shared/rosterLimits'
+import { rosterWarnings } from './dashboardLogic'
 
 // 1軍登録状況の取得は親（ダッシュボード）が持つ。概況の「要確認」と同じ API なので、2 度取らないよう共用する
 defineProps<{
@@ -207,6 +230,14 @@ defineProps<{
   failed: boolean
 }>()
 const emit = defineEmits<{ retry: [] }>()
+
+// 人数が上限以下で、内訳（投手側・野手側）も規定内なら ok。内訳が無い古い応答は人数だけで判定する
+const outsideState = (item: RosterStatusRecord) =>
+  outsideWorldLimitState(
+    item.outside_world_count,
+    item.outside_world_limit,
+    item.outside_world_breakdown?.balance_ok ?? true,
+  )
 
 const expanded = ref<string[]>([])
 const teamDetails = ref<Map<number, RosterPlayer[]>>(new Map())
@@ -221,7 +252,7 @@ const summaryHeaders = computed(() => [
   { title: '1軍', key: 'first_count', minWidth: minW(64) },
   { title: '2軍', key: 'second_count', minWidth: minW(64) },
   { title: 'コスト / 上限', key: 'first_cost', sortable: false, minWidth: minW(150) },
-  { title: '外枠 / 上限', key: 'outside_world_count', sortable: false, minWidth: minW(130) },
+  { title: '外枠 / 上限', key: 'outside_world_count', sortable: false, minWidth: minW(170) },
   { title: '状態', key: 'status', sortable: false, minWidth: minW(100) },
 ])
 

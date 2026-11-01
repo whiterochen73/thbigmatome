@@ -137,6 +137,9 @@
                 })
               }}
             </span>
+            <span class="text-no-wrap on-surface-variant" data-testid="outside-breakdown"
+              >（{{ formatOutsideWorldBreakdown(outsideBreakdown) }}）</span
+            >
             <v-tooltip location="top" max-width="260">
               <template #activator="{ props }">
                 <v-icon v-bind="props" size="x-small" class="on-surface-variant"
@@ -650,6 +653,8 @@ import {
   costLimitForCount,
   costLimitState,
   countLimitState,
+  formatOutsideWorldBreakdown,
+  outsideWorldBreakdownFromKinds,
   outsideWorldLimitState,
 } from '@/components/shared/rosterLimits'
 
@@ -732,19 +737,24 @@ const outsideWorldFirstSquadCount = computed(() => {
   return firstSquadPlayers.value.filter((p) => p.is_outside_world).length
 })
 
-// 投手グルーピング: selected_cost_type='relief_only_cost' → 中継ぎ/クローザー, others → 先発
+// 外の世界枠の内訳。区分はサーバが行ごとに返す pitcher_fielder_kind を使い、1軍を入れ替えるたびに数え直す
+const outsideBreakdown = computed(() =>
+  outsideWorldBreakdownFromKinds(
+    firstSquadPlayers.value.filter((p) => p.is_outside_world).map((p) => p.pitcher_fielder_kind),
+  ),
+)
+
+// 投手・野手の 2 つのまとまり。投手は先発・救援を分けず 1 つにする。並びは従来のまま（救援専任以外 → 救援専任）
 const firstSquadGroups = computed(() => {
-  const pitchers = firstSquadPlayers.value.filter(
-    (p) => p.position === 'pitcher' || p.is_pitcher === true,
-  )
-  const fielders = firstSquadPlayers.value.filter(
-    (p) => p.position !== 'pitcher' && p.is_pitcher !== true,
-  )
-  const spPitchers = pitchers.filter((p) => p.selected_cost_type !== 'relief_only_cost')
-  const rpPitchers = pitchers.filter((p) => p.selected_cost_type === 'relief_only_cost')
+  const isPitcher = (p: RosterPlayer) => p.position === 'pitcher' || p.is_pitcher === true
+  const pitchers = firstSquadPlayers.value.filter(isPitcher)
+  const fielders = firstSquadPlayers.value.filter((p) => !isPitcher(p))
+  const sorted = [
+    ...pitchers.filter((p) => p.selected_cost_type !== 'relief_only_cost'),
+    ...pitchers.filter((p) => p.selected_cost_type === 'relief_only_cost'),
+  ]
   return [
-    { label: t('seasonRosterTab.groups.starter'), players: spPitchers },
-    { label: t('seasonRosterTab.groups.reliever'), players: rpPitchers },
+    { label: t('seasonRosterTab.groups.pitcher'), players: sorted },
     { label: t('seasonRosterTab.groups.fielder'), players: fielders },
   ].filter((g) => g.players.length > 0)
 })
@@ -760,7 +770,14 @@ const costState = computed(() =>
   costLimitState(firstSquadTotalCost.value, firstSquadCostLimit.value),
 )
 const countState = computed(() => countLimitState(firstSquadPlayers.value.length))
-const outsideState = computed(() => outsideWorldLimitState(outsideWorldFirstSquadCount.value))
+// 人数が上限以下で、内訳（投手側・野手側）も規定内なら緑のチェック。どちらかが外れたら赤の✕
+const outsideState = computed(() =>
+  outsideWorldLimitState(
+    outsideWorldFirstSquadCount.value,
+    OUTSIDE_WORLD_LIMIT,
+    outsideBreakdown.value.balance_ok,
+  ),
+)
 
 const costBarColor = computed((): string =>
   costState.value ? LIMIT_APPEARANCE[costState.value].color : 'border-strong',

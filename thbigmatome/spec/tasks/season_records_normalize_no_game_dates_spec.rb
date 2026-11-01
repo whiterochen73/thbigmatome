@@ -45,17 +45,18 @@ RSpec.describe "season_records:normalize_no_game_dates", :pitcher_fatigue do
 
   let(:blank_env) { { "APPLY" => nil, "OUT" => nil, "TEAM_ID" => nil, "UNDO_FROM" => nil } }
 
-  it "試運転（既定）は DB を書かず、件数と、試合日でない種別に戻る日を出す" do
+  it "試運転（既定）は DB を書かず、件数を出す。マスタが予備日の日は試合日に戻すので『要確認』には出さない" do
     out = run_task(blank_env)
     expect(ng_day.reload).to have_attributes(date_type: "no_game", no_game: false)
     expect(out).to include("mode: DRY-RUN (DB unchanged)", "種別 no_game の日 1 日（登板 1 件）", "戻す: 1")
-    expect(out).to include("reserve_day 1", "要確認(not_game_type)")
+    expect(out).to include("game_day 1")
+    expect(out).not_to include("要確認(not_game_type)", "reserve_day 1")
   end
 
   it "APPLY=1 で書く。出力に APPLY (DB updated) と書く" do
     out = run_task(blank_env.merge("APPLY" => "1"))
     expect(out).to include("mode: APPLY (DB updated)", "書いた: 1 日")
-    expect(ng_day.reload).to have_attributes(date_type: "reserve_day", no_game: true)
+    expect(ng_day.reload).to have_attributes(date_type: "game_day", no_game: true) # マスタは予備日だが、試合日＋ノーゲーム真に戻す
     expect(start.reload.result_category).to eq("no_game")
   end
 
@@ -66,7 +67,8 @@ RSpec.describe "season_records:normalize_no_game_dates", :pitcher_fatigue do
       rows = CSV.read(path, headers: true)
       expect(rows.headers).to eq(%w[schedule_id season_id team_id team date old_date_type old_no_game new_date_type new_no_game status master_types pitcher_count])
       expect(rows.first.to_h).to include("schedule_id" => ng_day.id.to_s, "old_date_type" => "no_game", "old_no_game" => "false",
-                                         "new_date_type" => "reserve_day", "new_no_game" => "true", "status" => "restore", "pitcher_count" => "1")
+                                         "new_date_type" => "game_day", "new_no_game" => "true", "status" => "restore", "master_types" => "reserve_day",
+                                         "pitcher_count" => "1")
     end
   end
 
@@ -90,7 +92,7 @@ RSpec.describe "season_records:normalize_no_game_dates", :pitcher_fatigue do
     run_task(blank_env.merge("APPLY" => "1"))
     out = run_task(blank_env.merge("APPLY" => "1"))
     expect(out).to include("種別 no_game の日 0 日")
-    expect(ng_day.reload).to have_attributes(date_type: "reserve_day", no_game: true)
+    expect(ng_day.reload).to have_attributes(date_type: "game_day", no_game: true)
   end
 
   it "元の種別を決められない日があれば、APPLY=1 でも何も書かずに止める" do

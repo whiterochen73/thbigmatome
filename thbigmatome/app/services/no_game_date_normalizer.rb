@@ -9,13 +9,19 @@
 #   - マスタの種別自体が no_game → master_no_game（止める）
 # 止める行が 1 つでもあれば、APPLY=1 でも何も書かない（呼び出し側が expect_clean! で止める）。
 #
-# 戻す種別が予備日などの試合日でない種別になる日がある（マスタが reserve_day の日にノーゲームがあった場合）。その日は
-# 種別が試合日でないまま真偽値 no_game が立つ。画面から勝敗・登板を触れるのは種別が試合日の日だけなので、一覧（not_game_type）に出す。
+# マスタの種別が予備日（reserve_day / interleague_reserve_day）の日は、予備日のままではなく試合日（game_day / interleague_game_day）＋
+# no_game 真に戻す（RESERVE_AS_GAME_DAY。Operator 2026-11-02。予備日に組まれた試合がノーゲームになったと読む）。種別が試合日なので画面から
+# 勝敗・登板を触れ、試合数（counted_games）には数えない。
+# それ以外の試合日でない種別に戻る日（移動日など）があれば、種別が試合日でないまま真偽値 no_game が立つ。画面から勝敗・登板を触れるのは
+# 種別が試合日の日だけなので、一覧（not_game_type）に出す。
 #
 # 書き込みは SeasonSchedule#save!（updated_at は動かさない: touch: false）。after_save が登板の結果区分・疲労P を作り直す
 # （画面でノーゲームを立てた時と同じ経路）。作り直しが落ちたら全体を巻き戻す。
 class NoGameDateNormalizer
   class Unresolved < StandardError; end
+
+  # マスタの種別が予備日の日にノーゲームがあった時、戻す先の種別（予備日に組まれた試合がノーゲームになったと読む）
+  RESERVE_AS_GAME_DAY = { "reserve_day" => "game_day", "interleague_reserve_day" => "interleague_game_day" }.freeze
 
   # status: :restore / :unresolved / :ambiguous / :master_no_game
   Row = Struct.new(:schedule_id, :season_id, :team_id, :date, :old_date_type, :old_no_game, :new_date_type, :new_no_game,
@@ -127,6 +133,6 @@ class NoGameDateNormalizer
     return [ :ambiguous, nil ] if types.size > 1
     return [ :master_no_game, nil ] if types.first == SeasonSchedule::NO_GAME_DATE_TYPE
 
-    [ :restore, types.first ]
+    [ :restore, RESERVE_AS_GAME_DAY.fetch(types.first, types.first) ]
   end
 end

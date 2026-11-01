@@ -230,7 +230,9 @@ namespace :season_records do
     ノーゲームの表し方を真偽値に一本化する（設計書 §4.6）。元のマスタは「そのシーズンと同じ日付の集合を持つ schedule」で引く。
     元の種別を決められない日（マスタが無い・割れる・マスタ自体が no_game）が 1 日でもあれば、APPLY=1 でも何も書かず止める。
     書くと登板の結果区分・疲労P が作り直される（画面でノーゲームを立てた時と同じ。登板の結果区分が no_game に変わり、疲労一覧の表示が変わる）。
-    戻した種別が予備日などの試合日でない種別になる日は、一覧の not_game_type 行と標準出力に出す（種別は試合日でないまま真偽値だけが立つ）。
+    マスタの種別が予備日（reserve_day / interleague_reserve_day）の日は、予備日のままではなく試合日（game_day / interleague_game_day）＋ no_game 真に戻す
+    （予備日に組まれた試合がノーゲームになったと読む。試合数には数えない。Operator 2026-11-02）。CSV の master_types には元のマスタの種別（予備日）が残る。
+    それ以外の試合日でない種別（移動日など）に戻る日は、一覧の not_game_type 行と標準出力に出す（種別は試合日でないまま真偽値だけが立つ）。
     既定は試運転（DB を書かない）。APPLY=1 の時だけ書く。何度流しても同じ結果になる（種別 no_game の日が無ければ 0 件）。
       bundle exec rake season_records:normalize_no_game_dates                    # 試運転
       OUT=/path/to/before.csv bundle exec rake season_records:normalize_no_game_dates  # 変更前後の値の CSV（逆向きに当てる材料）

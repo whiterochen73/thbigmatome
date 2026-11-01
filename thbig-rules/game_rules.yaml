@@ -5,10 +5,15 @@
 #
 # 参照: thbig-rules/README.md, thbig-rules/docs/
 
-version: "1.7"
+version: "1.8"
 created_at: "2026-04-01"
 format_updated: "2026-04-04"
 changelog:
+  - version: "1.8"
+    date: "2026-11-02"
+    breaking: false
+    changes:
+      - "outside_world に series_basis 追加、team_types.original の description を合わせる: 外の世界かどうかは選手のシリーズではなく登録したカードのシリーズで決める。PM2026 のカードは original なので東方のキャラクターでも外の世界枠を取る（AMB-30）"
   - version: "1.7"
     date: "2026-11-02"
     breaking: false
@@ -198,6 +203,12 @@ lpena:
 
     outside_world:
       max: 4
+      series_basis:
+        rule: "外の世界かどうかは、選手のシリーズ（player.series）ではなく登録したカード（選んだカード）のカードセットのシリーズで決める。カードを選んでいない所属は選手のシリーズで判定する（Dugout の Team#outside_world_first_squad_memberships と同じ）"
+        card_set_series: "2025THBIG=touhou / ハチナイ=hachinai / 球詠=tamayomi / PM2026=original"
+        examples:
+          - "西行寺幽々子を通常チームに登録: 2025THBIG のカードなら外の世界枠を取らない。PM2026 のカード（シリーズ original）なら外の世界枠を取る"
+        why: "PM2026 のカードには東方のキャラクターのカードもある。外の世界かどうかは登録したカードで決める（AMB-30、Operator 裁定 2026-11-02）"
       balance:
         trigger_count: 4
         requirement: "投手1名以上 AND 野手1名以上"
@@ -264,7 +275,7 @@ lpena:
         - "lpena.team_composition.outside_world"
 
     original:
-      description: "オリジナル選手（series=original）"
+      description: "オリジナル選手（series=original）。series は登録したカードのシリーズで、PM2026 のカードは original。東方のキャラクターでも PM2026 のカードで登録すれば外の世界枠を取る（lpena.team_composition.outside_world.series_basis。AMB-30）"
       classification: "always_outside"
       why: "特定シリーズに属さないオリジナル選手は、チームタイプに関わらず常に外の世界枠扱い"
       exception: null

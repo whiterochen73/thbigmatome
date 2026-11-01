@@ -40,18 +40,39 @@ classification: "always_outside"
 # → チーム種別に関わらず常に外の世界枠
 ```
 
+### 外の世界かどうかは登録したカードのシリーズで決める
+
+上の `series` は、選手のシリーズではなく**登録したカード（選んだカード）のカードセットのシリーズ**を指す。カードセットのシリーズは 2025THBIG＝touhou、ハチナイ＝hachinai、球詠＝tamayomi、PM2026＝original（第1章 1.3）。
+
+- PM2026 のカードはシリーズが original なので、東方のキャラクターでも PM2026 のカードで登録すれば外の世界枠を取る
+- 例: 西行寺幽々子を通常チームに 2025THBIG のカードで登録すれば外の世界枠を取らず、PM2026 のカードで登録すれば外の世界枠を取る
+- カードを選んでいない所属は選手のシリーズで判定する（Dugout の `Team#outside_world_first_squad_memberships` と同じ）
+
+> 欠落補充（2026-11-02、Operator 裁定）: 旧版は判定を選手のシリーズ（`player.series`）で書いており、東方のキャラクターを PM2026 のカードで登録した場合が決まらなかった。
+> 裁定: `context/thbig-bench-rule-adjudications.md`（multi-agent-shogun リポジトリ）AMB-30 節（Operator 裁定 2026-11-02）
+
 ### 外の世界判定の擬似コード
 
 ```python
-def is_outside_world(player, team_type):
-    if player.series == "original":
-        return True  # オリジナルは常に外の世界
-    
+# m = 所属（チームと選手の契約）。m.player_card は登録したカード
+def effective_series(m):
+    # 登録したカードのカードセットのシリーズ。カード未選択なら選手のシリーズ（AMB-30）
+    if m.player_card is not None and m.player_card.card_set.series:
+        return m.player_card.card_set.series
+    return m.player.series
+
+def is_outside_world(m, team_type):
+    series = effective_series(m)
+    if not series:
+        return False  # シリーズ不明は数えない（Dugout と同じ）
+    if series == "original":
+        return True  # オリジナル（PM2026 のカードなど）は常に外の世界
+
     native = NATIVE_SERIES[team_type]
     # native = ["touhou"] for normal
     # native = ["hachinai", "tamayomi"] for hachinai
-    
-    return player.series not in native
+
+    return series not in native
 ```
 
 → `game_rules.yaml`: `lpena.team_types`
@@ -162,6 +183,8 @@ def validate_cost(team, cost_list_id):
 ルール: 1軍に登録できる外の世界選手 ≤ 4人
 ```
 
+外の世界選手かどうかは、選手のシリーズではなく登録したカードのシリーズで決める（2.1「外の世界かどうかは登録したカードのシリーズで決める」。AMB-30）。東方のキャラクターでも PM2026 のカードで登録すれば外の世界選手に数える。
+
 → `game_rules.yaml`: `lpena.team_composition.outside_world` (max: 4)
 
 ### バランスルール
@@ -241,10 +264,9 @@ def counts_as_fielder(m):
     return m.player_card is not None and primary_position(m.player_card) in FIELDER_POSITIONS
 
 def validate_outside_world(team):
-    native_series = NATIVE_SERIES[team.team_type]
-    
+    # 外の世界かどうかは登録したカードのシリーズで決める（2.1 の is_outside_world。AMB-30）
     ow_first_squad = [m for m in team.first_squad
-                      if m.player.series not in native_series]
+                      if is_outside_world(m, team.team_type)]
     
     # 人数チェック
     if len(ow_first_squad) > 4:

@@ -25,6 +25,21 @@ RSpec.describe SeasonSchedule, "#pitcher_appearance_count" do
     expect(schedule.pitcher_appearance_count).to eq(2)
   end
 
+  # cmd_1784 段3: 日程の行に紐づく登板（season_schedule_id）を正とし、紐づけが空の登板は日付で拾う
+  it "別の日程の行に紐づく登板は、schedule_date が同じでも数えない（紐づけが正）" do
+    schedule # この日の日程の行を作る
+    other = create(:season_schedule, season: season, date: Date.new(2026, 5, 8))
+    create_appearance(team: team, schedule_date: "2026-05-07").update_columns(season_schedule_id: other.id)
+    expect(schedule.pitcher_appearance_count).to eq(0)
+    expect(other.pitcher_appearance_count).to eq(1)
+  end
+
+  it "紐づけが空の登板は schedule_date の日に数える（rake の前）" do
+    schedule
+    create_appearance(team: team, schedule_date: "2026-05-07").update_columns(season_schedule_id: nil)
+    expect(schedule.pitcher_appearance_count).to eq(1)
+  end
+
   it "一覧側が入れた値があれば、それを返す（問い合わせない）" do
     schedule.pitcher_appearance_count = 7
     expect(schedule.pitcher_appearance_count).to eq(7)

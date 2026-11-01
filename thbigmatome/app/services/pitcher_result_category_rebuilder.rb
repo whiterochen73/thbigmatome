@@ -1,7 +1,8 @@
 # 先発の result_category（と使った疲労P）を、試合概要の得点とカードから作り直す（E2・過去分の是正）。
 #
-# 使い方:
-#   - SeasonSchedule の得点が保存・変更された時: rebuild_for_schedule（モデルの after_save から）
+# 使い方: 書き込む側の入口は PitcherHistoryRebuild の 1 本（cmd_1784 段3。設計書 §4.5）。この class はその中身（走査と判定）で、
+# 直接呼ぶのは試運転（apply: false。点検の S8c・rake の試運転）と PitcherHistoryRebuild だけ。
+#   - SeasonSchedule の得点・ノーゲームが保存・変更された時 / 登板の保存・削除 / 離脱の作成・変更・削除 / カードの変更: PitcherHistoryRebuild.from
 #   - 過去分の一括: rake pitcher_game_states:recalculate_result_category（既定は試運転）
 #
 # 前登板の区分が次の補正を決めるので、投手ごとに日付順に処理し、作り直した値を次の判定に使う
@@ -35,27 +36,23 @@ class PitcherResultCategoryRebuilder
     @rows = []
   end
 
-  # 得点が保存・変更された試合の自チーム先発を作り直し、区分が変わった投手は後続の先発へ波及させる。
-  # 波及は「区分が変わらなくなった所」で止める（無関係な過去分を巻き込まない）。
-  # recompute_no_game: ノーゲームを立てた・外した直後。その日の no_game の記録も作り直す（試合概要の no_game が正）
-  def rebuild_for_schedule(schedule, recompute_no_game: false)
-    team_id = schedule.season.team_id
-    date = schedule.date.to_s
-    starters = PitcherGameState.where(team_id: team_id, schedule_date: date, role: "starter").order(:id).to_a
-    starters.each do |state|
-      row = rebuild_state(state, recompute_no_game: recompute_no_game)
-      cascade_after(state) if row.status == :changed
-    end
-    @rows
-  end
-
   # 全先発（または team_id 指定）を投手ごとに日付順で作り直す
   def rebuild_all(team_id: nil)
+    rebuild_from(team_id: team_id)
+  end
+
+  # team_id のチーム（nil なら全チーム）の先発を、投手ごとに日付順で作り直す。
+  # date を渡せばその日以降の登板だけ（それより前は DB の値を前登板として読む）。pitcher_ids を渡せばその投手だけ（空配列なら誰も作り直さない）。
+  # recompute_no_game_on: その日の記録だけ、ノーゲームの印が無い no_game の記録も作り直す
+  def rebuild_from(team_id: nil, date: nil, pitcher_ids: nil, recompute_no_game_on: nil)
     scope = PitcherGameState.where(role: "starter")
     scope = scope.where(team_id: team_id) if team_id.present?
+    scope = scope.where("schedule_date >= ?", date.to_s) if date
+    scope = scope.where(pitcher_id: pitcher_ids) unless pitcher_ids.nil?
+    no_game_date = recompute_no_game_on&.to_s
     scope.distinct.pluck(:team_id, :pitcher_id).sort.each do |tid, pid|
       states = scope.where(team_id: tid, pitcher_id: pid).order(:schedule_date, :id).to_a
-      states.each { |state| rebuild_state(state) }
+      states.each { |state| rebuild_state(state, recompute_no_game: !no_game_date.nil? && state.schedule_date == no_game_date) }
     end
     @rows
   end
@@ -70,17 +67,6 @@ class PitcherResultCategoryRebuilder
   end
 
   private
-
-  def cascade_after(state)
-    later = PitcherGameState
-      .where(team_id: state.team_id, pitcher_id: state.pitcher_id, role: "starter")
-      .where("schedule_date > ?", state.schedule_date)
-      .order(:schedule_date, :id)
-    later.each do |next_state|
-      row = rebuild_state(next_state)
-      break unless row.status == :changed
-    end
-  end
 
   def rebuild_state(state, recompute_no_game: false)
     outcome = PitcherGameResult.for(team_id: state.team_id, schedule_date: state.schedule_date)

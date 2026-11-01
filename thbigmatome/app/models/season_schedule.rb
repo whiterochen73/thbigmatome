@@ -38,13 +38,18 @@ class SeasonSchedule < ApplicationRecord
   # 直近の保存で、投手の判定の作り直しが失敗した時の例外。成功・未実行なら nil。
   attr_reader :pitcher_rebuild_error
 
+  # チームの、ある日の日程の行（チームのシーズンの行。日付で絞る）。登板の紐づけ（PitcherGameState）と勝敗の判定が使う
+  def self.of_team_on(team_id, date)
+    joins(:season).where(seasons: { team_id: team_id }, date: date)
+  end
+
   # この試合日の自チームの登板記録の件数（pitcher_game_states の行数）。シーズン画面が入力漏れの印に使う。
   # 一覧を返す側（SeasonDetailSerializer）が日付ごとの件数をまとめて入れる（行ごとの問い合わせを避ける）。
   # 入っていない時は、この試合日の分だけ問い合わせて求める。
   attr_writer :pitcher_appearance_count
 
   def pitcher_appearance_count
-    @pitcher_appearance_count ||= PitcherGameState.where(team_id: season.team_id, schedule_date: date.to_s).count
+    @pitcher_appearance_count ||= PitcherGameState.on_day(team_id: season.team_id, date: date).count
   end
 
   def calculated_game_number
@@ -88,20 +93,15 @@ class SeasonSchedule < ApplicationRecord
     errors.add(:game_log, "は #{GAME_LOG_MAX_BYTES} バイト（1MB）以下にしてください（現在 #{game_log.bytesize} バイト）")
   end
 
-  # 作り直しは得点の保存と同じトランザクションの中で走る。落ちた時に得点ごと取り消さないよう、次の 2 点を守る。
-  #   1. セーブポイント（requires_new）の中で走らせる。PostgreSQL は SQL エラーでトランザクション全体が中断状態になり、
-  #      後続の文もすべて失敗するため。失敗したら作り直しの途中の書き込みだけが戻る
-  #   2. 例外は握ってログに残し、pitcher_rebuild_error に持つ（作り直しは後で rake で再実行できる）
+  # 作り直しは得点の保存と同じトランザクションの中で走る。落ちた時に得点ごと取り消さないよう、PitcherHistoryRebuild.guarded が
+  # セーブポイントの中で走らせ、例外を握ってログに残す（pitcher_rebuild_error に持つ。作り直しは後で rake で再実行できる）。
+  # 作り直す範囲はその試合日の先発と、その投手のそれ以降の先発
   def rebuild_pitcher_result_categories
-    self.class.transaction(requires_new: true) do
-      PitcherResultCategoryRebuilder.new(apply: true, unscored: :not_loss)
-                                    .rebuild_for_schedule(self, recompute_no_game: saved_change_to_no_game?)
-    end
-  rescue StandardError => e
-    @pitcher_rebuild_error = e
-    Rails.logger.error(
-      "[PitcherResultCategoryRebuilder] 判定の作り直しに失敗（得点は保存済み） season_schedule_id=#{id} " \
-      "#{e.class}: #{e.message}\n#{Array(e.backtrace).first(10).join("\n")}"
+    outcome = PitcherHistoryRebuild.guarded(
+      team_id: season.team_id, date: date,
+      pitcher_ids: PitcherGameState.on_day(team_id: season.team_id, date: date).where(role: "starter").distinct.pluck(:pitcher_id),
+      unscored: :not_loss, recompute_no_game_on: saved_change_to_no_game? ? date : nil
     )
+    @pitcher_rebuild_error = outcome.error
   end
 end

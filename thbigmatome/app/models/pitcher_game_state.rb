@@ -3,6 +3,11 @@ class PitcherGameState < ApplicationRecord
   belongs_to :pitcher, class_name: "Player"
   belongs_to :competition, optional: true
   belongs_to :team
+  # 登板した試合日の日程の行（cmd_1784 段3）。対応する日程の行が無い登板（日程の無いチーム・日程の外の日付）は nil のまま残す
+  belongs_to :season_schedule, optional: true
+
+  # 保存する時に、（チーム, 試合日）から日程の行を引いて紐づける。呼び出し側（登板の保存・rake）が個別に埋めない
+  before_validation :link_season_schedule, if: :link_season_schedule?
 
   VALID_DECISIONS = %w[W L S H].freeze
 
@@ -15,6 +20,33 @@ class PitcherGameState < ApplicationRecord
   validates :is_opener, inclusion: { in: [ true, false ] }
   validates :consecutive_short_rest_count, numericality: { greater_than_or_equal_to: 0 }
   validates :pre_injury_days_excluded, numericality: { greater_than_or_equal_to: 0 }
+
+  # チーム・試合日の日程の行の id。ちょうど 1 件に決まる時だけ返す（0 件 = 日程の外、2 件以上 = 決められない）。日付が読めなければ nil
+  def self.schedule_id_for(team_id:, date:)
+    parsed = parse_schedule_date(date)
+    return nil if parsed.nil?
+
+    ids = SeasonSchedule.of_team_on(team_id, parsed).limit(2).pluck(:id)
+    ids.one? ? ids.first : nil
+  end
+
+  # そのチームのその試合日の登板。日程の行に紐づく登板（season_schedule_id）を正とし、まだ紐づけていない登板（rake の前・
+  # 日程の外の日付）は schedule_date で拾う。日程の行が 1 件に決まらない日は schedule_date だけで引く
+  def self.on_day(team_id:, date:)
+    date_str = date.to_s
+    in_team = where(team_id: team_id)
+    parsed = parse_schedule_date(date_str)
+    schedule_ids = parsed ? SeasonSchedule.of_team_on(team_id, parsed).pluck(:id) : []
+    return in_team.where(schedule_date: date_str) unless schedule_ids.one?
+
+    in_team.where(season_schedule_id: schedule_ids.first).or(in_team.where(season_schedule_id: nil, schedule_date: date_str))
+  end
+
+  def self.parse_schedule_date(value)
+    Date.iso8601(value.to_s)
+  rescue ArgumentError, TypeError
+    nil
+  end
 
   # result_category 自動計算ロジック
   # game_result: "win" / "lose" / "draw" / "no_game"（試合概要の得点から求めた値。PitcherGameResult 参照）
@@ -49,5 +81,15 @@ class PitcherGameState < ApplicationRecord
     return nil if fatigue_p.nil?
 
     involved > fatigue_p.to_i + 1 ? "long_loss" : "normal"
+  end
+
+  private
+
+  def link_season_schedule?
+    (new_record? || will_save_change_to_schedule_date?) && !will_save_change_to_season_schedule_id?
+  end
+
+  def link_season_schedule
+    self.season_schedule_id = self.class.schedule_id_for(team_id: team_id, date: schedule_date)
   end
 end

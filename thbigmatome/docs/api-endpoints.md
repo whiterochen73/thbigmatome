@@ -705,7 +705,7 @@
 
 - **Controller**: `Api::V1::PlayerAbsencesController#create`
 - **Body Params**: `player_absence: { team_membership_id, season_id, absence_type, reason, start_date, duration, duration_unit, phase }`（phase は `pre_game` / `in_game`。省略時 `pre_game`、不正値は 422）
-- **Response**: PlayerAbsenceSerializer 201
+- **Response**: PlayerAbsenceSerializer 201。作成・変更・削除のたびに、その選手の登板の保存値を離脱の開始日（変更前の開始日の早い方）から作り直す（`PitcherHistoryRebuild`）。作り直しが失敗しても離脱の保存は取り消さず、作成・変更の応答に `warnings` を足す
 
 ### PATCH/PUT /api/v1/player_absences/:id
 
@@ -963,7 +963,9 @@
 
 - **Controller**: `Api::V1::PitcherAppearancesController#index`
 - **Query Params**: `team_id` (integer, 必須), `schedule_date` (date string, 必須)
-- **Response**: 指定チーム・日付の投手登板状態一覧（appearance_order順）。各エントリにid, pitcher_id, role, innings_pitched, earned_runs, decision, is_opener, consecutive_short_rest_count, pre_injury_days_excluded, result_category, injury_check等を含む
+- **Response**: 指定チーム・日付の投手登板状態一覧（appearance_order順）。各エントリにid, pitcher_id, pitcher_name, role, innings_pitched, earned_runs, decision, is_opener, consecutive_short_rest_count, pre_injury_days_excluded, result_category, injury_check, season_schedule_id, roster_status等を含む
+  ※ その日の登板は、日程の行に紐づく登板（`season_schedule_id`）を正として引き、まだ紐づけていない登板は `schedule_date` で拾う（日程の行が無い日・同じ日に複数ある日は `schedule_date` だけ）
+  ※ `roster_status` = その試合日の試合中（`in_game`）に 1軍にいたか: `first` / `second`（2軍）/ `not_on_team`（登録前・放出後）/ `no_membership`（チームの登録なし）。日付が読めない・チームが引けない時は null。first 以外は試合日ページの「要確認」の帯に出る（設計書 §7 判断 5）
 
 ### POST /api/v1/pitcher_appearances
 
@@ -989,6 +991,9 @@
   ※ `consecutive_short_rest_count` はサーバが決める（先発: 直前の登板（役割を問わない）が先発で、そこからの中日数が中4日以下なら前回値+1、それ以外は 0（間にリリーフ・オープナーが入れば 0・AMB-23）。リリーフは 0）。送っても使わない
   ※ 第二先発（オープナーの次の2番手）は `role: "starter"` で送る。KO・長イニング敗戦の判定と次回の休養表は先発として扱う
 - **Response**: `{ pitcher_appearance: {...}, warnings: [...] }` 201
+  ※ 保存すると `season_schedule_id` を（チーム, 試合日）の日程の行から引いて埋める（行が無い・同じ日に複数ある時は null のまま保存する）
+  ※ 1軍でない投手（その試合日の試合中に 2軍・在籍なし・チームの登録なし）の登板は**止めずに保存**し、`warnings` に「…は1軍にいません」を入れる（設計書 §7 判断 5）
+  ※ 保存後、その投手のそれ以降の登板の保存値（結果区分・疲労P・連続中4日回数）を作り直す（`PitcherHistoryRebuild`）。作り直しが失敗しても保存は取り消さず、`warnings` に出す
 
 ---
 

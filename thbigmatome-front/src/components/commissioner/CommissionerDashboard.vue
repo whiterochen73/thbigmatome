@@ -40,10 +40,10 @@
       <v-chip
         v-if="rosterReady"
         class="tab-count"
-        :color="CHECK_COLOR[checkState(summary.checkTeams, rosterReady, costsReady)]"
+        :color="CHECK_COLOR[checkState(summary.violationTeams, rosterReady, true)]"
         variant="flat"
         size="small"
-        >{{ summary.checkTeams }}</v-chip
+        >{{ summary.violationTeams }}</v-chip
       >
     </v-tab>
     <v-tab value="teams" prepend-icon="mdi-account-group-outline">
@@ -68,6 +68,7 @@
         :cooldowns="cooldowns"
         :costs="costs"
         :roster-status="rosterStatus"
+        :game-progress="gameProgress"
         @navigate="activeTab = $event"
         @retry="retryResource"
         @open-season="navigateToSeason"
@@ -468,6 +469,7 @@ import type {
   AbsenceRecord,
   CooldownRecord,
   CostRecord,
+  GameProgressRecord,
   RosterStatusRecord,
 } from '@/types/commissionerDashboard'
 import TeamDialog from '@/components/TeamDialog.vue'
@@ -482,7 +484,7 @@ const router = useRouter()
 const teamSelectionStore = useTeamSelectionStore()
 const { showSnackbar } = useSnackbar()
 
-// 先頭のタブは概況。API は 5 本とも最初に取り、API ごとに別々の読み込み中・失敗を持つ（概況と各タブで共用）
+// 先頭のタブは概況。API は 6 本とも最初に取り、API ごとに別々の読み込み中・失敗を持つ（概況と各タブで共用）
 const activeTab = ref<DashboardTab>('overview')
 
 const { state: teams, fetch: fetchTeams } = useDashboardResource<Team>('/teams', 'teams')
@@ -502,6 +504,10 @@ const { state: rosterStatus, fetch: fetchRosterStatus } = useDashboardResource<R
   '/commissioner/dashboard/roster_status',
   'roster status',
 )
+const { state: gameProgress, fetch: fetchGameProgress } = useDashboardResource<GameProgressRecord>(
+  '/commissioner/dashboard/game_progress',
+  'game progress',
+)
 
 const fetchers: Record<DashboardResourceKey, () => Promise<void>> = {
   teams: fetchTeams,
@@ -509,6 +515,7 @@ const fetchers: Record<DashboardResourceKey, () => Promise<void>> = {
   cooldowns: fetchCooldowns,
   costs: fetchCosts,
   rosterStatus: fetchRosterStatus,
+  gameProgress: fetchGameProgress,
 }
 const retryResource = (key: DashboardResourceKey) => fetchers[key]()
 
@@ -676,6 +683,7 @@ onMounted(() => {
   fetchCosts()
   fetchCooldowns()
   fetchRosterStatus()
+  fetchGameProgress()
 })
 </script>
 

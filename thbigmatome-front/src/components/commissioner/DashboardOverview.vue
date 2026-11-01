@@ -309,6 +309,15 @@
             <h3>チームの進み具合</h3>
             <v-chip color="zone-game" variant="flat" size="small">{{ rows.length }} チーム</v-chip>
           </div>
+          <!-- 試合数だけが取れない時。他の列は出したまま、この API だけ再読み込みできる -->
+          <AsyncState
+            v-if="gameProgress.failed"
+            error
+            error-message="試合数の取得に失敗しました"
+            class="game-progress-error"
+            data-testid="game-progress-error"
+            @retry="emit('retry', 'gameProgress')"
+          />
           <v-data-table
             v-model:sort-by="sortBy"
             class="ui-table ui-table--rows"
@@ -344,19 +353,42 @@
               </span>
             </template>
             <template #[`item.progressKey`]="{ item }">
-              <div class="progress-meter">
+              <v-skeleton-loader
+                v-if="gameProgress.loading"
+                type="text"
+                width="96"
+                data-testid="cell-loading"
+              />
+              <span v-else-if="!item.games" class="on-surface-variant">—</span>
+              <div v-else class="progress-meter">
                 <v-progress-linear
-                  v-if="item.progressRatio !== null"
-                  :model-value="Math.max(item.progressRatio * 100, 3)"
+                  :model-value="Math.max((item.progressRatio ?? 0) * 100, 3)"
                   color="link"
                   bg-color="surface-variant"
                   bg-opacity="1"
                   height="8"
                   rounded
                 />
-                <span class="progress-meter__date num">{{
-                  formatMonthDay(item.progressDate)
-                }}</span>
+                <span class="progress-meter__count num" data-testid="games-count"
+                  ><b>{{ item.games.regular_played }}</b> / {{ item.games.regular_total }}</span
+                >
+                <div
+                  v-if="item.games.playoff_played > 0 || item.games.regular_unrescheduled > 0"
+                  class="progress-meter__subs"
+                >
+                  <span
+                    v-if="item.games.playoff_played > 0"
+                    class="on-surface-variant"
+                    data-testid="playoff-played"
+                    >プレーオフ {{ item.games.playoff_played }} 試合</span
+                  >
+                  <span
+                    v-if="item.games.regular_unrescheduled > 0"
+                    class="on-surface-variant"
+                    data-testid="unrescheduled"
+                    >未振替 {{ item.games.regular_unrescheduled }}</span
+                  >
+                </div>
               </div>
             </template>
             <template #[`item.firstCost`]="{ item }">
@@ -486,7 +518,6 @@ import {
   CHECK_COLOR,
   costBarColor,
   costLevel,
-  formatMonthDay,
   isImminent,
   remainingCount,
   summarize,
@@ -496,18 +527,20 @@ import type {
   CooldownRecord,
   CostRecord,
   DashboardResource,
+  GameProgressRecord,
   RosterStatusRecord,
 } from '@/types/commissionerDashboard'
 import type { Team } from '@/types/team'
 
 // 概況: 要約タイル → 注意が要るもの → チームの進み具合（1 チーム 1 行）。
-// API は 5 本ぶん別々の状態で受け取り、team_id で結合して数える（サーバは変えない）。
+// API は 6 本ぶん別々の状態で受け取り、team_id で結合して数える。
 const props = defineProps<{
   teams: DashboardResource<Team>
   absences: DashboardResource<AbsenceRecord>
   cooldowns: DashboardResource<CooldownRecord>
   costs: DashboardResource<CostRecord>
   rosterStatus: DashboardResource<RosterStatusRecord>
+  gameProgress: DashboardResource<GameProgressRecord>
 }>()
 
 const emit = defineEmits<{
@@ -524,7 +557,9 @@ const sources = computed(() => ({
   rosterStatus: props.rosterStatus.data,
 }))
 const summary = computed(() => summarize(sources.value))
-const rows = computed(() => buildTeamRows(sources.value))
+const rows = computed(() =>
+  buildTeamRows({ ...sources.value, gameProgress: props.gameProgress.data }),
+)
 
 const ready = (r: DashboardResource<unknown>) => !r.loading && !r.failed
 const rosterReady = computed(() => ready(props.rosterStatus))
@@ -903,14 +938,34 @@ const headers = [
   gap: 8px;
   min-width: 110px;
 }
+.progress-meter {
+  flex-wrap: wrap;
+  row-gap: 2px;
+}
 .progress-meter :deep(.v-progress-linear),
 .total-meter :deep(.v-progress-linear) {
   flex: 1;
 }
-.progress-meter__date {
-  min-width: 52px;
+.progress-meter :deep(.v-progress-linear) {
+  min-width: 56px;
+}
+.progress-meter__count {
+  min-width: 58px;
   text-align: end;
   font-size: 0.75rem;
+  white-space: nowrap;
+}
+/* 未振替・プレーオフは控えめに。棒と数の下の 1 行 */
+.progress-meter__subs {
+  display: flex;
+  flex-basis: 100%;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  font-size: 0.75rem;
+  line-height: 1.3;
+}
+.game-progress-error {
+  padding: 12px 16px 0;
 }
 .total-meter__figure {
   min-width: 58px;

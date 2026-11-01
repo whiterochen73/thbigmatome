@@ -724,7 +724,7 @@ describe('CommissionerDashboard タブ（概況が先頭・アイコンと件数
     wrapper.unmount()
   })
 
-  it('離脱者・クールダウン・コスト・1軍登録・チーム管理に件数がつく。コストは 95% 以上と超過の合計、1軍登録は要確認（規定違反または合計コスト超過）のチーム数', async () => {
+  it('離脱者・クールダウン・コスト・1軍登録・チーム管理に件数がつく。コストは 95% 以上と超過の合計、1軍登録は規定違反のチーム数', async () => {
     ;(axios.get as ReturnType<typeof vi.fn>).mockImplementation(
       apiMock({
         '/teams': [
@@ -756,8 +756,8 @@ describe('CommissionerDashboard タブ（概況が先頭・アイコンと件数
     expect(counts.cooldowns!.text()).toBe('1')
     expect(counts.costs!.text()).toBe('2')
     expect(counts.costs!.props('color')).toBe('state-warn')
-    // 規定違反はチームC、合計コスト超過はチーム2（210）。重ならないので 2
-    expect(counts.rosterStatus!.text()).toBe('2')
+    // 規定違反はチームC だけ。合計コスト超過のチーム2（210）は 1軍登録タブの件数に数えない
+    expect(counts.rosterStatus!.text()).toBe('1')
     expect(counts.rosterStatus!.props('color')).toBe('state-warn')
     expect(counts.teams!.text()).toBe('3')
     for (const c of Object.values(counts).slice(1)) expect(c.props('variant')).toBe('flat')
@@ -783,8 +783,9 @@ describe('CommissionerDashboard タブ（概況が先頭・アイコンと件数
     wrapper.unmount()
   })
 
-  // Test Basis: Operator 決定 2026-11-02「要確認に合計コスト超過のチームも数える」。コストが取れていない間は 0 を「問題なし」に見せない
-  it('1軍登録の件数: 規定違反のみ・超過のみ・両方（1 回）・95% 以上で超過なし（数えない）', async () => {
+  // Test Basis: 設計書末尾の追記（2026-11-02 本体判断）「1軍登録タブの件数は規定違反だけに戻す。そのタブはロスター規定の表でコスト超過を表示しない」
+  // （概況の「要確認」タイルは規定違反＋合計コスト超過のまま。Operator 決定は要確認タイルについてのもの）
+  it('1軍登録の件数: 規定違反のチーム数だけ。合計コスト超過は数えない（違反と超過が重なっても 1 回）', async () => {
     const cost = (team_id: number, total_cost: number) => ({
       ...mockCosts[0],
       team_id,
@@ -810,42 +811,34 @@ describe('CommissionerDashboard タブ（概況が先頭・アイコンと件数
     }
     const warn = (id: number) => mockRosterStatus(id, `チーム${id}`, ['x'])
     expect(await countFor([warn(1)], [cost(1, 100)])).toEqual(['1', 'state-warn'])
-    expect(await countFor([], [cost(1, 201)])).toEqual(['1', 'state-warn'])
+    // 超過だけのチームは数えない
+    expect(await countFor([], [cost(1, 201)])).toEqual(['0', 'state-done'])
     expect(await countFor([warn(1)], [cost(1, 201)])).toEqual(['1', 'state-warn'])
-    expect(await countFor([warn(1)], [cost(1, 201), cost(2, 250)])).toEqual(['2', 'state-warn'])
+    expect(await countFor([warn(1)], [cost(1, 201), cost(2, 250)])).toEqual(['1', 'state-warn'])
+    expect(await countFor([warn(1), warn(2)], [])).toEqual(['2', 'state-warn'])
     expect(await countFor([], [cost(1, 200), cost(2, 190)])).toEqual(['0', 'state-done'])
   })
 
-  it('1軍登録の件数: コストが失敗・読み込み中で 0 件なら緑にせず中立色。超過が分かっていれば警告色', async () => {
-    const failCosts = apiMock(
-      { '/commissioner/dashboard/roster_status': [mockRosterStatus(1, 'チームA', [])] },
-      ['/commissioner/dashboard/costs'],
-    )
-    ;(axios.get as ReturnType<typeof vi.fn>).mockImplementation(failCosts)
-    const wrapper = mountPlain()
-    await flushPromises()
-    const chip = wrapper
-      .findAllComponents(components.VTab)
-      .find((t) => t.props('value') === 'rosterStatus')!
-      .findComponent(components.VChip)
-    expect(chip.text()).toBe('0')
-    expect(chip.props('color')).toBe('state-neutral')
-    wrapper.unmount()
-    ;(axios.get as ReturnType<typeof vi.fn>).mockImplementation(
-      apiMock(
-        { '/commissioner/dashboard/roster_status': [mockRosterStatus(1, 'チームA', ['x'])] },
-        ['/commissioner/dashboard/costs'],
-      ),
-    )
-    const warned = mountPlain()
-    await flushPromises()
-    const warnedChip = warned
-      .findAllComponents(components.VTab)
-      .find((t) => t.props('value') === 'rosterStatus')!
-      .findComponent(components.VChip)
-    expect(warnedChip.text()).toBe('1')
-    expect(warnedChip.props('color')).toBe('state-warn')
-    warned.unmount()
+  it('1軍登録の件数: コストの取得が失敗・読み込み中でも、規定違反の数だけで決まる（0 件なら緑・違反があれば警告色）', async () => {
+    const chipOf = async (violations: string[]) => {
+      ;(axios.get as ReturnType<typeof vi.fn>).mockImplementation(
+        apiMock(
+          { '/commissioner/dashboard/roster_status': [mockRosterStatus(1, 'チームA', violations)] },
+          ['/commissioner/dashboard/costs'],
+        ),
+      )
+      const wrapper = mountPlain()
+      await flushPromises()
+      const chip = wrapper
+        .findAllComponents(components.VTab)
+        .find((t) => t.props('value') === 'rosterStatus')!
+        .findComponent(components.VChip)
+      const result = [chip.text(), chip.props('color')]
+      wrapper.unmount()
+      return result
+    }
+    expect(await chipOf([])).toEqual(['0', 'state-done'])
+    expect(await chipOf(['x'])).toEqual(['1', 'state-warn'])
   })
 })
 
@@ -858,7 +851,7 @@ describe('CommissionerDashboard 概況の取得', () => {
     document.body.innerHTML = ''
   })
 
-  it('5 本の API を最初に 1 度ずつ取る。1軍登録タブを開いても roster_status を取り直さない', async () => {
+  it('6 本の API を最初に 1 度ずつ取る。1軍登録タブを開いても roster_status を取り直さない', async () => {
     ;(axios.get as ReturnType<typeof vi.fn>).mockImplementation(apiMock({}))
     const wrapper = mountPlain()
     await flushPromises()
@@ -870,6 +863,7 @@ describe('CommissionerDashboard 概況の取得', () => {
       '/commissioner/dashboard/cooldowns',
       '/commissioner/dashboard/costs',
       '/commissioner/dashboard/roster_status',
+      '/commissioner/dashboard/game_progress',
     ]) {
       expect(urls.filter((x) => x === u)).toHaveLength(1)
     }
@@ -939,6 +933,121 @@ describe('CommissionerDashboard 概況の取得', () => {
     expect(wrapper.find('[data-testid="tile-cost"] [data-testid="state-error"]').exists()).toBe(
       false,
     )
+    wrapper.unmount()
+  })
+
+  // Test Basis: subtask_1794j「game_progress を他の API と独立に読み込み中・失敗を出す」/ subtask_1802b の API 形
+  it('game_progress は team_id で結合して「消化 / 総数」と未振替を概況の表に出す', async () => {
+    ;(axios.get as ReturnType<typeof vi.fn>).mockImplementation(
+      apiMock({
+        '/teams': [
+          { id: 1, name: 'チームA', is_active: true },
+          { id: 2, name: 'チームB', is_active: true },
+        ],
+        '/commissioner/dashboard/game_progress': [
+          {
+            team_id: 2,
+            regular_played: 34,
+            regular_total: 143,
+            regular_unrescheduled: 1,
+            playoff_played: 0,
+          },
+        ],
+      }),
+    )
+    const wrapper = mountPlain()
+    await flushPromises()
+    const rows = wrapper.findAll('[data-testid="team-table-card"] tbody tr')
+    const rowB = rows.find((r) => r.find('b').text() === 'チームB')!
+    expect(rowB.find('[data-testid="games-count"]').text().replace(/\s+/g, '')).toBe('34/143')
+    expect(rowB.find('[data-testid="unrescheduled"]').text()).toBe('未振替 1')
+    const rowA = rows.find((r) => r.find('b').text() === 'チームA')!
+    expect(rowA.find('td.progress-cell').text()).toBe('—')
+    wrapper.unmount()
+  })
+
+  it('遅い game_progress が未着でも、他の欄は先に出る。着いたら進み具合が出る', async () => {
+    let release: (v: { data: unknown[] }) => void = () => {}
+    ;(axios.get as ReturnType<typeof vi.fn>).mockImplementation((url: string) =>
+      url === '/commissioner/dashboard/game_progress'
+        ? new Promise((resolve) => {
+            release = resolve
+          })
+        : Promise.resolve({
+            data:
+              url === '/commissioner/dashboard/absences'
+                ? mockAbsences
+                : url === '/teams'
+                  ? [{ id: 1, name: 'チームA', is_active: true }]
+                  : [],
+          }),
+    )
+    const wrapper = mountPlain()
+    await flushPromises()
+    expect(wrapper.find('[data-testid="tile-absence"]').text()).toContain('2')
+    expect(wrapper.find('[data-testid="team-table-card"]').text()).toContain('チームA')
+    expect(
+      wrapper
+        .find('[data-testid="team-table-card"] td.progress-cell [data-testid="cell-loading"]')
+        .exists(),
+    ).toBe(true)
+    release({
+      data: [
+        {
+          team_id: 1,
+          regular_played: 10,
+          regular_total: 143,
+          regular_unrescheduled: 0,
+          playoff_played: 0,
+        },
+      ],
+    })
+    await flushPromises()
+    expect(wrapper.find('[data-testid="games-count"]').text().replace(/\s+/g, '')).toBe('10/143')
+    wrapper.unmount()
+  })
+
+  it('game_progress が失敗しても他の欄は出し、再読み込みは game_progress だけを取り直す', async () => {
+    let failing = true
+    ;(axios.get as ReturnType<typeof vi.fn>).mockImplementation((url: string) =>
+      url === '/commissioner/dashboard/game_progress' && failing
+        ? Promise.reject(new Error('network'))
+        : Promise.resolve({
+            data:
+              url === '/commissioner/dashboard/absences'
+                ? mockAbsences
+                : url === '/teams'
+                  ? [{ id: 1, name: 'チームA', is_active: true }]
+                  : url === '/commissioner/dashboard/game_progress'
+                    ? [
+                        {
+                          team_id: 1,
+                          regular_played: 7,
+                          regular_total: 143,
+                          regular_unrescheduled: 0,
+                          playoff_played: 0,
+                        },
+                      ]
+                    : [],
+          }),
+    )
+    const wrapper = mountPlain()
+    await flushPromises()
+    expect(wrapper.find('[data-testid="game-progress-error"]').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="tile-absence"]').text()).toContain('2')
+    expect(wrapper.find('[data-testid="tile-absence"] [data-testid="state-error"]').exists()).toBe(
+      false,
+    )
+    failing = false
+    const before = (axios.get as ReturnType<typeof vi.fn>).mock.calls.length
+    await wrapper
+      .find('[data-testid="game-progress-error"] [data-testid="state-retry"]')
+      .trigger('click')
+    await flushPromises()
+    const added = (axios.get as ReturnType<typeof vi.fn>).mock.calls.slice(before).map((c) => c[0])
+    expect(added).toEqual(['/commissioner/dashboard/game_progress'])
+    expect(wrapper.find('[data-testid="game-progress-error"]').exists()).toBe(false)
+    expect(wrapper.find('[data-testid="games-count"]').text().replace(/\s+/g, '')).toBe('7/143')
     wrapper.unmount()
   })
 

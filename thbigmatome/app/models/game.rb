@@ -9,7 +9,8 @@ class Game < ApplicationRecord
   has_many :game_lineup_entries, dependent: :destroy
   has_one :game_record, dependent: :nullify
 
-  # ノーゲームの試合を除く。成績（チーム勝敗・得失点・打撃・投手成績）の集計はこの絞り込みを通す（台帳 D-11。NoGameGames 参照）
+  # ノーゲームの試合を除く（台帳 D-11。NoGameGames 参照）。2026-11 時点で app 内の呼び出し元は無い
+  # （成績を集計していた画面・API は cmd_1795 で削除した）。成績の集計を作り直す時は、この絞り込みを通すこと
   scope :excluding_no_game, -> { where.not(id: NoGameGames.ids) }
 
   validates :status, inclusion: { in: %w[draft confirmed] }

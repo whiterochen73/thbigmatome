@@ -33,10 +33,10 @@
 | DESIGN-008 | game_controller.rb / season_schedule_serializer.rb | medium | ✅ 修正済み (cmd_148) `game_number` の重複実装: コントローラー内で動的計算 (`season_schedule.game_number || 計算ロジック`) → DB保存値と計算値の整合性管理が曖昧 | 10_game_management.md |
 | DESIGN-009 | game_controller.rb / season_schedule_serializer.rb | medium | ✅ 修正済み (cmd_148) `game_result` の重複実装: `GameController#show` と `SeasonScheduleSerializer#game_result` で同じロジック → 略称 (`short_name`) の使用がシリアライザーのみ | 10_game_management.md |
 | DESIGN-010 | db/schema.rb (batting_styles, pitching_styles) | medium | ✅ 修正済み (cmd_143) DB上の NOT NULL 制約・UNIQUE INDEX がなく、モデルバリデーションに完全に依存 → データ整合性の観点ではDB制約の追加が望ましい | 05_master_data.md |
-| DESIGN-011 | app/models/pitching_skill.rb | medium | ✅ 修正済み (cmd_143) `has_many :player_pitching_skills` / `has_many :players, through:` の定義がない → 削除時は `dependent: :restrict_with_error` ではなくDB外部キー制約のみで制限され、エラーメッセージ形式が異なる | 05_master_data.md |
+| DESIGN-011 | app/models/pitching_skill.rb | medium | ✅ 修正済み (cmd_143) `has_many :player_pitching_skills` / `has_many :players, through:` の定義がない → 削除時は `dependent: :restrict_with_error` ではなくDB外部キー制約のみで制限され、エラーメッセージ形式が異なる ※対象のモデル・型定義は 2026-03-09 の subtask_511b（commit `012e3ab`）でスキルマスタごと廃止済み | 05_master_data.md |
 | DESIGN-012 | app/models/batting_style.rb | medium | ✅ 修正済み (cmd_143) `has_many :players` の定義がない → `BattingStyle.find(1).players` のような逆引きクエリが使用できない (PitchingStyle も同様) | 05_master_data.md |
 | DESIGN-013 | app/models/biorhythm.rb | low | ✅ 修正済み (cmd_149) `start_date` と `end_date` の存在チェックのみで、`start_date <= end_date` の論理チェック、期間重複チェック、年度範囲チェック等が未実装 | 05_master_data.md |
-| DESIGN-014 | src/types/ (battingSkill.ts, pitchingSkill.ts) | low | ✅ 修正済み (cmd_149) `SkillType` 型 (`'positive' \| 'negative' \| 'neutral'`) が2箇所で個別定義 → 共通の型定義ファイルに統合されていない | 05_master_data.md |
+| DESIGN-014 | src/types/ (battingSkill.ts, pitchingSkill.ts) | low | ✅ 修正済み (cmd_149) `SkillType` 型 (`'positive' \| 'negative' \| 'neutral'`) が2箇所で個別定義 → 共通の型定義ファイルに統合されていない ※対象のモデル・型定義は 2026-03-09 の subtask_511b（commit `012e3ab`）でスキルマスタごと廃止済み | 05_master_data.md |
 | DESIGN-015 | src/types/costList.ts | low | ✅ 修正済み (cmd_149) `effective_date` フィールドが定義されているがバックエンドの `costs` テーブルにこのカラムは存在せず、`CostSerializer` も出力しない → 常に `undefined` となる未使用フィールド | 06_cost_management.md |
 
 ## 未実装機能

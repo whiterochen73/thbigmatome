@@ -17,11 +17,13 @@
       @retry="fetchManagers()"
     >
       <v-card>
-        <v-data-table
+        <!-- 総件数はサーバが持つ。v-data-table は items-length を読まず、取得済みの行数を総数とみなす -->
+        <v-data-table-server
           :headers="headers"
           :items="managers"
           :loading="loading"
           :items-length="totalItems"
+          :page="currentPage"
           :items-per-page="itemsPerPage"
           class="ui-table"
           item-value="id"
@@ -109,7 +111,7 @@
               </td>
             </tr>
           </template>
-        </v-data-table>
+        </v-data-table-server>
       </v-card>
     </AsyncState>
 
@@ -149,14 +151,15 @@ const { t } = useI18n()
 
 const { showSnackbar } = useSnackbar()
 const confirmDialog = ref<InstanceType<typeof ConfirmDialog> | null>(null)
-// v-data-tableのヘッダー定義
+// v-data-table-serverのヘッダー定義
+// サーバは id の降順でしか返さないので、列の並べ替えは出さない（手元の 1 ページ分だけが並ぶ偽の並べ替えになる）
 const headers = computed(() => [
-  { title: '', key: 'data-table-expand' },
-  { title: t('managerList.headers.id'), key: 'id' },
-  { title: t('managerList.headers.name'), key: 'name' },
-  { title: t('managerList.headers.shortName'), key: 'short_name' },
-  { title: t('managerList.headers.ircName'), key: 'irc_name' },
-  { title: t('managerList.headers.userId'), key: 'user_id' },
+  { title: '', key: 'data-table-expand', sortable: false },
+  { title: t('managerList.headers.id'), key: 'id', sortable: false },
+  { title: t('managerList.headers.name'), key: 'name', sortable: false },
+  { title: t('managerList.headers.shortName'), key: 'short_name', sortable: false },
+  { title: t('managerList.headers.ircName'), key: 'irc_name', sortable: false },
+  { title: t('managerList.headers.userId'), key: 'user_id', sortable: false },
   { title: t('managerList.headers.teamCount'), key: 'team_count', sortable: false },
   { title: t('managerList.headers.actions'), key: 'actions', sortable: false },
 ])

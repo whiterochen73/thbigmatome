@@ -92,13 +92,8 @@ const i18n = createI18n({
           warnTitle: '得点と登板記録が食い違っています',
           todoTitle: '結果が未入力です',
         },
-        dayFlow: {
-          heading: 'この試合日の作業の順番',
-          steps: '選手登録・契約変更 → 昇降格 → 負傷 → 結果 → 登板記録',
-        },
         initForm: {
           title: 'シーズン開始',
-          seasonNameLabel: 'シーズン名',
           selectScheduleLabel: '日程表を選択',
           startButton: 'シーズン開始',
           noSchedules: '日程表が登録されていません。先に日程表を作成してください。',
@@ -167,7 +162,6 @@ describe('SeasonPortal', () => {
     localStorage.setItem('sp_view', 'calendar')
     const season = {
       id: 1,
-      name: '2026シーズン',
       current_date: '2026-04-10',
       season_schedules: [{ id: 8, date: '2026-04-11', date_type: 'travel_day', game_result: null }],
     }
@@ -214,6 +208,31 @@ describe('SeasonPortal', () => {
       )
     })
 
+    // Test Basis: Operator 2026-11-01「シーズンに題を付けるのは廃止。カレンダー画面等ではチーム名をタイトルにする」
+    it('日程表を選ぶだけで開始でき、シーズン名の入力欄は無い', async () => {
+      const schedules = [
+        {
+          id: 1,
+          name: '2026日程表',
+          start_date: '2026-04-01',
+          end_date: '2026-09-30',
+          effective_date: null,
+        },
+      ]
+      const wrapper = await mountSeasonPortal({ season: null, schedules })
+
+      // 入力欄は日程表の選択だけ（v-select も内部では text の input を持つので、ラベルで数える）
+      expect([...new Set(wrapper.findAll('.v-field-label').map((l) => l.text()))]).toEqual([
+        '日程表を選択',
+      ])
+      expect(wrapper.text()).not.toContain('シーズン名')
+      const vm = wrapper.vm as unknown as { selectedScheduleId: number | null }
+      vm.selectedScheduleId = 1
+      await flushPromises()
+      const start = wrapper.findAll('button').find((b) => b.text() === 'シーズン開始')!
+      expect(start.attributes('disabled')).toBeUndefined()
+    })
+
     it('日程表が空の場合、案内メッセージを表示する', async () => {
       const wrapper = await mountSeasonPortal({ season: null, schedules: [] })
 
@@ -233,7 +252,6 @@ describe('SeasonPortal', () => {
 
       const createdSeason = {
         id: 1,
-        name: 'テストシーズン',
         current_date: '2026-04-01',
         season_schedules: [],
       }
@@ -265,11 +283,9 @@ describe('SeasonPortal', () => {
       // Set internal state directly via vm
       const vm = wrapper.vm as unknown as {
         selectedScheduleId: number | null
-        newSeasonName: string
         createSeason: () => Promise<void>
       }
       vm.selectedScheduleId = 1
-      vm.newSeasonName = 'テストシーズン'
       await wrapper.vm.$nextTick()
 
       await vm.createSeason()
@@ -278,8 +294,28 @@ describe('SeasonPortal', () => {
       expect(mockPost).toHaveBeenCalledWith('/seasons', {
         team_id: 1,
         schedule_id: 1,
-        name: 'テストシーズン',
       })
+    })
+  })
+
+  describe('画面のタイトルはチーム名', () => {
+    it('シーズンに name が付いて返ってきても、タイトルにはチーム名を出す', async () => {
+      const season = {
+        id: 1,
+        name: '旧題のシーズン',
+        current_date: '2026-04-01',
+        season_schedules: [],
+      }
+      const wrapper = await mountSeasonPortal({ season })
+
+      expect(wrapper.find('[data-testid="season-title"]').text()).toBe('チームA')
+      expect(wrapper.text()).not.toContain('旧題のシーズン')
+    })
+
+    it('シーズン未作成でもタイトルはチーム名', async () => {
+      const wrapper = await mountSeasonPortal({ season: null, schedules: [] })
+
+      expect(wrapper.find('[data-testid="season-title"]').text()).toBe('チームA')
     })
   })
 
@@ -287,7 +323,6 @@ describe('SeasonPortal', () => {
     it('タブを表示し、初期化フォームを表示しない', async () => {
       const season = {
         id: 1,
-        name: '2026シーズン',
         current_date: '2026-04-01',
         season_schedules: [],
       }
@@ -310,7 +345,6 @@ describe('SeasonPortal', () => {
     })
     const season = {
       id: 1,
-      name: '2026シーズン',
       current_date: '2026-04-10',
       season_schedules: [
         {
@@ -409,7 +443,6 @@ describe('SeasonPortal', () => {
     ) => ({ id, date, date_type: 'game_day', game_result, pitcher_appearance_count })
     const season = {
       id: 1,
-      name: '2026シーズン',
       current_date: '2026-04-10',
       season_schedules: [
         sched(1, '2026-04-02', win), // 件数の項目が無い（古いサーバ）→ 印なし
@@ -479,24 +512,49 @@ describe('SeasonPortal', () => {
       expect(texts).toEqual(['要確認', '要確認', '未入力'])
     })
 
-    it('日付詳細ダイアログ: 印と理由、作業の順番（選手登録・契約変更 → 昇降格 → 負傷 → 結果 → 登板記録）、試合日ページへの入口を出す', async () => {
+    it('日付詳細ダイアログ: 印と理由、試合日ページへの入口を出す', async () => {
       const wrapper = await mountSeasonPortal({ season })
       await dayCellOf(wrapper, 5).trigger('click')
       await flushPromises()
       const note = document.body.querySelector('[data-testid="detail-day-mark"]')
       expect(note?.textContent).toContain('要確認')
       expect(note?.textContent).toContain('得点と登板記録が食い違っています')
-      const flow = document.body.querySelector('[data-testid="detail-day-flow"]')
-      expect(flow?.textContent).toContain('選手登録・契約変更 → 昇降格 → 負傷 → 結果 → 登板記録')
       expect(document.body.textContent).toContain('試合結果入力')
     })
 
-    it('日付詳細ダイアログ: 印の無い日は印の帯を出さない（作業の順番は出す）', async () => {
+    // Test Basis: Operator 2026-11-01「日付をクリックした時の余計な説明は不要。投手登板記録リンクボタンを削除する」
+    it('日付詳細ダイアログ: 作業の順番の説明と「投手登板」のリンクボタンを出さない。試合結果入力のボタンは残る', async () => {
+      const wrapper = await mountSeasonPortal({ season })
+      await dayCellOf(wrapper, 5).trigger('click')
+      await flushPromises()
+      const text = document.body.textContent ?? ''
+      expect(document.body.querySelector('[data-testid="detail-day-flow"]')).toBeNull()
+      expect(text).not.toContain('作業の順番')
+      expect(text).not.toContain('選手登録・契約変更')
+      expect(text).not.toContain('投手登板')
+      const links = Array.from(
+        document.body.querySelectorAll<HTMLAnchorElement>('.v-overlay__content a[href]'),
+      ).map((a) => a.getAttribute('href'))
+      expect(links.some((href) => href?.includes('tab=pitchers'))).toBe(false)
+      expect(
+        document.body.querySelector('[data-testid="detail-open-schedule"]')?.textContent,
+      ).toContain('試合結果入力')
+      expect(document.body.querySelectorAll('.v-overlay__content .v-btn')).toHaveLength(2) // 試合結果入力と閉じる
+    })
+
+    it('実ロケールにも、作業の順番の文言とシーズン名のラベルは残っていない', () => {
+      const portal = realJa.seasonPortal as Record<string, unknown>
+      expect(portal.dayFlow).toBeUndefined()
+      expect(portal.initForm).not.toHaveProperty('seasonNameLabel')
+      expect(realJa.topMenu.seasonInitialization).not.toHaveProperty('seasonNameLabel')
+    })
+
+    it('日付詳細ダイアログ: 印の無い日は印の帯を出さない', async () => {
       const wrapper = await mountSeasonPortal({ season })
       await dayCellOf(wrapper, 7).trigger('click')
       await flushPromises()
       expect(document.body.querySelector('[data-testid="detail-day-mark"]')).toBeNull()
-      expect(document.body.querySelector('[data-testid="detail-day-flow"]')).not.toBeNull()
+      expect(document.body.querySelector('[data-testid="detail-open-schedule"]')).not.toBeNull()
     })
   })
 
@@ -505,7 +563,6 @@ describe('SeasonPortal', () => {
   describe('現在日の自動化と過去分の修正', () => {
     const season = {
       id: 1,
-      name: '2026シーズン',
       current_date: '2026-05-09',
       current_range: { start_date: '2026-05-08', end_date: '2026-05-09' },
       start_date: '2026-04-01',

@@ -674,7 +674,7 @@
 
 - **Controller**: `Api::V1::SeasonsController#create`
 - **認可**: TeamAccessible（チームオーナーまたはCommissioner）
-- **Body Params**: `team_id` (integer), `schedule_id` (integer), `name` (string)
+- **Body Params**: `team_id` (integer), `schedule_id` (integer)。`name` は受け取らない（シーズンに題は付けず、モデルが作成時にチーム名を入れる）
 - **挙動**: Season作成 + 指定Scheduleの全ScheduleDetailをSeasonScheduleとしてコピー
 - **Response**: `{ season: {...}, schedule_count: integer }` 201
 

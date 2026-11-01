@@ -1,5 +1,5 @@
 class SeasonDetailSerializer < ActiveModel::Serializer
-  attributes :id, :name, :current_date, :current_range, :start_date, :end_date, :key_player_id, :key_player_name
+  attributes :id, :current_date, :current_range, :start_date, :end_date, :key_player_id, :key_player_name
   has_many :season_schedules, serializer: SeasonScheduleSerializer
 
   # 各試合日の登板記録の件数を 1 回の問い合わせでまとめて入れる（SeasonSchedule#pitcher_appearance_count）。

@@ -35,7 +35,7 @@
 
 | 要素 | 色 | 動作 | 条件 |
 |------|-----|------|------|
-| シーズン名（h1） | — | 表示のみ | `season.name` |
+| タイトル（h1） | — | 表示のみ。シーズンに題は付けないので、チーム名（`GET /teams/:teamId` の `name`）を出す | — |
 | 試合結果入力ボタン | primary（outlined） | `GameResult` 画面へ遷移 | 当日が試合日（`game_day`, `interleague_game_day`, `playoff_day`, `no_game`）の場合のみ有効 |
 | 離脱登録ボタン | teal（outlined） | `PlayerAbsenceFormDialog` を開く | 常時有効。アイコン: `mdi-hospital-box` |
 | 現在日付表示 | — | `ja-JP` ロケールで「○月○日」形式。日程の結果から導いた現在日（今の範囲の最後の日）を表示するだけで、手で動かす操作は無い | — |
@@ -97,7 +97,6 @@
 
 | フィールド | v-model | 入力形式 | 説明 |
 |-----------|---------|---------|------|
-| シーズン名 | `seasonName` | `v-text-field` | 必須。シーズンの表示名 |
 | 日程表選択 | `selectedSchedule` | `v-select`（`item-title="name"`, `item-value="id"`） | 必須。`ScheduleList[]` から選択 |
 
 #### Props
@@ -110,8 +109,8 @@
 
 #### 動作フロー
 
-1. ユーザーがシーズン名を入力し、日程表を選択
-2. 「初期化」ボタンクリック → `POST /seasons` に `{ team_id, schedule_id, name }` を送信
+1. ユーザーが日程表を選択（シーズンの題の入力欄は無い）
+2. 「初期化」ボタンクリック → `POST /seasons` に `{ team_id, schedule_id }` を送信
 3. 成功時: フォームリセット + `emit('save')` で親に通知 + ダイアログ閉じる
 4. ダイアログ非表示時: `watch` でフォーム値を自動リセット
 
@@ -137,7 +136,8 @@ POST /api/v1/seasons
 |-----------|-----|------|------|
 | `team_id` | integer | ○ | チームID |
 | `schedule_id` | integer | ○ | 日程表テンプレートID |
-| `name` | string | ○ | シーズン名 |
+
+`name` は受け取らない。シーズンに題は付けず、列 `name`（NOT NULL）にはモデルが作成時にチーム名を入れる。
 
 **処理フロー**（トランザクション内）:
 
@@ -259,7 +259,7 @@ resources :seasons, only: [:create]
 |--------|-----|------|-----------|------|
 | `id` | bigint | NO | (auto) | 主キー |
 | `team_id` | bigint | NO | — | 所属チーム（FK → teams） |
-| `name` | string | NO | — | シーズン名（例: 「2025年シーズン」） |
+| `name` | string | NO | — | 使わない列（画面はチーム名をタイトルにする）。作成時にモデルがチーム名を入れる。既存の行は書き換えない |
 | `current_date` | date | NO | — | 現在進行中の日付（シーズン作成時は `schedule.start_date`） |
 | `key_player_id` | bigint | YES | — | キープレイヤー（FK → team_memberships） |
 | `team_type` | string | YES | — | チーム種別（用途未使用） |
@@ -355,7 +355,7 @@ Team
 ### バリデーション
 
 **Season**:
-- `name`: presence（必須）
+- `name`: 検証なし。作成時（`before_validation`, `on: :create`）に空ならチーム名を入れる
 - `team_id`: uniqueness（1チーム1シーズン。メッセージ: 「は既にシーズンが開始されています。」）
 
 **SeasonSchedule**:
@@ -405,7 +405,7 @@ end
 
 ```ruby
 class SeasonDetailSerializer < ActiveModel::Serializer
-  attributes :id, :name, :current_date, :start_date, :end_date
+  attributes :id, :current_date, :start_date, :end_date
   has_many :season_schedules, serializer: SeasonScheduleSerializer
 end
 ```
@@ -418,7 +418,6 @@ end
 ```json
 {
   "id": 1,
-  "name": "2025年シーズン",
   "current_date": "2025-04-01",
   "start_date": "2025-03-28",
   "end_date": "2025-10-15",

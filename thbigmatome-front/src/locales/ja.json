@@ -15,7 +15,6 @@
     },
     "seasonInitialization": {
       "title": "シーズン初期化",
-      "seasonNameLabel": "シーズン名",
       "selectScheduleLabel": "日程表を選択",
       "initializeButton": "初期化"
     },
@@ -67,7 +66,6 @@
     "noSeasonData": "シーズンデータが見つかりません",
     "initForm": {
       "title": "シーズン開始",
-      "seasonNameLabel": "シーズン名",
       "selectScheduleLabel": "日程表を選択",
       "startButton": "シーズン開始",
       "noSchedules": "日程表が登録されていません。先に日程表を作成してください。"
@@ -86,10 +84,6 @@
       "todo": "未入力",
       "warnTitle": "得点と登板記録が食い違っています",
       "todoTitle": "結果が未入力です"
-    },
-    "dayFlow": {
-      "heading": "この試合日の作業の順番",
-      "steps": "選手登録・契約変更 → 昇降格 → 負傷 → 結果 → 登板記録"
     },
     "tableHeaders": {
       "date": "日付",

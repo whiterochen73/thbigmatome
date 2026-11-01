@@ -18,6 +18,12 @@ RSpec.describe "現在日の自動化", type: :request do
   end
 
   describe "GET /api/v1/teams/:team_id/season" do
+    it "シーズンの題（name）は返さない（画面はチーム名をタイトルにする）" do
+      get "/api/v1/teams/#{team.id}/season"
+
+      expect(response.parsed_body).not_to have_key("name")
+    end
+
     it "current_date は次の試合日、current_range は結果の翌日〜次の試合日" do
       get "/api/v1/teams/#{team.id}/season"
 

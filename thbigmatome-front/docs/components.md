@@ -630,7 +630,7 @@
 
 ### `SeasonInitializationDialog.vue` (`src/components/SeasonInitializationDialog.vue`)
 
-シーズン初期化ダイアログ。シーズン名とスケジュールを選択してシーズンを開始する。
+シーズン初期化ダイアログ。スケジュールを選択してシーズンを開始する（シーズンに題は付けない）。
 
 **props**:
 
@@ -648,7 +648,7 @@
 | `save` | なし | シーズン作成完了通知 |
 
 **主要機能・責務**:
-- シーズン名・スケジュール選択フォーム
+- スケジュール選択フォーム
 - POST `/seasons` でシーズン作成
 
 **使用箇所**: `SeasonPortal.vue`（view）

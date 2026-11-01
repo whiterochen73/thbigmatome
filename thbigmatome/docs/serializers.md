@@ -491,7 +491,6 @@
 | 属性 | 説明 |
 |------|------|
 | `id` | シーズンID |
-| `name` | シーズン名 |
 | `current_date` | 現在日付 |
 | `start_date` | シーズン開始日（computed） |
 | `end_date` | シーズン終了日（computed） |

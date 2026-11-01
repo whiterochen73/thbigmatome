@@ -2,7 +2,7 @@
   <v-container>
     <v-toolbar color="primary">
       <template #prepend>
-        <h1 class="text-h5 mx-4">{{ season?.name }}</h1>
+        <h1 class="text-h5 mx-4" data-testid="season-title">{{ teamName }}</h1>
       </template>
       <v-btn class="mx-2" variant="outlined" :to="gameResultRoute" :disabled="!isGameDayToday">
         {{ t('seasonPortal.goToGameResult') }}
@@ -39,10 +39,6 @@
             :label="t('seasonPortal.initForm.selectScheduleLabel')"
             class="mb-2"
           />
-          <v-text-field
-            v-model="newSeasonName"
-            :label="t('seasonPortal.initForm.seasonNameLabel')"
-          />
         </template>
       </v-card-text>
       <v-card-actions v-if="schedules.length > 0">
@@ -50,7 +46,7 @@
         <v-btn
           color="action"
           variant="flat"
-          :disabled="!selectedScheduleId || !newSeasonName || creating"
+          :disabled="!selectedScheduleId || creating"
           :loading="creating"
           @click="createSeason"
         >
@@ -650,9 +646,6 @@
               }}</span>
               {{ dayMarkTitle(selectedDay.schedule) }}
             </div>
-            <div class="text-caption text-medium-emphasis mt-2" data-testid="detail-day-flow">
-              {{ t('seasonPortal.dayFlow.heading') }}：{{ t('seasonPortal.dayFlow.steps') }}
-            </div>
           </template>
           <v-btn
             color="primary"
@@ -672,23 +665,6 @@
                 : t('seasonPortal.openSchedule')
             }}
           </v-btn>
-          <template v-if="isGameType(selectedDay.schedule.date_type)">
-            <v-btn
-              :style="{ borderColor: 'rgb(var(--v-theme-border-strong))' }"
-              variant="outlined"
-              block
-              class="mt-2"
-              prepend-icon="mdi-baseball"
-              :to="{
-                name: 'GameResult',
-                params: { teamId, scheduleId: selectedDay.schedule.id },
-                query: { tab: 'pitchers' },
-              }"
-              @click="isDayDetailOpen = false"
-            >
-              投手登板登録
-            </v-btn>
-          </template>
         </div>
         <div v-else class="text-center text-caption text-medium-emphasis py-4">
           {{ t('seasonPortal.noSchedule') }}
@@ -747,9 +723,11 @@ const asOfPhase = ref('pre_game')
 const dateOnly = (value: string | null | undefined): string => (value ? value.slice(0, 10) : '')
 const currentDateKey = computed(() => dateOnly(season.value?.current_date))
 
+// 画面のタイトル。シーズンには題を付けないので、チーム名を出す
+const teamName = ref('')
+
 // シーズン初期化フォーム
 const schedules = ref<ScheduleList[]>([])
-const newSeasonName = ref('')
 const selectedScheduleId = ref<number | null>(null)
 const creating = ref(false)
 
@@ -866,14 +844,23 @@ const saveKeyPlayer = async () => {
   }
 }
 
+const fetchTeamName = async () => {
+  try {
+    const response = await axios.get<Team>(`/teams/${teamId}`)
+    teamName.value = response.data.name
+    teamSelectionStore.selectTeam(teamId, response.data.name)
+  } catch {
+    teamSelectionStore.selectTeam(teamId, '')
+  }
+}
+
 const createSeason = async () => {
-  if (!selectedScheduleId.value || !newSeasonName.value) return
+  if (!selectedScheduleId.value) return
   creating.value = true
   try {
     await axios.post('/seasons', {
       team_id: teamId,
       schedule_id: selectedScheduleId.value,
-      name: newSeasonName.value,
     })
     await fetchSeason()
   } catch (error) {
@@ -1092,18 +1079,12 @@ const formatDetailDate = (date: Date) => {
 }
 
 onMounted(async () => {
-  await Promise.all([fetchSeason(), fetchSchedules()])
+  await Promise.all([fetchSeason(), fetchSchedules(), fetchTeamName()])
   if (season.value) {
     selectedKeyPlayerId.value = season.value.key_player_id
   }
   if (isCommissioner.value) {
     await fetchKeyPlayerOptions()
-  }
-  try {
-    const response = await axios.get<Team>(`/teams/${teamId}`)
-    teamSelectionStore.selectTeam(teamId, response.data.name)
-  } catch {
-    teamSelectionStore.selectTeam(teamId, '')
   }
 })
 </script>

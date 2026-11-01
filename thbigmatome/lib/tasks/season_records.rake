@@ -33,7 +33,7 @@ namespace :season_records do
     audit.reference.each do |code, values|
       puts "#{code}: #{values.map { |k, v| "#{k}=#{v}" }.join(' / ')}"
     end
-    puts "試合日とみなす種別の集合（S11。場所ごとに違う）:"
+    puts "試合日とみなす種別（S11。サーバの定義は 1 つ）:"
     SeasonRecordAudit::GAME_DAY_SETS.each { |where, types| puts "    #{where}: #{types.join(', ')}" }
     audit.warnings.each { |w| puts "# WARN: #{w}" }
 
@@ -223,5 +223,76 @@ namespace :season_records do
     puts "# 紐づける: #{summary.fetch(:linked, 0)} / すでに紐づいている: #{summary.fetch(:already, 0)}"
     puts "# 紐づけない（一覧に出す）: 対応する日程の行が無い #{summary.fetch(:no_schedule, 0)} / 同じ日に日程の行が複数 #{summary.fetch(:ambiguous, 0)} / " \
          "日付が読めない #{summary.fetch(:bad_date, 0)} / 紐づけ先が違う #{summary.fetch(:mismatch, 0)}"
+  end
+
+  desc <<~DESC
+    日程の種別 no_game の日を、シーズン作成元の日程マスタ（schedule_details）の種別に戻し、真偽値 no_game を真にする。cmd_1784 段4。
+    ノーゲームの表し方を真偽値に一本化する（設計書 §4.6）。元のマスタは「そのシーズンと同じ日付の集合を持つ schedule」で引く。
+    元の種別を決められない日（マスタが無い・割れる・マスタ自体が no_game）が 1 日でもあれば、APPLY=1 でも何も書かず止める。
+    書くと登板の結果区分・疲労P が作り直される（画面でノーゲームを立てた時と同じ。登板の結果区分が no_game に変わり、疲労一覧の表示が変わる）。
+    戻した種別が予備日などの試合日でない種別になる日は、一覧の not_game_type 行と標準出力に出す（種別は試合日でないまま真偽値だけが立つ）。
+    既定は試運転（DB を書かない）。APPLY=1 の時だけ書く。何度流しても同じ結果になる（種別 no_game の日が無ければ 0 件）。
+      bundle exec rake season_records:normalize_no_game_dates                    # 試運転
+      OUT=/path/to/before.csv bundle exec rake season_records:normalize_no_game_dates  # 変更前後の値の CSV（逆向きに当てる材料）
+      TEAM_ID=3 bundle exec rake season_records:normalize_no_game_dates          # チームを絞る
+      APPLY=1 OUT=/path/to/before.csv bundle exec rake season_records:normalize_no_game_dates  # 実際に書く
+      UNDO_FROM=/path/to/before.csv APPLY=1 bundle exec rake season_records:normalize_no_game_dates  # CSV から元に戻す
+    CSV は schedule_id, season_id, team_id, team, date, old_date_type, old_no_game, new_date_type, new_no_game, status, master_types, pitcher_count の列。
+    UNDO_FROM は、今の値が new_* と一致する行だけ old_* に戻す（食い違う行は戻さず一覧に出す）。UNDO_FROM は APPLY=1 でなければ試運転（読むだけ）。
+  DESC
+  task normalize_no_game_dates: :environment do
+    apply = ENV["APPLY"] == "1"
+
+    if ENV["UNDO_FROM"].present?
+      csv_rows = CSV.read(ENV["UNDO_FROM"], headers: true).map(&:to_h).select { |r| r["status"] == "restore" }
+      puts "# mode: UNDO #{apply ? 'APPLY (DB updated)' : 'DRY-RUN (DB unchanged)'}"
+      if apply
+        result = NoGameDateNormalizer.revert!(csv_rows)
+        puts "# 戻した: #{result[:reverted]} 件 / 今の値が new_* と違うため戻さなかった: #{result[:skipped].size} 件 #{result[:skipped].inspect}"
+      else
+        current = csv_rows.count do |r|
+          s = SeasonSchedule.find_by(id: r["schedule_id"])
+          s && s.date_type == r["new_date_type"] && s.no_game == (r["new_no_game"] == "true")
+        end
+        puts "# 戻せる: #{current} 件 / 戻せない: #{csv_rows.size - current} 件（CSV #{csv_rows.size} 行）"
+      end
+      next
+    end
+
+    normalizer = NoGameDateNormalizer.new(team_id: ENV["TEAM_ID"]).call
+    team_names = Team.where(id: normalizer.rows.map(&:team_id).uniq).pluck(:id, :name).to_h
+    csv = CSV.generate do |out|
+      out << %w[schedule_id season_id team_id team date old_date_type old_no_game new_date_type new_no_game status master_types pitcher_count]
+      normalizer.rows.each do |r|
+        out << [ r.schedule_id, r.season_id, r.team_id, team_names[r.team_id], r.date, r.old_date_type, r.old_no_game, r.new_date_type, r.new_no_game,
+                 r.status, r.master_types.join(" "), r.pitcher_count ]
+      end
+    end
+    if ENV["OUT"].present?
+      File.write(ENV["OUT"], csv)
+      puts "# CSV written: #{ENV['OUT']}（#{normalizer.rows.size} 行）"
+    else
+      puts csv
+    end
+
+    summary = normalizer.summary
+    puts "# mode: #{apply ? 'APPLY (DB updated)' : 'DRY-RUN (DB unchanged)'}"
+    puts "# 対象: #{ENV['TEAM_ID'].present? ? "チーム #{ENV['TEAM_ID']}" : '全チーム'} / 種別 no_game の日 #{normalizer.rows.size} 日（登板 #{normalizer.rows.sum(&:pitcher_count)} 件）"
+    puts "# 戻す: #{summary.fetch(:restore, 0)} / 止める（元の種別を決められない）: マスタ無し #{summary.fetch(:unresolved, 0)} / 割れる #{summary.fetch(:ambiguous, 0)} / マスタが no_game #{summary.fetch(:master_no_game, 0)}"
+    by_type = normalizer.rows.select { |r| r.status == :restore }.group_by(&:new_date_type).transform_values(&:size)
+    puts "#   戻す種別: #{by_type.map { |k, v| "#{k} #{v}" }.join(' / ')}"
+    normalizer.not_game_type.each do |r|
+      puts "# 要確認(not_game_type): schedule #{r.schedule_id} チーム #{r.team_id} #{r.date} → #{r.new_date_type}（試合日でない種別のまま真偽値 no_game が立つ。登板 #{r.pitcher_count} 件）"
+    end
+    normalizer.stops.each { |r| puts "# 止める: schedule #{r.schedule_id} チーム #{r.team_id} #{r.date} #{r.status} #{r.master_types.inspect}" }
+
+    if apply
+      begin
+        normalizer.apply!
+        puts "# 書いた: #{normalizer.rows.size} 日"
+      rescue NoGameDateNormalizer::Unresolved => e
+        abort "# ERROR: #{e.message}"
+      end
+    end
   end
 end

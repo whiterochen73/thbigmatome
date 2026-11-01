@@ -10,6 +10,9 @@ import SeasonPortal from '../SeasonPortal.vue'
 import { appBarTitle } from '@/composables/useAppBarTitle'
 import realJa from '@/locales/ja.json'
 
+// サーバが返す試合日とみなす種別（SeasonSchedule::GAME_DATE_TYPES）
+const GAME_DATE_TYPES = ['game_day', 'interleague_game_day', 'playoff_day']
+
 // Mock axios using vi.hoisted to avoid hoisting issues
 const { mockGet, mockPost, mockPatch } = vi.hoisted(() => ({
   mockGet: vi.fn(),
@@ -130,7 +133,9 @@ async function mountSeasonPortal(
   const { season = null, schedules = [], query = '' } = options
 
   mockGet.mockImplementation((url: string) => {
-    if (url.includes('/season')) return Promise.resolve({ data: season })
+    // game_date_types はサーバが返す試合日とみなす種別（SeasonSchedule::GAME_DATE_TYPES）
+    if (url.includes('/season'))
+      return Promise.resolve({ data: season && { game_date_types: GAME_DATE_TYPES, ...season } })
     if (url.includes('/schedules')) return Promise.resolve({ data: schedules })
     if (url.includes('/teams/')) return Promise.resolve({ data: { id: 1, name: 'チームA' } })
     return Promise.reject(new Error(`Unexpected GET: ${url}`))
@@ -190,6 +195,45 @@ describe('SeasonPortal', () => {
     expect(row.text()).toContain('日程を開く')
     table.unmount()
     mountedWrappers.splice(mountedWrappers.indexOf(table), 1)
+    localStorage.removeItem('sp_view')
+  })
+
+  // Test Basis: cmd_1784 段4。試合日とみなす種別はサーバが返す game_date_types（プレーオフ日・交流戦を含む）。画面は一覧を持たない
+  it('一覧の「試合結果入力」は、サーバが返した試合日の種別（交流戦・プレーオフ日を含む）の日にだけ出る', async () => {
+    localStorage.setItem('sp_view', 'table')
+    const season = {
+      id: 1,
+      current_date: '2026-04-10',
+      season_schedules: [
+        { id: 1, date: '2026-04-11', date_type: 'game_day', game_result: null },
+        { id: 2, date: '2026-04-12', date_type: 'interleague_game_day', game_result: null },
+        { id: 3, date: '2026-04-13', date_type: 'playoff_day', game_result: null },
+        { id: 4, date: '2026-04-14', date_type: 'reserve_day', game_result: null },
+        { id: 5, date: '2026-04-15', date_type: 'travel_day', game_result: null },
+      ],
+    }
+    const table = await mountSeasonPortal({ season })
+    const rowOf = (label: string) => table.findAll('tr').find((tr) => tr.text().includes(label))!
+    expect(rowOf('4/11').text()).toContain('試合結果入力')
+    expect(rowOf('4/12').text()).toContain('試合結果入力')
+    expect(rowOf('4/13').text()).toContain('試合結果入力')
+    expect(rowOf('4/14').text()).toContain('日程を開く')
+    expect(rowOf('4/15').text()).toContain('日程を開く')
+    table.unmount()
+    mountedWrappers.splice(mountedWrappers.indexOf(table), 1)
+
+    // サーバが返す集合が変われば判定も変わる（画面に種別の一覧は無い）
+    const narrowed = await mountSeasonPortal({
+      season: { ...season, game_date_types: ['game_day'] },
+    })
+    expect(
+      narrowed
+        .findAll('tr')
+        .find((tr) => tr.text().includes('4/13'))!
+        .text(),
+    ).toContain('日程を開く')
+    narrowed.unmount()
+    mountedWrappers.splice(mountedWrappers.indexOf(narrowed), 1)
     localStorage.removeItem('sp_view')
   })
 

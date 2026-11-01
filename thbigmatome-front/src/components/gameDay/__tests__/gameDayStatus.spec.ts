@@ -5,12 +5,14 @@ import {
   detectRecordMismatch,
   hasGameDayArrived,
   hasSavedScore,
+  isGameType,
   isInCurrentRange,
   isOffRoster,
   mismatchMessageKey,
   pitcherStageState,
   progressMarks,
   resultStageState,
+  SCHEDULE_DATE_TYPES,
   setupStageState,
   type SavedGameRecord,
 } from '../gameDayStatus'
@@ -419,5 +421,40 @@ describe('isInCurrentRange', () => {
     expect(isInCurrentRange('2026-05-08', undefined)).toBe(false)
     expect(isInCurrentRange(null, range)).toBe(false)
     expect(isInCurrentRange('', range)).toBe(false)
+  })
+})
+
+// Test Basis: cmd_1784 段4。設計書 §4.6（試合日とみなす種別はサーバに 1 つ置き、画面はそれを受け取る。ノーゲームは真偽値で表し、種別 no_game は作れない）
+describe('isGameType（試合日とみなす種別はサーバから受け取る）', () => {
+  const serverTypes = ['game_day', 'interleague_game_day', 'playoff_day']
+
+  it('サーバが返した種別だけを試合日とみなす（プレーオフ日を含む）', () => {
+    for (const type of serverTypes) expect(isGameType(type, serverTypes), type).toBe(true)
+    for (const type of [
+      'reserve_day',
+      'interleague_reserve_day',
+      'travel_day',
+      'no_game_day',
+      'postponed',
+    ]) {
+      expect(isGameType(type, serverTypes), type).toBe(false)
+    }
+  })
+
+  it('種別が空・未取得（サーバの値が空）なら試合日ではない', () => {
+    expect(isGameType('game_day', [])).toBe(false)
+    expect(isGameType(null, serverTypes)).toBe(false)
+    expect(isGameType(undefined, serverTypes)).toBe(false)
+    expect(isGameType('', serverTypes)).toBe(false)
+  })
+
+  it('種別 no_game は試合日とみなさない（サーバの集合に無い）。日付の種類の選択肢にも無い', () => {
+    expect(isGameType('no_game', serverTypes)).toBe(false)
+    expect(SCHEDULE_DATE_TYPES).not.toContain('no_game')
+    expect(SCHEDULE_DATE_TYPES).toContain('playoff_day')
+  })
+
+  it('画面は種別の一覧を持たず、サーバの集合が変われば判定も変わる', () => {
+    expect(isGameType('reserve_day', [...serverTypes, 'reserve_day'])).toBe(true)
   })
 })

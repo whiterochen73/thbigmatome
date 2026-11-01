@@ -7,7 +7,8 @@
 # 「結果が入った」は試合日ページの結果の段（gameDayStatus.ts の resultStageState）と同じ定義:
 #   得点（自軍・相手とも）が保存済み、またはノーゲーム（真偽値 no_game）。日程の種別は問わない
 #   （予備日に試合が入った日も結果の日として数える）。
-# 「試合日」は画面の isGameType と同じ集合（game_day / interleague_game_day / playoff_day / no_game）。
+# 「試合日」は SeasonSchedule::GAME_DATE_TYPES（game_day / interleague_game_day / playoff_day。画面の isGameType はこれをサーバから受け取る）。
+# ノーゲームの日（真偽値 no_game）も種別が試合日なら試合日として範囲の終わりになる（試合数には数えない。SeasonSchedule.counted_games）。
 #
 # 毎回、日程から導く（現在日カーソルの列 seasons.current_date は写しにしない）。理由: 日程の編集・結果の保存・取り込みなど
 # 結果を変える経路が複数あり、写しを更新する処理を全部に付けると 1 か所の漏れで古い値が残る。1 シーズンの日程は
@@ -22,8 +23,6 @@
 # - 日程が 1 行も無い: 導けない（nil）。呼び出し側が seasons.current_date の列へ倒す
 # - 試合日がひとつも無く結果も無い: 範囲 = なし、現在日 = 日程の最初の日
 class SeasonCurrentRange
-  GAME_DATE_TYPES = %w[game_day interleague_game_day playoff_day no_game].freeze
-
   Window = Struct.new(:current_date, :start_date, :end_date, :last_result_date, keyword_init: true) do
     # 範囲の中の日か（範囲が無い時は常に false）
     def covers?(date)
@@ -58,7 +57,7 @@ class SeasonCurrentRange
 
     first_date = rows.map(&:first).min
     last_result = rows.select { |_, _, score, opponent_score, no_game| result?(score, opponent_score, no_game) }.map(&:first).max
-    game_dates = rows.select { |_, type, *| GAME_DATE_TYPES.include?(type) }.map(&:first).sort
+    game_dates = rows.select { |_, type, *| SeasonSchedule::GAME_DATE_TYPES.include?(type) }.map(&:first).sort
 
     if last_result
       next_game = game_dates.find { |date| date > last_result }

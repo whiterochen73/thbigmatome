@@ -656,6 +656,8 @@ const currentRange = ref<CurrentRange | null | undefined>(undefined)
 const currentRangeLoaded = ref(false)
 const seasonSchedules = ref<SeasonScheduleLite[]>([])
 const currentDateType = ref('')
+// 試合日とみなす種別（サーバが返す。取得前は空。取得に失敗しても前の値を残す）
+const gameDateTypes = ref<string[]>([])
 const dateTypeSaving = ref(false)
 const dateTypeDialogOpen = ref(false)
 const dateTypeTrigger = ref<HTMLButtonElement | null>(null)
@@ -675,7 +677,9 @@ const formatScheduleDate = (value: string) => {
   return `${Number(month)}/${Number(day)}`
 }
 // 日程の取得前は既存の試合入力画面を表示し、取得後に種類に合わせて切り替える
-const isGameDay = computed(() => !currentDateType.value || isGameType(currentDateType.value))
+const isGameDay = computed(
+  () => !currentDateType.value || isGameType(currentDateType.value, gameDateTypes.value),
+)
 const sortedSchedules = computed(() =>
   [...seasonSchedules.value].sort((a, b) => a.date.localeCompare(b.date) || a.id - b.id),
 )
@@ -1118,6 +1122,7 @@ const fetchSeasonInfo = async () => {
     const response = await axios.get(`/teams/${teamId.value}/season`)
     seasonCurrentDate.value = response?.data?.current_date ?? null
     currentRange.value = response?.data?.current_range ?? null
+    gameDateTypes.value = response?.data?.game_date_types ?? []
     seasonSchedules.value = (response?.data?.season_schedules ?? []).map(
       (schedule: SeasonScheduleLite) => ({ ...schedule }),
     )
@@ -1276,7 +1281,11 @@ const updateDateType = async (nextType: string) => {
   const previous = currentDateType.value
   if (!previous || nextType === previous || hasUnsavedChanges.value || dateTypeSaving.value) return
   if (!SCHEDULE_DATE_TYPES.some((type) => type === nextType)) return
-  if (isGameType(previous) && !isGameType(nextType) && hasSavedGameData.value) {
+  if (
+    isGameType(previous, gameDateTypes.value) &&
+    !isGameType(nextType, gameDateTypes.value) &&
+    hasSavedGameData.value
+  ) {
     const accepted = await confirmDialog.value?.open(
       t('gameDay.dateType.confirmTitle'),
       t('gameDay.dateType.confirmMessage'),

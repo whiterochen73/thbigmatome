@@ -8,6 +8,21 @@ class SeasonSchedule < ApplicationRecord
 
   validates :home_away, inclusion: { in: [ "home", "visitor" ] }, allow_blank: true
 
+  # 「試合日とみなす種別」の唯一の定義（cmd_1784 段4。設計書 §4.6）。1軍の最低人数の検査・試合数の換算・現在日の導出・点検・
+  # 画面（GET /teams/:id/season の game_date_types）がすべてこれを使う。プレーオフ日も含む。
+  # ノーゲームは種別ではなく真偽値 no_game で表す（種別 "no_game" は作れない。NO_GAME_DATE_TYPE）。
+  GAME_DATE_TYPES = %w[game_day interleague_game_day playoff_day].freeze
+  # 廃止した種別（ノーゲームは真偽値 no_game に一本化した）。新規には作れない
+  NO_GAME_DATE_TYPE = "no_game".freeze
+
+  validate :date_type_is_not_no_game, if: :will_save_change_to_date_type?
+
+  # 試合日（種別が GAME_DATE_TYPES）。登録・疲労・負傷の計算と 1軍最低人数の検査はノーゲームの日も対象（台帳 D-11）
+  scope :game_days, -> { where(date_type: GAME_DATE_TYPES) }
+  # 試合数に数える日 = 試合日のうちノーゲームでない日。ノーゲームの試合は数えず、振り替えた試合（予備日などを試合日にして入力した日）が
+  # 1 試合として数えられる（Operator 2026-11-01）。試合番号・離脱の「N試合」・残り試合数がこれを使う
+  scope :counted_games, -> { game_days.where(no_game: false) }
+
   # 開催球場（IRC のチャンネル）。stadium（ゲーム内の球場）とは別の列。
   VENUES = %w[ch1 ch2 ch3 ch4 ch5 tlb].freeze
   # 大まかな開始時刻は 30 分刻み（"00:00"〜"23:30"）
@@ -54,7 +69,7 @@ class SeasonSchedule < ApplicationRecord
 
   def calculated_game_number
     game_number || season.season_schedules
-      .where(date_type: [ "game_day", "interleague_game_day" ])
+      .counted_games
       .where("date < ?", date)
       .count + 1
   end
@@ -78,6 +93,13 @@ class SeasonSchedule < ApplicationRecord
   end
 
   private
+
+  # 種別の変更でだけ検査する（移行前に種別 no_game のまま残っている行の、ほかの列の保存は止めない）
+  def date_type_is_not_no_game
+    return unless date_type == NO_GAME_DATE_TYPE
+
+    errors.add(:date_type, "に no_game は指定できません。ノーゲームは試合結果の「ノーゲーム」で表します（日付の種類は元の種類のままにします）")
+  end
 
   # PostgreSQL の text 列は NUL 文字（\u0000）を保存できず、そのまま渡すと 500 になる。
   # ログは無加工で保存する方針なので NUL を取り除いて通さず、422 で断る（他の制御文字・タブは通す）。

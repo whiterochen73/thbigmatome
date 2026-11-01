@@ -120,12 +120,32 @@ RSpec.describe SeasonCurrentRange do
     end
   end
 
-  it "種別 no_game（雨天ノーゲームの旧表現）は試合日として数えるが、真偽値が立つまでは結果ではない" do
-    schedule(1); schedule(2, "no_game"); schedule(3)
+  it "ノーゲームの日（種別は試合日のまま真偽値 no_game）は試合日として範囲の終わりになり、真偽値が立つと結果になる" do
+    schedule(1); schedule(2); schedule(3)
     result(1)
     expect(range.to_h).to eq(start_date: d(2), end_date: d(2))
     SeasonSchedule.find_by!(season: season, date: d(2)).update!(no_game: true)
+    expect(range.last_result_date).to eq(d(2))
     expect(range.to_h).to eq(start_date: d(3), end_date: d(3))
+  end
+
+  it "ノーゲームの日の後に振り替えた試合（予備日を試合日にして入力した日）が次の範囲の終わりになる" do
+    schedule(1); schedule(2); schedule(3, "reserve_day"); schedule(4)
+    result(1)
+    expect(range.to_h).to eq(start_date: d(2), end_date: d(2))
+    SeasonSchedule.find_by!(season: season, date: d(2)).update!(no_game: true)
+    expect(range.to_h).to eq(start_date: d(3), end_date: d(4)) # 予備日のままなら次の試合日(5/4)まで
+    SeasonSchedule.find_by!(season: season, date: d(3)).update!(date_type: "game_day") # 振替
+    expect(range.to_h).to eq(start_date: d(3), end_date: d(3))
+    result(3)
+    expect(range.to_h).to eq(start_date: d(4), end_date: d(4))
+  end
+
+  it "移行前に種別 no_game のまま残っている日は試合日の種別ではない（rake season_records:normalize_no_game_dates で戻す）" do
+    schedule(1); legacy = create(:season_schedule, season: season, date: d(2), date_type: "game_day"); schedule(3)
+    legacy.update_columns(date_type: "no_game")
+    result(1)
+    expect(range.to_h).to eq(start_date: d(2), end_date: d(3))
   end
 
   it "プレーオフ日（playoff_day）も試合日として数える（範囲はプレーオフ日で終わる）" do

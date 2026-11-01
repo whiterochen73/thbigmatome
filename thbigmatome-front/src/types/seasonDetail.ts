@@ -10,5 +10,7 @@ export interface SeasonDetail {
   end_date: string
   key_player_id: number | null
   key_player_name: string | null
+  // 試合日とみなす種別（サーバの SeasonSchedule::GAME_DATE_TYPES）
+  game_date_types: string[]
   season_schedules: SeasonSchedule[]
 }

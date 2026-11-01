@@ -780,9 +780,14 @@ class SeasonSchedule < ApplicationRecord
 
 **バリデーション**:
 - `home_away`: inclusion in ["home", "visitor"], allow_blank
+- `date_type`: 種別 `no_game` は指定できない（変更する時だけ検査。ノーゲームは真偽値 `no_game`。cmd_1784 段4）
+
+**定数・スコープ**:
+- `GAME_DATE_TYPES` = `game_day` / `interleague_game_day` / `playoff_day` — 試合日とみなす種別の唯一の定義（1軍最低人数の検査・現在日の範囲・点検・画面の `isGameType`〈API の `game_date_types`〉）
+- `game_days` — 種別が試合日の行（ノーゲームの日を含む）。`counted_games` — そのうち `no_game` が偽の日（試合数に数える日。試合番号・離脱の「N試合」・残り試合数。ノーゲームの試合は数えず、振り替えた試合は 1 試合として数える）
 
 **インスタンスメソッド**:
-- `calculated_game_number` — 明示的なgame_numberがなければ該当日までの試合数から算出
+- `calculated_game_number` — 明示的なgame_numberがなければ、当該日付より前の `counted_games` の件数 + 1（ノーゲームの日は数えない）
 - `game_result_hash` — 試合結果を `{ opponent_short_name:, score:, result: }` で返す。`no_game` が立っていれば得点に依らず `{ score: nil, result: "no_game" }`（勝ち・負け・引き分けの印を出さない。台帳 D-11 再確認）
 
 **コールバック**: 得点（`score` / `opponent_score`）または `no_game` が変わった保存の後に、その日の自チーム先発の投手に絞って、その試合日以降の先発の保存値（`result_category`・`fatigue_p_used`・`consecutive_short_rest_count`）を作り直す（`PitcherHistoryRebuild.guarded`。保存値の作り直しの 1 入口で、中身は `PitcherResultCategoryRebuilder`）。得点が未入力の先発は、その日の分だけ「負けではない」として作り直し、それ以降の未入力の先発の保存値は動かさない。失敗しても保存は取り消さず `pitcher_rebuild_error` に持つ

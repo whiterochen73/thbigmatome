@@ -315,7 +315,7 @@ class Api::V1::Commissioner::DashboardController < Api::V1::Commissioner::BaseCo
     else
       # 試合中の負傷は、その試合日の試合を残りに数えない（counting_from が翌日に寄せる）
       remaining_games = season.season_schedules
-        .where(date_type: %w[game_day interleague_game_day])
+        .counted_games
         .where("date >= ? AND date < ?", absence.counting_from(current_date_of(season)), end_date)
         .count
       { remaining_days: nil, remaining_games: remaining_games }

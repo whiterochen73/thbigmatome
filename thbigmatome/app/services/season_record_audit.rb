@@ -21,7 +21,7 @@ class SeasonRecordAudit
                "（カテゴリ: inserted_later = 後から差し込まれた側 / overtaken = 追い越された側）。" ],
     "S2b" => [ "1軍人数が規定を外れた日",
                "シーズンの日程の日付と昇降格の記録の日付のうち、その日の 1軍が 29 人超（over_max）。記録が無い選手は 2軍とみなす（写しには倒さない）。" \
-               "試合日（game_day / interleague_game_day）で、チームの最初の昇降格の記録の日以降かつシーズン初日（日程の最初の日）でなく、" \
+               "試合日（SeasonSchedule::GAME_DATE_TYPES = game_day / interleague_game_day / playoff_day。ノーゲームの日も含む）で、チームの最初の昇降格の記録の日以降かつシーズン初日（日程の最初の日）でなく、" \
                "1軍が最低人数（config/cost_limits.yml）未満（under_min）。コスト・外の世界枠は過去の契約・コスト表が復元できないため数えない（設計書 §8）。" ],
     "S2c" => [ "クールダウン（再登録不可 10 日）違反の昇格",
                "2軍→1軍の記録で、直前の降格（2軍の記録）の日から 10 日未満。降格の前の昇格が降格と同日なら免除（CooldownCalculable と同じ）。" \
@@ -44,30 +44,33 @@ class SeasonRecordAudit
               "登板した日と同じ日を開始日とする離脱のうち、区分が pre_game（試合前）のもの。pre_game の離脱はその日から離脱中なので、" \
               "その投手は登板記録の候補から外れ、同じ日の登板と食い違う。試合中の負傷だった入力なら、区分を in_game（試合中）に直す。" \
               "区分が in_game の同日の離脱は正常（翌日から離脱）で数えず、参考に件数だけ出す。カテゴリは離脱の種別。" ],
-    "S10" => [ "ノーゲームの表し方の食い違い",
-               "日程の種別 no_game と真偽値 no_game が合わない日。type_no_game_flag_false = 種別だけ no_game（サーバの勝敗判定は通常の試合として見る）/ " \
-               "flag_true_type_other = 真偽値だけ真。evidence に、その日の登板件数を出す。" ],
+    "S10" => [ "日程の種別に no_game が残っている日（ノーゲームの表し方が 2 通りある）",
+               "段4 でノーゲームは真偽値 no_game に一本化した（種別 no_game は新たに作れない）。種別 no_game の日を数える。" \
+               "type_no_game_flag_false = 種別だけ no_game（サーバの勝敗判定は通常の試合として見る。rake season_records:normalize_no_game_dates を流す前）/ " \
+               "type_no_game_flag_true = 種別も真偽値も no_game（種別だけ戻し損ねた日）。evidence に、その日の登板件数を出す。" \
+               "段4 の適用後は 0 件になる。真偽値だけが真の日は正常（ノーゲームの日の正しい形）なので数えない。" ],
     "S11" => [ "試合日でない種別の日の登板",
-               "登板の試合日の日程の種別が game_day / interleague_game_day / playoff_day のどれでもない登板。カテゴリは種別" \
-               "（日程の行が無ければ no_schedule）。種別 no_game の日は S10 とも重なる。" ],
+               "登板の試合日の日程の種別が SeasonSchedule::GAME_DATE_TYPES（game_day / interleague_game_day / playoff_day）のどれでもない登板。" \
+               "カテゴリは種別（日程の行が無ければ no_schedule）。種別 no_game の日（段4 の適用前）はここにも入る。" \
+               "段4 は雨天中止・移動日・予備日の日の登板には触らない（入力誤りか種別の付け間違いか区別できないため）。一覧に出すだけで、" \
+               "予備日などの種別のまま真偽値 no_game が立った日の登板もここに残る。" ],
     "S12" => [ "日程の行に紐づいていない登板",
                "登板の season_schedule_id が空、または（チーム, 試合日）から引いた日程の行と違う。カテゴリ: unlinked/linkable = 日程の行が 1 件あるのに空" \
                "（rake season_records:link_pitcher_schedules を流す前）/ unlinked/no_schedule = 対応する日程の行が無い（行は作らない）/ " \
                "unlinked/ambiguous = 同じ日に日程の行が複数 / mismatch = 紐づけ先が引いた行と違う。" ]
   }.freeze
 
-  # 試合日とみなす種別の集合が場所ごとに違う（S11）。出力に現状を出すための記録。
+  # 試合日とみなす種別（S11）。段4 でサーバの定義を 1 つにした（SeasonSchedule::GAME_DATE_TYPES）。
+  # 「試合数に数える日」はそのうち真偽値 no_game でない日（SeasonSchedule.counted_games）。出力に現状を出すための記録。
   GAME_DAY_SETS = {
-    "ロスター保存の 1軍最低人数の検査（team_rosters_controller）" => %w[game_day],
-    "SeasonSchedule#calculated_game_number・PlayerAbsence の試合数換算" => %w[game_day interleague_game_day],
-    "この道具（S2b の下限）" => %w[game_day interleague_game_day],
-    "この道具（S11 の試合日）" => %w[game_day interleague_game_day playoff_day]
+    "試合日とみなす種別（1軍最低人数の検査・現在日の範囲・試合日ページ・この道具の S2b / S11。SeasonSchedule::GAME_DATE_TYPES。" \
+    "試合数に数える日はこのうち真偽値 no_game が偽の日だけ）" => SeasonSchedule::GAME_DATE_TYPES
   }.freeze
 
   FIRST_SQUAD_MAX = 29 # team_rosters_controller#validate_first_squad_constraints と同じ
   COOLDOWN_DAYS = 10 # CooldownCalculable と同じ
-  CHECK_GAME_DAY_TYPES = %w[game_day interleague_game_day].freeze
-  S11_GAME_DAY_TYPES = %w[game_day interleague_game_day playoff_day].freeze
+  CHECK_GAME_DAY_TYPES = SeasonSchedule::GAME_DATE_TYPES
+  S11_GAME_DAY_TYPES = SeasonSchedule::GAME_DATE_TYPES
 
   Roster = Struct.new(:id, :registered_on, :squad, :created_at, keyword_init: true)
 
@@ -384,16 +387,16 @@ class SeasonRecordAudit
   def audit_s10
     pitcher_count_by_day = @pitcher_states.group_by { |s| [ s[:team_id], s[:date] ] }.transform_values(&:size)
     @schedules.each do |s|
-      type_no_game = s[:date_type] == "no_game"
-      next if type_no_game == s[:no_game]
+      next unless s[:date_type] == SeasonSchedule::NO_GAME_DATE_TYPE
 
-      category = type_no_game ? "type_no_game_flag_false" : "flag_true_type_other"
+      category = s[:no_game] ? "type_no_game_flag_true" : "type_no_game_flag_false"
       add("S10", category, team_id: s[:team_id], date: s[:date], ref: s[:id],
           evidence: "種別=#{s[:date_type]} / no_game=#{s[:no_game]} / その日の登板 #{pitcher_count_by_day[[ s[:team_id], s[:date] ]] || 0} 件")
     end
     @reference["S10"] = {
       "種別 no_game の日数" => @schedules.count { |s| s[:date_type] == "no_game" },
       "真偽値 no_game が真の日数" => @schedules.count { |s| s[:no_game] },
+      "真偽値 no_game が真で種別が試合日でない日数（予備日などのまま）" => @schedules.count { |s| s[:no_game] && !SeasonSchedule::GAME_DATE_TYPES.include?(s[:date_type]) },
       "種別 no_game の日の登板件数" => @schedules.select { |s| s[:date_type] == "no_game" }.sum { |s| pitcher_count_by_day[[ s[:team_id], s[:date] ]] || 0 }
     }
   end

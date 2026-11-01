@@ -86,7 +86,11 @@ const gameResponse = {
   starting_lineup: null,
 }
 
+// サーバが返す試合日とみなす種別（SeasonSchedule::GAME_DATE_TYPES）
+const GAME_DATE_TYPES = ['game_day', 'interleague_game_day', 'playoff_day']
+
 const seasonResponse = {
+  game_date_types: GAME_DATE_TYPES,
   current_date: '2026-06-10',
   // 今の範囲: 6/9 の結果の翌日〜次の試合日(6/10)。登録・離脱を操作できるのは 6/10 だけ
   current_range: { start_date: '2026-06-10', end_date: '2026-06-10' },
@@ -196,14 +200,15 @@ describe('GameResult 試合日ページ: 日付種類の変更ダイアログ', 
     expect(inBody('[data-testid="date-type-dialog"]')).toBeNull()
   })
 
-  it('チップを押すと変更ダイアログが開く。9 種を色・アイコンつきで並べ、今の種類だけに印を付ける', async () => {
+  it('チップを押すと変更ダイアログが開く。8 種（種別 no_game は選べない）を色・アイコンつきで並べ、今の種類だけに印を付ける', async () => {
     const { wrapper } = await mountDay()
     await openDialog(wrapper)
     expect(dialogOpen(wrapper)).toBe(true)
     const dialog = inBody('[data-testid="date-type-dialog"]')!
     expect(dialog).not.toBeNull()
     const items = wrapper.findComponent(DateTypeDialog).props('items')
-    expect(items).toHaveLength(9)
+    expect(items).toHaveLength(8)
+    expect(items.map((item: { value: string }) => item.value)).not.toContain('no_game')
     for (const item of items) {
       const row = option(item.value)
       expect(row.textContent).toContain(item.title)

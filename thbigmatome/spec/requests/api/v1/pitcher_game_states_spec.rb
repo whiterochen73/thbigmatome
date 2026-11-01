@@ -927,13 +927,15 @@ RSpec.describe "Api::V1::PitcherGameStatesController", type: :request do
             expect([ e["as_starter"]["status"], e["as_reliever"]["status"] ]).to eq(%w[full full])
           end
 
-          it "負傷離脱（試合数単位）は、ノーゲームの日も試合日として数える" do
+          # ノーゲームになった試合は試合数に数えない（Operator 2026-11-01）。離脱の「N試合」も数えず、後ろへ繰り延べる
+          it "負傷離脱（試合数単位）は、ノーゲームの日を試合数に数えない（登板記録・疲労は通常どおり）" do
             tm = TeamMembership.find_by(team: team, player: plain_player)
             create(:season_schedule, season: season_first, date: Date.new(2026, 3, 10), no_game: true)
             create(:season_schedule, season: season_first, date: Date.new(2026, 3, 11))
+            create(:season_schedule, season: season_first, date: Date.new(2026, 3, 12))
             absence = create(:player_absence, team_membership: tm, season: season_first, absence_type: :injury,
                                               start_date: Date.new(2026, 3, 10), duration: 2, duration_unit: "games")
-            expect(absence.effective_end_date).to eq(Date.new(2026, 3, 12))
+            expect(absence.effective_end_date).to eq(Date.new(2026, 3, 13))
             appear(plain_player, "2026-03-01", innings: 1.0, category: "no_game")
             expect(entry_for(plain_player, "2026-03-11")["is_injured"]).to be true
           end

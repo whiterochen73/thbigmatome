@@ -3,7 +3,7 @@
 # 設計: context/thbig-dugout-season-record-restructure-design.md §4.4 の 2。
 # 検査するのは次の 5 種類と、クールダウン。
 #   first_squad_max      1軍は 29 人まで（どの時点でも）
-#   first_squad_min      試合日（日程の種別 game_day）の試合前は 1軍に最低人数（config/cost_limits.yml）。
+#   first_squad_min      試合日（日程の種別 SeasonSchedule::GAME_DATE_TYPES。通常・交流戦・プレーオフ）の試合前は 1軍に最低人数（config/cost_limits.yml）。
 #                        シーズン初日の試合日は免除（初期登録のため。いまの保存と同じ）
 #   first_squad_cost     1軍の合計コストが、人数別の上限（config/cost_limits.yml）以下
 #   outside_world_limit  1軍の外の世界枠は 4 人まで
@@ -42,7 +42,7 @@ class RosterConstraintChecker
     @team_total_cost_list = team_total_cost_list
     @schedule_dates = season.season_schedules.pluck(:date, :date_type)
     @season_start = @schedule_dates.map(&:first).min
-    @game_days = @schedule_dates.select { |_, type| type == "game_day" }.map(&:first).to_set
+    @game_days = @schedule_dates.select { |_, type| SeasonSchedule::GAME_DATE_TYPES.include?(type) }.map(&:first).to_set
     @info = {}
   end
 

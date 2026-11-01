@@ -108,7 +108,11 @@ const gameResponse = {
   starting_lineup: null,
 }
 
+// サーバが返す試合日とみなす種別（SeasonSchedule::GAME_DATE_TYPES）
+const GAME_DATE_TYPES = ['game_day', 'interleague_game_day', 'playoff_day']
+
 const seasonResponse = {
+  game_date_types: GAME_DATE_TYPES,
   current_date: '2026-06-10',
   // 今の範囲: 6/9 の結果の翌日〜次の試合日(6/10)。登録・離脱を操作できるのは 6/10 だけ
   current_range: { start_date: '2026-06-10', end_date: '2026-06-10' },
@@ -414,7 +418,7 @@ describe.each(LAYOUTS)('GameResult 試合日ページ: $name', ({ width, kind })
       }
       if (url === '/teams/1/season') {
         if (season instanceof Error) return Promise.reject(season)
-        const response = { data: season }
+        const response = { data: { game_date_types: GAME_DATE_TYPES, ...season } }
         return opts.seasonGate ? opts.seasonGate.then(() => response) : Promise.resolve(response)
       }
       return Promise.reject(new Error(`Unexpected GET ${url}`))
@@ -569,9 +573,10 @@ describe.each(LAYOUTS)('GameResult 試合日ページ: $name', ({ width, kind })
       expect(chip.html()).toContain(icon)
       if (dateType === 'postponed' || dateType === 'no_game')
         expect(chip.classes()).toContain('text-decoration-line-through')
-      expect(items.filter((item) => item.value === dateType)).toEqual([
-        expect.objectContaining({ color, icon }),
-      ])
+      // 種別 no_game は新たに選べない（ノーゲームは真偽値）。移行前の行を表示する見出しだけ残す
+      expect(items.filter((item) => item.value === dateType)).toEqual(
+        dateType === 'no_game' ? [] : [expect.objectContaining({ color, icon })],
+      )
     }
   })
 
@@ -1562,6 +1567,7 @@ describe.each(LAYOUTS)('GameResult 試合日ページ: $name', ({ width, kind })
   describe('cmd_1783 日程の移動と種類', () => {
     const schedule = (id: number, date: string, date_type: string) => ({ id, date, date_type })
     const scheduleWith = (...rows: ReturnType<typeof schedule>[]) => ({
+      game_date_types: GAME_DATE_TYPES,
       current_date: '2026-06-10',
       season_schedules: rows,
     })
@@ -1676,10 +1682,10 @@ describe.each(LAYOUTS)('GameResult 試合日ページ: $name', ({ width, kind })
       expect(appBarTitle.value?.subtitle).toContain('6月10日')
     })
 
-    it('C: no_game は試合日扱いで 4 段を出し、種類変更でその場で段が出入りする', async () => {
+    it('C: プレーオフ日は試合日扱いで 4 段を出し、種類変更でその場で段が出入りする', async () => {
       const wrapper = await mountDay({
         game: { score: null, opponent_score: null },
-        season: scheduleWith(schedule(100, '2026-06-10', 'no_game')),
+        season: scheduleWith(schedule(100, '2026-06-10', 'playoff_day')),
       })
       for (const slug of ['setup', 'result', 'pitchers']) {
         expect(wrapper.find(`[data-testid="${kind}-${slug}"]`).exists()).toBe(true)

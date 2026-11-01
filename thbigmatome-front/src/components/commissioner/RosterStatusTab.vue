@@ -48,9 +48,21 @@
           </v-chip>
           <span v-else class="text-caption on-surface-variant">通常</span>
         </template>
+        <template #[`item.first_count`]="{ item }">
+          <span class="d-inline-flex align-center ga-1">
+            <LimitMark :state="countLimitState(item.first_count)" :size="16" />
+            {{ item.first_count }}
+          </span>
+        </template>
         <template #[`item.first_cost`]="{ item }">
           <div class="d-flex align-center gap-2">
-            <span>{{ item.first_cost }} / {{ item.first_cost_limit ?? '-' }}</span>
+            <span class="d-inline-flex align-center ga-1">
+              <LimitMark
+                :state="costLimitState(item.first_cost, item.first_cost_limit)"
+                :size="16"
+              />
+              {{ item.first_cost }} / {{ item.first_cost_limit ?? '-' }}
+            </span>
             <v-chip
               v-if="item.first_cost_limit !== null && item.first_cost > item.first_cost_limit"
               color="state-warn"
@@ -64,7 +76,13 @@
         </template>
         <template #[`item.outside_world_count`]="{ item }">
           <div class="d-flex align-center gap-2">
-            <span>{{ item.outside_world_count }} / {{ item.outside_world_limit }}</span>
+            <span class="d-inline-flex align-center ga-1">
+              <LimitMark
+                :state="outsideWorldLimitState(item.outside_world_count, item.outside_world_limit)"
+                :size="16"
+              />
+              {{ item.outside_world_count }} / {{ item.outside_world_limit }}
+            </span>
             <v-chip
               v-if="item.outside_world_count > item.outside_world_limit"
               color="state-warn"
@@ -175,6 +193,12 @@ import StatusChip from '@/components/shared/StatusChip.vue'
 import type { RosterPlayer } from '@/types/rosterPlayer'
 import type { RosterStatusRecord } from '@/types/commissionerDashboard'
 import { useColumnMinWidth } from '@/composables/useColumnMinWidth'
+import LimitMark from '@/components/shared/LimitMark.vue'
+import {
+  costLimitState,
+  countLimitState,
+  outsideWorldLimitState,
+} from '@/components/shared/rosterLimits'
 
 // 1軍登録状況の取得は親（ダッシュボード）が持つ。概況の「要確認」と同じ API なので、2 度取らないよう共用する
 defineProps<{

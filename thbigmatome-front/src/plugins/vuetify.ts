@@ -57,6 +57,9 @@ export default createVuetify({
           // 合計コストの棒の塗り（上限に近い=琥珀・超過=濃い赤）。文字色ではなく背景として使う
           'meter-near': '#A66A00',
           'meter-over': '#8a1420',
+          // 1軍の規定判定（コスト棒・人数・外枠）の緑・赤。塗り（bg-*）にも記号・文字（text-*）にも使う。面の上 文字 4.5・塗り 3 以上
+          'meter-ok': '#3A7418',
+          'meter-ng': '#B01C2A',
 
           // テキストカラー（Lightモード）
           'text-high': '#1A1A1A', // 本文（高重要）
@@ -146,6 +149,8 @@ export default createVuetify({
           'danger-ink': '#ffb3b8',
           'meter-near': '#F0B030',
           'meter-over': '#E84040',
+          'meter-ok': '#7BBF4A',
+          'meter-ng': '#FF7070',
 
           // テキストカラー（Darkモード）
           'text-high': '#E8E8F2', // 本文（高重要）

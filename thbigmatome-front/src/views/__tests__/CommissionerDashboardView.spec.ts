@@ -1027,6 +1027,33 @@ describe('CommissionerDashboard コスト状況の色', () => {
     wrapper.unmount()
   })
 
+  // cmd_1804 subtask_1804a: 1軍コストは記号だけ（棒は link のまま）。上限ちょうど=チェック、上限+1=✕
+  it('1軍コストの記号: 上限ちょうど（120/120）はチェック、上限+1（121/120）は✕、上限なしは出さない', async () => {
+    ;(axios.get as ReturnType<typeof vi.fn>).mockImplementation(
+      apiMock({
+        '/commissioner/dashboard/costs': [
+          costRow(1, 100, 120, 120),
+          costRow(2, 100, 121, 120),
+          costRow(3, 100, 90, null),
+        ],
+      }),
+    )
+    const wrapper = mountPlain()
+    await flushPromises()
+    await showTab(wrapper, 'costs')
+    const mark = (name: string) =>
+      wrapper
+        .findAll('.v-window-item--active tbody tr')
+        .find((tr) => tr.text().includes(name))!
+        .find('[data-testid="limit-mark"]')
+    expect(mark('チーム1').attributes('data-state')).toBe('ok')
+    expect(mark('チーム1').classes()).toContain('mdi-check-circle')
+    expect(mark('チーム2').attributes('data-state')).toBe('ng')
+    expect(mark('チーム2').classes()).toContain('mdi-close-circle')
+    expect(mark('チーム3').exists()).toBe(false)
+    wrapper.unmount()
+  })
+
   it('1軍コストの棒は、上限ぴったりでも超過に近くても色を付けない（常に link）', async () => {
     const { wrapper, row } = await mountCosts()
     for (const name of ['チーム1', 'チーム2', 'チーム3', 'チーム4']) {

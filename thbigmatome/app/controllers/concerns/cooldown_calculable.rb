@@ -21,7 +21,7 @@ module CooldownCalculable
       team,
       memberships: team.all_team_memberships
                        .preload(:season_rosters, :team_membership_changes, { player_absences: :season },
-                                { player: :cost_players }, { player_card: [ :card_set, :player_card_defenses ] })
+                                { player: [ :cost_players, { player_cards: :card_set } ] }, { player_card: [ :card_set, :player_card_defenses ] })
                        .to_a
     )
   end

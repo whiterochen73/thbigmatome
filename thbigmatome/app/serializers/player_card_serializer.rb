@@ -22,7 +22,7 @@ class PlayerCardSerializer < ActiveModel::Serializer
   end
 
   attribute :primary_position do
-    object.player_card_defenses.first&.position
+    object.primary_position
   end
 
   attribute :cost do

@@ -74,7 +74,7 @@ class RosterConstraintChecker
         outside.size - Team::OUTSIDE_WORLD_LIMIT)
     end
     # 4 人以上の時は投手・野手の両方が要る（Team#validate_outside_world_balance と同じ。5 人以上なら limit と両方が出る）
-    if outside.size >= Team::OUTSIDE_WORLD_LIMIT && !(outside.any? { |tm| info_for(tm)[:pitcher] } && outside.any? { |tm| info_for(tm)[:fielder] })
+    if outside.size >= Team::OUTSIDE_WORLD_LIMIT && !Team.outside_world_balance_ok?(outside.map { |tm| info_for(tm)[:kind] })
       violations << violation(date, phase, "outside_world_balance", I18n.t("activerecord.errors.models.team.outside_world.balance_required"), 1)
     end
 
@@ -149,15 +149,10 @@ class RosterConstraintChecker
 
   # tm: 時点の契約・カードを反映した TeamMembership（RosterState#first_views）。同じ契約・カードの行は結果を使い回す
   def info_for(tm)
-    @info[[ tm.id, tm.selected_cost_type, tm.player_card_id ]] ||= begin
-      native = Team::NATIVE_SERIES[team.team_type] || Team::NATIVE_SERIES["normal"]
-      series = tm.player_card&.card_set&.series.presence || tm.player.series
-      {
-        cost: tm.selected_cost_value(@cost_list),
-        outside_world: series.present? && !native.include?(series),
-        pitcher: tm.pitcher_role?,
-        fielder: tm.fielder_role?
-      }
-    end
+    @info[[ tm.id, tm.selected_cost_type, tm.player_card_id ]] ||= {
+      cost: tm.selected_cost_value(@cost_list),
+      outside_world: team.outside_world_membership?(tm),
+      kind: tm.pitcher_fielder_kind
+    }
   end
 end

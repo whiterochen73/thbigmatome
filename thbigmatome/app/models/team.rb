@@ -65,16 +65,40 @@ class Team < ApplicationRecord
     end
   end
 
-  # 1軍の外の世界枠選手（team_type に応じたネイティブ series 以外が外の世界枠）
-  def outside_world_first_squad_memberships(first_squad_memberships = nil)
+  # 外の世界枠の選手か（team_type に応じたネイティブ series 以外。登録カードの series を優先し、無ければ選手の series）
+  def outside_world_membership?(membership)
     native = NATIVE_SERIES[team_type] || NATIVE_SERIES["normal"]
+    effective_series = membership.player_card&.card_set&.series.presence || membership.player.series
+    effective_series.present? && !native.include?(effective_series)
+  end
+
+  # 1軍の外の世界枠選手
+  def outside_world_first_squad_memberships(first_squad_memberships = nil)
     memberships = first_squad_memberships ||
       team_memberships.where(squad: "first")
                       .includes(:player, { player: :player_cards }, player_card: :card_set)
-    memberships.select do |tm|
-      effective_series = tm.player_card&.card_set&.series.presence || tm.player.series
-      effective_series.present? && !native.include?(effective_series)
-    end
+    memberships.select { |tm| outside_world_membership?(tm) }
+  end
+
+  # 外の世界枠の選手を、投手だけに数える（pitcher_only）・野手だけに数える（fielder_only）・両方に数える（two_way）に分けて数える。
+  # 区分は TeamMembership#pitcher_fielder_kind（pitcher_role? / fielder_role? の組み合わせ）。
+  # balance_ok は outside_world_balance_ok? と同じ
+  def self.outside_world_breakdown(outside_world_memberships)
+    kinds = outside_world_memberships.map(&:pitcher_fielder_kind)
+    {
+      pitcher_only: kinds.count(:pitcher_only),
+      fielder_only: kinds.count(:fielder_only),
+      two_way: kinds.count(:two_way),
+      balance_ok: outside_world_balance_ok?(kinds)
+    }
+  end
+
+  # 4 人以上の時は、投手に数える人（投手のみ・二刀流）と野手に数える人（野手のみ・二刀流）が 1 人以上いること。3 人以下は内訳を問わない。
+  # kinds: 外の世界枠の各選手の TeamMembership#pitcher_fielder_kind
+  def self.outside_world_balance_ok?(kinds)
+    return true if kinds.size < OUTSIDE_WORLD_LIMIT
+
+    kinds.any? { |k| %i[pitcher_only two_way].include?(k) } && kinds.any? { |k| %i[fielder_only two_way].include?(k) }
   end
 
   # 外の世界枠: 最大4人チェック
@@ -89,21 +113,13 @@ class Team < ApplicationRecord
     end
   end
 
-  # 外の世界枠: 4人のとき投手/野手混在必須チェック
-  # player_cards.card_type で判定。pitcherカードがあれば投手扱い
+  # 外の世界枠: 4人のとき投手/野手混在必須チェック（内訳の数え方は Team.outside_world_breakdown）
   def validate_outside_world_balance(first_squad_memberships = nil)
     ow_memberships = outside_world_first_squad_memberships(first_squad_memberships)
-    return true if ow_memberships.size < OUTSIDE_WORLD_LIMIT
+    return true if self.class.outside_world_balance_ok?(ow_memberships.map(&:pitcher_fielder_kind))
 
-    has_pitcher = ow_memberships.any?(&:pitcher_role?)
-    has_fielder = ow_memberships.any?(&:fielder_role?)
-
-    unless has_pitcher && has_fielder
-      errors.add(:base, I18n.t("activerecord.errors.models.team.outside_world.balance_required"))
-      false
-    else
-      true
-    end
+    errors.add(:base, I18n.t("activerecord.errors.models.team.outside_world.balance_required"))
+    false
   end
 
   private

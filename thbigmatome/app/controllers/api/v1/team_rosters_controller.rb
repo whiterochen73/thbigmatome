@@ -21,13 +21,14 @@ module Api
         phase = RosterState.parse_phase(params[:phase])
 
         # Fetch all team memberships for the team（放出済みも含める。その時点で在籍していた選手がいる）
-        team_memberships = team.all_team_memberships.preload(:season_rosters, :team_membership_changes, :player_absences, player: [ :cost_players ], player_card: [ :card_set, :player_card_defenses ])
+        team_memberships = team.all_team_memberships.preload(:season_rosters, :team_membership_changes, :player_absences, player: [ :cost_players, { player_cards: :card_set } ], player_card: [ :card_set, :player_card_defenses ])
         start_date = season.season_schedules.minimum(:date)
 
         state = RosterState.new(team, memberships: team_memberships.to_a)
         entries = state.at(target_date, phase)
 
-        native_series = Team::NATIVE_SERIES[team.team_type] || Team::NATIVE_SERIES["normal"]
+        # 1軍の外の世界枠の選手（内訳 outside_world_breakdown の元。画面が 1軍を入れ替えた時に数え直せるよう、各行にも区分を付ける）
+        first_squad_outside_world = []
         # 在籍・契約・カードは、その時点のチーム編成の変更記録から導く（放出済み・まだ登録されていない選手は出さない）
         roster_data = state.memberships.select { |tm| entries.fetch(tm.id).on_team }.map do |row|
           entry = entries.fetch(row.id)
@@ -35,7 +36,8 @@ module Api
 
           # 登録カード（player_card）を優先し、未設定の場合はplayer.seriesにフォールバック
           pc = tm.player_card
-          effective_series = pc&.card_set&.series.presence || tm.player.series
+          outside_world = team.outside_world_membership?(tm)
+          first_squad_outside_world << tm if outside_world && entry.squad == "first"
 
           {
             team_membership_id: tm.id,
@@ -50,8 +52,9 @@ module Api
             cost: membership_cost(tm, current_cost_list),
             cooldown_until: entry.cooldown_until,
             same_day_exempt: entry.same_day_exempt,
-            is_outside_world: effective_series.present? && !native_series.include?(effective_series),
-            is_pitcher: tm.pitcher_role?,
+            is_outside_world: outside_world,
+            is_pitcher: tm.pitching_role?,
+            pitcher_fielder_kind: tm.pitcher_fielder_kind,
             is_starter_pitcher: tm.starter_pitcher_role?,
             is_relief_only: tm.relief_only_role?,
             **absence_info_for(row, target_date)
@@ -72,6 +75,7 @@ module Api
           key_player_selectable: !start_date.nil? && season.current_range&.start_date == start_date,
           key_player_id: season.key_player_id,
           previous_game_date: previous_game_date,
+          outside_world_breakdown: Team.outside_world_breakdown(first_squad_outside_world),
           roster: roster_data
         }, status: :ok
       rescue ActiveRecord::RecordNotFound

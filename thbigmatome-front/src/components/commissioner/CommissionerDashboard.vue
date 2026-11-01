@@ -1,22 +1,87 @@
 <!-- eslint-disable vue/valid-v-slot -->
 <template>
   <v-tabs v-model="activeTab" color="link" class="mb-4">
-    <v-tab value="teams">全チーム管理</v-tab>
-    <v-tab value="absences">離脱者一覧</v-tab>
-    <v-tab value="costs">コスト状況</v-tab>
-    <v-tab value="cooldowns">クールダウン</v-tab>
-    <v-tab value="rosterStatus">1軍登録状況</v-tab>
+    <v-tab value="overview" prepend-icon="mdi-view-dashboard-outline">概況</v-tab>
+    <v-tab value="absences" prepend-icon="mdi-account-off-outline">
+      離脱者
+      <v-chip
+        v-if="absencesReady"
+        class="tab-count"
+        color="state-neutral"
+        variant="flat"
+        size="small"
+        >{{ absences.data.length }}</v-chip
+      >
+    </v-tab>
+    <v-tab value="cooldowns" prepend-icon="mdi-timer-sand">
+      クールダウン
+      <v-chip
+        v-if="cooldownsReady"
+        class="tab-count"
+        color="state-neutral"
+        variant="flat"
+        size="small"
+        >{{ cooldowns.data.length }}</v-chip
+      >
+    </v-tab>
+    <v-tab value="costs" prepend-icon="mdi-currency-jpy">
+      コスト
+      <v-chip
+        v-if="costsReady"
+        class="tab-count"
+        :color="summary.costOverTeams > 0 ? 'state-warn' : 'state-neutral'"
+        variant="flat"
+        size="small"
+        >{{ summary.costWatchTeams }}</v-chip
+      >
+    </v-tab>
+    <v-tab value="rosterStatus" prepend-icon="mdi-clipboard-list-outline">
+      1軍登録
+      <v-chip
+        v-if="rosterReady"
+        class="tab-count"
+        :color="CHECK_COLOR[checkState(summary.checkTeams, rosterReady, costsReady)]"
+        variant="flat"
+        size="small"
+        >{{ summary.checkTeams }}</v-chip
+      >
+    </v-tab>
+    <v-tab value="teams" prepend-icon="mdi-account-group-outline">
+      チーム管理
+      <v-chip
+        v-if="teamsReady"
+        class="tab-count"
+        color="state-neutral"
+        variant="flat"
+        size="small"
+        >{{ teams.data.length }}</v-chip
+      >
+    </v-tab>
   </v-tabs>
 
   <v-window v-model="activeTab">
+    <!-- 概況タブ（先頭） -->
+    <v-window-item value="overview">
+      <DashboardOverview
+        :teams="teams"
+        :absences="absences"
+        :cooldowns="cooldowns"
+        :costs="costs"
+        :roster-status="rosterStatus"
+        @navigate="activeTab = $event"
+        @retry="retryResource"
+        @open-season="navigateToSeason"
+      />
+    </v-window-item>
+
     <!-- 全チーム管理タブ -->
     <v-window-item value="teams">
       <AsyncState
         framed
-        :loading="teamsLoading"
-        :error="teamsFailed"
+        :loading="teams.loading"
+        :error="teams.failed"
         error-message="チーム一覧の取得に失敗しました"
-        :empty="teams.length === 0"
+        :empty="teams.data.length === 0"
         empty-icon="mdi-account-group-outline"
         empty-message="チームが登録されていません"
         @retry="fetchTeams"
@@ -26,7 +91,7 @@
             class="ui-table ui-table--rows"
             mobile-breakpoint="sm"
             :headers="teamHeaders"
-            :items="teams"
+            :items="teams.data"
             density="compact"
             item-value="id"
             no-data-text="チームなし"
@@ -121,10 +186,10 @@
     <v-window-item value="absences">
       <AsyncState
         framed
-        :loading="absencesLoading"
-        :error="absencesFailed"
+        :loading="absences.loading"
+        :error="absences.failed"
         error-message="離脱者の取得に失敗しました"
-        :empty="absences.length === 0"
+        :empty="absences.data.length === 0"
         empty-icon="mdi-account-off-outline"
         empty-message="離脱者はいません"
         @retry="fetchAbsences"
@@ -209,10 +274,10 @@
     <v-window-item value="cooldowns">
       <AsyncState
         framed
-        :loading="cooldownsLoading"
-        :error="cooldownsFailed"
+        :loading="cooldowns.loading"
+        :error="cooldowns.failed"
         error-message="クールダウン中の選手の取得に失敗しました"
-        :empty="cooldowns.length === 0"
+        :empty="cooldowns.data.length === 0"
         empty-icon="mdi-timer-sand-empty"
         empty-message="クールダウン中の選手はいません"
         @retry="fetchCooldowns"
@@ -269,16 +334,21 @@
     <v-window-item value="costs">
       <AsyncState
         framed
-        :loading="costsLoading"
-        :error="costsFailed"
+        :loading="costs.loading"
+        :error="costs.failed"
         error-message="コスト使用状況の取得に失敗しました"
-        :empty="costs.length === 0"
+        :empty="costs.data.length === 0"
         empty-icon="mdi-currency-jpy"
         empty-message="コスト使用状況がありません"
         @retry="fetchCosts"
       >
         <DataCard title="">
-          <v-data-table class="ui-table" :headers="costHeaders" :items="costs" density="compact">
+          <v-data-table
+            class="ui-table"
+            :headers="costHeaders"
+            :items="costs.data"
+            density="compact"
+          >
             <template v-slot:item.team_type="{ item }">
               <v-chip
                 v-if="item.team_type === 'hachinai'"
@@ -292,22 +362,43 @@
               <span v-else class="text-caption on-surface-variant">通常</span>
             </template>
             <template v-slot:item.total_cost="{ item }">
+              <!-- 合計コストは上限の 95% 以上で黄、超過で赤 -->
               <div class="d-flex align-center gap-2 flex-nowrap">
                 <span style="white-space: nowrap"
                   >{{ item.total_cost }} / {{ item.total_cost_limit }}</span
                 >
                 <v-progress-linear
-                  :model-value="item.cost_usage_ratio * 100"
-                  :color="getCostColor(item.cost_usage_ratio)"
+                  data-testid="total-cost-bar"
+                  :model-value="(item.total_cost / item.total_cost_limit) * 100"
+                  :color="costBarColor(costLevel(item.total_cost, item.total_cost_limit))"
+                  bg-color="surface-variant"
+                  bg-opacity="1"
                   height="8"
                   rounded
                   style="min-width: 80px; max-width: 120px"
                 />
-                <StatusChip v-if="item.cost_usage_ratio > 1.0" status="error" label="超過" />
-                <StatusChip v-else-if="item.cost_usage_ratio > 0.9" status="warning" label="警告" />
+                <v-chip
+                  v-if="costLevel(item.total_cost, item.total_cost_limit) === 'over'"
+                  color="state-warn"
+                  variant="flat"
+                  size="small"
+                  prepend-icon="mdi-alert-circle"
+                >
+                  超過
+                </v-chip>
+                <v-chip
+                  v-else-if="costLevel(item.total_cost, item.total_cost_limit) === 'near'"
+                  color="state-todo"
+                  variant="flat"
+                  size="small"
+                  prepend-icon="mdi-alert"
+                >
+                  上限に近い
+                </v-chip>
               </div>
             </template>
             <template v-slot:item.first_squad_cost="{ item }">
+              <!-- 1軍コストは上限ぴったりが通常なので、棒に注意の色を付けない -->
               <div class="d-flex align-center gap-2 flex-nowrap">
                 <span v-if="item.first_squad_cost_limit !== null" style="white-space: nowrap">
                   {{ item.first_squad_cost }} / {{ item.first_squad_cost_limit }}
@@ -315,8 +406,11 @@
                 <span v-else style="white-space: nowrap"> {{ item.first_squad_cost }} / — </span>
                 <v-progress-linear
                   v-if="item.first_squad_cost_limit"
+                  data-testid="first-cost-bar"
                   :model-value="(item.first_squad_cost / item.first_squad_cost_limit) * 100"
-                  :color="getCostColor(item.first_squad_cost / item.first_squad_cost_limit)"
+                  color="link"
+                  bg-color="surface-variant"
+                  bg-opacity="1"
                   height="8"
                   rounded
                   style="min-width: 80px; max-width: 120px"
@@ -330,7 +424,12 @@
 
     <!-- 1軍登録状況タブ -->
     <v-window-item value="rosterStatus">
-      <RosterStatusTab />
+      <RosterStatusTab
+        :records="rosterStatus.data"
+        :loading="rosterStatus.loading"
+        :failed="rosterStatus.failed"
+        @retry="fetchRosterStatus"
+      />
     </v-window-item>
   </v-window>
 
@@ -349,6 +448,23 @@ import RowMenu from '@/components/shared/RowMenu.vue'
 import { tableCell } from '@/components/shared/tableCells'
 import FilterBar from '@/components/shared/FilterBar.vue'
 import StatusChip from '@/components/shared/StatusChip.vue'
+import DashboardOverview from '@/components/commissioner/DashboardOverview.vue'
+import {
+  type DashboardResourceKey,
+  type DashboardTab,
+  costBarColor,
+  costLevel,
+  summarize,
+  checkState,
+  CHECK_COLOR,
+} from '@/components/commissioner/dashboardLogic'
+import { useDashboardResource } from '@/composables/useDashboardResource'
+import type {
+  AbsenceRecord,
+  CooldownRecord,
+  CostRecord,
+  RosterStatusRecord,
+} from '@/types/commissionerDashboard'
 import TeamDialog from '@/components/TeamDialog.vue'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
 import RosterStatusTab from '@/components/commissioner/RosterStatusTab.vue'
@@ -357,57 +473,56 @@ import { useTeamSelectionStore } from '@/stores/teamSelection'
 import { type Team } from '@/types/team'
 import { useColumnMinWidth } from '@/composables/useColumnMinWidth'
 
-interface AbsenceRecord {
-  id: number
-  team_name: string
-  team_id: number
-  player_name: string
-  player_id: number
-  absence_type: string
-  reason: string | null
-  start_date: string
-  duration: number
-  duration_unit: string
-  effective_end_date: string | null
-  remaining_days: number | null
-  remaining_games: number | null
-  season_current_date: string
-}
-
-interface CostRecord {
-  team_id: number
-  team_name: string
-  team_type: string
-  total_cost: number
-  total_cost_limit: number
-  first_squad_cost: number
-  first_squad_cost_limit: number | null
-  first_squad_count: number
-  exempt_count: number
-  cost_usage_ratio: number
-}
-
-interface CooldownRecord {
-  team_id: number
-  team_name: string
-  player_id: number
-  player_name: string
-  demotion_date: string
-  cooldown_until: string
-  remaining_days: number
-  same_day_exempt: boolean
-}
-
 const router = useRouter()
 const teamSelectionStore = useTeamSelectionStore()
 const { showSnackbar } = useSnackbar()
 
-const activeTab = ref('teams')
+// 先頭のタブは概況。API は 5 本とも最初に取り、API ごとに別々の読み込み中・失敗を持つ（概況と各タブで共用）
+const activeTab = ref<DashboardTab>('overview')
 
-// 全チーム管理
-const teams = ref<Team[]>([])
-const teamsLoading = ref(true)
-const teamsFailed = ref(false)
+const { state: teams, fetch: fetchTeams } = useDashboardResource<Team>('/teams', 'teams')
+const { state: absences, fetch: fetchAbsences } = useDashboardResource<AbsenceRecord>(
+  '/commissioner/dashboard/absences',
+  'absences',
+)
+const { state: costs, fetch: fetchCosts } = useDashboardResource<CostRecord>(
+  '/commissioner/dashboard/costs',
+  'costs',
+)
+const { state: cooldowns, fetch: fetchCooldowns } = useDashboardResource<CooldownRecord>(
+  '/commissioner/dashboard/cooldowns',
+  'cooldowns',
+)
+const { state: rosterStatus, fetch: fetchRosterStatus } = useDashboardResource<RosterStatusRecord>(
+  '/commissioner/dashboard/roster_status',
+  'roster status',
+)
+
+const fetchers: Record<DashboardResourceKey, () => Promise<void>> = {
+  teams: fetchTeams,
+  absences: fetchAbsences,
+  cooldowns: fetchCooldowns,
+  costs: fetchCosts,
+  rosterStatus: fetchRosterStatus,
+}
+const retryResource = (key: DashboardResourceKey) => fetchers[key]()
+
+// タブの件数。読み込み中・失敗の間は出さない（0 件と見分ける）
+const summary = computed(() =>
+  summarize({
+    teams: teams.data,
+    absences: absences.data,
+    cooldowns: cooldowns.data,
+    costs: costs.data,
+    rosterStatus: rosterStatus.data,
+  }),
+)
+const teamsReady = computed(() => !teams.loading && !teams.failed)
+const absencesReady = computed(() => !absences.loading && !absences.failed)
+const cooldownsReady = computed(() => !cooldowns.loading && !cooldowns.failed)
+const costsReady = computed(() => !costs.loading && !costs.failed)
+const rosterReady = computed(() => !rosterStatus.loading && !rosterStatus.failed)
+
 const dialogVisible = ref(false)
 const editingTeam = ref<Team | null>(null)
 const confirmDialog = ref<InstanceType<typeof ConfirmDialog> | null>(null)
@@ -430,21 +545,10 @@ const teamHeaders = [
 ]
 
 // 離脱者
-const absences = ref<AbsenceRecord[]>([])
-const absencesLoading = ref(true)
-const absencesFailed = ref(false)
 const searchQuery = ref('')
 const selectedAbsenceType = ref<string | null>(null)
 
-// コスト
-const costs = ref<CostRecord[]>([])
-const costsLoading = ref(true)
-const costsFailed = ref(false)
-
 // クールダウン
-const cooldowns = ref<CooldownRecord[]>([])
-const cooldownsLoading = ref(true)
-const cooldownsFailed = ref(false)
 const cooldownSearchQuery = ref('')
 
 const absenceTypeOptions = [
@@ -490,7 +594,7 @@ const cooldownHeaders = [
 ]
 
 const filteredAbsences = computed(() => {
-  return absences.value.filter((a) => {
+  return absences.data.filter((a) => {
     if (selectedAbsenceType.value && a.absence_type !== selectedAbsenceType.value) return false
     if (searchQuery.value && !a.player_name.includes(searchQuery.value)) return false
     return true
@@ -498,7 +602,7 @@ const filteredAbsences = computed(() => {
 })
 
 const filteredCooldowns = computed(() => {
-  return cooldowns.value.filter((c) => {
+  return cooldowns.data.filter((c) => {
     if (cooldownSearchQuery.value && !c.player_name.includes(cooldownSearchQuery.value))
       return false
     return true
@@ -531,27 +635,7 @@ const getRowProps = ({ item }: { item: AbsenceRecord }) => {
   return {}
 }
 
-const getCostColor = (ratio: number): string => {
-  if (ratio > 1.0) return 'error'
-  if (ratio > 0.9) return 'warning'
-  return 'primary'
-}
-
-const fetchTeams = async () => {
-  teamsLoading.value = true
-  teamsFailed.value = false
-  try {
-    const response = await axios.get<Team[]>('/teams')
-    teams.value = response.data
-  } catch (error) {
-    console.error('Failed to fetch teams:', error)
-    teamsFailed.value = true
-  } finally {
-    teamsLoading.value = false
-  }
-}
-
-const navigateToSeason = (team: Team) => {
+const navigateToSeason = (team: { id: number; name: string }) => {
   teamSelectionStore.selectTeam(team.id, team.name)
   router.push(`/teams/${team.id}/season`)
 }
@@ -581,52 +665,23 @@ const deleteTeam = async (id: number) => {
   }
 }
 
-const fetchAbsences = async () => {
-  absencesLoading.value = true
-  absencesFailed.value = false
-  try {
-    const response = await axios.get('/commissioner/dashboard/absences')
-    absences.value = response.data
-  } catch (error) {
-    console.error('Failed to fetch absences:', error)
-    absencesFailed.value = true
-  } finally {
-    absencesLoading.value = false
-  }
-}
-
-const fetchCosts = async () => {
-  costsLoading.value = true
-  costsFailed.value = false
-  try {
-    const response = await axios.get('/commissioner/dashboard/costs')
-    costs.value = response.data
-  } catch (error) {
-    console.error('Failed to fetch costs:', error)
-    costsFailed.value = true
-  } finally {
-    costsLoading.value = false
-  }
-}
-
-const fetchCooldowns = async () => {
-  cooldownsLoading.value = true
-  cooldownsFailed.value = false
-  try {
-    const response = await axios.get('/commissioner/dashboard/cooldowns')
-    cooldowns.value = response.data
-  } catch (error) {
-    console.error('Failed to fetch cooldowns:', error)
-    cooldownsFailed.value = true
-  } finally {
-    cooldownsLoading.value = false
-  }
-}
-
 onMounted(() => {
   fetchTeams()
   fetchAbsences()
   fetchCosts()
   fetchCooldowns()
+  fetchRosterStatus()
 })
 </script>
+
+<style scoped>
+/* タブの件数。タブの文字（14px）の隣に小さく置く */
+.tab-count.v-chip {
+  height: 20px;
+  min-width: 20px;
+  margin-inline-start: 8px;
+  padding: 0 6px;
+  justify-content: center;
+  font-weight: 700;
+}
+</style>

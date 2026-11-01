@@ -8,6 +8,7 @@
           <div class="d-flex flex-wrap align-center ga-2 text-body-2">
             <button
               v-if="currentDateType"
+              ref="dateTypeTrigger"
               type="button"
               class="date-type-trigger"
               :disabled="hasUnsavedChanges || dateTypeSaving"
@@ -396,7 +397,7 @@
       v-model="dateTypeDialogOpen"
       :current="currentDateType"
       :items="dateTypeItems"
-      @confirm="updateDateType"
+      @confirm="onDateTypeConfirm"
     />
   </v-container>
 </template>
@@ -657,6 +658,10 @@ const seasonSchedules = ref<SeasonScheduleLite[]>([])
 const currentDateType = ref('')
 const dateTypeSaving = ref(false)
 const dateTypeDialogOpen = ref(false)
+const dateTypeTrigger = ref<HTMLButtonElement | null>(null)
+// 「変更」で閉じた時は保存が終わってから、キャンセル・Esc・外側クリックは閉じた直後に、チップへ focus を戻す
+// （戻さないとダイアログが消えた後に focus が BODY へ落ち、キーボードの利用者が位置を見失う）
+let dateTypeConfirming = false
 const dateTypeItems = computed(() =>
   SCHEDULE_DATE_TYPES.map((value) => ({
     value,
@@ -1122,7 +1127,9 @@ const fetchSeasonInfo = async () => {
     seasonCurrentDate.value = null
     currentRange.value = undefined
     seasonSchedules.value = []
-    currentDateType.value = ''
+    // currentDateType は消さない。日付種類を変更した直後の再取得が失敗しても、変更で確定した種類（または
+    // 読み込み済みの種類）を表示に残す。範囲は取得できなかった扱い（読み取り専用）に倒す。
+    // 画面を開き直す時の初期化は loadAll が行う
     console.error('Failed to fetch season info:', error)
   } finally {
     currentRangeLoaded.value = true
@@ -1238,6 +1245,32 @@ const hasSavedGameData = computed(
     savedFields.value.noGame ||
     (appearanceCount.value ?? 0) > 0,
 )
+
+const restoreDateTypeFocus = async () => {
+  await nextTick()
+  const trigger = dateTypeTrigger.value
+  if (!trigger || trigger.disabled) return
+  // 利用者が別の場所へ focus を移していたら奪わない（BODY か、消えつつあるダイアログの中だけを戻す）
+  const active = document.activeElement
+  if (active && active !== document.body && !active.closest('.v-overlay')) return
+  trigger.focus({ preventScroll: true })
+}
+
+watch(dateTypeDialogOpen, async (open) => {
+  if (open) return
+  await nextTick()
+  if (!dateTypeConfirming) await restoreDateTypeFocus()
+})
+
+const onDateTypeConfirm = async (nextType: string) => {
+  dateTypeConfirming = true
+  try {
+    await updateDateType(nextType)
+  } finally {
+    dateTypeConfirming = false
+    await restoreDateTypeFocus()
+  }
+}
 
 const updateDateType = async (nextType: string) => {
   const previous = currentDateType.value

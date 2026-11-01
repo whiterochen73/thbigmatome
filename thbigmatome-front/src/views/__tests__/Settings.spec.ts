@@ -82,11 +82,23 @@ describe('Settings（段 1 の見本）', () => {
         .find(`[data-testid="settings-group-${group}"]`)
         .findAll('[data-testid="master-panel"] h3 .master-panel__title')
         .map((h) => h.text())
-    expect(titles('pitcher')).toEqual(['投手特徴', '投手特殊能力'])
-    expect(titles('batter')).toEqual(['打者特徴', '打者特殊能力'])
+    expect(titles('pitcher')).toEqual(['投手特徴'])
+    expect(titles('batter')).toEqual(['打者特徴'])
     expect(titles('common')).toEqual(['選手タイプ設定', 'バイオリズム'])
     expect(wrapper.find('[data-testid="settings-group-pitcher"]').text()).toContain('投手')
     expect(wrapper.find('[data-testid="settings-group-common"]').text()).toContain('共通')
+  })
+
+  // Operator 決定 2026-11-01: 特殊能力の欄は消す（サーバのマスタは廃止済みで、取得は 404 になる）
+  it('特殊能力の欄を出さず、特殊能力のマスタを取りに行かない。使わなくなったキーも残さない', async () => {
+    const wrapper = await mountSettings()
+    expect(wrapper.text()).not.toContain('特殊能力')
+    const urls = mockGet.mock.calls.map(([url]) => url as string)
+    expect(urls.filter((u) => /skill/.test(u))).toEqual([])
+    expect(urls.length).toBeGreaterThan(0)
+    expect(ja.settings).not.toHaveProperty('pitchingSkill')
+    expect(ja.settings).not.toHaveProperty('battingSkill')
+    expect(JSON.stringify(ja)).not.toContain('特殊能力')
   })
 
   it('マスタの行は件数チップを持ち、閉じた状態から始まる', async () => {

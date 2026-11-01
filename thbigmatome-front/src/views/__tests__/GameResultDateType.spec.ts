@@ -322,6 +322,99 @@ describe('GameResult 試合日ページ: 日付種類の変更ダイアログ', 
     expect(trigger(wrapper).find('[data-testid="date-type-headline"]').text()).toBe('試合日')
   })
 
+  // 閉じた後に focus が BODY へ落ちると、キーボードの利用者がどこにいたか分からなくなる
+  it.each([
+    [
+      'Esc',
+      async () => {
+        inBody('[data-testid="date-type-dialog"]')!.dispatchEvent(
+          new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }),
+        )
+        await flushPromises()
+      },
+    ],
+    ['キャンセル', () => press('date-type-cancel')],
+    [
+      '変更',
+      async () => {
+        await pick('travel_day')
+        await press('date-type-confirm')
+      },
+    ],
+  ])('%s で閉じた後は、focus が日付種類のチップへ戻る', async (_label, close) => {
+    const { wrapper } = await mountDay({ game: { score: null, opponent_score: null } })
+    mockPatch.mockResolvedValue({ data: {} })
+    await openDialog(wrapper)
+    expect(dialogOpen(wrapper)).toBe(true)
+    expect(document.activeElement).not.toBe(trigger(wrapper).element)
+    await close()
+    expect(dialogOpen(wrapper)).toBe(false)
+    expect(document.activeElement).toBe(trigger(wrapper).element)
+  })
+
+  it('保存の間に利用者が別の場所へ focus を移していたら、保存後もそこから奪わない', async () => {
+    const { wrapper } = await mountDay({ game: { score: null, opponent_score: null } })
+    let release!: () => void
+    mockPatch.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          release = () => resolve({ data: {} })
+        }),
+    )
+    const other = document.createElement('input')
+    document.body.appendChild(other)
+    await openDialog(wrapper)
+    await pick('travel_day')
+    await press('date-type-confirm')
+    other.focus()
+    release()
+    await flushPromises()
+    expect(document.activeElement).toBe(other)
+    other.remove()
+  })
+
+  it('変更は成功したが範囲の取り直しに失敗しても、変更した種類のチップは残す（範囲は取得できなかった扱い）', async () => {
+    const { wrapper } = await mountDay({ game: { score: null, opponent_score: null } })
+    mockPatch.mockResolvedValueOnce({ data: {} })
+    const original = mockGet.getMockImplementation()!
+    mockGet.mockImplementation((url: string) =>
+      url === '/teams/1/season' ? Promise.reject(new Error('500')) : original(url),
+    )
+    await openDialog(wrapper)
+    await pick('travel_day')
+    await press('date-type-confirm')
+
+    expect(mockPatch).toHaveBeenCalledTimes(1)
+    expect(seasonGets()).toBe(2)
+    expect(wrapper.vm.currentDateType).toBe('travel_day')
+    expect(trigger(wrapper).exists()).toBe(true)
+    expect(trigger(wrapper).find('[data-testid="date-type-headline"]').text()).toBe('移動日')
+    expect(wrapper.vm.currentRange).toBeUndefined()
+    // 保存は成功しているので、失敗のエラーは出さない
+    expect(wrapper.vm.snackbarColor).not.toBe('error')
+    // 保存後はチップへ focus が戻り、もう一度開ける
+    expect(document.activeElement).toBe(trigger(wrapper).element)
+    await openDialog(wrapper)
+    expect(dialogOpen(wrapper)).toBe(true)
+  })
+
+  it('確認ダイアログが挟まる間はチップへ focus を戻さず、確認を終えて保存が済んだら戻す', async () => {
+    const { wrapper } = await mountDay({ game: { score: 3, opponent_score: 1 } })
+    mockPatch.mockResolvedValueOnce({ data: {} })
+    await openDialog(wrapper)
+    await pick('travel_day')
+    await press('date-type-confirm')
+    expect(document.body.textContent).toContain('データは消えず、隠れるだけ')
+    expect(document.activeElement).not.toBe(trigger(wrapper).element)
+    const ok = Array.from(document.body.querySelectorAll('button')).find(
+      (b) => b.textContent?.trim() === 'OK' && !b.hasAttribute('data-testid'),
+    )
+    ok!.click()
+    await flushPromises()
+    expect(mockPatch).toHaveBeenCalledTimes(1)
+    expect(document.activeElement).toBe(trigger(wrapper).element)
+  })
+
   it('保存済みの試合データがある試合日を移動日へ変える時は確認が挟まり、キャンセルなら PATCH しない', async () => {
     const { wrapper } = await mountDay({ game: { score: 3, opponent_score: 1 } })
     await openDialog(wrapper)

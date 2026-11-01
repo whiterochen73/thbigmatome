@@ -34,16 +34,12 @@
 - `src/components/players/PlayerDialog.vue`
 - `src/components/players/PlayerIdentityForm.vue`
 - `src/components/settings/GenericMasterSettings.vue`
-- `src/components/settings/BattingSkillSettings.vue`
-- `src/components/settings/PitchingSkillSettings.vue`
 - `src/components/settings/BiorhythmSettings.vue`
 - `src/components/settings/CostSettings.vue`
 - `src/components/settings/PlayerTypeSettings.vue`
 - `src/components/settings/BattingStyleSettings.vue`
 - `src/components/settings/PitchingStyleSettings.vue`
 - `src/components/settings/ScheduleSettings.vue`
-- `src/components/settings/BattingSkillDialog.vue`
-- `src/components/settings/PitchingSkillDialog.vue`
 - `src/components/settings/BattingStyleDialog.vue`
 - `src/components/settings/PitchingStyleDialog.vue`
 - `src/components/settings/BiorhythmDialog.vue`
@@ -709,7 +705,7 @@
 |------|-----|------|-----------|------|
 | `title` | `string` | ✓ | — | パネルタイトル |
 | `icon` | `string` | - | `'mdi-tag-outline'` | パネルのアイコン |
-| `endpoint` | `string` | ✓ | — | CRUD対象のAPIエンドポイント（例: `/batting-skills`） |
+| `endpoint` | `string` | ✓ | — | CRUD対象のAPIエンドポイント（例: `/batting-styles`） |
 | `i18nKey` | `string` | ✓ | — | i18nキープレフィックス |
 | `dialogComponent` | `Component` | ✓ | — | 追加・編集に使うダイアログコンポーネント |
 | `additionalHeaders` | `any[]` | - | — | テーブルの追加カラム定義 |
@@ -726,7 +722,7 @@
 - 削除アイコン（`RowIconButton`、`danger-ink`）→ `ConfirmDialog`で確認後`DELETE {endpoint}/:id`
 - `readonly=true`の場合は操作ボタンを非表示
 
-**使用箇所**: `Settings.vue`（view）内の各マスタセクションから`BattingSkillSettings`等のラッパーを経由して使用
+**使用箇所**: `Settings.vue`（view）内の各マスタセクションから`BattingStyleSettings`等のラッパーを経由して使用
 
 ---
 
@@ -742,8 +738,6 @@
 
 | コンポーネント | エンドポイント | readonly | 追加機能 | 説明 |
 |--------------|-------------|---------|---------|------|
-| `BattingSkillSettings.vue` | `/batting-skills` | `true` | skill_typeによる色分けチップ | 打撃スキルマスタ（読み取り専用） |
-| `PitchingSkillSettings.vue` | `/pitching-skills` | `true` | skill_typeによる色分けチップ | 投球スキルマスタ（読み取り専用） |
 | `BattingStyleSettings.vue` | `/batting-styles` | `true` | なし | 打撃スタイルマスタ（読み取り専用） |
 | `PitchingStyleSettings.vue` | `/pitching-styles` | `true` | なし | 投球スタイルマスタ（読み取り専用） |
 | `PlayerTypeSettings.vue` | `/player-types` | `true` | なし | プレイヤータイプマスタ（読み取り専用） |
@@ -788,60 +782,6 @@
 ---
 
 ### マスタ設定ダイアログコンポーネント
-
-#### `BattingSkillDialog.vue` (`src/components/settings/BattingSkillDialog.vue`)
-
-打撃スキルの追加・編集ダイアログ。`GenericMasterSettings`の`dialogComponent`として使用される。
-
-**props**:
-
-| 名前 | 型 | 必須 | デフォルト | 説明 |
-|------|-----|------|-----------|------|
-| `modelValue` | `boolean` | ✓ | — | ダイアログ表示状態（v-model） |
-| `item` | `BattingSkill \| null` | ✓ | — | 編集対象（`null`=新規追加） |
-
-**emits**:
-
-| イベント | 引数 | 説明 |
-|---------|------|------|
-| `update:modelValue` | `boolean` | ダイアログ開閉 |
-| `save` | — | 保存完了後に発火 |
-
-**主要機能・責務**:
-- name・skill_type（positive/negative/neutral）・descriptionフォーム
-- skill_typeに応じた背景色変化（青/赤/緑）
-- PUT `/batting-skills/:id`（編集）/ POST `/batting-skills`（追加）
-
-**使用箇所**: `BattingSkillSettings.vue` → `GenericMasterSettings.vue`の`dialogComponent`として
-
----
-
-#### `PitchingSkillDialog.vue` (`src/components/settings/PitchingSkillDialog.vue`)
-
-投球スキルの追加・編集ダイアログ。`BattingSkillDialog`と同構造。
-
-**props**:
-
-| 名前 | 型 | 必須 | デフォルト | 説明 |
-|------|-----|------|-----------|------|
-| `modelValue` | `boolean` | ✓ | — | ダイアログ表示状態（v-model） |
-| `item` | `PitchingSkill \| null` | ✓ | — | 編集対象（`null`=新規追加） |
-
-**emits**:
-
-| イベント | 引数 | 説明 |
-|---------|------|------|
-| `update:modelValue` | `boolean` | ダイアログ開閉 |
-| `save` | — | 保存完了後に発火 |
-
-**主要機能・責務**:
-- name・skill_type（positive/negative/neutral）・descriptionフォーム
-- skill_typeに応じた背景色変化（青/赤/緑）
-- PUT `/pitching-skills/:id`（編集）/ POST `/pitching-skills`（追加）
-
-**使用箇所**: `PitchingSkillSettings.vue` → `GenericMasterSettings.vue`の`dialogComponent`として
-
----
 
 #### `BattingStyleDialog.vue` (`src/components/settings/BattingStyleDialog.vue`)
 

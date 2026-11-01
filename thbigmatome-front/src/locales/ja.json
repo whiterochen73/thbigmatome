@@ -647,80 +647,6 @@
         "deleteFailed": "打者特徴の削除に失敗しました。"
       }
     },
-    "pitchingSkill": {
-      "title": "投手特殊能力",
-      "add": "特殊能力を追加",
-      "headers": {
-        "name": "名前",
-        "description": "説明",
-        "actions": "操作"
-      },
-      "dialog": {
-        "title": {
-          "add": "特殊能力の追加",
-          "edit": "特殊能力の編集"
-        },
-        "form": {
-          "name": "名前",
-          "skill_type": "種類",
-          "description": "説明"
-        }
-      },
-      "notifications": {
-        "noData": "特殊能力が登録されていません。",
-        "fetchFailed": "特殊能力の取得に失敗しました。",
-        "addSuccess": "特殊能力を追加しました。",
-        "updateSuccess": "特殊能力を更新しました。",
-        "deleteSuccess": "特殊能力を削除しました。",
-        "saveFailed": "特殊能力の保存に失敗しました。",
-        "saveFailedWithErrors": "特殊能力の保存に失敗しました:\n{errors}",
-        "deleteFailed": "特殊能力の削除に失敗しました。"
-      },
-      "deleteConfirmTitle": "特殊能力の削除",
-      "deleteConfirmMessage": "本当にこの特殊能力を削除しますか？",
-      "skillTypes": {
-        "positive": "ポジティブ",
-        "negative": "ネガティブ",
-        "neutral": "ニュートラル"
-      }
-    },
-    "battingSkill": {
-      "title": "打者特殊能力",
-      "add": "特殊能力を追加",
-      "headers": {
-        "name": "名前",
-        "description": "説明",
-        "actions": "操作"
-      },
-      "dialog": {
-        "title": {
-          "add": "特殊能力の追加",
-          "edit": "特殊能力の編集"
-        },
-        "form": {
-          "name": "名前",
-          "skill_type": "種類",
-          "description": "説明"
-        }
-      },
-      "notifications": {
-        "noData": "特殊能力が登録されていません。",
-        "fetchFailed": "特殊能力の取得に失敗しました。",
-        "addSuccess": "特殊能力を追加しました。",
-        "updateSuccess": "特殊能力を更新しました。",
-        "deleteSuccess": "特殊能力を削除しました。",
-        "saveFailed": "特殊能力の保存に失敗しました。",
-        "saveFailedWithErrors": "保存に失敗しました:\n{errors}",
-        "deleteFailed": "特殊能力の削除に失敗しました。"
-      },
-      "deleteConfirmTitle": "特殊能力の削除",
-      "deleteConfirmMessage": "本当にこの特殊能力を削除しますか？",
-      "skillTypes": {
-        "positive": "ポジティブ",
-        "negative": "ネガティブ",
-        "neutral": "ニュートラル"
-      }
-    },
     "biorhythm": {
       "title": "バイオリズム",
       "add": "バイオリズムを追加",
@@ -999,7 +925,6 @@
       "injury_rate": "怪我特徴",
       "batting_style": "打者特徴",
       "batting_style_description": "打者特徴補足",
-      "batting_skills": "打者特殊能力",
       "player_types": "選手タイプ",
       "biorhythms": "バイオリズム",
       "throwing": "送球",
@@ -1011,7 +936,6 @@
       "pitching_style": "投手特徴",
       "pitching_style_description": "投手特徴補足",
       "pinch_pitching_style": "有走者時投手特徴",
-      "pitching_skills": "投手特殊能力",
       "hasPartnerCatchers": "専属捕手",
       "catchers": "専属捕手",
       "catcher_pitching_style": "専属捕手時特徴",
@@ -1024,9 +948,7 @@
       "saveFailedWithErrors": "保存に失敗しました:\n{errors}",
       "saveFailed": "選手情報の保存に失敗しました。",
       "fetchBattingStylesFailed": "打者特徴一覧の取得に失敗しました。",
-      "fetchBattingSkillsFailed": "打者特殊能力一覧の取得に失敗しました。",
       "fetchPitchingStylesFailed": "投手特徴一覧の取得に失敗しました。",
-      "fetchPitchingSkillsFailed": "投手特殊能力一覧の取得に失敗しました。",
       "fetchPlayerTypesFailed": "選手タイプ一覧の取得に失敗しました。",
       "fetchBiorhythmsFailed": "バイオリズム一覧の取得に失敗しました。"
     }

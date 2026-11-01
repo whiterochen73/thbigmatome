@@ -28,7 +28,6 @@
                 }}</v-chip>
               </h2>
               <PitchingStyleSettings />
-              <PitchingSkillSettings />
             </section>
             <section class="settings-group" data-testid="settings-group-batter">
               <h2 class="settings-group__heading">
@@ -37,7 +36,6 @@
                 }}</v-chip>
               </h2>
               <BattingStyleSettings />
-              <BattingSkillSettings />
             </section>
           </div>
           <section class="settings-group" data-testid="settings-group-common">
@@ -73,9 +71,7 @@ import { useRoute } from 'vue-router'
 defineOptions({ name: 'SettingsView' })
 import PageLayout from '@/components/shared/PageLayout.vue'
 import PitchingStyleSettings from '@/components/settings/PitchingStyleSettings.vue'
-import PitchingSkillSettings from '@/components/settings/PitchingSkillSettings.vue'
 import BattingStyleSettings from '@/components/settings/BattingStyleSettings.vue'
-import BattingSkillSettings from '@/components/settings/BattingSkillSettings.vue'
 import PlayerTypeSettings from '@/components/settings/PlayerTypeSettings.vue'
 import BiorhythmSettings from '@/components/settings/BiorhythmSettings.vue'
 import CostSettings from '@/components/settings/CostSettings.vue'

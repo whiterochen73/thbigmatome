@@ -22,9 +22,6 @@
 - `src/types/cost.ts`
 - `src/types/costList.ts`
 - `src/types/costPlayer.ts`
-- `src/types/skill.ts`
-- `src/types/battingSkill.ts`
-- `src/types/pitchingSkill.ts`
 - `src/types/battingStyle.ts`
 - `src/types/pitchingStyle.ts`
 - `src/types/biorhythm.ts`
@@ -506,29 +503,6 @@
 
 ## マスタ関連
 
-### `BattingSkill` (`src/types/battingSkill.ts`)
-
-| 属性 | 型 | 必須 | 説明 |
-|------|-----|------|------|
-| `id` | `number` | ✓ | スキルID |
-| `name` | `string` | ✓ | スキル名 |
-| `description` | `string \| null` | ✓ | 説明 |
-| `skill_type` | `SkillType` | ✓ | 種別（positive/negative/neutral） |
-
-**使用箇所**: `BattingSkillSettings.vue`, `BattingSkillDialog.vue`
-
-**BEシリアライザ対応**: `BattingSkillSerializer`
-
----
-
-### `PitchingSkill` (`src/types/pitchingSkill.ts`)
-
-`BattingSkill`と同構造（投手スキル用）。
-
-**使用箇所**: `PitchingSkillSettings.vue`, `PitchingSkillDialog.vue`
-
----
-
 ### `BattingStyle` (`src/types/battingStyle.ts`)
 
 | 属性 | 型 | 必須 | 説明 |
@@ -572,16 +546,6 @@
 | `category` | `'touhou' \| 'outside_world' \| 'cost_regulation' \| null` | ✓ | カテゴリ |
 
 **使用箇所**: `PlayerTypeSettings.vue`, `PlayerTypeDialog.vue`
-
----
-
-### `SkillType` (`src/types/skill.ts`)
-
-```typescript
-type SkillType = 'positive' | 'negative' | 'neutral'
-```
-
-**使用箇所**: `BattingSkill`, `PitchingSkill`の`skill_type`フィールド
 
 ---
 

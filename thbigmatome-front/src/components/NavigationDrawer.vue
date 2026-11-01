@@ -11,7 +11,7 @@
       <v-list-item prepend-icon="mdi-home" title="ホーム" value="dashboard" to="/" link />
 
       <!-- 試合グループ -->
-      <v-list-subheader v-if="!rail">試合</v-list-subheader>
+      <v-list-subheader v-if="!rail && gameMenuItems.length > 0">試合</v-list-subheader>
       <v-list-item
         v-for="item in gameMenuItems"
         :key="item.value"
@@ -126,8 +126,7 @@ const showTeamMenu = computed(() => {
   return !teamSelectionStore.teamsLoaded || teamSelectionStore.hasTeam
 })
 
-const gameMenuItems = [
-  { title: 'ログ取り込み (β)', icon: 'mdi-file-import', value: 'gameImport', to: '/games/import' },
+const gameMenuItems: { title: string; icon: string; value: string; to: string }[] = [
   // { title: 'レビュー', icon: 'mdi-clipboard-check', value: 'gameRecords', to: '/game-records' }, // リリース非表示
   // { title: '試合一覧', icon: 'mdi-scoreboard', value: 'games', to: '/games' }, // リリース非表示
 ]

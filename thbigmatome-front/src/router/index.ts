@@ -142,12 +142,6 @@ const routes: RouteRecordRaw[] = [
         meta: { requiresAuth: true, title: '試合記録' },
       },
       {
-        path: '/games/import',
-        name: 'ログ取り込み',
-        component: () => import('@/views/GameImportView.vue'),
-        meta: { requiresAuth: true, title: '試合インポート' },
-      },
-      {
         path: '/games/:id',
         name: '試合詳細',
         component: () => import('@/views/GameDetailView.vue'),

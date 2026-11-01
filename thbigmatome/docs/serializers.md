@@ -713,7 +713,7 @@ ActiveModel::Serializer
 | CostPlayerSerializer | PlayerSerializer経由（TeamRegistrationPlayersController#index） |
 | CostSerializer | CostsController#index, #create, #update |
 | GameLineupEntrySerializer | GameLineupEntriesController#show, #create, #update |
-| GameSerializer | GamesController#index, #show, #create, #confirm, #import_log |
+| GameSerializer | GamesController#index, #show, #create, #confirm |
 | PlayerAbsenceSerializer | PlayerAbsencesController#index, #create, #update |
 | PlayerCardDetailSerializer | PlayerCardsController#show, #update |
 | PlayerCardSerializer | PlayerCardsController#index |

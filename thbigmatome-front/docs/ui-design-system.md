@@ -16,7 +16,7 @@
 | ID | パターン名 | 該当View数 | 特徴 |
 |----|-----------|-----------|------|
 | LP-1 | CRUD一覧 | 12 | v-container > v-card > v-data-table + Dialog |
-| LP-2 | マルチカード | 5 | v-container > 複数v-card（セクション分割） |
+| LP-2 | マルチカード | 4 | v-container > 複数v-card（セクション分割） |
 | LP-3 | タブポータル | 3 | v-toolbar + v-tabs + v-tabs-window |
 | LP-4 | カスタム詳細 | 3 | 独自CSS + ヘッダー帯 + セクション分割 |
 | LP-5 | デュアルカラム | 2 | v-row > v-col×2（1軍/2軍等の対比表示） |
@@ -87,11 +87,11 @@
 
 ---
 
-### LP-2: マルチカードパターン（5件）
+### LP-2: マルチカードパターン（4件）
 
 複数のセクションを縦に積む構成。情報集約型画面。
 
-**該当View**: HomeView, GameImportView, GameRecordDetailView, GameResult, ScoreSheet
+**該当View**: HomeView, GameRecordDetailView, GameResult, ScoreSheet
 
 **共通骨格**:
 ```vue
@@ -646,7 +646,6 @@ const headers = [
 | GameResult | LP-2 | B | v-table | StartingMemberDialog | なし |
 | ScoreSheet | LP-2 | B | v-table | なし | なし |
 | GamesView | LP-1 | A | v-data-table | なし | v-select + 日付 |
-| GameImportView | LP-2 | A | なし | なし | v-select |
 | GameDetailView | LP-1変形 | C | v-table | なし | なし |
 | GameLineupView | LP-1変形 | C | v-table | なし | なし |
 | StatsView | LP-1 | A | v-data-table (tabs) | なし | v-select |

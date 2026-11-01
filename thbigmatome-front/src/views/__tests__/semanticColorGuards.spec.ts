@@ -142,7 +142,6 @@ it('対象の scoped CSS に固定の明るい背景を残さない', () => {
     'views/PlayerCardDetailView.vue',
     'views/GameRecordDetailView.vue',
     'views/LoginForm.vue',
-    'views/GameImportView.vue',
   ].flatMap((path) => {
     const source = readFileSync(resolve(srcDir, path), 'utf8')
     const css = source.match(/<style scoped>([\s\S]*?)<\/style>/)?.[1] ?? ''

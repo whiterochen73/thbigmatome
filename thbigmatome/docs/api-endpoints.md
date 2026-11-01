@@ -402,20 +402,6 @@
 - **Body Params**: `game: { competition_id, home_team_id, visitor_team_id, real_date, stadium_id, status, source }`
 - **Response**: `GameSerializer` 201
 
-### POST /api/v1/games/import_log
-
-- **Controller**: `Api::V1::GamesController#import_log`
-- **Body Params**: `log` (string), `raw_at_bats` (string JSON, optional), `competition_id`, `home_team_id`, `visitor_team_id`, `real_date`, `stadium_id`
-- **挙動**: ゲームログをパース → draft Game + AtBat + GameRecord + AtBatRecord を作成
-- **Response**: `{ game: GameSerializer, game_record_id, parsed_at_bats: { at_bats: [...], innings }, at_bat_count, imported_count }` 201
-
-### POST /api/v1/games/parse_log
-
-- **Controller**: `Api::V1::GamesController#parse_log`
-- **Body Params**: `log` (string)
-- **挙動**: ログをパースして結果を返すのみ（DB変更なし）
-- **Response**: `{ pregame_info, parsed_at_bats: { at_bats: [...], innings }, at_bat_count, raw_at_bats }`
-
 ### POST /api/v1/games/:id/confirm
 
 - **Controller**: `Api::V1::GamesController#confirm`
@@ -465,12 +451,6 @@
 
 - **Controller**: `Api::V1::GameRecordsController#show`
 - **Response**: game_record JSON with at_bat_records included
-
-### POST /api/v1/game_records
-
-- **Controller**: `Api::V1::GameRecordsController#create`
-- **Body Params**: `team_id, opponent_team_name, game_date, played_at, stadium, score_home, score_away, result, source_log, parser_version, parsed_at` + `at_bat_records: [...]`
-- **Response**: game_record JSON with at_bat_records 201
 
 ### POST /api/v1/game_records/:id/confirm
 

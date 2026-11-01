@@ -84,66 +84,6 @@ RSpec.describe "Api::V1::GameRecordsController", type: :request do
     end
   end
 
-  describe "POST /api/v1/game_records" do
-    include_context "authenticated user"
-
-    let(:team) { create(:team) }
-
-    let(:valid_params) do
-      {
-        team_id: team.id,
-        opponent_team_name: "対戦チーム",
-        game_date: "2026-01-15",
-        stadium: "甲子園",
-        score_home: 5,
-        score_away: 3,
-        result: "win",
-        parser_version: "1.0.0",
-        parsed_at: Time.current.iso8601
-      }
-    end
-
-    it "game_recordを作成しdraftステータスで返す" do
-      post "/api/v1/game_records", params: valid_params, as: :json
-      expect(response).to have_http_status(:created)
-      json = response.parsed_body
-      expect(json["status"]).to eq("draft")
-      expect(json["team_id"]).to eq(team.id)
-      expect(json["opponent_team_name"]).to eq("対戦チーム")
-    end
-
-    it "at_bat_recordsを一括保存できる" do
-      params_with_ab = valid_params.merge(
-        at_bat_records: [
-          {
-            inning: 1, half: "top", ab_num: 1,
-            pitcher_name: "投手A", batter_name: "打者B",
-            result_code: "H", strategy: "hitting",
-            outs_before: 0, outs_after: 1, runs_scored: 0,
-            runners_before: {}, runners_after: {}, extra_data: {}
-          },
-          {
-            inning: 1, half: "top", ab_num: 2,
-            pitcher_name: "投手A", batter_name: "打者C",
-            result_code: "K", strategy: "hitting",
-            outs_before: 1, outs_after: 2, runs_scored: 0,
-            runners_before: {}, runners_after: {}, extra_data: {}
-          }
-        ]
-      )
-
-      post "/api/v1/game_records", params: params_with_ab, as: :json
-      expect(response).to have_http_status(:created)
-      json = response.parsed_body
-      expect(json["at_bat_records"].size).to eq(2)
-    end
-
-    it "不正なresultはエラー" do
-      post "/api/v1/game_records", params: valid_params.merge(result: "invalid"), as: :json
-      expect(response).to have_http_status(:unprocessable_content)
-    end
-  end
-
   describe "POST /api/v1/game_records/:id/confirm" do
     include_context "authenticated user"
 

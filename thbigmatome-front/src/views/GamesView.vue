@@ -1,10 +1,6 @@
 <template>
   <v-container>
-    <PageHeader title="試合記録">
-      <template #actions>
-        <v-btn color="primary" variant="flat" @click="navigateToImport">ログ取り込み</v-btn>
-      </template>
-    </PageHeader>
+    <PageHeader title="試合記録" />
 
     <FilterBar>
       <template #filters>
@@ -162,9 +158,5 @@ async function fetchCompetitions() {
 
 function navigateToDetail(id: number) {
   router.push({ name: '試合詳細', params: { id } })
-}
-
-function navigateToImport() {
-  router.push({ name: 'ログ取り込み' })
 }
 </script>

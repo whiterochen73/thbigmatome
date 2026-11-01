@@ -302,7 +302,7 @@ class Game < ApplicationRecord
 
 **バリデーション**:
 - `status`: inclusion in %w[draft confirmed]
-- `source`: inclusion in %w[live log_import summary]
+- `source`: inclusion in %w[live log_import summary]（`log_import` はログ取り込み機能の廃止前に作られた既存データの値。新規には作られない）
 
 **インスタンスメソッド**:
 - `draft?` — status == "draft"

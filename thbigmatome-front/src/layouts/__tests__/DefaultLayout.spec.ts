@@ -257,7 +257,9 @@ describe('DefaultLayout.vue', () => {
       await flushPromises()
 
       expect(wrapper.text()).toContain('ホーム')
-      expect(wrapper.text()).toContain('試合ログ')
+      // ログ取り込み機能の廃止（cmd_1791）で「試合」グループは空になり、見出しごと出ない
+      expect(wrapper.text()).not.toContain('ログ取り込み')
+      expect(wrapper.text()).not.toContain('試合')
       // リリース向けUI整理: 試合一覧・成績は非表示
       expect(wrapper.text()).not.toContain('試合一覧')
       expect(wrapper.text()).not.toContain('成績')

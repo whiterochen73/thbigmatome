@@ -13,6 +13,7 @@ class Game < ApplicationRecord
   scope :excluding_no_game, -> { where.not(id: NoGameGames.ids) }
 
   validates :status, inclusion: { in: %w[draft confirmed] }
+  # log_import は取り込み機能の廃止（cmd_1791）前に作られた既存データの値。新規には作られないが、既存行を保存し直せるよう許可値に残す
   validates :source, inclusion: { in: %w[live log_import summary] }
 
   def draft?

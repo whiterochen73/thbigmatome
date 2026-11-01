@@ -17,7 +17,6 @@
 - `src/views/GameResult.vue`
 - `src/views/ScoreSheet.vue`
 - `src/views/GamesView.vue`
-- `src/views/GameImportView.vue`
 - `src/views/GameDetailView.vue`
 - `src/views/GameLineupView.vue`
 - `src/views/StatsView.vue`
@@ -55,7 +54,6 @@
 | `/teams/:teamId/season/games/:scheduleId` | `GameResult` | `GameResult` | `teamId`, `scheduleId` | 要（authGuard） |
 | `/teams/:teamId/season/games/:scheduleId/scoresheet` | `ScoreSheet` | `ScoreSheet` | `teamId`, `scheduleId` | 要（authGuard） |
 | `/games` | `試合記録` | `GamesView` | — | 要（authGuard） |
-| `/games/import` | `ログ取り込み` | `GameImportView` | — | 要（authGuard） |
 | `/games/:id` | `試合詳細` | `GameDetailView` | `id` | 要（authGuard） |
 | `/games/:id/lineup` | `GameLineup` | `GameLineupView` | `id` | 要（authGuard） |
 | `/stats` | `成績集計` | `StatsView` | — | 要（authGuard） |
@@ -271,24 +269,13 @@
 - **画面構成**: 大会フィルター・試合一覧テーブル（日付/対戦/スコア/大会）
 - **他画面への遷移先**:
   - `/games/:id`（GameDetailView）
-  - `/games/import`（GameImportView）
   - `/games/:id/lineup`（GameLineupView）
 
 ---
 
-### 2.13 試合インポート
+### 2.13 （欠番）試合インポート
 
-- **画面名**: 試合インポート / GameImportView
-- **ルートパス**: `/games/import`
-- **主要機能・目的**: ゲームログテキストの解析・インポート
-- **使用APIエンドポイント**:
-  - POST `/games/parse_log`（ログ解析プレビュー）
-  - POST `/games/import_log`（実際のインポート）
-  - GET `/competitions`
-  - GET `/competitions/:id/teams`
-- **主要なcomposable/store**: `useSnackbar`
-- **画面構成**: テキストエリア（ログ入力）・解析プレビュー・大会/チーム選択・インポートボタン
-- **他画面への遷移先**: `/games`（GamesView、インポート完了後）
+廃止済み（cmd_1791）。IRC ログを取り込む画面 `/games/import`（GameImportView）と、裏の `POST /games/parse_log`・`POST /games/import_log` を削除した。番号は他の節の参照を保つため欠番にしている。
 
 ---
 
@@ -576,8 +563,6 @@
   /teams/:teamId/members (TeamMembers)
 
   /games (GamesView)
-      ├─ /games/import (GameImportView)
-      │       └─ インポート完了 → /games
       ├─ /games/:id (GameDetailView)
       │       └─ /games/:id/lineup (GameLineupView)
       └─ 戻る → /games

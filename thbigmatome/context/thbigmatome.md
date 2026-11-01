@@ -23,12 +23,10 @@
 ```
 thbigmatome (Rails 8 API)
   ├─ 試合管理・チーム管理・選手マスタ等のCRUD API
-  ├─ IRCログ取り込み（parse_log / import_log）
-  ├─ AtBatRecordBuilder: パーサー出力→source_events/discrepancies正規化
-  └─ game_records / at_bat_records: パーサーレビュー用テーブル
+  └─ game_records / at_bat_records: パーサーレビュー用テーブル（IRCログ取り込み機能の廃止前に作られたデータの閲覧・確定のみ）
 
 thbigmatome-front (Vue.js 3 SPA)
-  ├─ 試合記録一覧 → ログ取り込みウィザード → パーサーレビュー
+  ├─ 試合記録一覧 → パーサーレビュー（ログ取り込み画面は廃止済み）
   ├─ タイムライン表示（3色分類: 宣言/ダイス/自動計算）
   └─ インライン編集 → 確定フロー
 
@@ -39,7 +37,7 @@ thbig-irc-parser (Python独立パッケージ)
   └─ 選手カードPDF解析（card_parser）
 ```
 
-BE→パーサー連携: Rails側の `games#parse_log` がPythonパーサーを呼び出し、結果を `game_records` + `at_bat_records` に格納。`import_log` で確定メタデータと紐づけ、`game_record_id` を返却。
+BE→パーサー連携: 廃止済み（cmd_1791）。Rails 側の `games#parse_log` / `games#import_log` / `game_records#create` と PARSER_API_URL 連携は削除した。試合日ページの試合ログ保存（`season_schedules.game_log`）は別機能で、内容を解析せずに保存するだけなので残している。
 
 ## ドキュメント一覧
 

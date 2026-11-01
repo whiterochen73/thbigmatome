@@ -31,32 +31,6 @@ class Api::V1::GameRecordsController < Api::V1::BaseController
     render json: serialize_game_record(@game_record, include_at_bats: true)
   end
 
-  # POST /api/v1/game_records
-  def create
-    game_record = GameRecord.new(game_record_params)
-    game_record.status = "draft"
-
-    GameRecord.transaction do
-      game_record.save!
-
-      if params[:at_bat_records].present?
-        params[:at_bat_records].each do |ab_params|
-          attrs = at_bat_record_create_params(ab_params).to_h
-          raw_disc = ab_params[:discrepancies] || ab_params["discrepancies"]
-          attrs[:discrepancies] = AtBatRecordBuilder.normalize_discrepancies(raw_disc) if raw_disc.present?
-          attrs[:source_events] = AtBatRecordBuilder.build_source_events(ab_params)
-          game_record.at_bat_records.create!(attrs)
-        end
-      end
-    end
-
-    render json: serialize_game_record(game_record, include_at_bats: true), status: :created
-  rescue ActiveRecord::RecordInvalid => e
-    render json: { errors: e.record.errors.full_messages }, status: :unprocessable_content
-  rescue ActiveRecord::RecordNotUnique, ActiveRecord::RecordNotSaved => e
-    render json: { errors: [ e.message ] }, status: :unprocessable_content
-  end
-
   # POST /api/v1/game_records/:id/confirm
   def confirm
     unless @game_record.draft?
@@ -81,22 +55,6 @@ class Api::V1::GameRecordsController < Api::V1::BaseController
     @game_record = GameRecord.includes(:at_bat_records).find(params[:id])
   rescue ActiveRecord::RecordNotFound
     render json: { error: "Game record not found" }, status: :not_found
-  end
-
-  def game_record_params
-    params.permit(
-      :team_id, :opponent_team_name, :game_date, :played_at, :stadium,
-      :score_home, :score_away, :result, :source_log, :parser_version, :parsed_at
-    )
-  end
-
-  def at_bat_record_create_params(ab_params)
-    ab_params.permit(
-      :inning, :half, :ab_num, :pitcher_name, :pitcher_id, :batter_name, :batter_id,
-      :pitch_roll, :pitch_result, :bat_roll, :bat_result, :result_code, :strategy,
-      :outs_before, :outs_after, :runs_scored, :play_description,
-      runners_before: {}, runners_after: {}, extra_data: {}, source_events: []
-    )
   end
 
   def serialize_game_record(game_record, include_at_bats: false)

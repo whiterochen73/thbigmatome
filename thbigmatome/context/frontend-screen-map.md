@@ -39,7 +39,6 @@
 | ルート | name | View | 用途 | 認証 |
 |--------|------|------|------|------|
 | `/games` | 試合記録 | `GamesView.vue` | 試合一覧（パーサー取り込み後の全試合） | 要 |
-| `/games/import` | ログ取り込み | `GameImportView.vue` | IRCログからの試合インポート | 要 |
 | `/games/:id` | 試合詳細 | `GameDetailView.vue` | 試合詳細閲覧（打席データ表示） | 要 |
 | `/games/:id/lineup` | GameLineup | `GameLineupView.vue` | オーダー確認 | 要 |
 

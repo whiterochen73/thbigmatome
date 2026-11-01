@@ -170,16 +170,62 @@ def validate_cost(team, cost_list_id):
 
 ```
 条件: 外の世界選手が4人のとき
-制約: 投手カード保有者1名以上 AND 野手カード保有者1名以上
+制約: 投手に数える選手1名以上 AND 野手に数える選手1名以上
 ```
 
 → `game_rules.yaml`: `lpena.team_composition.outside_world.balance`
 
-**判定基準**: 選手が保有する`player_cards`の`card_type`で投手/野手を判定。
+**判定基準**: 投手・野手のどちらに数えるかは、カード種別だけでなく契約したコスト区分で決まる。
+
+| 選手 | 投手に数える | 野手に数える |
+|------|:-----------:|:-----------:|
+| 投手専任・救援専任コストで契約 | ○ | × |
+| 野手専任コストで契約 | × | ○ |
+| 上記以外の二刀流 | ○ | ○ |
+| 上記以外（二刀流でない） | 選んだカードが投手カードなら○ | 選んだカードが野手カードなら○ |
+
+- 専任契約（投手専任・救援専任・野手専任のコスト）の選手は、契約した役だけに数える。救援専任は投手としての専任契約なので投手だけに数える。二刀流でも、もう一方には数えない
+- 専任契約でない二刀流は、投手・野手のどちらにも数える（都合の良い方として扱う）
+- 4 人全員が投手だけに数えられる編成と、4 人全員が野手だけに数えられる編成が違反になる
+
+> 欠落補充（2026-11-02、Operator 裁定）: 旧版は判定を `player_cards` の `card_type` だけで書いており、二刀流と専任契約の扱いが無かった。
+> 裁定: `context/thbig-bench-rule-adjudications.md`（multi-agent-shogun リポジトリ）AMB-29 節（Operator 裁定 2026-11-02）
 
 ### バリデーション擬似コード
 
 ```python
+# m = 1軍の所属（チームと選手の契約）。selected_cost_type は契約したコスト区分
+# （normal_cost / relief_only_cost / pitcher_only_cost / fielder_only_cost / two_way_cost）、
+# player_card は選んだカード。
+#
+# can_pitch(card): card_type == "pitcher"、または投手フラグあり、または守備位置に P がある
+# is_two_way(player): 二刀流選手か（投手カードと野手カードの両方を持つ選手。第1章）
+
+PITCHER_ONLY_COSTS = ("pitcher_only_cost", "relief_only_cost")  # 投手としての専任契約
+FIELDER_ONLY_COSTS = ("fielder_only_cost",)                      # 野手としての専任契約
+
+def counts_as_pitcher(m):
+    # 専任契約は契約した役だけに数える（AMB-29）
+    if m.selected_cost_type in FIELDER_ONLY_COSTS:
+        return False
+    if m.selected_cost_type in PITCHER_ONLY_COSTS:
+        return True
+    # 専任契約でない二刀流は投手にも数える
+    if is_two_way(m.player):
+        return True
+    return m.player_card is not None and can_pitch(m.player_card)
+
+def counts_as_fielder(m):
+    # 専任契約は契約した役だけに数える（AMB-29）
+    if m.selected_cost_type in PITCHER_ONLY_COSTS:
+        return False
+    if m.selected_cost_type in FIELDER_ONLY_COSTS:
+        return True
+    # 専任契約でない二刀流は野手にも数える
+    if is_two_way(m.player):
+        return True
+    return m.player_card is not None and not can_pitch(m.player_card)
+
 def validate_outside_world(team):
     native_series = NATIVE_SERIES[team.team_type]
     
@@ -192,16 +238,8 @@ def validate_outside_world(team):
     
     # バランスチェック（4人ちょうどの場合のみ）
     if len(ow_first_squad) == 4:
-        has_pitcher = any(
-            pc.card_type == "pitcher" 
-            for m in ow_first_squad 
-            for pc in m.player.player_cards
-        )
-        has_fielder = any(
-            pc.card_type == "batter"
-            for m in ow_first_squad
-            for pc in m.player.player_cards
-        )
+        has_pitcher = any(counts_as_pitcher(m) for m in ow_first_squad)
+        has_fielder = any(counts_as_fielder(m) for m in ow_first_squad)
         if not (has_pitcher and has_fielder):
             return "外の世界4人使用時は投手1名以上・野手1名以上必須"
     

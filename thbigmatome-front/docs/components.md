@@ -8,6 +8,11 @@
 - `src/components/AppFooter.vue`
 - `src/components/NavigationDrawer.vue`
 - `src/components/EmptyState.vue`
+- `src/components/shared/PageLayout.vue`
+- `src/components/shared/AsyncState.vue`
+- `src/components/shared/RowIconButton.vue`
+- `src/components/settings/MasterPanel.vue`
+- `src/components/settings/MasterAddButton.vue`
 - `src/components/ConfirmDialog.vue`
 - `src/components/TeamNavigation.vue`
 - `src/components/TeamDialog.vue`
@@ -70,9 +75,10 @@
 
 **主要機能・責務**:
 - ハンバーガーボタンでドロワー開閉
-- タイトルクリックでホームへナビゲーション
+- ロゴクリックでホームへナビゲーション（ロゴは PC で出し、スマホ幅 <600px ではタイトルを優先して隠す。タイトルが無い画面では出す）
+- 画面タイトル（`<h1>`）・サブタイトル・戻り先を出す。画面が `useAppBarTitle` で宣言した値を優先し、無ければ `route.meta.title`（2026-11 cmd_1791）。高さは PC 64px・スマホ 56px
 - ライト/ダークテーマ切り替え（`localStorage`に保存）
-- ユーザーメニュー（ユーザー名表示・ログアウト）
+- ユーザーメニュー（ユーザー名表示・設定・パスワード変更・ログアウト）
 - `useAuth`でユーザー情報・ログアウト処理を取得
 
 **使用箇所**: `DefaultLayout.vue`
@@ -133,8 +139,44 @@
 | `icon` | `string` | ✓ | Material Design Iconsアイコン名（例: `mdi-account`） |
 | `message` | `string` | ✓ | 表示メッセージ |
 
+**スロット**: 既定スロット（任意）。空状態の下に操作（主ボタンなど）を置く。アイコンは 40px。
+
 **emits**: なし
-**使用箇所**: 各リストビュー・タブで空状態表示に使用
+**使用箇所**: `AsyncState`（空状態）、パーサーレビュー詳細。他の画面は段 2 以降で `AsyncState` 経由に移す
+
+---
+
+### `PageLayout.vue` (`src/components/shared/PageLayout.vue`)
+
+ページの骨格（2026-11 cmd_1791 新設。`PageHeader` の後継）。画面タイトルはヘッダーバーが持つので、ここには置かない。
+
+**props**: `width`: `'narrow'`（720）/ `'default'`（1080、既定）/ `'wide'`（外枠 1440 まで）
+
+**スロット**: `lead`（タブより前の帯）/ `tabs` / `filters`（ツールバー行の左）/ `actions`（ツールバー行の右。主ボタンは 1 つまで）/ 既定（コンテンツ）
+
+余白は左右 24px（スマホ 12px）・上 20px・ブロック間 16px。中の `v-card` は縁 1px・影なし。表の見出しは `class="ui-table"` で `surface-variant` の地にする。詳細は `ui-design-system.md` §2。
+
+---
+
+### `AsyncState.vue` (`src/components/shared/AsyncState.vue`)
+
+読み込み中・空・失敗の出し方を 1 か所に持つ。
+
+**props**: `loading` / `empty` / `error`（boolean）、`errorMessage` / `emptyIcon` / `emptyMessage` / `skeleton`（スケルトンの種類。既定 `table`）、`framed`（スケルトンと空状態を縁つきの枠で包む）
+
+**emits**: `retry`（「再読み込み」ボタン）
+
+**スロット**: 既定（内容）、`empty-actions`（空状態の下の操作）
+
+内容が無く読み込み中ならスケルトン、内容があって読み込み中なら細い進捗線のみ。読み込み中・失敗の間は空状態を出さない。失敗はアラート＋「再読み込み」。
+
+---
+
+### `RowIconButton.vue` (`src/components/shared/RowIconButton.vue`)
+
+表の行の操作ボタン。名前（`aria-label` と `title`）を持つアイコンボタンで、塗らない。
+
+**props**: `icon`（mdi 名）、`label`（操作の名前。必須）、`danger`（削除など。`danger-ink` 色。既定は `link` 色）
 
 ---
 
@@ -659,13 +701,14 @@
 
 ### `GenericMasterSettings.vue` (`src/components/settings/GenericMasterSettings.vue`)
 
-マスタデータ管理の汎用コンポーネント。折りたたみパネル内にデータテーブルを表示し、追加・編集・削除を提供する。
+マスタデータ管理の汎用コンポーネント。`MasterPanel`（アイコン・名前・件数・追加（枠ボタン）・開閉）の中にデータテーブルを表示し、追加・編集・削除を提供する。
 
 **props**:
 
 | 名前 | 型 | 必須 | デフォルト | 説明 |
 |------|-----|------|-----------|------|
 | `title` | `string` | ✓ | — | パネルタイトル |
+| `icon` | `string` | - | `'mdi-tag-outline'` | パネルのアイコン |
 | `endpoint` | `string` | ✓ | — | CRUD対象のAPIエンドポイント（例: `/batting-skills`） |
 | `i18nKey` | `string` | ✓ | — | i18nキープレフィックス |
 | `dialogComponent` | `Component` | ✓ | — | 追加・編集に使うダイアログコンポーネント |
@@ -678,12 +721,18 @@
 
 **主要機能・責務**:
 - `GET {endpoint}` で一覧取得
-- 追加ボタン → `dialogComponent`を新規モードで表示
-- 編集アイコン → `dialogComponent`を編集モードで表示
-- 削除アイコン → `ConfirmDialog`で確認後`DELETE {endpoint}/:id`
+- 追加ボタン（`MasterAddButton`。枠ボタン）→ `dialogComponent`を新規モードで表示
+- 編集アイコン（`RowIconButton`）→ `dialogComponent`を編集モードで表示
+- 削除アイコン（`RowIconButton`、`danger-ink`）→ `ConfirmDialog`で確認後`DELETE {endpoint}/:id`
 - `readonly=true`の場合は操作ボタンを非表示
 
 **使用箇所**: `Settings.vue`（view）内の各マスタセクションから`BattingSkillSettings`等のラッパーを経由して使用
+
+---
+
+### `MasterPanel.vue` / `MasterAddButton.vue`（`src/components/settings/`）
+
+設定画面のマスタ 1 件分の枠（cmd_1791）。`MasterPanel` は `title` / `icon` / `count`（件数チップ）/ `defaultOpen` を持ち、`actions` スロットに追加ボタン、既定スロットに本文を置く。開閉は 1 つのボタン（`aria-expanded` / `aria-controls`）で、追加ボタンはその外に置く（ボタンの入れ子にしない）。`MasterAddButton` は枠（`outlined`、枠は `border-strong`、文字は `link`）＋プラスで、同格の「追加」が並ぶ画面に塗りの緑を並べない。`GenericMasterSettings` / `CostSettings` / `ScheduleSettings` が使う。
 
 ---
 
@@ -706,7 +755,7 @@
 
 ### `CostSettings.vue` (`src/components/settings/CostSettings.vue`)
 
-コスト表の管理コンポーネント。`GenericMasterSettings`は使わず独自実装。
+コスト表の管理コンポーネント。`GenericMasterSettings`は使わず独自実装（枠は `MasterPanel`、最初から開く）。
 
 **props**: なし
 **emits**: なし
@@ -723,7 +772,7 @@
 
 ### `ScheduleSettings.vue` (`src/components/settings/ScheduleSettings.vue`)
 
-スケジュールマスタの管理コンポーネント。`GenericMasterSettings`は使わず独自実装。
+スケジュールマスタの管理コンポーネント。`GenericMasterSettings`は使わず独自実装（枠は `MasterPanel`、最初から開く）。
 
 **props**: なし
 **emits**: なし

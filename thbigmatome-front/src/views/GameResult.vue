@@ -425,16 +425,7 @@
 </template>
 
 <script setup lang="ts">
-import {
-  ref,
-  reactive,
-  onMounted,
-  onBeforeUnmount,
-  computed,
-  watch,
-  watchEffect,
-  nextTick,
-} from 'vue'
+import { ref, reactive, onMounted, onBeforeUnmount, computed, watch, nextTick } from 'vue'
 import { useRoute, useRouter, onBeforeRouteLeave, onBeforeRouteUpdate } from 'vue-router'
 import axios from 'axios'
 import { useI18n } from 'vue-i18n'
@@ -455,7 +446,7 @@ import GameDayRangeNote from '@/components/gameDay/GameDayRangeNote.vue'
 import { dateTypeAppearance } from '@/components/gameDay/dateTypeAppearance'
 import type { PlayerAbsence } from '@/types/playerAbsence'
 import type { PitcherAppearanceRecord } from '@/types/pitcherAppearance'
-import { setAppBarBreadcrumbs, clearAppBarBreadcrumbs } from '@/composables/useAppBarBreadcrumbs'
+import { useAppBarTitle } from '@/composables/useAppBarTitle'
 import {
   GAME_LOG_MAX_BYTES,
   GAME_LOG_FILE_READ_MAX_BYTES,
@@ -1338,15 +1329,19 @@ const formattedGameDate = computed(() => {
   return t('gameResult.dateDisplay', { month, day, weekday })
 })
 
-const breadcrumbOwner = Symbol('game-day')
-watchEffect(() => {
-  setAppBarBreadcrumbs(breadcrumbOwner, {
-    seasonPortalRoute: seasonPortalRoute.value,
-    teamName: gameData.value.team_name,
-    gameNumber: isGameDay.value ? gameData.value.game_number : null,
-    date: formattedGameDate.value,
-  })
-})
+// ヘッダーバー: タイトル=チーム名、サブタイトル=「Game N ・ 日付」（試合日以外は日付のみ）、戻り先=シーズン
+// チーム名が届くまでは宣言せず、route.meta.title をバーに出す
+useAppBarTitle(() =>
+  gameData.value.team_name
+    ? {
+        title: gameData.value.team_name,
+        subtitle: isGameDay.value
+          ? `Game ${gameData.value.game_number} ・ ${formattedGameDate.value}`
+          : formattedGameDate.value,
+        back: { to: seasonPortalRoute.value, label: t('seasonPortal.shortTitle') },
+      }
+    : null,
+)
 
 // ─────────────────────────────────────────
 // 離脱ガード・試合日の移動
@@ -1399,7 +1394,6 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
   window.removeEventListener('beforeunload', onBeforeUnload)
-  clearAppBarBreadcrumbs(breadcrumbOwner)
 })
 </script>
 

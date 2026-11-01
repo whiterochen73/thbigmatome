@@ -1,4 +1,11 @@
 {
+  "appBar": {
+    "backTo": "{label}へ戻る"
+  },
+  "asyncState": {
+    "error": "読み込みに失敗しました。",
+    "retry": "再読み込み"
+  },
   "topMenu": {
     "welcome": {
       "title": "ようこそ！",
@@ -39,8 +46,7 @@
       "in_game": "試合中",
       "post_game": "試合後"
     },
-    "backToCurrent": "現在日に戻す",
-    "hint": "選んだ日付（と試合前／試合後）の時点の値を読み、直して保存します。後の日付が規定を外れる時は保存されず、違反した日付が出ます。"
+    "backToCurrent": "現在日に戻す"
   },
   "violationList": {
     "title": "保存できませんでした。後の日付が規定を外れます",
@@ -48,6 +54,7 @@
   },
   "seasonPortal": {
     "title": "シーズン画面",
+    "shortTitle": "シーズン",
     "currentDate": "現在の日付",
     "gameResultInput": "試合結果入力",
     "openSchedule": "日程を開く",
@@ -330,9 +337,6 @@
     "noBottomInning": "最終回後攻攻撃なし"
   },
   "gameDay": {
-    "breadcrumbs": {
-      "label": "ぱんくず"
-    },
     "phase": {
       "registration": "登録・離脱",
       "game": "試合日"
@@ -567,8 +571,20 @@
     "managedByConfigFile": "この設定は設定ファイルで管理されているため、ここでは閲覧のみ可能です。",
     "tabs": {
       "player": "選手設定",
-      "squad": "その他",
+      "squad": "コスト・日程",
       "account": "アカウント"
+    },
+    "groups": {
+      "pitcher": "投手",
+      "batter": "打者",
+      "common": "共通"
+    },
+    "itemCount": "{count}件",
+    "rowActions": {
+      "edit": "{name}を編集",
+      "editDetail": "{name}の日程を編集",
+      "duplicate": "{name}を複製",
+      "delete": "{name}を削除"
     },
     "player": {
       "description": "選手に関する設定を行います。"
@@ -957,7 +973,9 @@
     },
     "filters": {
       "searchPlaceholder": "選手名で検索",
-      "position": "ポジション"
+      "position": "ポジション",
+      "series": "所属作品",
+      "seriesAll": "すべて"
     },
     "deleteConfirmTitle": "選手の削除",
     "deleteConfirmMessage": "この選手を本当に削除しますか？",

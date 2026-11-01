@@ -5,6 +5,8 @@
 **作成者**: 軍師マキノ (subtask_design_552a)
 **関連**: design-guide.md（カラー・タイポグラフィ・ワイヤーフレーム）、cmd_468承認済みUIルール
 
+> **改訂（2026-11-01, cmd_1791 段 0）**: §2（ページヘッダー）と §4-1〜4-4 は、画面の骨格を統一する設計（`context/thbig-dugout-ui-unification-design.md`）に合わせて書き換えた。本書の他の節（§1 のパターン分類・§3 の棚卸し・§5 以降）は作成当時（2026-03）の記述のままで、`PageHeader`・`v-toolbar` を使う前提が残っている。新しい画面は §2 の骨格に従う。
+
 ---
 
 ## 1. レイアウトパターン分類
@@ -248,30 +250,57 @@
 
 ---
 
-## 2. ページヘッダーパターン
+## 2. ページの骨格とタイトル
 
-現在4種のヘッダーパターンが混在している。統一方針を提案する。
+画面タイトルは**ヘッダーバー（AppBar）が持つ**。ページ本文に画面タイトルの見出し（`PageHeader`・素の h1・カード見出しの兼用）を置かない。設計の根拠と全体像は `context/thbig-dugout-ui-unification-design.md`。
 
-### 現状分析
+### 2-1. 骨格（A〜E）
 
-| パターン | 使用数 | 構造 | 使用例 |
-|---------|-------|------|--------|
-| A: h1 + Card Title | 12 | `<h1 class="text-h4">` → `<v-card-title>` | Players, TeamList |
-| B: v-toolbar | 3 | `<v-toolbar color="primary">` | SeasonPortal |
-| C: 戻るボタン | 2 | `<v-btn icon="mdi-arrow-left">` | GameDetailView |
-| D: カスタムCSS | 3 | `.detail-card-header` | PlayerDetailView |
+```
+A ヘッダーバー（64px。スマホ 56px）  ☰ ・ ロゴ（PC のみ）・ [← 戻り先] ・ タイトル(h1) ・ サブタイトル ・ テーマ ・ アカウント
+B タブ（任意）                     アイコン＋文字、高さ 44px、?tab= で保持
+C ツールバー行（任意）              左=検索・絞り込み / 右=主ボタン 1 つ＋副ボタン
+D コンテンツ                       カードを縦に積む（間隔 16px）。表はカードの中
+E 状態                            読み込み=スケルトン / 空=EmptyState / 失敗=アラート＋再読み込み
+```
 
-### 統一方針（提案）
+- バーのタイトルは `<h1>` として `AppBar` が描く。本文の見出しは h2（カード見出し 16px・700）から始める
+- ページ内の操作はバーに置かない。バーは「どこにいるか」とグローバル操作（ナビ・テーマ・アカウント）に限る
+- ロゴは PC では残し、スマホ幅（<600px）では隠してタイトルを優先する（タイトルが無い画面ではロゴを出す）
 
-**原則**: 既存画面のデザインを維持しつつ、新規画面では以下のルールを適用する。
+### 2-2. 部品
 
-| 画面タイプ | 推奨ヘッダー | 理由 |
-|-----------|------------|------|
-| CRUD一覧 (LP-1) | パターンA（h1 + Card Title） | シンプルで十分 |
-| マルチカード (LP-2) | パターンA or B（規模による） | 小規模=A, 大規模=B |
-| タブポータル (LP-3) | パターンB（v-toolbar） | タブとの視覚的連続性 |
-| 詳細画面 (LP-4) | パターンD（カスタムヘッダー） | ブランディング要素 |
-| デュアルカラム (LP-5) | パターンA | 一覧系の派生 |
+| 部品 | 役割 |
+|------|------|
+| `useAppBarTitle`（`src/composables/useAppBarTitle.ts`） | 画面がタイトル・サブタイトル・戻り先（`{ title, subtitle?, back?: { to, label } }`）を宣言し、`AppBar` が描く。画面を離れる時に自動で解除する。宣言が無い画面は `route.meta.title` を出す（全ルートに付ける） |
+| `PageLayout`（`src/components/shared/PageLayout.vue`） | ページの骨格。`width`: `narrow`（720）/ `default`（1080）/ `wide`（外枠 1440 まで）。スロット `lead`（タブより前の帯）/ `tabs` / `filters`・`actions`（ツールバー行の左右）/ 既定（コンテンツ）。左右余白 24px（スマホ 12px）、ブロック間 16px。中の `v-card` は縁 1px・影なしにする |
+| `AsyncState`（`src/components/shared/AsyncState.vue`） | 読み込み中（内容が無ければスケルトン、あれば細い進捗線）・空（`EmptyState`）・失敗（アラート＋「再読み込み」）。読み込み中・失敗の間は空状態を出さない |
+| `EmptyState` | 空状態（アイコン 40px＋文言＋あれば操作） |
+| `RowIconButton`（`src/components/shared/RowIconButton.vue`） | 表の行の操作。名前（`aria-label`・`title`）を持つアイコンボタン。編集=`link`、削除=`danger-ink`、塗らない |
+| `MasterPanel` / `MasterAddButton`（`src/components/settings/`） | 設定画面のマスタの行（アイコン・名前・件数・追加（枠）・開閉）をそろえる |
+
+`PageHeader` は**非推奨**。まだ移していない画面のために残してあり、ヘッダーバーが同じ題を出している間は本文の h1 を省く（バーと二重にならない）。全画面を移したら削除する。
+
+### 2-3. タイトルの決め方（3 種類）
+
+| 型 | タイトル | サブタイトル | 戻り先 | 例 |
+|----|----------|--------------|--------|----|
+| A 全体系 | 画面名 | 原則なし | なし | ホーム / 設定 / 選手一覧 / 監督一覧 / チーム一覧 / ユーザー管理 |
+| B チーム配下 | チーム名 | 画面名（試合日は「Game 35 ・ 5月8日(日)」） | 親があれば「← シーズン」 | シーズン / 試合日 |
+| C 詳細 | 対象の名前 | 補足（背番号・所属・日付） | 「← 一覧名」 | 選手詳細 / 試合詳細 |
+
+手順: ① 1 つのチームに属する画面（`/teams/:teamId/…`）か → B ② 一覧の 1 件を開いた画面か → C ③ それ以外 → A（タイトルはナビに載っている名前に合わせる。ナビに無い画面は `route.meta.title`）。同じ画面の名前を 1 つに決める（ナビ名 = バータイトル = `route.meta.title`）。
+
+### 2-4. 幅・余白・操作の置き場
+
+| 項目 | 値 |
+|------|----|
+| 幅 | `narrow` 720 / `default` 1080 / `wide` 〜1440。画面側で `max-width` を書かず `PageLayout` の `width` で指定する |
+| ページ余白 | 左右 24px（スマホ 12px）、上 20px。カード内 16px（スマホ 12px） |
+| 主操作（追加・登録・保存・「今日の試合へ」） | ツールバー行の右端、`color="action" variant="flat"`＋動詞＋アイコン。**塗りの緑は 1 画面に 1 つまで** |
+| 同格の「追加」が複数並ぶ画面（設定の各マスタ） | 枠ボタン（`variant="outlined"`、枠は `border-strong`、文字は `link`）＋プラス |
+| 行の操作 | 表の右端の「操作」列に `RowIconButton`。3 つ以上ならメニュー |
+| 戻る | バー左（`back`）。本文に戻るボタンを置かない |
 
 ---
 
@@ -453,49 +482,34 @@ const statusColorMap: Record<string, string> = {
 
 ### 4-1. ボタンvariantルール
 
+> 2026-11 の視覚リフレッシュ（役割色トークン B'・規則 R1〜R8、`context/thbig-dugout-visual-refresh-design.md`）と骨格の統一（§2）で、旧ルール（主操作=朱 `accent`、副操作=`tonal`、破壊的=`error` flat）は置き換わった。
+
 | アクション種別 | variant | color | 用例 |
 |--------------|---------|-------|------|
-| Primary（主操作） | `flat` | `accent` (#C0392B) | 保存、作成、インポート |
-| Secondary（副操作） | `tonal` | デフォルト | キャンセル、リセット |
-| Destructive（破壊的） | `flat` | `error` | 削除（ConfirmDialog経由） |
-| Navigation（遷移） | `text` | `primary` | 戻る、詳細を見る |
-| Icon（アイコン操作） | `text` | — | テーブル内の編集/削除アイコン |
+| Primary（主操作） | `flat` | `action`（緑） | 保存、追加、登録、「今日の試合へ」。1 画面に 1 つまで |
+| Secondary（副操作） | `outlined`（枠は `border-strong`） | `link` | 取消、リセット、同格の「追加」が並ぶ時の各「追加」 |
+| Destructive（破壊的） | 塗らない。`outlined`（枠・文字は `danger-ink`）またはアイコンボタン | `danger-ink` | 削除（ConfirmDialog 経由） |
+| Navigation（遷移） | `text` | `link` | 詳細を見る |
+| Icon（行の操作） | `text`（`RowIconButton`） | 編集=`link`、削除=`danger-ink` | テーブル内の編集/削除 |
 
-**Vuetify defaults設定**:
-```ts
-defaults: {
-  VBtn: { variant: 'tonal' },  // デフォルトはtonal（Secondary）
-}
-```
+**Vuetify defaults設定**: `VBtn: { variant: 'tonal' }`（variant を書かないボタンは塗りつぶしではない）。トークンを `color=` に渡す `v-btn`・`v-chip` は `variant="flat"` を明示する（tonal だと文字が淡色になる）。
 
-### 4-2. ツールバー色 = primary統一
+### 4-2. ツールバー色
 
-```vue
-<!-- 全てのv-toolbarはcolor="primary" -->
-<v-toolbar color="primary">
-```
+`AppBar`（ヘッダーバー）だけが `color="primary"`。ページ本文に `v-toolbar` を置かない（画面タイトルはバーが持つ。§2）。
 
-**適用箇所**: AppBar、SeasonPortalヘッダー、チームナビゲーションヘッダー
+### 4-3. 色の意味
 
-### 4-3. CSS変数 --color-home / --color-visitor
+`--color-home` / `--color-visitor` の CSS 変数は廃止した。ホーム側=`game-home`（藍）、ビジター側=`game-visitor`（鼠）をテーマトークンで使う。朱（`accent`）は主操作に使わない。赤は「負・要確認・削除」だけの意味に取っておき、カレンダーの日曜・土曜の文字や地に使わない（地色は `surface-variant`）。
 
-```css
-:root {
-  --color-home: #1B3A6B;    /* 藍色 = primary */
-  --color-visitor: #C0392B;  /* 朱色 = accent */
-}
-```
+### 4-4. 状態の出し方（EmptyState / AsyncState）
 
-**適用箇所**: Scoreboard.vue、GameResult.vue、GameDetailView.vue のチーム色表示
+リスト系画面の読み込み・空・失敗は `AsyncState`（§2-2）で出す。
 
-### 4-4. EmptyState コンポーネント
-
-既存の `EmptyState.vue` を全リスト系画面の空状態に統一使用する。
-
-**ルール**:
-- `v-data-table` の `:items` が空の場合、テーブル内またはテーブル代替として `<EmptyState>` を表示
-- icon は画面コンテキストに合ったMDIアイコンを使用
-- message は「〜がありません」形式で統一
+- 読み込みが終わってから空状態を出す（読み込み中に「〜がありません」を出さない）
+- 空は `EmptyState`（アイコン＋「〜がありません」形式の文言＋あれば操作）
+- 失敗は画面内のアラート＋「再読み込み」。保存の成否はスナックバー
+- 2026-11-01 時点で `AsyncState` を使うのは選手一覧のみ。他の画面は段 2 以降で移す（以前の記述「全リスト系画面で EmptyState を使用」は実測では 1 画面だった）
 
 ---
 

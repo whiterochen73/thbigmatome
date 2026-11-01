@@ -17,11 +17,6 @@ function vueFiles(dir: string): string[] {
 it('uses action for filled buttons while keeping identified navigation and row actions primary', () => {
   const allowedPrimaryButtons = [
     {
-      path: 'views/SeasonPortal.vue',
-      marker: 'seasonPortal.gameResultInput',
-      reason: '試合結果入力画面への遷移',
-    },
-    {
       path: 'components/season/SeasonRosterTab.vue',
       marker: 'mdi-arrow-up',
       reason: '行ごとの昇格操作アイコン',
@@ -83,12 +78,6 @@ it('uses action for filled buttons while keeping identified navigation and row a
 // Test Basis: thbig-dugout-visual-stage5-mapping.md §2 R3, §7 b5-1〜b7-1 / subtask_1787r 申し送り1
 it('limits static primary on buttons, tabs, toggles and chips to identified filled buttons', () => {
   const allowed = [
-    {
-      path: 'views/SeasonPortal.vue',
-      marker: 'detail-open-schedule',
-      variant: 'elevated',
-      reason: '試合結果入力画面への遷移',
-    },
     {
       path: 'components/season/SeasonRosterTab.vue',
       marker: 'promote-btn',

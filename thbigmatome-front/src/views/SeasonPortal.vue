@@ -1,25 +1,88 @@
 <template>
-  <v-container>
-    <v-toolbar color="primary">
-      <template #prepend>
-        <h1 class="text-h5 mx-4" data-testid="season-title">{{ teamName }}</h1>
-      </template>
-      <v-btn class="mx-2" variant="outlined" :to="gameResultRoute" :disabled="!isGameDayToday">
-        {{ t('seasonPortal.goToGameResult') }}
-      </v-btn>
-      <template #append>
-        <!-- 現在日は日程の結果から自動で決まる（最後に結果が入った日の翌日〜次の試合日の、最後の試合日）。動かす操作は無い -->
-        <p class="text-h5 me-4" data-testid="current-date">
-          {{ t('seasonPortal.currentDate') }}: {{ currentDateStr }}
-        </p>
-      </template>
-    </v-toolbar>
+  <PageLayout width="wide">
+    <!-- 「いま」の帯。現在日は日程の結果から自動で決まる（最後に結果が入った日の翌日〜次の試合日の、最後の試合日）。動かす操作は無い -->
+    <template v-if="!loading && season" #lead>
+      <v-card class="now-strip" data-testid="now-strip">
+        <v-icon class="on-surface-variant" size="26" aria-hidden="true">mdi-calendar-today</v-icon>
+        <div class="now-strip__date" data-testid="current-date">
+          <span class="now-strip__label">{{ t('seasonPortal.currentDate') }}</span>
+          <span class="now-strip__value">{{ currentDateStr }}</span>
+        </div>
+        <span
+          v-if="currentDaySchedule"
+          class="type-badge"
+          :class="`badge-${getTypeCategory(currentDaySchedule.date_type)}`"
+          data-testid="now-type"
+        >
+          <v-icon size="x-small" class="mr-1">{{
+            dateTypeIcon(currentDaySchedule.date_type)
+          }}</v-icon>
+          {{ t(`settings.schedule.dateTypes.${currentDaySchedule.date_type}`) }}
+        </span>
+        <span
+          v-if="dayMark(currentDaySchedule)"
+          class="day-mark"
+          :class="`day-mark--${dayMark(currentDaySchedule)}`"
+          :title="dayMarkTitle(currentDaySchedule)"
+          data-testid="now-mark"
+          >{{ t(`seasonPortal.calendarMark.${dayMark(currentDaySchedule)}`) }}</span
+        >
+        <v-spacer />
+        <v-btn
+          color="action"
+          variant="flat"
+          append-icon="mdi-arrow-right"
+          :to="gameResultRoute"
+          :disabled="!isGameDayToday"
+          data-testid="go-to-game"
+        >
+          {{ t('seasonPortal.goToGameResult') }}
+        </v-btn>
+      </v-card>
+    </template>
+
+    <template v-if="!loading && season" #tabs>
+      <v-tabs v-model="activeTab" color="link">
+        <v-tab value="calendar">
+          <v-icon start>mdi-calendar</v-icon>
+          {{ t('seasonPortal.tabs.calendar') }}
+        </v-tab>
+        <v-tab value="members">
+          <v-icon start>mdi-account-cog</v-icon>
+          {{ t('seasonPortal.tabs.members') }}
+        </v-tab>
+        <v-tab value="roster">
+          <v-icon start>mdi-account-group</v-icon>
+          {{ t('seasonPortal.tabs.roster') }}
+        </v-tab>
+        <v-tab value="promotion_history">
+          <v-icon start>mdi-swap-vertical</v-icon>
+          {{ t('seasonPortal.tabs.promotionHistory') }}
+        </v-tab>
+        <v-tab value="absences">
+          <v-icon start>mdi-account-off</v-icon>
+          {{ t('seasonPortal.tabs.absences') }}
+        </v-tab>
+        <!-- リリース非表示: オーダータブ
+        <v-tab value="lineup">
+          <v-icon start>mdi-format-list-numbered</v-icon>
+          {{ t('seasonPortal.tabs.lineup') }}
+        </v-tab>
+        -->
+        <!-- リリース非表示: 成績タブ
+        <v-tab value="stats">
+          <v-icon start>mdi-chart-bar</v-icon>
+          {{ t('seasonPortal.tabs.stats') }}
+        </v-tab>
+        -->
+      </v-tabs>
+    </template>
 
     <!-- ローディング中 -->
-    <v-skeleton-loader v-if="loading" type="card" class="mt-2" />
+    <v-skeleton-loader v-if="loading" type="card" />
 
     <!-- シーズン未作成: インライン初期化フォーム -->
-    <v-card v-if="!loading && !season" variant="outlined" class="mt-4 mx-auto" max-width="480">
+    <v-card v-if="!loading && !season" variant="outlined" class="mx-auto" max-width="480">
       <v-card-title class="text-h6 pa-4">
         <v-icon start>mdi-calendar-plus</v-icon>
         {{ t('seasonPortal.initForm.title') }}
@@ -55,46 +118,11 @@
       </v-card-actions>
     </v-card>
 
-    <v-tabs v-if="!loading && season" v-model="activeTab" color="link" class="mt-2">
-      <v-tab value="calendar">
-        <v-icon start>mdi-calendar</v-icon>
-        {{ t('seasonPortal.tabs.calendar') }}
-      </v-tab>
-      <v-tab value="members">
-        <v-icon start>mdi-account-cog</v-icon>
-        {{ t('seasonPortal.tabs.members') }}
-      </v-tab>
-      <v-tab value="roster">
-        <v-icon start>mdi-account-group</v-icon>
-        {{ t('seasonPortal.tabs.roster') }}
-      </v-tab>
-      <v-tab value="promotion_history">
-        <v-icon start>mdi-swap-vertical</v-icon>
-        {{ t('seasonPortal.tabs.promotionHistory') }}
-      </v-tab>
-      <v-tab value="absences">
-        <v-icon start>mdi-account-off</v-icon>
-        {{ t('seasonPortal.tabs.absences') }}
-      </v-tab>
-      <!-- リリース非表示: オーダータブ
-      <v-tab value="lineup">
-        <v-icon start>mdi-format-list-numbered</v-icon>
-        {{ t('seasonPortal.tabs.lineup') }}
-      </v-tab>
-      -->
-      <!-- リリース非表示: 成績タブ
-      <v-tab value="stats">
-        <v-icon start>mdi-chart-bar</v-icon>
-        {{ t('seasonPortal.tabs.stats') }}
-      </v-tab>
-      -->
-    </v-tabs>
-
     <v-tabs-window v-if="!loading && season" v-model="activeTab">
       <!-- タブ1: カレンダー -->
       <v-tabs-window-item value="calendar">
         <!-- 特例選手選択カード -->
-        <v-card variant="outlined" class="mt-2 pa-3">
+        <v-card variant="outlined" class="pa-3">
           <div class="d-flex align-center flex-wrap" style="gap: 12px">
             <span class="text-body-2 font-weight-bold">{{
               t('seasonPortal.keyPlayer.label')
@@ -111,10 +139,12 @@
                 clearable
                 style="max-width: 280px"
               />
+              <!-- 「今日の試合へ」が画面唯一の塗りの緑。保存は副操作（枠） -->
               <v-btn
-                color="action"
-                variant="flat"
+                color="link"
+                variant="outlined"
                 size="small"
+                :style="{ borderColor: 'rgb(var(--v-theme-border-strong))' }"
                 :loading="keyPlayerSaving"
                 :disabled="keyPlayerSaving"
                 @click="saveKeyPlayer"
@@ -129,349 +159,314 @@
             </template>
           </div>
         </v-card>
-        <v-row class="mt-2">
-          <v-col>
-            <v-card variant="outlined" class="pa-4">
-              <!-- ツールバー: 月ナビ + ビュー切替 -->
-              <div class="cal-toolbar mb-4">
-                <div class="month-nav">
-                  <v-btn icon variant="outlined" size="small" @click="prevMonth">
-                    <v-icon>mdi-chevron-left</v-icon>
-                  </v-btn>
-                  <h2 class="month-label">{{ monthStr }}</h2>
-                  <v-btn icon variant="outlined" size="small" @click="nextMonth">
-                    <v-icon>mdi-chevron-right</v-icon>
-                  </v-btn>
-                </div>
-                <v-btn-toggle
-                  v-model="viewMode"
-                  mandatory
-                  density="compact"
-                  variant="outlined"
-                  selected-class="bg-primary"
-                  :style="{ borderColor: 'rgb(var(--v-theme-border-strong))' }"
+        <v-card variant="outlined" class="pa-4 mt-4">
+          <!-- ツールバー: 月ナビ + ビュー切替 -->
+          <div class="cal-toolbar mb-4">
+            <div class="month-nav">
+              <v-btn icon variant="outlined" size="small" @click="prevMonth">
+                <v-icon>mdi-chevron-left</v-icon>
+              </v-btn>
+              <h2 class="month-label">{{ monthStr }}</h2>
+              <v-btn icon variant="outlined" size="small" @click="nextMonth">
+                <v-icon>mdi-chevron-right</v-icon>
+              </v-btn>
+            </div>
+            <v-btn-toggle
+              v-model="viewMode"
+              mandatory
+              density="compact"
+              variant="outlined"
+              selected-class="bg-primary"
+              :style="{ borderColor: 'rgb(var(--v-theme-border-strong))' }"
+            >
+              <v-btn value="calendar" title="カレンダー表示">
+                <v-icon>mdi-calendar-month</v-icon>
+              </v-btn>
+              <v-btn value="table" title="リスト表示">
+                <v-icon>mdi-format-list-bulleted</v-icon>
+              </v-btn>
+            </v-btn-toggle>
+          </div>
+
+          <!-- カレンダーグリッドビュー -->
+          <template v-if="viewMode === 'calendar'">
+            <div class="cal-wrapper">
+              <div class="calendar-grid">
+                <!-- 曜日ヘッダー -->
+                <div
+                  v-for="day in weekdays"
+                  :key="day"
+                  class="weekday-header text-center font-weight-bold"
                 >
-                  <v-btn value="calendar" title="カレンダー表示">
-                    <v-icon>mdi-calendar-month</v-icon>
-                  </v-btn>
-                  <v-btn value="table" title="リスト表示">
-                    <v-icon>mdi-format-list-bulleted</v-icon>
-                  </v-btn>
-                </v-btn-toggle>
-              </div>
+                  {{ day }}
+                </div>
+                <!-- 日付セル -->
+                <div
+                  v-for="day in calendarDays"
+                  :key="day.date.toISOString()"
+                  :class="[
+                    'day-cell',
+                    {
+                      'is-current-day': day.isCurrentDay,
+                      'not-current-month': !day.isCurrentMonth,
+                      weekend: day.isWeekend && day.isCurrentMonth,
+                    },
+                  ]"
+                  @click="openDayDetail(day)"
+                >
+                  <div class="day-num-wrapper">
+                    <span class="day-number" :class="{ 'today-circle': day.isCurrentDay }">
+                      {{ day.date.getDate() }}
+                    </span>
+                  </div>
 
-              <!-- カレンダーグリッドビュー -->
-              <template v-if="viewMode === 'calendar'">
-                <div class="cal-wrapper">
-                  <div class="calendar-grid">
-                    <!-- 曜日ヘッダー -->
-                    <div
-                      v-for="(day, i) in weekdays"
-                      :key="day"
-                      class="weekday-header text-center font-weight-bold"
-                      :class="{ 'sat-header': i === 5, 'sun-header': i === 6 }"
-                    >
-                      {{ day }}
-                    </div>
-                    <!-- 日付セル -->
-                    <div
-                      v-for="day in calendarDays"
-                      :key="day.date.toISOString()"
-                      :class="[
-                        'day-cell',
-                        {
-                          'is-current-day': day.isCurrentDay,
-                          'not-current-month': !day.isCurrentMonth,
-                          saturday: day.dayOfWeek === 6 && day.isCurrentMonth,
-                          sunday: day.dayOfWeek === 0 && day.isCurrentMonth,
-                        },
-                      ]"
-                      @click="openDayDetail(day)"
-                    >
-                      <div class="day-num-wrapper">
+                  <div v-if="day.isCurrentMonth && day.schedule" class="cell-content">
+                    <!-- 日程種別チップ (未来日はv-menuで編集可) -->
+                    <v-menu v-if="!isDateBeforeCurrent(day.date)">
+                      <template #activator="{ props }">
                         <span
-                          class="day-number"
-                          :class="{
-                            'today-circle': day.isCurrentDay,
-                            'sat-num': day.dayOfWeek === 6 && day.isCurrentMonth,
-                            'sun-num': day.dayOfWeek === 0 && day.isCurrentMonth,
-                          }"
-                        >
-                          {{ day.date.getDate() }}
-                        </span>
-                      </div>
-
-                      <div v-if="day.isCurrentMonth && day.schedule" class="cell-content">
-                        <!-- 日程種別チップ (未来日はv-menuで編集可) -->
-                        <v-menu v-if="!isDateBeforeCurrent(day.date)">
-                          <template #activator="{ props }">
-                            <span
-                              v-bind="props"
-                              class="type-chip"
-                              :class="`chip-${getTypeCategory(day.schedule.date_type)}`"
-                              @click.stop
-                            >
-                              <v-icon size="x-small" class="mr-1">{{
-                                dateTypeIcon(day.schedule.date_type)
-                              }}</v-icon>
-                              {{ t(`settings.schedule.dateTypes.${day.schedule.date_type}`) }}
-                            </span>
-                          </template>
-                          <v-list>
-                            <v-list-item
-                              v-for="dateType in dateTypes"
-                              :key="dateType"
-                              @click="updateSchedule(day.schedule, dateType)"
-                            >
-                              <v-list-item-title>{{
-                                t(`settings.schedule.dateTypes.${dateType}`)
-                              }}</v-list-item-title>
-                            </v-list-item>
-                          </v-list>
-                        </v-menu>
-                        <span
-                          v-else
+                          v-bind="props"
                           class="type-chip"
                           :class="`chip-${getTypeCategory(day.schedule.date_type)}`"
+                          :title="t(`settings.schedule.dateTypes.${day.schedule.date_type}`)"
+                          @click.stop
                         >
                           <v-icon size="x-small" class="mr-1">{{
                             dateTypeIcon(day.schedule.date_type)
                           }}</v-icon>
-                          {{ t(`settings.schedule.dateTypes.${day.schedule.date_type}`) }}
+                          <span class="type-chip__text">{{
+                            t(`settings.schedule.dateTypes.${day.schedule.date_type}`)
+                          }}</span>
                         </span>
-
-                        <!-- 試合情報 -->
-                        <template v-if="isGameType(day.schedule.date_type)">
-                          <div
-                            v-if="
-                              day.schedule.game_result && !isCancelledType(day.schedule.date_type)
-                            "
-                            class="game-info"
-                          >
-                            <span class="opponent-text"
-                              >vs {{ day.schedule.game_result.opponent_short_name }}</span
-                            >
-                            <span
-                              :class="`result-mark result-${day.schedule.game_result.result}`"
-                              data-testid="calendar-result-mark"
-                              >{{ resultMark(day.schedule.game_result.result) }}</span
-                            >
-                            <!-- ノーゲームは得点を出さない（勝敗・成績に入れない。台帳 D-11） -->
-                            <span
-                              v-if="day.schedule.game_result.score"
-                              class="score-text"
-                              data-testid="calendar-score"
-                              >{{ day.schedule.game_result.score }}</span
-                            >
-                          </div>
-                          <div v-else class="game-info">
-                            <span v-if="day.schedule.announced_starter" class="starter-text">
-                              {{ t('seasonPortal.announcedStarterPrefix') }}:
-                              {{ day.schedule.announced_starter.name }}
-                            </span>
-                          </div>
-                          <span
-                            v-if="dayMark(day.schedule)"
-                            class="day-mark"
-                            :class="`day-mark--${dayMark(day.schedule)}`"
-                            :title="dayMarkTitle(day.schedule)"
-                            data-testid="calendar-day-mark"
-                            >{{ t(`seasonPortal.calendarMark.${dayMark(day.schedule)}`) }}</span
-                          >
-                        </template>
-                        <v-btn
-                          size="x-small"
-                          color="link"
-                          variant="text"
-                          density="compact"
-                          :to="{
-                            name: 'GameResult',
-                            params: { teamId, scheduleId: day.schedule.id },
-                          }"
-                          @click.stop
-                          class="entry-btn"
+                      </template>
+                      <v-list>
+                        <v-list-item
+                          v-for="dateType in dateTypes"
+                          :key="dateType"
+                          @click="updateSchedule(day.schedule, dateType)"
                         >
-                          {{
-                            isGameType(day.schedule.date_type)
-                              ? t('seasonPortal.gameResultInput')
-                              : t('seasonPortal.openSchedule')
-                          }}
-                        </v-btn>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <!-- 凡例 -->
-                <div class="calendar-legend mt-3">
-                  <div class="legend-inner">
-                    <span v-for="item in legendItems" :key="item.type" class="legend-item">
-                      <span class="legend-dot" :class="`chip-${getTypeCategory(item.type)}`"></span>
-                      {{ t(`settings.schedule.dateTypes.${item.type}`) }}
+                          <v-list-item-title>{{
+                            t(`settings.schedule.dateTypes.${dateType}`)
+                          }}</v-list-item-title>
+                        </v-list-item>
+                      </v-list>
+                    </v-menu>
+                    <span
+                      v-else
+                      class="type-chip"
+                      :class="`chip-${getTypeCategory(day.schedule.date_type)}`"
+                      :title="t(`settings.schedule.dateTypes.${day.schedule.date_type}`)"
+                    >
+                      <v-icon size="x-small" class="mr-1">{{
+                        dateTypeIcon(day.schedule.date_type)
+                      }}</v-icon>
+                      <span class="type-chip__text">{{
+                        t(`settings.schedule.dateTypes.${day.schedule.date_type}`)
+                      }}</span>
                     </span>
-                    <span class="legend-results ml-auto">
-                      <span class="result-mark result-win">W</span
-                      >{{ t('seasonPortal.legendWin') }}&nbsp;
-                      <span class="result-mark result-lose">L</span
-                      >{{ t('seasonPortal.legendLose') }}&nbsp;
-                      <span class="result-mark result-draw">D</span
-                      >{{ t('seasonPortal.legendDraw') }}&nbsp;
-                      <span data-testid="legend-no-game">
-                        <span class="result-mark result-no_game">NG</span
-                        >{{ t('seasonPortal.legendNoGame') }}
-                      </span>
-                    </span>
-                  </div>
-                </div>
-              </template>
 
-              <!-- 表形式ビュー -->
-              <template v-else>
-                <div class="d-flex align-center mb-3 flex-wrap" style="gap: 8px">
-                  <span class="text-caption text-medium-emphasis"
-                    >{{ t('seasonPortal.viewLabel') }}：</span
-                  >
-                  <v-btn-toggle
-                    v-model="tableFilter"
-                    mandatory
-                    density="compact"
-                    variant="outlined"
-                    selected-class="bg-primary"
-                    size="small"
-                    :style="{ borderColor: 'rgb(var(--v-theme-border-strong))' }"
-                  >
-                    <v-btn value="all">{{ t('seasonPortal.viewAll') }}</v-btn>
-                    <v-btn value="game">{{ t('seasonPortal.viewGameOnly') }}</v-btn>
-                  </v-btn-toggle>
-                </div>
-                <div class="table-wrapper">
-                  <table class="schedule-table">
-                    <thead>
-                      <tr>
-                        <th>{{ t('seasonPortal.tableHeaders.date') }}</th>
-                        <th>{{ t('seasonPortal.tableHeaders.dow') }}</th>
-                        <th>{{ t('seasonPortal.tableHeaders.type') }}</th>
-                        <th>{{ t('seasonPortal.tableHeaders.opponent') }}</th>
-                        <th>{{ t('seasonPortal.tableHeaders.starter') }}</th>
-                        <th>{{ t('seasonPortal.tableHeaders.score') }}</th>
-                        <th>{{ t('seasonPortal.tableHeaders.result') }}</th>
-                        <th></th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      <tr
-                        v-for="row in filteredTableRows"
-                        :key="row.date.toISOString()"
-                        :class="{ 'today-row': row.isCurrentDay }"
+                    <!-- 試合情報 -->
+                    <template v-if="isGameType(day.schedule.date_type)">
+                      <div
+                        v-if="day.schedule.game_result && !isCancelledType(day.schedule.date_type)"
+                        class="game-info"
                       >
-                        <td :data-label="t('seasonPortal.tableHeaders.date')" class="date-cell">
-                          {{ formatTableDate(row.date) }}
-                        </td>
-                        <td
-                          :data-label="t('seasonPortal.tableHeaders.dow')"
-                          class="dow-cell"
-                          :class="getDowClass(row.dayOfWeek)"
+                        <span class="opponent-text"
+                          >vs {{ day.schedule.game_result.opponent_short_name }}</span
                         >
-                          {{ getDowLabel(row.dayOfWeek) }}
-                        </td>
-                        <td :data-label="t('seasonPortal.tableHeaders.type')">
-                          <span
-                            v-if="row.schedule"
-                            class="type-badge"
-                            :class="`badge-${getTypeCategory(row.schedule.date_type)}`"
-                          >
-                            <v-icon size="x-small" class="mr-1">{{
-                              dateTypeIcon(row.schedule.date_type)
-                            }}</v-icon>
-                            {{ t(`settings.schedule.dateTypes.${row.schedule.date_type}`) }}
-                          </span>
-                          <span v-else class="text-disabled">—</span>
-                        </td>
-                        <td :data-label="t('seasonPortal.tableHeaders.opponent')">
-                          <template
-                            v-if="
-                              row.schedule?.game_result && !isCancelledType(row.schedule.date_type)
-                            "
-                          >
-                            {{ row.schedule.game_result.opponent_short_name }}
-                          </template>
-                          <span v-else class="text-disabled">—</span>
-                        </td>
-                        <td :data-label="t('seasonPortal.tableHeaders.starter')">
-                          <template
-                            v-if="
-                              row.schedule &&
-                              !row.schedule.game_result &&
-                              row.schedule.announced_starter
-                            "
-                          >
-                            {{ row.schedule.announced_starter.name }}
-                          </template>
-                          <span v-else class="text-disabled">—</span>
-                        </td>
-                        <td
-                          :data-label="t('seasonPortal.tableHeaders.score')"
-                          data-testid="table-score"
+                        <span
+                          :class="`result-mark result-${day.schedule.game_result.result}`"
+                          data-testid="calendar-result-mark"
+                          >{{ resultMark(day.schedule.game_result.result) }}</span
                         >
-                          {{
-                            !isCancelledType(row.schedule?.date_type) &&
-                            row.schedule?.game_result?.score
-                              ? row.schedule.game_result.score
-                              : '—'
-                          }}
-                        </td>
-                        <td :data-label="t('seasonPortal.tableHeaders.result')">
-                          <span
-                            v-if="
-                              row.schedule?.game_result && !isCancelledType(row.schedule.date_type)
-                            "
-                            class="result-badge"
-                            :class="`result-${row.schedule.game_result.result}`"
-                            data-testid="table-result-badge"
-                          >
-                            {{ resultMark(row.schedule.game_result.result) }}
-                          </span>
-                          <span v-else class="text-disabled">—</span>
-                        </td>
-                        <td>
-                          <span
-                            v-if="row.schedule && dayMark(row.schedule)"
-                            class="day-mark mr-1"
-                            :class="`day-mark--${dayMark(row.schedule)}`"
-                            :title="dayMarkTitle(row.schedule)"
-                            data-testid="table-day-mark"
-                            >{{ t(`seasonPortal.calendarMark.${dayMark(row.schedule)}`) }}</span
-                          >
-                          <v-btn
-                            v-if="row.schedule"
-                            size="x-small"
-                            color="link"
-                            variant="text"
-                            :to="{
-                              name: 'GameResult',
-                              params: { teamId, scheduleId: row.schedule.id },
-                            }"
-                          >
-                            {{
-                              isGameType(row.schedule.date_type)
-                                ? t('seasonPortal.gameResultInput')
-                                : t('seasonPortal.openSchedule')
-                            }}
-                          </v-btn>
-                        </td>
-                      </tr>
-                    </tbody>
-                  </table>
+                        <!-- ノーゲームは得点を出さない（勝敗・成績に入れない。台帳 D-11） -->
+                        <span
+                          v-if="day.schedule.game_result.score"
+                          class="score-text"
+                          data-testid="calendar-score"
+                          >{{ day.schedule.game_result.score }}</span
+                        >
+                      </div>
+                      <div v-else class="game-info">
+                        <span v-if="day.schedule.announced_starter" class="starter-text">
+                          {{ t('seasonPortal.announcedStarterPrefix') }}:
+                          {{ day.schedule.announced_starter.name }}
+                        </span>
+                      </div>
+                      <span
+                        v-if="dayMark(day.schedule)"
+                        class="day-mark"
+                        :class="`day-mark--${dayMark(day.schedule)}`"
+                        :title="dayMarkTitle(day.schedule)"
+                        data-testid="calendar-day-mark"
+                        >{{ t(`seasonPortal.calendarMark.${dayMark(day.schedule)}`) }}</span
+                      >
+                    </template>
+                  </div>
                 </div>
-              </template>
-            </v-card>
-          </v-col>
-        </v-row>
+              </div>
+            </div>
+
+            <!-- 凡例 -->
+            <div class="calendar-legend mt-3">
+              <div class="legend-inner">
+                <span v-for="item in legendItems" :key="item.type" class="legend-item">
+                  <span class="legend-dot" :class="`chip-${getTypeCategory(item.type)}`"></span>
+                  {{ t(`settings.schedule.dateTypes.${item.type}`) }}
+                </span>
+                <span class="legend-results ml-auto">
+                  <span class="result-mark result-win">W</span
+                  >{{ t('seasonPortal.legendWin') }}&nbsp;
+                  <span class="result-mark result-lose">L</span
+                  >{{ t('seasonPortal.legendLose') }}&nbsp;
+                  <span class="result-mark result-draw">D</span
+                  >{{ t('seasonPortal.legendDraw') }}&nbsp;
+                  <span data-testid="legend-no-game">
+                    <span class="result-mark result-no_game">NG</span
+                    >{{ t('seasonPortal.legendNoGame') }}
+                  </span>
+                </span>
+              </div>
+            </div>
+          </template>
+
+          <!-- 表形式ビュー -->
+          <template v-else>
+            <div class="d-flex align-center mb-3 flex-wrap" style="gap: 8px">
+              <span class="text-caption text-medium-emphasis"
+                >{{ t('seasonPortal.viewLabel') }}：</span
+              >
+              <v-btn-toggle
+                v-model="tableFilter"
+                mandatory
+                density="compact"
+                variant="outlined"
+                selected-class="bg-primary"
+                size="small"
+                :style="{ borderColor: 'rgb(var(--v-theme-border-strong))' }"
+              >
+                <v-btn value="all">{{ t('seasonPortal.viewAll') }}</v-btn>
+                <v-btn value="game">{{ t('seasonPortal.viewGameOnly') }}</v-btn>
+              </v-btn-toggle>
+            </div>
+            <div class="table-wrapper">
+              <table class="schedule-table">
+                <thead>
+                  <tr>
+                    <th>{{ t('seasonPortal.tableHeaders.date') }}</th>
+                    <th>{{ t('seasonPortal.tableHeaders.dow') }}</th>
+                    <th>{{ t('seasonPortal.tableHeaders.type') }}</th>
+                    <th>{{ t('seasonPortal.tableHeaders.opponent') }}</th>
+                    <th>{{ t('seasonPortal.tableHeaders.starter') }}</th>
+                    <th>{{ t('seasonPortal.tableHeaders.score') }}</th>
+                    <th>{{ t('seasonPortal.tableHeaders.result') }}</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr
+                    v-for="row in filteredTableRows"
+                    :key="row.date.toISOString()"
+                    :class="{ 'today-row': row.isCurrentDay }"
+                  >
+                    <td :data-label="t('seasonPortal.tableHeaders.date')" class="date-cell">
+                      {{ formatTableDate(row.date) }}
+                    </td>
+                    <td :data-label="t('seasonPortal.tableHeaders.dow')" class="dow-cell">
+                      {{ getDowLabel(row.dayOfWeek) }}
+                    </td>
+                    <td :data-label="t('seasonPortal.tableHeaders.type')">
+                      <span
+                        v-if="row.schedule"
+                        class="type-badge"
+                        :class="`badge-${getTypeCategory(row.schedule.date_type)}`"
+                      >
+                        <v-icon size="x-small" class="mr-1">{{
+                          dateTypeIcon(row.schedule.date_type)
+                        }}</v-icon>
+                        {{ t(`settings.schedule.dateTypes.${row.schedule.date_type}`) }}
+                      </span>
+                      <span v-else class="text-disabled">—</span>
+                    </td>
+                    <td :data-label="t('seasonPortal.tableHeaders.opponent')">
+                      <template
+                        v-if="row.schedule?.game_result && !isCancelledType(row.schedule.date_type)"
+                      >
+                        {{ row.schedule.game_result.opponent_short_name }}
+                      </template>
+                      <span v-else class="text-disabled">—</span>
+                    </td>
+                    <td :data-label="t('seasonPortal.tableHeaders.starter')">
+                      <template
+                        v-if="
+                          row.schedule &&
+                          !row.schedule.game_result &&
+                          row.schedule.announced_starter
+                        "
+                      >
+                        {{ row.schedule.announced_starter.name }}
+                      </template>
+                      <span v-else class="text-disabled">—</span>
+                    </td>
+                    <td
+                      :data-label="t('seasonPortal.tableHeaders.score')"
+                      data-testid="table-score"
+                    >
+                      {{
+                        !isCancelledType(row.schedule?.date_type) &&
+                        row.schedule?.game_result?.score
+                          ? row.schedule.game_result.score
+                          : '—'
+                      }}
+                    </td>
+                    <td :data-label="t('seasonPortal.tableHeaders.result')">
+                      <span
+                        v-if="row.schedule?.game_result && !isCancelledType(row.schedule.date_type)"
+                        class="result-badge"
+                        :class="`result-${row.schedule.game_result.result}`"
+                        data-testid="table-result-badge"
+                      >
+                        {{ resultMark(row.schedule.game_result.result) }}
+                      </span>
+                      <span v-else class="text-disabled">—</span>
+                    </td>
+                    <td>
+                      <span
+                        v-if="row.schedule && dayMark(row.schedule)"
+                        class="day-mark mr-1"
+                        :class="`day-mark--${dayMark(row.schedule)}`"
+                        :title="dayMarkTitle(row.schedule)"
+                        data-testid="table-day-mark"
+                        >{{ t(`seasonPortal.calendarMark.${dayMark(row.schedule)}`) }}</span
+                      >
+                      <v-btn
+                        v-if="row.schedule"
+                        size="x-small"
+                        color="link"
+                        variant="text"
+                        :to="{
+                          name: 'GameResult',
+                          params: { teamId, scheduleId: row.schedule.id },
+                        }"
+                      >
+                        {{
+                          isGameType(row.schedule.date_type)
+                            ? t('seasonPortal.gameResultInput')
+                            : t('seasonPortal.openSchedule')
+                        }}
+                      </v-btn>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </template>
+        </v-card>
       </v-tabs-window-item>
 
       <!-- タブ2: チーム編成 -->
       <v-tabs-window-item value="members">
-        <div class="mt-2">
+        <div>
           <AsOfDateBar
             v-if="asOfDate"
             v-model:date="asOfDate"
@@ -492,7 +487,7 @@
 
       <!-- タブ3: ロスター -->
       <v-tabs-window-item value="roster">
-        <div class="mt-2">
+        <div>
           <AsOfDateBar
             v-if="asOfDate"
             v-model:date="asOfDate"
@@ -513,14 +508,14 @@
 
       <!-- タブ4: 昇降格履歴 -->
       <v-tabs-window-item value="promotion_history">
-        <div class="mt-2">
+        <div>
           <PromotionHistoryTab :team-id="teamId" :season-id="season?.id ?? null" />
         </div>
       </v-tabs-window-item>
 
       <!-- タブ5: 離脱者 -->
       <v-tabs-window-item value="absences">
-        <div class="mt-2">
+        <div>
           <AsOfDateBar
             v-if="asOfDate"
             v-model:date="asOfDate"
@@ -534,7 +529,7 @@
 
       <!-- リリース非表示: オーダータブ（タブ6）
       <v-tabs-window-item value="lineup">
-        <div class="mt-2">
+        <div>
           <v-tabs v-model="lineupSubTab" color="link" density="compact" class="mb-2">
             <v-tab value="template">
               <v-icon start size="small">mdi-pencil</v-icon>
@@ -557,7 +552,7 @@
       </v-tabs-window-item>
       -->
     </v-tabs-window>
-  </v-container>
+  </PageLayout>
 
   <!-- 日程詳細ダイアログ (モバイル用タップ詳細) -->
   <v-dialog v-model="isDayDetailOpen" max-width="400px">
@@ -648,8 +643,8 @@
             </div>
           </template>
           <v-btn
-            color="primary"
-            variant="elevated"
+            color="action"
+            variant="flat"
             block
             class="mt-2"
             data-testid="detail-open-schedule"
@@ -694,6 +689,8 @@ import TeamMembers from '@/views/TeamMembers.vue'
 // import SquadTextGenerator from '@/components/squad/SquadTextGenerator.vue'
 import { useTeamSelectionStore } from '@/stores/teamSelection'
 import { useAuth } from '@/composables/useAuth'
+import { useAppBarTitle } from '@/composables/useAppBarTitle'
+import PageLayout from '@/components/shared/PageLayout.vue'
 import {
   calendarDayMark,
   hasGameDayArrived,
@@ -723,8 +720,14 @@ const asOfPhase = ref('pre_game')
 const dateOnly = (value: string | null | undefined): string => (value ? value.slice(0, 10) : '')
 const currentDateKey = computed(() => dateOnly(season.value?.current_date))
 
-// 画面のタイトル。シーズンには題を付けないので、チーム名を出す
+// 画面のタイトル。シーズンには題を付けないので、チーム名をバーのタイトルに、「シーズン」をサブタイトルにする
+// （チーム名が届くまでは「シーズン」だけを出す）
 const teamName = ref('')
+useAppBarTitle(() =>
+  teamName.value
+    ? { title: teamName.value, subtitle: t('seasonPortal.shortTitle') }
+    : { title: t('seasonPortal.shortTitle') },
+)
 
 // シーズン初期化フォーム
 const schedules = ref<ScheduleList[]>([])
@@ -871,7 +874,11 @@ const createSeason = async () => {
 }
 
 const currentDateStr = computed(() => {
-  return currentDate.value.toLocaleDateString('ja-JP', { month: 'long', day: 'numeric' })
+  return currentDate.value.toLocaleDateString('ja-JP', {
+    month: 'long',
+    day: 'numeric',
+    weekday: 'short',
+  })
 })
 
 const monthStr = computed(() => {
@@ -1063,11 +1070,6 @@ const filteredTableRows = computed(() => {
 
 const DOW_LABELS = ['日', '月', '火', '水', '木', '金', '土']
 const getDowLabel = (dow: number) => DOW_LABELS[dow]
-const getDowClass = (dow: number) => {
-  if (dow === 0) return 'sun-text'
-  if (dow === 6) return 'sat-text'
-  return ''
-}
 
 const formatTableDate = (date: Date) => {
   return date.toLocaleDateString('ja-JP', { month: 'numeric', day: 'numeric' })
@@ -1090,6 +1092,40 @@ onMounted(async () => {
 </script>
 
 <style scoped>
+/* ===== 「いま」の帯 ===== */
+.now-strip {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 16px;
+}
+.now-strip__date {
+  display: flex;
+  flex-direction: column;
+}
+.now-strip__label {
+  font-size: 0.75rem;
+  color: rgb(var(--v-theme-text-caption));
+}
+.now-strip__value {
+  font-size: 1.25rem;
+  font-weight: 700;
+  line-height: 1.2;
+}
+@media (max-width: 599.98px) {
+  .now-strip {
+    padding: 10px 12px;
+    gap: 10px;
+  }
+  .now-strip__value {
+    font-size: 1.0625rem;
+  }
+  .now-strip > .v-btn {
+    flex: 1 1 100%;
+  }
+}
+
 /* ===== カレンダーツールバー ===== */
 .cal-toolbar {
   display: flex;
@@ -1104,6 +1140,8 @@ onMounted(async () => {
   gap: 8px;
 }
 .month-label {
+  /* カード見出しはゴシック（global の h2 の明朝指定を使わない） */
+  font-family: inherit;
   font-size: 1.2rem;
   font-weight: 700;
   min-width: 130px;
@@ -1131,12 +1169,6 @@ onMounted(async () => {
   font-weight: 700;
   border-bottom: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
   text-align: center;
-}
-.sat-header {
-  color: rgb(var(--v-theme-link));
-}
-.sun-header {
-  color: rgb(var(--v-theme-danger-ink));
 }
 
 .day-cell {
@@ -1170,12 +1202,6 @@ onMounted(async () => {
   background-color: rgb(var(--v-theme-primary));
   color: #fff;
 }
-.sat-num {
-  color: rgb(var(--v-theme-link));
-}
-.sun-num {
-  color: rgb(var(--v-theme-danger-ink));
-}
 
 .not-current-month {
   background-color: rgb(var(--v-theme-surface-variant));
@@ -1188,11 +1214,15 @@ onMounted(async () => {
 .not-current-month:hover {
   background-color: rgb(var(--v-theme-surface-variant));
 }
-.saturday {
-  background-color: rgba(37, 99, 235, 0.05);
+/* 土日は赤・青の文字や地にせず、地色（surface-variant）だけで区別する（赤は「負・要確認・削除」の意味に取っておく） */
+.weekend {
+  background-color: rgb(var(--v-theme-surface-variant));
 }
-.sunday {
-  background-color: rgba(var(--v-theme-error), 0.05);
+.day-cell.weekend:hover {
+  background-image: linear-gradient(
+    rgba(var(--v-theme-primary), 0.06),
+    rgba(var(--v-theme-primary), 0.06)
+  );
 }
 .is-current-day {
   outline: 2px solid rgb(var(--v-theme-primary));
@@ -1366,10 +1396,6 @@ onMounted(async () => {
   font-size: 0.85rem;
 }
 
-.entry-btn {
-  padding: 0 4px !important;
-}
-
 /* ===== 凡例 ===== */
 .calendar-legend {
   padding: 6px 2px;
@@ -1471,14 +1497,6 @@ onMounted(async () => {
 .dow-cell {
   white-space: nowrap;
 }
-.sat-text {
-  color: rgb(var(--v-theme-link));
-  font-weight: 600;
-}
-.sun-text {
-  color: rgb(var(--v-theme-danger-ink));
-  font-weight: 600;
-}
 
 /* ===== レスポンシブ ===== */
 @media (max-width: 960px) {
@@ -1506,16 +1524,20 @@ onMounted(async () => {
     width: 20px;
     height: 20px;
   }
+  /* スマホ: 日程種別は文字を省きアイコンだけ（色と凡例で区別。詳細は日付をタップ） */
   .type-chip {
-    font-size: 0.65rem;
     padding: 1px 3px;
+    text-align: center;
+  }
+  .type-chip__text {
+    display: none;
+  }
+  .type-chip .v-icon {
+    margin-inline-end: 0 !important;
   }
   /* モバイル: 試合情報はダイアログ表示のため非表示 */
   .game-info {
     display: none;
-  }
-  .entry-btn {
-    display: none !important;
   }
   /* 曜日ヘッダーは非表示（日付一覧モード） */
   .weekday-header {

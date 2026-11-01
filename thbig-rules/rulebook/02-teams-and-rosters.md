@@ -175,21 +175,29 @@ def validate_cost(team, cost_list_id):
 
 → `game_rules.yaml`: `lpena.team_composition.outside_world.balance`
 
-**判定基準**: 投手・野手のどちらに数えるかは、カード種別だけでなく契約したコスト区分で決まる。
+**判定基準**: 投手・野手のどちらに数えるかは、上から順に当てはめて最初に該当した行で決める。
 
 | 選手 | 投手に数える | 野手に数える |
 |------|:-----------:|:-----------:|
 | 投手専任・救援専任コストで契約 | ○ | × |
 | 野手専任コストで契約 | × | ○ |
 | 上記以外の二刀流 | ○ | ○ |
-| 上記以外（二刀流でない） | 選んだカードが投手カードなら○ | 選んだカードが野手カードなら○ |
+| 上記以外 | 選んだカードの主な位置が投手なら○ | 選んだカードの主な位置が内野手・外野手・捕手なら○ |
 
-- 専任契約（投手専任・救援専任・野手専任のコスト）の選手は、契約した役だけに数える。救援専任は投手としての専任契約なので投手だけに数える。二刀流でも、もう一方には数えない
-- 専任契約でない二刀流は、投手・野手のどちらにも数える（都合の良い方として扱う）
+- 専任契約（投手専任・救援専任・野手専任のコスト）が最優先。契約した役だけに数え、二刀流でももう一方には数えない。救援専任は投手としての専任契約なので投手だけに数える
+- ここでの二刀流は、元キャラクターがハチナイで投手カードと野手カードの両方を持ち、本人も投手・野手の両方ができる選手に限る。第1章の「投手カードと野手カードの両方を持つ選手」より狭い。専任契約でなければ投手・野手のどちらにも数える（都合の良い方として扱う）
+- それ以外の選手は、選んだカードの主な位置（投手 / 内野手 / 外野手 / 捕手）で数える。カードの主な位置は、Dugout では守備位置の 1 つ目で、取込データの position に当たる。カードの種類（`card_type`）や、守備位置に P があるかどうかでは決めない
 - 4 人全員が投手だけに数えられる編成と、4 人全員が野手だけに数えられる編成が違反になる
 
+例（2025THBIG・hachinai6.1 のカード）:
+
+- 霧雨魔理沙: 通常契約なら投手（主な位置が投手）。野手専任で契約したら野手
+- 天弓千亦: 野手（救援専任カードでも主な位置は内野手）
+- 涼宮ハルヒ: 野手（ハチナイのカードだが 1 枚だけで、主な位置は内野手）。実際に問題になったら裁定を確認する
+
 > 欠落補充（2026-11-02、Operator 裁定）: 旧版は判定を `player_cards` の `card_type` だけで書いており、二刀流と専任契約の扱いが無かった。
-> 裁定: `context/thbig-bench-rule-adjudications.md`（multi-agent-shogun リポジトリ）AMB-29 節（Operator 裁定 2026-11-02）
+> 改訂（2026-11-02、Operator 決定・暫定）: 二刀流をハチナイの二刀流に限り、それ以外は選んだカードの主な位置で数える形に改めた。リーグの正式な裁定を聞けたら改める。
+> 裁定: `context/thbig-bench-rule-adjudications.md`（multi-agent-shogun リポジトリ）AMB-29 節（Operator 裁定 2026-11-02、同日改訂・暫定）
 
 ### バリデーション擬似コード
 
@@ -198,33 +206,39 @@ def validate_cost(team, cost_list_id):
 # （normal_cost / relief_only_cost / pitcher_only_cost / fielder_only_cost / two_way_cost）、
 # player_card は選んだカード。
 #
-# can_pitch(card): card_type == "pitcher"、または投手フラグあり、または守備位置に P がある
-# is_two_way(player): 二刀流選手か（投手カードと野手カードの両方を持つ選手。第1章）
+# is_two_way(player): ハチナイの二刀流か。元キャラクターがハチナイで投手カードと野手カードの
+#   両方を持ち、本人も投手・野手の両方ができる選手に限る（第1章の二刀流より狭い。AMB-29 改訂）
+# primary_position(card): 選んだカードの主な位置（"投手" / "内野手" / "外野手" / "捕手"）。
+#   Dugout では守備位置の 1 つ目（取込データの position に当たる）。
+#   card_type や守備位置に P があるかでは判定しない
 
 PITCHER_ONLY_COSTS = ("pitcher_only_cost", "relief_only_cost")  # 投手としての専任契約
 FIELDER_ONLY_COSTS = ("fielder_only_cost",)                      # 野手としての専任契約
+FIELDER_POSITIONS = ("内野手", "外野手", "捕手")
 
 def counts_as_pitcher(m):
-    # 専任契約は契約した役だけに数える（AMB-29）
+    # 1. 専任契約が最優先。契約した役だけに数える（AMB-29）
     if m.selected_cost_type in FIELDER_ONLY_COSTS:
         return False
     if m.selected_cost_type in PITCHER_ONLY_COSTS:
         return True
-    # 専任契約でない二刀流は投手にも数える
+    # 2. 専任契約でないハチナイの二刀流は投手にも数える
     if is_two_way(m.player):
         return True
-    return m.player_card is not None and can_pitch(m.player_card)
+    # 3. それ以外は選んだカードの主な位置で数える
+    return m.player_card is not None and primary_position(m.player_card) == "投手"
 
 def counts_as_fielder(m):
-    # 専任契約は契約した役だけに数える（AMB-29）
+    # 1. 専任契約が最優先。契約した役だけに数える（AMB-29）
     if m.selected_cost_type in PITCHER_ONLY_COSTS:
         return False
     if m.selected_cost_type in FIELDER_ONLY_COSTS:
         return True
-    # 専任契約でない二刀流は野手にも数える
+    # 2. 専任契約でないハチナイの二刀流は野手にも数える
     if is_two_way(m.player):
         return True
-    return m.player_card is not None and not can_pitch(m.player_card)
+    # 3. それ以外は選んだカードの主な位置で数える
+    return m.player_card is not None and primary_position(m.player_card) in FIELDER_POSITIONS
 
 def validate_outside_world(team):
     native_series = NATIVE_SERIES[team.team_type]
@@ -310,6 +324,6 @@ def validate_outside_world(team):
 
 ## 関連章
 
-- → 第1章: カード種別（外の世界バランスルールの投手/野手判定）
+- → 第1章: カード種別・二刀流（外の世界バランスルールの二刀流は第1章より狭く、ハチナイの二刀流に限る）
 - → 第3章: クールダウン制度（1軍⇔2軍移動の制約）
 - → 第3章: 大会ルール・特例選手ルール（大会ごとのルール値上書き機構・特例選手指定）

@@ -5,6 +5,8 @@ import * as components from 'vuetify/components'
 import * as directives from 'vuetify/directives'
 import { createRouter, createMemoryHistory } from 'vue-router'
 import GameRecordListView from '../GameRecordListView.vue'
+import { createI18n } from 'vue-i18n'
+import ja from '@/locales/ja.json'
 
 vi.mock('@/plugins/axios', () => {
   return {
@@ -28,6 +30,11 @@ vi.mock('@/plugins/axios', () => {
 import axios from '@/plugins/axios'
 
 const vuetify = createVuetify({ components, directives })
+const i18n = createI18n({
+  legacy: false,
+  locale: 'ja',
+  messages: { ja: { asyncState: ja.asyncState } },
+})
 
 function createTestRouter() {
   return createRouter({
@@ -68,7 +75,7 @@ describe('GameRecordListView', () => {
   // Test Basis: thbig-dugout-visual-stage5-mapping.md §7 b3-10〜b3-12
   it('βと全ステータスの状態チップに役割色、flat、アイコンを付ける', async () => {
     const router = createTestRouter()
-    const wrapper = mount(GameRecordListView, { global: { plugins: [vuetify, router] } })
+    const wrapper = mount(GameRecordListView, { global: { plugins: [i18n, vuetify, router] } })
     await flushPromises()
     for (const [label, color, icon] of [
       ['β', 'state-neutral', 'mdi-flask-outline'],
@@ -95,28 +102,31 @@ describe('GameRecordListView', () => {
 
   it('コンポーネントがマウントされること', async () => {
     const router = createTestRouter()
-    const wrapper = mount(GameRecordListView, { global: { plugins: [vuetify, router] } })
+    const wrapper = mount(GameRecordListView, { global: { plugins: [i18n, vuetify, router] } })
     await flushPromises()
     expect(wrapper.exists()).toBe(true)
   })
 
-  it('タイトルが表示されること', async () => {
+  // Test Basis: thbig-dugout-ui-unification-design.md §2.1（画面タイトルはヘッダーバーが持つ。本文に置かない）
+  it('画面タイトルを本文に持たず、骨格（PageLayout）で描く', async () => {
     const router = createTestRouter()
-    const wrapper = mount(GameRecordListView, { global: { plugins: [vuetify, router] } })
+    const wrapper = mount(GameRecordListView, { global: { plugins: [i18n, vuetify, router] } })
     await flushPromises()
-    expect(wrapper.text()).toContain('パーサー結果レビュー')
+    expect(wrapper.find('[data-testid="page-layout"]').exists()).toBe(true)
+    expect(wrapper.find('h1').exists()).toBe(false)
+    expect(wrapper.text()).not.toContain('パーサー結果レビュー')
   })
 
   it('マウント時にgame_recordsを取得すること', async () => {
     const router = createTestRouter()
-    mount(GameRecordListView, { global: { plugins: [vuetify, router] } })
+    mount(GameRecordListView, { global: { plugins: [i18n, vuetify, router] } })
     await flushPromises()
     expect(axios.get).toHaveBeenCalledWith('/game_records')
   })
 
   it('試合記録の対戦カードが表示されること', async () => {
     const router = createTestRouter()
-    const wrapper = mount(GameRecordListView, { global: { plugins: [vuetify, router] } })
+    const wrapper = mount(GameRecordListView, { global: { plugins: [i18n, vuetify, router] } })
     await flushPromises()
     expect(wrapper.text()).toContain('霧雨チーム')
     expect(wrapper.text()).toContain('白玉楼')
@@ -125,14 +135,14 @@ describe('GameRecordListView', () => {
   it('APIエラー時にエラーメッセージが表示されること', async () => {
     vi.mocked(axios.get).mockRejectedValue(new Error('Network Error'))
     const router = createTestRouter()
-    const wrapper = mount(GameRecordListView, { global: { plugins: [vuetify, router] } })
+    const wrapper = mount(GameRecordListView, { global: { plugins: [i18n, vuetify, router] } })
     await flushPromises()
     expect(wrapper.text()).toContain('試合記録の取得に失敗しました')
   })
 
   it('draftとconfirmedの両方のステータスが表示されること', async () => {
     const router = createTestRouter()
-    const wrapper = mount(GameRecordListView, { global: { plugins: [vuetify, router] } })
+    const wrapper = mount(GameRecordListView, { global: { plugins: [i18n, vuetify, router] } })
     await flushPromises()
     expect(wrapper.text()).toContain('未確定')
     expect(wrapper.text()).toContain('確定済み')

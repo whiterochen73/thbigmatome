@@ -4,6 +4,8 @@ import { createVuetify } from 'vuetify'
 import * as components from 'vuetify/components'
 import * as directives from 'vuetify/directives'
 import GamesView from '../GamesView.vue'
+import { createI18n } from 'vue-i18n'
+import ja from '@/locales/ja.json'
 
 // Mock axios
 vi.mock('axios', () => {
@@ -30,6 +32,11 @@ vi.mock('@/plugins/axios', () => ({ default: {} }))
 import axios from 'axios'
 
 const vuetify = createVuetify({ components, directives })
+const i18n = createI18n({
+  legacy: false,
+  locale: 'ja',
+  messages: { ja: { asyncState: ja.asyncState } },
+})
 
 describe('GamesView', () => {
   // Test Basis: thbig-dugout-visual-stage5-mapping.md §7 b3-13
@@ -40,7 +47,7 @@ describe('GamesView', () => {
         { id: 2, real_date: '2026-01-02', status: 'draft' },
       ],
     })
-    const wrapper = mount(GamesView, { global: { plugins: [vuetify] } })
+    const wrapper = mount(GamesView, { global: { plugins: [i18n, vuetify] } })
     await flushPromises()
     for (const [status, color, icon] of [
       ['confirmed', 'state-done', 'mdi-check-circle'],
@@ -63,15 +70,18 @@ describe('GamesView', () => {
   })
 
   it('mounts successfully', async () => {
-    const wrapper = mount(GamesView, { global: { plugins: [vuetify] } })
+    const wrapper = mount(GamesView, { global: { plugins: [i18n, vuetify] } })
     await flushPromises()
     expect(wrapper.exists()).toBe(true)
   })
 
-  it('displays games list header', async () => {
-    const wrapper = mount(GamesView, { global: { plugins: [vuetify] } })
+  // Test Basis: thbig-dugout-ui-unification-design.md §2.1（画面タイトルはヘッダーバーが持つ。本文に置かない）
+  it('画面タイトルを本文に持たず、骨格（PageLayout）で描く', async () => {
+    const wrapper = mount(GamesView, { global: { plugins: [i18n, vuetify] } })
     await flushPromises()
-    expect(wrapper.text()).toContain('試合記録')
+    expect(wrapper.find('[data-testid="page-layout"]').exists()).toBe(true)
+    expect(wrapper.find('h1').exists()).toBe(false)
+    expect(wrapper.text()).not.toContain('試合記録')
   })
 
   it('fetches games on mount', async () => {
@@ -88,7 +98,7 @@ describe('GamesView', () => {
         },
       ],
     })
-    mount(GamesView, { global: { plugins: [vuetify] } })
+    mount(GamesView, { global: { plugins: [i18n, vuetify] } })
     await flushPromises()
     expect(axios.get).toHaveBeenCalledWith('/games', expect.objectContaining({ params: {} }))
   })

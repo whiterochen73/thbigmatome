@@ -127,12 +127,16 @@ describe('CommissionerDashboardView', () => {
     expect(wrapper.exists()).toBe(true)
   })
 
-  it('displays dashboard title', async () => {
+  // Test Basis: thbig-dugout-ui-unification-design.md §2.1（画面タイトルはヘッダーバー。本文は骨格＋タブ）
+  it('画面タイトルを本文に持たず、骨格（PageLayout）の中にタブを描く', async () => {
     const wrapper = mount(CommissionerDashboardView, {
       global: { plugins: [vuetify, pinia, i18n], stubs: { TeamDialog: true, ConfirmDialog: true } },
     })
     await flushPromises()
-    expect(wrapper.text()).toContain('ダッシュボード')
+    expect(wrapper.find('[data-testid="page-layout"]').exists()).toBe(true)
+    expect(wrapper.find('h1').exists()).toBe(false)
+    expect(wrapper.text()).not.toContain('ダッシュボード')
+    expect(wrapper.text()).toContain('全チーム管理')
   })
 
   it('fetches absences on mount', async () => {
@@ -282,7 +286,7 @@ describe('CommissionerDashboardView', () => {
     }
     dashboardVm.activeTab = 'cooldowns'
     await wrapper.vm.$nextTick()
-    expect(wrapper.text()).toContain('クールダウン中選手')
+    expect(wrapper.text()).toContain('博麗霊夢')
   })
 
   it('displays cost records when cost tab is active', async () => {
@@ -300,6 +304,60 @@ describe('CommissionerDashboardView', () => {
     }
     dashboardVm.activeTab = 'costs'
     await wrapper.vm.$nextTick()
-    expect(wrapper.text()).toContain('チーム別コスト使用状況')
+    expect(wrapper.text()).toContain('185 / 200')
+  })
+
+  // Test Basis: thbig-dugout-ui-unification-design.md §2.7（取得の失敗は空状態にせず、ページ内のアラート＋再読み込み）
+  it('離脱者の取得に失敗したら、離脱者タブにアラートと再読み込みを出す（他のタブは巻き込まない）', async () => {
+    ;(axios.get as ReturnType<typeof vi.fn>).mockImplementation((url: string) =>
+      url.includes('absences')
+        ? Promise.reject(new Error('network'))
+        : Promise.resolve({ data: [] }),
+    )
+    const wrapper = mount(CommissionerDashboardView, {
+      global: { plugins: [vuetify, pinia, i18n], stubs: { TeamDialog: true, ConfirmDialog: true } },
+    })
+    await flushPromises()
+    const dashboardVm = wrapper.findComponent(CommissionerDashboard).vm as unknown as {
+      activeTab: string
+    }
+    dashboardVm.activeTab = 'absences'
+    await wrapper.vm.$nextTick()
+    expect(wrapper.find('[data-testid="state-error"]').exists()).toBe(true)
+
+    // 再読み込みで取り直す
+    ;(axios.get as ReturnType<typeof vi.fn>).mockImplementation((url: string) =>
+      Promise.resolve({ data: url.includes('absences') ? mockAbsences : [] }),
+    )
+    await wrapper.find('[data-testid="state-retry"]').trigger('click')
+    await flushPromises()
+    expect(wrapper.find('[data-testid="state-error"]').exists()).toBe(false)
+    expect(wrapper.text()).toContain('霧雨魔理沙')
+  })
+
+  it('チームが 0 件なら空状態を出し、行の操作は名前つきのボタンになる', async () => {
+    const wrapper = mount(CommissionerDashboardView, {
+      global: { plugins: [vuetify, pinia, i18n], stubs: { TeamDialog: true, ConfirmDialog: true } },
+    })
+    await flushPromises()
+    expect(wrapper.find('[data-testid="state-empty"]').exists()).toBe(true)
+    ;(axios.get as ReturnType<typeof vi.fn>).mockImplementation((url: string) =>
+      Promise.resolve({
+        data: url === '/teams' ? [{ id: 1, name: 'チームA', is_active: true }] : [],
+      }),
+    )
+    const w2 = mount(CommissionerDashboardView, {
+      global: { plugins: [vuetify, pinia, i18n], stubs: { TeamDialog: true, ConfirmDialog: true } },
+    })
+    await flushPromises()
+    const labels = w2.findAll('button[aria-label]').map((b) => b.attributes('aria-label'))
+    expect(labels).toEqual(
+      expect.arrayContaining([
+        'チームAのシーズンポータル',
+        'チームAのメンバー編集',
+        'チームAのチーム編集',
+        'チームAを削除',
+      ]),
+    )
   })
 })

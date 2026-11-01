@@ -32,4 +32,15 @@ describe('route.meta.title', () => {
     expect(title('/teams')).toBe('チーム一覧')
     expect(title('/players')).toBe('選手一覧')
   })
+
+  // Test Basis: thbig-dugout-ui-unification-design.md §2.2（ナビ名 = バータイトル = meta.title）。段 2 で画面の見出しとそろえた名前
+  it('段 2 で名前をそろえた画面の題（カードセット・選手カード・パーサーレビュー）', () => {
+    const title = (path: string) => router.getRoutes().find((r) => r.path === path)?.meta.title
+    expect(title('/commissioner/card_sets')).toBe('カードセット')
+    expect(title('/player-cards')).toBe('選手カード')
+    expect(title('/game-records')).toBe('パーサーレビュー')
+    expect(title('/commissioner/dashboard')).toBe('ダッシュボード')
+    expect(title('/managers')).toBe('監督一覧')
+    expect(title('/commissioner/users')).toBe('ユーザー管理')
+  })
 })

@@ -1,153 +1,161 @@
 <!-- eslint-disable vue/valid-v-slot -->
 <template>
-  <v-row>
-    <v-col cols="12">
-      <DataCard title="1軍登録状況">
-        <div class="d-flex align-center mb-4">
-          <v-btn
-            color="link"
-            variant="outlined"
-            prepend-icon="mdi-download"
-            :href="allCsvUrl"
-            :disabled="loading"
-          >
-            全チームCSV出力
-          </v-btn>
-        </div>
-
-        <v-data-table
-          v-model:expanded="expanded"
-          :headers="summaryHeaders"
-          :items="rosterStatus"
-          :loading="loading"
-          density="compact"
-          item-value="team_id"
-          expand-on-click
-          no-data-text="データなし"
+  <AsyncState
+    framed
+    :loading="loading"
+    :error="fetchFailed"
+    error-message="1軍登録状況の取得に失敗しました"
+    :empty="rosterStatus.length === 0"
+    empty-icon="mdi-clipboard-list-outline"
+    empty-message="1軍登録状況のデータがありません"
+    @retry="fetchRosterStatus"
+  >
+    <DataCard title="">
+      <div class="d-flex align-center mb-4">
+        <v-btn
+          color="link"
+          variant="outlined"
+          prepend-icon="mdi-download"
+          :href="allCsvUrl"
+          :disabled="loading"
         >
-          <template #[`item.team_name`]="{ item }">
-            <span class="text-link" style="cursor: pointer">{{ item.team_name }}</span>
-          </template>
-          <template #[`item.team_type`]="{ item }">
-            <v-chip
-              v-if="item.team_type === 'hachinai'"
-              size="small"
-              color="state-info"
-              variant="flat"
-              prepend-icon="mdi-tag-outline"
-            >
-              ハチナイ
-            </v-chip>
-            <span v-else class="text-caption text-medium-emphasis">通常</span>
-          </template>
-          <template #[`item.first_cost`]="{ item }">
-            <div class="d-flex align-center gap-2">
-              <span>{{ item.first_cost }} / {{ item.first_cost_limit ?? '-' }}</span>
-              <StatusChip
-                v-if="item.first_cost_limit !== null && item.first_cost > item.first_cost_limit"
-                status="error"
-                label="超過"
-              />
-            </div>
-          </template>
-          <template #[`item.outside_world_count`]="{ item }">
-            <div class="d-flex align-center gap-2">
-              <span>{{ item.outside_world_count }} / {{ item.outside_world_limit }}</span>
-              <StatusChip
-                v-if="item.outside_world_count > item.outside_world_limit"
-                status="error"
-                label="超過"
-              />
-            </div>
-          </template>
-          <template #[`item.status`]="{ item }">
-            <StatusChip
-              v-if="item.warnings && item.warnings.length > 0"
-              status="warning"
-              label="警告あり"
-            />
-            <StatusChip v-else status="success" label="OK" />
-          </template>
+          全チームCSV出力
+        </v-btn>
+      </div>
 
-          <template #expanded-row="{ item }">
-            <tr>
-              <td :colspan="summaryHeaders.length + 1" class="pa-0">
-                <v-sheet class="pa-4 bg-surface-variant">
-                  <div class="d-flex align-center justify-space-between mb-2">
-                    <span class="text-subtitle-2 font-weight-bold">
-                      {{ item.team_name }} — 1軍選手一覧
-                    </span>
-                    <v-btn
-                      size="small"
-                      variant="outlined"
-                      prepend-icon="mdi-download"
-                      :href="teamCsvUrl(item.team_id)"
-                    >
-                      CSV出力
-                    </v-btn>
-                  </div>
-                  <v-progress-circular
-                    v-if="loadingTeams.has(item.team_id)"
-                    indeterminate
-                    size="24"
-                    class="ma-2"
-                  />
-                  <v-data-table
-                    v-else
-                    :headers="detailHeaders"
-                    :items="teamDetails.get(item.team_id) || []"
-                    density="compact"
-                    no-data-text="選手なし"
-                    hide-default-footer
-                    :items-per-page="-1"
+      <v-data-table
+        v-model:expanded="expanded"
+        :headers="summaryHeaders"
+        :items="rosterStatus"
+        class="ui-table"
+        density="compact"
+        item-value="team_id"
+        expand-on-click
+        no-data-text="データなし"
+      >
+        <template #[`item.team_name`]="{ item }">
+          <span class="text-link" style="cursor: pointer">{{ item.team_name }}</span>
+        </template>
+        <template #[`item.team_type`]="{ item }">
+          <v-chip
+            v-if="item.team_type === 'hachinai'"
+            size="small"
+            color="state-info"
+            variant="flat"
+            prepend-icon="mdi-tag-outline"
+          >
+            ハチナイ
+          </v-chip>
+          <span v-else class="text-caption on-surface-variant">通常</span>
+        </template>
+        <template #[`item.first_cost`]="{ item }">
+          <div class="d-flex align-center gap-2">
+            <span>{{ item.first_cost }} / {{ item.first_cost_limit ?? '-' }}</span>
+            <StatusChip
+              v-if="item.first_cost_limit !== null && item.first_cost > item.first_cost_limit"
+              status="error"
+              label="超過"
+            />
+          </div>
+        </template>
+        <template #[`item.outside_world_count`]="{ item }">
+          <div class="d-flex align-center gap-2">
+            <span>{{ item.outside_world_count }} / {{ item.outside_world_limit }}</span>
+            <StatusChip
+              v-if="item.outside_world_count > item.outside_world_limit"
+              status="error"
+              label="超過"
+            />
+          </div>
+        </template>
+        <template #[`item.status`]="{ item }">
+          <StatusChip
+            v-if="item.warnings && item.warnings.length > 0"
+            status="warning"
+            label="警告あり"
+          />
+          <StatusChip v-else status="success" label="OK" />
+        </template>
+
+        <template #expanded-row="{ item }">
+          <tr>
+            <td :colspan="summaryHeaders.length + 1" class="pa-0">
+              <v-sheet class="pa-4 bg-surface-variant">
+                <div class="d-flex align-center justify-space-between mb-2">
+                  <span class="text-subtitle-2 font-weight-bold">
+                    {{ item.team_name }} — 1軍選手一覧
+                  </span>
+                  <v-btn
+                    size="small"
+                    variant="outlined"
+                    prepend-icon="mdi-download"
+                    :href="teamCsvUrl(item.team_id)"
                   >
-                    <template #[`item.squad`]="{ item: player }">
-                      <v-chip
-                        :color="player.squad === 'first' ? 'zone-game' : 'state-neutral'"
-                        size="small"
-                        variant="flat"
-                        :prepend-icon="
-                          player.squad === 'first'
-                            ? 'mdi-numeric-1-box-outline'
-                            : 'mdi-numeric-2-box-outline'
-                        "
-                      >
-                        {{ player.squad === 'first' ? '1軍' : '2軍' }}
-                      </v-chip>
-                    </template>
-                    <template #[`item.is_outside_world`]="{ item: player }">
-                      <v-icon v-if="player.is_outside_world" class="on-state-info" size="small">
-                        mdi-earth
-                      </v-icon>
-                    </template>
-                    <template #[`item.absence`]="{ item: player }">
-                      <StatusChip
-                        v-if="player.is_absent && player.absence_info"
-                        :status="player.absence_info.absence_type"
-                        :label="absenceLabel(player.absence_info.absence_type)"
-                      />
-                      <span v-else class="text-caption text-medium-emphasis">—</span>
-                    </template>
-                    <template #[`item.cooldown_until`]="{ item: player }">
-                      <span v-if="player.cooldown_until" class="text-caption">
-                        {{ formatDate(player.cooldown_until) }}まで
-                      </span>
-                      <span v-else class="text-caption text-medium-emphasis">—</span>
-                    </template>
-                  </v-data-table>
-                </v-sheet>
-              </td>
-            </tr>
-          </template>
-        </v-data-table>
-      </DataCard>
-    </v-col>
-  </v-row>
+                    CSV出力
+                  </v-btn>
+                </div>
+                <v-progress-circular
+                  v-if="loadingTeams.has(item.team_id)"
+                  indeterminate
+                  size="24"
+                  class="ma-2"
+                />
+                <v-data-table
+                  v-else
+                  :headers="detailHeaders"
+                  :items="teamDetails.get(item.team_id) || []"
+                  density="compact"
+                  no-data-text="選手なし"
+                  hide-default-footer
+                  :items-per-page="-1"
+                >
+                  <template #[`item.squad`]="{ item: player }">
+                    <v-chip
+                      :color="player.squad === 'first' ? 'zone-game' : 'state-neutral'"
+                      size="small"
+                      variant="flat"
+                      :prepend-icon="
+                        player.squad === 'first'
+                          ? 'mdi-numeric-1-box-outline'
+                          : 'mdi-numeric-2-box-outline'
+                      "
+                    >
+                      {{ player.squad === 'first' ? '1軍' : '2軍' }}
+                    </v-chip>
+                  </template>
+                  <template #[`item.is_outside_world`]="{ item: player }">
+                    <v-icon v-if="player.is_outside_world" class="on-state-info" size="small">
+                      mdi-earth
+                    </v-icon>
+                  </template>
+                  <template #[`item.absence`]="{ item: player }">
+                    <StatusChip
+                      v-if="player.is_absent && player.absence_info"
+                      :status="player.absence_info.absence_type"
+                      :label="absenceLabel(player.absence_info.absence_type)"
+                    />
+                    <span v-else class="text-caption on-surface-variant">—</span>
+                  </template>
+                  <template #[`item.cooldown_until`]="{ item: player }">
+                    <span v-if="player.cooldown_until" class="text-caption">
+                      {{ formatDate(player.cooldown_until) }}まで
+                    </span>
+                    <span v-else class="text-caption on-surface-variant">—</span>
+                  </template>
+                </v-data-table>
+              </v-sheet>
+            </td>
+          </tr>
+        </template>
+      </v-data-table>
+    </DataCard>
+  </AsyncState>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, watch, onMounted } from 'vue'
 import axios from 'axios'
+import AsyncState from '@/components/shared/AsyncState.vue'
 import DataCard from '@/components/shared/DataCard.vue'
 import StatusChip from '@/components/shared/StatusChip.vue'
 import type { RosterPlayer } from '@/types/rosterPlayer'
@@ -166,7 +174,8 @@ interface RosterStatusRecord {
 }
 
 const rosterStatus = ref<RosterStatusRecord[]>([])
-const loading = ref(false)
+const loading = ref(true)
+const fetchFailed = ref(false)
 const expanded = ref<string[]>([])
 const teamDetails = ref<Map<number, RosterPlayer[]>>(new Map())
 const loadingTeams = ref<Set<number>>(new Set())
@@ -213,11 +222,13 @@ const teamCsvUrl = (teamId: number) =>
 
 const fetchRosterStatus = async () => {
   loading.value = true
+  fetchFailed.value = false
   try {
     const response = await axios.get<RosterStatusRecord[]>('/commissioner/dashboard/roster_status')
     rosterStatus.value = response.data
   } catch (error) {
     console.error('Failed to fetch roster status:', error)
+    fetchFailed.value = true
   } finally {
     loading.value = false
   }

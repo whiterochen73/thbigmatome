@@ -11,297 +11,295 @@
   <v-window v-model="activeTab">
     <!-- 全チーム管理タブ -->
     <v-window-item value="teams">
-      <v-row>
-        <v-col cols="12">
-          <DataCard title="全チーム管理">
-            <v-data-table
-              :headers="teamHeaders"
-              :items="teams"
-              :loading="teamsLoading"
-              density="compact"
-              item-value="id"
-              no-data-text="チームなし"
-              :row-props="
-                (row: { item: Team }) =>
-                  row.item.is_active ? {} : { class: 'text-medium-emphasis' }
-              "
-            >
-              <template #[`item.team_type`]="{ item }">
-                <v-chip
-                  v-if="item.team_type === 'hachinai'"
-                  size="small"
-                  color="state-info"
-                  variant="flat"
-                  prepend-icon="mdi-tag-outline"
-                >
-                  ハチナイ
-                </v-chip>
-                <span v-else class="text-caption text-medium-emphasis">通常</span>
-              </template>
-              <template #[`item.is_active`]="{ item }">
-                <v-icon v-if="item.is_active">mdi-check</v-icon>
-              </template>
-              <template #[`item.manager_name`]="{ item }">
-                {{ item.director?.name || '-' }}
-              </template>
-              <template #[`item.last_game_real_date`]="{ item }">
-                <span v-if="item.last_game_real_date" class="text-caption">
-                  {{ formatDate(item.last_game_real_date) }}
-                </span>
-                <span v-else class="text-caption text-medium-emphasis">-</span>
-              </template>
-              <template #[`item.season_current_date`]="{ item }">
-                <span v-if="item.season_current_date" class="text-caption">
-                  {{ formatDate(item.season_current_date) }}
-                </span>
-                <span v-else class="text-caption text-medium-emphasis">-</span>
-              </template>
-              <template #[`item.actions`]="{ item }">
-                <v-tooltip text="シーズンポータル" location="top">
-                  <template #activator="{ props }">
-                    <v-icon
-                      v-bind="props"
-                      size="small"
-                      class="mr-2"
-                      @click="navigateToSeason(item)"
-                    >
-                      mdi-calendar-star
-                    </v-icon>
-                  </template>
-                </v-tooltip>
-                <v-tooltip text="メンバー編集" location="top">
-                  <template #activator="{ props }">
-                    <v-icon
-                      v-bind="props"
-                      size="small"
-                      class="mr-2"
-                      @click="navigateToMembers(item.id)"
-                    >
-                      mdi-account-group
-                    </v-icon>
-                  </template>
-                </v-tooltip>
-                <v-tooltip text="チーム編集" location="top">
-                  <template #activator="{ props }">
-                    <v-icon v-bind="props" size="small" class="mr-2" @click="openTeamDialog(item)">
-                      mdi-pencil
-                    </v-icon>
-                  </template>
-                </v-tooltip>
-                <v-tooltip text="削除" location="top">
-                  <template #activator="{ props }">
-                    <v-icon v-bind="props" size="small" @click="deleteTeam(item.id)"
-                      >mdi-delete</v-icon
-                    >
-                  </template>
-                </v-tooltip>
-              </template>
-            </v-data-table>
-          </DataCard>
-        </v-col>
-      </v-row>
+      <AsyncState
+        framed
+        :loading="teamsLoading"
+        :error="teamsFailed"
+        error-message="チーム一覧の取得に失敗しました"
+        :empty="teams.length === 0"
+        empty-icon="mdi-account-group-outline"
+        empty-message="チームが登録されていません"
+        @retry="fetchTeams"
+      >
+        <DataCard title="">
+          <v-data-table
+            class="ui-table"
+            :headers="teamHeaders"
+            :items="teams"
+            density="compact"
+            item-value="id"
+            no-data-text="チームなし"
+            :row-props="
+              (row: { item: Team }) => (row.item.is_active ? {} : { class: 'on-surface-variant' })
+            "
+          >
+            <template #[`item.team_type`]="{ item }">
+              <v-chip
+                v-if="item.team_type === 'hachinai'"
+                size="small"
+                color="state-info"
+                variant="flat"
+                prepend-icon="mdi-tag-outline"
+              >
+                ハチナイ
+              </v-chip>
+              <span v-else class="text-caption on-surface-variant">通常</span>
+            </template>
+            <template #[`item.is_active`]="{ item }">
+              <v-icon v-if="item.is_active">mdi-check</v-icon>
+            </template>
+            <template #[`item.manager_name`]="{ item }">
+              {{ item.director?.name || '-' }}
+            </template>
+            <template #[`item.last_game_real_date`]="{ item }">
+              <span v-if="item.last_game_real_date" class="text-caption">
+                {{ formatDate(item.last_game_real_date) }}
+              </span>
+              <span v-else class="text-caption on-surface-variant">-</span>
+            </template>
+            <template #[`item.season_current_date`]="{ item }">
+              <span v-if="item.season_current_date" class="text-caption">
+                {{ formatDate(item.season_current_date) }}
+              </span>
+              <span v-else class="text-caption on-surface-variant">-</span>
+            </template>
+            <template #[`item.actions`]="{ item }">
+              <div class="team-row-actions">
+                <RowIconButton
+                  icon="mdi-calendar-star"
+                  :label="`${item.name}のシーズンポータル`"
+                  @click="navigateToSeason(item)"
+                />
+                <RowIconButton
+                  icon="mdi-account-group"
+                  :label="`${item.name}のメンバー編集`"
+                  @click="navigateToMembers(item.id)"
+                />
+                <RowIconButton
+                  icon="mdi-pencil"
+                  :label="`${item.name}のチーム編集`"
+                  @click="openTeamDialog(item)"
+                />
+                <RowIconButton
+                  icon="mdi-delete-outline"
+                  danger
+                  :label="`${item.name}を削除`"
+                  @click="deleteTeam(item.id)"
+                />
+              </div>
+            </template>
+          </v-data-table>
+        </DataCard>
+      </AsyncState>
     </v-window-item>
 
     <!-- 離脱者一覧タブ -->
     <v-window-item value="absences">
-      <v-row>
-        <v-col cols="12">
-          <DataCard title="離脱者一覧">
-            <FilterBar>
-              <template #search>
-                <v-text-field
-                  v-model="searchQuery"
-                  label="選手名検索"
-                  prepend-inner-icon="mdi-magnify"
-                  variant="outlined"
-                  density="compact"
-                  clearable
-                  hide-details
-                />
-              </template>
-              <template #filters>
-                <v-select
-                  v-model="selectedAbsenceType"
-                  :items="absenceTypeOptions"
-                  label="離脱種別"
-                  variant="outlined"
-                  density="compact"
-                  clearable
-                  hide-details
-                />
-              </template>
-            </FilterBar>
+      <AsyncState
+        framed
+        :loading="absencesLoading"
+        :error="absencesFailed"
+        error-message="離脱者の取得に失敗しました"
+        :empty="absences.length === 0"
+        empty-icon="mdi-account-off-outline"
+        empty-message="離脱者はいません"
+        @retry="fetchAbsences"
+      >
+        <DataCard title="">
+          <FilterBar>
+            <template #search>
+              <v-text-field
+                v-model="searchQuery"
+                label="選手名検索"
+                prepend-inner-icon="mdi-magnify"
+                variant="outlined"
+                density="compact"
+                clearable
+                hide-details
+              />
+            </template>
+            <template #filters>
+              <v-select
+                v-model="selectedAbsenceType"
+                :items="absenceTypeOptions"
+                label="離脱種別"
+                variant="outlined"
+                density="compact"
+                clearable
+                hide-details
+              />
+            </template>
+          </FilterBar>
 
-            <v-data-table
-              :headers="absenceHeaders"
-              :items="filteredAbsences"
-              :loading="absencesLoading"
-              density="compact"
-              :row-props="getRowProps"
-            >
-              <template v-slot:item.absence_type="{ item }">
-                <StatusChip
-                  :status="item.absence_type"
-                  :label="absenceTypeLabel(item.absence_type)"
-                />
+          <v-data-table
+            class="ui-table"
+            :headers="absenceHeaders"
+            :items="filteredAbsences"
+            density="compact"
+            :row-props="getRowProps"
+          >
+            <template v-slot:item.absence_type="{ item }">
+              <StatusChip
+                :status="item.absence_type"
+                :label="absenceTypeLabel(item.absence_type)"
+              />
+            </template>
+            <template v-slot:item.start_date="{ item }">
+              {{ formatDate(item.start_date) }}
+            </template>
+            <template v-slot:item.effective_end_date="{ item }">
+              {{ item.effective_end_date ? formatDate(item.effective_end_date) : '不明' }}
+            </template>
+            <template v-slot:item.remaining="{ item }">
+              <template v-if="getRemainingDisplay(item) !== null">
+                <v-chip
+                  :color="
+                    getRemainingCount(item) !== null && getRemainingCount(item)! <= 2
+                      ? 'state-done'
+                      : undefined
+                  "
+                  :variant="
+                    getRemainingCount(item) !== null && getRemainingCount(item)! <= 2
+                      ? 'flat'
+                      : 'text'
+                  "
+                  :prepend-icon="
+                    getRemainingCount(item) !== null && getRemainingCount(item)! <= 2
+                      ? 'mdi-clock-check-outline'
+                      : undefined
+                  "
+                  size="small"
+                >
+                  {{ getRemainingDisplay(item) }}
+                </v-chip>
               </template>
-              <template v-slot:item.start_date="{ item }">
-                {{ formatDate(item.start_date) }}
-              </template>
-              <template v-slot:item.effective_end_date="{ item }">
-                {{ item.effective_end_date ? formatDate(item.effective_end_date) : '不明' }}
-              </template>
-              <template v-slot:item.remaining="{ item }">
-                <template v-if="getRemainingDisplay(item) !== null">
-                  <v-chip
-                    :color="
-                      getRemainingCount(item) !== null && getRemainingCount(item)! <= 2
-                        ? 'state-done'
-                        : undefined
-                    "
-                    :variant="
-                      getRemainingCount(item) !== null && getRemainingCount(item)! <= 2
-                        ? 'flat'
-                        : 'text'
-                    "
-                    :prepend-icon="
-                      getRemainingCount(item) !== null && getRemainingCount(item)! <= 2
-                        ? 'mdi-clock-check-outline'
-                        : undefined
-                    "
-                    size="small"
-                  >
-                    {{ getRemainingDisplay(item) }}
-                  </v-chip>
-                </template>
-                <span v-else class="text-caption text-medium-emphasis">不明</span>
-              </template>
-            </v-data-table>
-          </DataCard>
-        </v-col>
-      </v-row>
+              <span v-else class="text-caption on-surface-variant">不明</span>
+            </template>
+          </v-data-table>
+        </DataCard>
+      </AsyncState>
     </v-window-item>
 
     <!-- クールダウンタブ -->
     <v-window-item value="cooldowns">
-      <v-row>
-        <v-col cols="12">
-          <DataCard title="クールダウン中選手">
-            <FilterBar>
-              <template #search>
-                <v-text-field
-                  v-model="cooldownSearchQuery"
-                  label="選手名検索"
-                  prepend-inner-icon="mdi-magnify"
-                  variant="outlined"
-                  density="compact"
-                  clearable
-                  hide-details
-                />
-              </template>
-            </FilterBar>
+      <AsyncState
+        framed
+        :loading="cooldownsLoading"
+        :error="cooldownsFailed"
+        error-message="クールダウン中の選手の取得に失敗しました"
+        :empty="cooldowns.length === 0"
+        empty-icon="mdi-timer-sand-empty"
+        empty-message="クールダウン中の選手はいません"
+        @retry="fetchCooldowns"
+      >
+        <DataCard title="">
+          <FilterBar>
+            <template #search>
+              <v-text-field
+                v-model="cooldownSearchQuery"
+                label="選手名検索"
+                prepend-inner-icon="mdi-magnify"
+                variant="outlined"
+                density="compact"
+                clearable
+                hide-details
+              />
+            </template>
+          </FilterBar>
 
-            <v-data-table
-              :headers="cooldownHeaders"
-              :items="filteredCooldowns"
-              :loading="cooldownsLoading"
-              density="compact"
-            >
-              <template v-slot:item.demotion_date="{ item }">
-                {{ formatDate(item.demotion_date) }}
-              </template>
-              <template v-slot:item.cooldown_until="{ item }">
-                {{ formatDate(item.cooldown_until) }}
-              </template>
-              <template v-slot:item.remaining_days="{ item }">
-                <v-chip
-                  :prepend-icon="item.remaining_days <= 2 ? 'mdi-clock-check-outline' : undefined"
-                  :color="item.remaining_days <= 2 ? 'state-done' : undefined"
-                  :variant="item.remaining_days <= 2 ? 'flat' : 'text'"
-                  size="small"
-                >
-                  {{ item.remaining_days }}日
-                </v-chip>
-              </template>
-              <template v-slot:item.same_day_exempt="{ item }">
-                <v-chip
-                  v-if="item.same_day_exempt"
-                  color="state-neutral"
-                  variant="flat"
-                  size="small"
-                >
-                  同日免除
-                </v-chip>
-              </template>
-            </v-data-table>
-          </DataCard>
-        </v-col>
-      </v-row>
+          <v-data-table
+            class="ui-table"
+            :headers="cooldownHeaders"
+            :items="filteredCooldowns"
+            density="compact"
+          >
+            <template v-slot:item.demotion_date="{ item }">
+              {{ formatDate(item.demotion_date) }}
+            </template>
+            <template v-slot:item.cooldown_until="{ item }">
+              {{ formatDate(item.cooldown_until) }}
+            </template>
+            <template v-slot:item.remaining_days="{ item }">
+              <v-chip
+                :prepend-icon="item.remaining_days <= 2 ? 'mdi-clock-check-outline' : undefined"
+                :color="item.remaining_days <= 2 ? 'state-done' : undefined"
+                :variant="item.remaining_days <= 2 ? 'flat' : 'text'"
+                size="small"
+              >
+                {{ item.remaining_days }}日
+              </v-chip>
+            </template>
+            <template v-slot:item.same_day_exempt="{ item }">
+              <v-chip v-if="item.same_day_exempt" color="state-neutral" variant="flat" size="small">
+                同日免除
+              </v-chip>
+            </template>
+          </v-data-table>
+        </DataCard>
+      </AsyncState>
     </v-window-item>
 
     <!-- コスト使用状況タブ -->
     <v-window-item value="costs">
-      <v-row>
-        <v-col cols="12">
-          <DataCard title="チーム別コスト使用状況">
-            <v-data-table
-              :headers="costHeaders"
-              :items="costs"
-              :loading="costsLoading"
-              density="compact"
-            >
-              <template v-slot:item.team_type="{ item }">
-                <v-chip
-                  v-if="item.team_type === 'hachinai'"
-                  size="small"
-                  color="state-info"
-                  variant="flat"
-                  prepend-icon="mdi-tag-outline"
+      <AsyncState
+        framed
+        :loading="costsLoading"
+        :error="costsFailed"
+        error-message="コスト使用状況の取得に失敗しました"
+        :empty="costs.length === 0"
+        empty-icon="mdi-currency-jpy"
+        empty-message="コスト使用状況がありません"
+        @retry="fetchCosts"
+      >
+        <DataCard title="">
+          <v-data-table class="ui-table" :headers="costHeaders" :items="costs" density="compact">
+            <template v-slot:item.team_type="{ item }">
+              <v-chip
+                v-if="item.team_type === 'hachinai'"
+                size="small"
+                color="state-info"
+                variant="flat"
+                prepend-icon="mdi-tag-outline"
+              >
+                ハチナイ
+              </v-chip>
+              <span v-else class="text-caption on-surface-variant">通常</span>
+            </template>
+            <template v-slot:item.total_cost="{ item }">
+              <div class="d-flex align-center gap-2 flex-nowrap">
+                <span style="white-space: nowrap"
+                  >{{ item.total_cost }} / {{ item.total_cost_limit }}</span
                 >
-                  ハチナイ
-                </v-chip>
-                <span v-else class="text-caption text-medium-emphasis">通常</span>
-              </template>
-              <template v-slot:item.total_cost="{ item }">
-                <div class="d-flex align-center gap-2 flex-nowrap">
-                  <span style="white-space: nowrap"
-                    >{{ item.total_cost }} / {{ item.total_cost_limit }}</span
-                  >
-                  <v-progress-linear
-                    :model-value="item.cost_usage_ratio * 100"
-                    :color="getCostColor(item.cost_usage_ratio)"
-                    height="8"
-                    rounded
-                    style="min-width: 80px; max-width: 120px"
-                  />
-                  <StatusChip v-if="item.cost_usage_ratio > 1.0" status="error" label="超過" />
-                  <StatusChip
-                    v-else-if="item.cost_usage_ratio > 0.9"
-                    status="warning"
-                    label="警告"
-                  />
-                </div>
-              </template>
-              <template v-slot:item.first_squad_cost="{ item }">
-                <div class="d-flex align-center gap-2 flex-nowrap">
-                  <span v-if="item.first_squad_cost_limit !== null" style="white-space: nowrap">
-                    {{ item.first_squad_cost }} / {{ item.first_squad_cost_limit }}
-                  </span>
-                  <span v-else style="white-space: nowrap"> {{ item.first_squad_cost }} / — </span>
-                  <v-progress-linear
-                    v-if="item.first_squad_cost_limit"
-                    :model-value="(item.first_squad_cost / item.first_squad_cost_limit) * 100"
-                    :color="getCostColor(item.first_squad_cost / item.first_squad_cost_limit)"
-                    height="8"
-                    rounded
-                    style="min-width: 80px; max-width: 120px"
-                  />
-                </div>
-              </template>
-            </v-data-table>
-          </DataCard>
-        </v-col>
-      </v-row>
+                <v-progress-linear
+                  :model-value="item.cost_usage_ratio * 100"
+                  :color="getCostColor(item.cost_usage_ratio)"
+                  height="8"
+                  rounded
+                  style="min-width: 80px; max-width: 120px"
+                />
+                <StatusChip v-if="item.cost_usage_ratio > 1.0" status="error" label="超過" />
+                <StatusChip v-else-if="item.cost_usage_ratio > 0.9" status="warning" label="警告" />
+              </div>
+            </template>
+            <template v-slot:item.first_squad_cost="{ item }">
+              <div class="d-flex align-center gap-2 flex-nowrap">
+                <span v-if="item.first_squad_cost_limit !== null" style="white-space: nowrap">
+                  {{ item.first_squad_cost }} / {{ item.first_squad_cost_limit }}
+                </span>
+                <span v-else style="white-space: nowrap"> {{ item.first_squad_cost }} / — </span>
+                <v-progress-linear
+                  v-if="item.first_squad_cost_limit"
+                  :model-value="(item.first_squad_cost / item.first_squad_cost_limit) * 100"
+                  :color="getCostColor(item.first_squad_cost / item.first_squad_cost_limit)"
+                  height="8"
+                  rounded
+                  style="min-width: 80px; max-width: 120px"
+                />
+              </div>
+            </template>
+          </v-data-table>
+        </DataCard>
+      </AsyncState>
     </v-window-item>
 
     <!-- 1軍登録状況タブ -->
@@ -318,7 +316,9 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import axios from 'axios'
+import AsyncState from '@/components/shared/AsyncState.vue'
 import DataCard from '@/components/shared/DataCard.vue'
+import RowIconButton from '@/components/shared/RowIconButton.vue'
 import FilterBar from '@/components/shared/FilterBar.vue'
 import StatusChip from '@/components/shared/StatusChip.vue'
 import TeamDialog from '@/components/TeamDialog.vue'
@@ -377,36 +377,40 @@ const activeTab = ref('teams')
 
 // 全チーム管理
 const teams = ref<Team[]>([])
-const teamsLoading = ref(false)
+const teamsLoading = ref(true)
+const teamsFailed = ref(false)
 const dialogVisible = ref(false)
 const editingTeam = ref<Team | null>(null)
 const confirmDialog = ref<InstanceType<typeof ConfirmDialog> | null>(null)
 
 const teamHeaders = [
-  { title: 'ID', key: 'id' },
+  { title: 'ID', key: 'id', nowrap: true },
   { title: 'チーム名', key: 'name' },
-  { title: '略称', key: 'short_name' },
-  { title: '種別', key: 'team_type', sortable: false },
+  { title: '略称', key: 'short_name', nowrap: true },
+  { title: '種別', key: 'team_type', sortable: false, nowrap: true },
   { title: '監督', key: 'manager_name', sortable: false },
-  { title: 'アクティブ', key: 'is_active', sortable: false },
-  { title: '最終試合日', key: 'last_game_real_date' },
-  { title: 'ゲーム内日付', key: 'season_current_date' },
-  { title: '操作', key: 'actions', sortable: false },
+  { title: 'アクティブ', key: 'is_active', sortable: false, nowrap: true },
+  { title: '最終試合日', key: 'last_game_real_date', nowrap: true },
+  { title: 'ゲーム内日付', key: 'season_current_date', nowrap: true },
+  { title: '操作', key: 'actions', sortable: false, nowrap: true },
 ]
 
 // 離脱者
 const absences = ref<AbsenceRecord[]>([])
-const absencesLoading = ref(false)
+const absencesLoading = ref(true)
+const absencesFailed = ref(false)
 const searchQuery = ref('')
 const selectedAbsenceType = ref<string | null>(null)
 
 // コスト
 const costs = ref<CostRecord[]>([])
-const costsLoading = ref(false)
+const costsLoading = ref(true)
+const costsFailed = ref(false)
 
 // クールダウン
 const cooldowns = ref<CooldownRecord[]>([])
-const cooldownsLoading = ref(false)
+const cooldownsLoading = ref(true)
+const cooldownsFailed = ref(false)
 const cooldownSearchQuery = ref('')
 
 const absenceTypeOptions = [
@@ -499,12 +503,13 @@ const getCostColor = (ratio: number): string => {
 
 const fetchTeams = async () => {
   teamsLoading.value = true
+  teamsFailed.value = false
   try {
     const response = await axios.get<Team[]>('/teams')
     teams.value = response.data
   } catch (error) {
     console.error('Failed to fetch teams:', error)
-    showSnackbar('チーム一覧の取得に失敗しました', 'error')
+    teamsFailed.value = true
   } finally {
     teamsLoading.value = false
   }
@@ -542,11 +547,13 @@ const deleteTeam = async (id: number) => {
 
 const fetchAbsences = async () => {
   absencesLoading.value = true
+  absencesFailed.value = false
   try {
     const response = await axios.get('/commissioner/dashboard/absences')
     absences.value = response.data
   } catch (error) {
     console.error('Failed to fetch absences:', error)
+    absencesFailed.value = true
   } finally {
     absencesLoading.value = false
   }
@@ -554,11 +561,13 @@ const fetchAbsences = async () => {
 
 const fetchCosts = async () => {
   costsLoading.value = true
+  costsFailed.value = false
   try {
     const response = await axios.get('/commissioner/dashboard/costs')
     costs.value = response.data
   } catch (error) {
     console.error('Failed to fetch costs:', error)
+    costsFailed.value = true
   } finally {
     costsLoading.value = false
   }
@@ -566,11 +575,13 @@ const fetchCosts = async () => {
 
 const fetchCooldowns = async () => {
   cooldownsLoading.value = true
+  cooldownsFailed.value = false
   try {
     const response = await axios.get('/commissioner/dashboard/cooldowns')
     cooldowns.value = response.data
   } catch (error) {
     console.error('Failed to fetch cooldowns:', error)
+    cooldownsFailed.value = true
   } finally {
     cooldownsLoading.value = false
   }
@@ -583,3 +594,11 @@ onMounted(() => {
   fetchCooldowns()
 })
 </script>
+
+<style scoped>
+.team-row-actions {
+  display: flex;
+  flex-wrap: nowrap;
+  white-space: nowrap;
+}
+</style>

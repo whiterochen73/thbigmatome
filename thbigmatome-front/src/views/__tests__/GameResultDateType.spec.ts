@@ -352,6 +352,31 @@ describe('GameResult 試合日ページ: 日付種類の変更ダイアログ', 
     expect(document.activeElement).toBe(trigger(wrapper).element)
   })
 
+  // 「変更」で確定した時に立てるフラグを戻し忘れると、次に開いて Esc で閉じた時だけ focus が BODY へ落ちる。
+  // 各 it が新規マウントだと戻し忘れは見えないので、同じインスタンスで 2 回開いて確かめる
+  it('変更を 1 度確定した後、同じインスタンスで開き直して Esc で閉じても、focus がチップへ戻る', async () => {
+    const { wrapper } = await mountDay({ game: { score: null, opponent_score: null } })
+    mockPatch.mockResolvedValue({ data: {} })
+    await openDialog(wrapper)
+    await pick('travel_day')
+    await press('date-type-confirm')
+    expect(dialogOpen(wrapper)).toBe(false)
+    expect(document.activeElement).toBe(trigger(wrapper).element)
+
+    // フォーカスを外してから、もう一度開く（戻り先が前回の名残でないことを確かめる）
+    ;(document.activeElement as HTMLElement).blur()
+    await openDialog(wrapper)
+    expect(dialogOpen(wrapper)).toBe(true)
+    expect(document.activeElement).not.toBe(trigger(wrapper).element)
+    inBody('[data-testid="date-type-dialog"]')!.dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }),
+    )
+    await flushPromises()
+    expect(dialogOpen(wrapper)).toBe(false)
+    expect(document.activeElement).toBe(trigger(wrapper).element)
+    expect(mockPatch).toHaveBeenCalledTimes(1)
+  })
+
   it('保存の間に利用者が別の場所へ focus を移していたら、保存後もそこから奪わない', async () => {
     const { wrapper } = await mountDay({ game: { score: null, opponent_score: null } })
     let release!: () => void

@@ -1,6 +1,6 @@
 <template>
   <v-card>
-    <v-card-title class="d-flex align-center">
+    <v-card-title v-if="title || $slots['title-actions']" class="d-flex align-center">
       <span>{{ title }}</span>
       <v-spacer />
       <slot name="title-actions" />

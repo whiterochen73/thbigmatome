@@ -54,6 +54,18 @@ export interface RosterStatusRecord {
   warnings: string[]
 }
 
+/** 試合数の進み（/commissioner/dashboard/game_progress）。プレーオフは総数を持たず消化数だけ */
+export interface GameProgressRecord {
+  team_id: number
+  /** レギュラーシーズンの消化数（両軍の得点が入った試合） */
+  regular_played: number
+  /** レギュラーシーズンの総数（日程マスタの試合日。通常 143） */
+  regular_total: number
+  /** まだ振り替えていない雨天中止・ノーゲームの数。0 なら画面に出さない */
+  regular_unrescheduled: number
+  playoff_played: number
+}
+
 /** 1 本の API の取得状態（API ごとに別々に持つ。遅い API が他を待たせない） */
 export interface DashboardResource<T> {
   data: T[]

@@ -11,6 +11,7 @@ import type {
   CooldownRecord,
   CostRecord,
   DashboardResource,
+  GameProgressRecord,
   RosterStatusRecord,
 } from '@/types/commissionerDashboard'
 import type { Team } from '@/types/team'
@@ -88,12 +89,22 @@ const cooldown = (team_id: number, remaining_days: number): CooldownRecord => ({
   same_day_exempt: false,
 })
 
+const progress = (team_id: number, over: Partial<GameProgressRecord> = {}): GameProgressRecord => ({
+  team_id,
+  regular_played: 34,
+  regular_total: 143,
+  regular_unrescheduled: 0,
+  playoff_played: 0,
+  ...over,
+})
+
 type Props = {
   teams: DashboardResource<Team>
   absences: DashboardResource<AbsenceRecord>
   cooldowns: DashboardResource<CooldownRecord>
   costs: DashboardResource<CostRecord>
   rosterStatus: DashboardResource<RosterStatusRecord>
+  gameProgress: DashboardResource<GameProgressRecord>
 }
 const baseProps = (over: Partial<Props> = {}): Props => ({
   teams: ok([team(1), team(2), team(3, { is_active: false })]),
@@ -101,6 +112,7 @@ const baseProps = (over: Partial<Props> = {}): Props => ({
   cooldowns: ok([]),
   costs: ok([]),
   rosterStatus: ok([]),
+  gameProgress: ok([progress(1), progress(2)]),
   ...over,
 })
 
@@ -378,11 +390,11 @@ describe('DashboardOverview チームの表', () => {
   it('稼働中のチームだけを、既定は進みが遅い順に並べる。休止中は末尾に件数だけ出す', () => {
     const w = mountOverview(
       baseProps({
-        teams: ok([
-          team(1, { season_current_date: '2026-06-01' }),
-          team(2, { season_current_date: '2026-04-01' }),
-          team(3, { is_active: false, season_current_date: '2026-03-25' }),
-          team(4, { is_active: false }),
+        teams: ok([team(1), team(2), team(3, { is_active: false }), team(4, { is_active: false })]),
+        gameProgress: ok([
+          progress(1, { regular_played: 80 }),
+          progress(2, { regular_played: 20 }),
+          progress(3, { regular_played: 143 }),
         ]),
       }),
     )
@@ -546,13 +558,172 @@ describe('DashboardOverview チームの表', () => {
   })
 })
 
-describe('DashboardOverview 進み具合の欄（試合数は今回出さない）', () => {
-  it('日付の位置（その月日）だけを出し、試合数（消化/総数）は出さない', () => {
+// Test Basis: thbig-dugout-commissioner-dashboard-visual-design.md 末尾の Operator 決定 2026-11-02（進み具合は「消化 / 143」・総数は 143 固定・未振替数を別に出す）
+// と schedule-extra-game-day.md 末尾（未振替は max(0, 143 − 数える日)。API は subtask_1802b）
+describe('DashboardOverview 進み具合の欄（消化 / 総数・未振替・プレーオフ）', () => {
+  const cellOf = (w: VueWrapper, name: string) => {
+    const tr = w
+      .findAll('[data-testid="team-table-card"] tbody tr')
+      .find((r) => r.find('b').text() === name)!
+    return tr.find('td.progress-cell')
+  }
+
+  it('「消化 / 143」の形で出す（総数は API の regular_total）。日付は出さない', () => {
     const w = mountOverview(
-      baseProps({ teams: ok([team(1, { season_current_date: '2026-05-08' })]) }),
+      baseProps({
+        teams: ok([team(1, { season_current_date: '2026-05-08' })]),
+        gameProgress: ok([progress(1, { regular_played: 34, regular_total: 143 })]),
+      }),
     )
-    const cell = w.find('[data-testid="team-table-card"] tbody tr td.progress-cell')
-    expect(cell.text()).toContain('5月8日')
-    expect(cell.text()).not.toMatch(/\d+\s*\/\s*\d+/)
+    const cell = cellOf(w, 'チーム1')
+    expect(cell.find('[data-testid="games-count"]').text().replace(/\s+/g, '')).toBe('34/143')
+    expect(cell.text()).not.toContain('5月8日')
+  })
+
+  it('棒の長さは 消化 / 総数（34/143 ≈ 23.8%）。0 試合でも 3% は見せ、143/143 は満杯', () => {
+    const w = mountOverview(
+      baseProps({
+        teams: ok([team(1), team(2), team(3)]),
+        gameProgress: ok([
+          progress(1, { regular_played: 34 }),
+          progress(2, { regular_played: 0 }),
+          progress(3, { regular_played: 143 }),
+        ]),
+      }),
+    )
+    const value = (name: string) =>
+      Number(cellOf(w, name).find('[role="progressbar"]').attributes('aria-valuenow'))
+    expect(value('チーム1')).toBeCloseTo((34 / 143) * 100, 1)
+    expect(value('チーム2')).toBe(3)
+    expect(value('チーム3')).toBe(100)
+  })
+
+  it('未振替 0 は出さない。1 以上のチームにだけ「未振替 n」を出す（1・複数）', () => {
+    const w = mountOverview(
+      baseProps({
+        teams: ok([team(1), team(2), team(3)]),
+        gameProgress: ok([
+          progress(1, { regular_unrescheduled: 0 }),
+          progress(2, { regular_unrescheduled: 1 }),
+          progress(3, { regular_unrescheduled: 6 }),
+        ]),
+      }),
+    )
+    expect(cellOf(w, 'チーム1').find('[data-testid="unrescheduled"]').exists()).toBe(false)
+    expect(cellOf(w, 'チーム1').text()).not.toContain('未振替')
+    expect(cellOf(w, 'チーム2').find('[data-testid="unrescheduled"]').text()).toBe('未振替 1')
+    expect(cellOf(w, 'チーム3').find('[data-testid="unrescheduled"]').text()).toBe('未振替 6')
+  })
+
+  it('未振替は警告色のチップにしない（控えめな文字）', () => {
+    const w = mountOverview(
+      baseProps({
+        teams: ok([team(1)]),
+        gameProgress: ok([progress(1, { regular_unrescheduled: 2 })]),
+      }),
+    )
+    const mark = cellOf(w, 'チーム1').find('[data-testid="unrescheduled"]')
+    expect(mark.classes()).toContain('on-surface-variant')
+    expect(mark.findAllComponents(components.VChip)).toHaveLength(0)
+  })
+
+  it('プレーオフの消化があるチームは、レギュラーの「消化 / 総数」に加えてプレーオフの消化数だけを添える（総数は出さない）', () => {
+    const w = mountOverview(
+      baseProps({
+        teams: ok([team(1), team(2)]),
+        gameProgress: ok([
+          progress(1, { regular_played: 143, playoff_played: 5 }),
+          progress(2, { regular_played: 143, playoff_played: 0, regular_unrescheduled: 1 }),
+        ]),
+      }),
+    )
+    const c1 = cellOf(w, 'チーム1')
+    expect(c1.find('[data-testid="games-count"]').text().replace(/\s+/g, '')).toBe('143/143')
+    expect(c1.find('[data-testid="playoff-played"]').text()).toBe('プレーオフ 5 試合')
+    expect(c1.find('[data-testid="playoff-played"]').text()).not.toContain('/')
+    expect(cellOf(w, 'チーム2').find('[data-testid="playoff-played"]').exists()).toBe(false)
+  })
+
+  it('並べ替えの既定は消化数の少ない順。列見出しで多い順にも変えられる', async () => {
+    const w = mountOverview(
+      baseProps({
+        teams: ok([team(1), team(2), team(3)]),
+        gameProgress: ok([
+          progress(1, { regular_played: 100 }),
+          progress(2, { regular_played: 20 }),
+          progress(3, { regular_played: 143 }),
+        ]),
+      }),
+    )
+    expect(rowNames(w)).toEqual(['チーム2', 'チーム1', 'チーム3'])
+    const header = w
+      .findAll('[data-testid="team-table-card"] thead th')
+      .find((th) => th.text().includes('進み具合'))!
+    await header.trigger('click')
+    expect(rowNames(w)).toEqual(['チーム3', 'チーム1', 'チーム2'])
+  })
+
+  it('消化数が文字列順でなく数値順で並ぶ（9 < 10 < 100）', () => {
+    const w = mountOverview(
+      baseProps({
+        teams: ok([team(1), team(2), team(3)]),
+        gameProgress: ok([
+          progress(1, { regular_played: 100 }),
+          progress(2, { regular_played: 9 }),
+          progress(3, { regular_played: 10 }),
+        ]),
+      }),
+    )
+    expect(rowNames(w)).toEqual(['チーム2', 'チーム3', 'チーム1'])
+  })
+
+  it('game_progress に無いチームは「—」で、並べ替えでは末尾（他の列は出る）', () => {
+    const w = mountOverview(
+      baseProps({
+        teams: ok([team(1), team(2)]),
+        gameProgress: ok([progress(2, { regular_played: 50 })]),
+      }),
+    )
+    expect(cellOf(w, 'チーム1').text()).toBe('—')
+    expect(rowNames(w)).toEqual(['チーム2', 'チーム1'])
+  })
+
+  it('game_progress が読み込み中: 進み具合の欄だけスケルトン。他の欄・行は先に出る', () => {
+    const w = mountOverview(
+      baseProps({
+        teams: ok([team(1)]),
+        costs: ok([cost(1, 100)]),
+        rosterStatus: ok([roster(1)]),
+        gameProgress: pending(),
+      }),
+    )
+    const cell = cellOf(w, 'チーム1')
+    expect(cell.find('[data-testid="cell-loading"]').exists()).toBe(true)
+    expect(cell.find('[data-testid="games-count"]').exists()).toBe(false)
+    expect(w.find('[data-testid="team-table-card"] td.total-cost-cell').text()).toContain('100/200')
+    expect(w.find('[data-testid="tile-violation"]').text()).toContain('規定内')
+  })
+
+  it('game_progress が失敗: 進み具合の欄は「—」・失敗の旨と再読み込み（その API だけ）。他の欄は巻き込まない', async () => {
+    const w = mountOverview(
+      baseProps({
+        teams: ok([team(1)]),
+        costs: ok([cost(1, 100)]),
+        gameProgress: failed(),
+      }),
+    )
+    expect(cellOf(w, 'チーム1').text()).toBe('—')
+    expect(w.find('[data-testid="team-table-card"] td.total-cost-cell').text()).toContain('100/200')
+    const alert = w.find('[data-testid="game-progress-error"]')
+    expect(alert.text()).toContain('試合数の取得に失敗しました')
+    await alert.find('[data-testid="state-retry"]').trigger('click')
+    expect(w.emitted('retry')).toEqual([['gameProgress']])
+    // 他の API の失敗表示は出ない
+    expect(w.findAll('[data-testid="state-error"]')).toHaveLength(1)
+  })
+
+  it('成功時は失敗の表示を出さない', () => {
+    const w = mountOverview(baseProps())
+    expect(w.find('[data-testid="game-progress-error"]').exists()).toBe(false)
   })
 })

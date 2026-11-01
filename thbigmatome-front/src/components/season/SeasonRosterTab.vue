@@ -115,7 +115,7 @@
               {{ firstSquadTotalCost }} / {{ firstSquadCostLimit ?? '-' }}
             </span>
           </span>
-          <span class="text-caption d-flex align-center justify-end flex-wrap ga-x-2">
+          <span class="text-caption d-flex align-center justify-end flex-wrap ga-2">
             <span
               class="d-inline-flex align-center ga-1 font-weight-bold text-no-wrap"
               :class="`text-${LIMIT_APPEARANCE[countState].color}`"

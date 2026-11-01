@@ -2,6 +2,7 @@ import type {
   AbsenceRecord,
   CooldownRecord,
   CostRecord,
+  GameProgressRecord,
   RosterStatusRecord,
 } from '@/types/commissionerDashboard'
 import type { Team } from '@/types/team'
@@ -15,7 +16,13 @@ export type DashboardTab =
   | 'costs'
   | 'rosterStatus'
   | 'teams'
-export type DashboardResourceKey = 'teams' | 'absences' | 'cooldowns' | 'costs' | 'rosterStatus'
+export type DashboardResourceKey =
+  | 'teams'
+  | 'absences'
+  | 'cooldowns'
+  | 'costs'
+  | 'rosterStatus'
+  | 'gameProgress'
 
 /** 「まもなく動く」の線。復帰・クールダウン明けまで残りがこの値以下 */
 export const IMMINENT_REMAINING = 2
@@ -179,11 +186,11 @@ export interface TeamRow {
   id: number
   name: string
   manager: string | null
-  /** 'YYYY-MM-DD'。日付の無いチームは null */
-  progressDate: string | null
-  /** 並べ替え用。日付の無いチームは末尾になる文字列 */
-  progressKey: string
-  /** 稼働中チームの最小〜最大の日付の中の位置（0〜1）。日付なしは null */
+  /** 試合数の進み（game_progress と team_id で結合）。まだ無い・取れないチームは null */
+  games: GameProgressRecord | null
+  /** 並べ替え用。レギュラーの消化数。試合数の無いチームは末尾になる大きな値 */
+  progressKey: number
+  /** 消化数 / 総数（0〜1）。総数が 0・試合数なしは null */
   progressRatio: number | null
   firstCount: number | null
   secondCount: number | null
@@ -199,17 +206,16 @@ export interface TeamRow {
   attention: number
 }
 
-const NO_DATE_KEY = '9999-99-99'
-const dayNumber = (date: string) => Date.parse(`${date.slice(0, 10)}T00:00:00Z`) / 86_400_000
+/** 試合数の無いチームを並べ替えの末尾（昇順）に回す値 */
+const NO_GAMES_KEY = Number.MAX_SAFE_INTEGER
+
+export interface TeamRowSources extends DashboardSources {
+  gameProgress: GameProgressRecord[]
+}
 
 /** 稼働中のチーム 1 つを 1 行にする。API の値は team_id で結合し、無いものは null / 0 */
-export function buildTeamRows(src: DashboardSources): TeamRow[] {
+export function buildTeamRows(src: TeamRowSources): TeamRow[] {
   const active = src.teams.filter((t) => t.is_active)
-  const days = active.flatMap((t) =>
-    t.season_current_date ? [dayNumber(t.season_current_date)] : [],
-  )
-  const min = Math.min(...days)
-  const max = Math.max(...days)
 
   return active.map((t) => {
     const roster = src.rosterStatus.find((r) => r.team_id === t.id)
@@ -218,14 +224,15 @@ export function buildTeamRows(src: DashboardSources): TeamRow[] {
     const cooldownCount = src.cooldowns.filter((c) => c.team_id === t.id).length
     const level = cost ? costLevel(cost.total_cost, cost.total_cost_limit) : 'normal'
     const warnings = roster?.warnings ?? []
-    const date = t.season_current_date ?? null
+    const games = src.gameProgress.find((g) => g.team_id === t.id) ?? null
     return {
       id: t.id,
       name: t.name,
       manager: t.director?.name ?? null,
-      progressDate: date,
-      progressKey: date ? date.slice(0, 10) : NO_DATE_KEY,
-      progressRatio: date ? (max > min ? (dayNumber(date) - min) / (max - min) : 0) : null,
+      games,
+      progressKey: games ? games.regular_played : NO_GAMES_KEY,
+      progressRatio:
+        games && games.regular_total > 0 ? games.regular_played / games.regular_total : null,
       firstCount: roster?.first_count ?? null,
       secondCount: roster?.second_count ?? null,
       firstCost: roster?.first_cost ?? null,

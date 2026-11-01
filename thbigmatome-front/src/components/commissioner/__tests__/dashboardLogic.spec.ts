@@ -15,6 +15,7 @@ import type {
   AbsenceRecord,
   CooldownRecord,
   CostRecord,
+  GameProgressRecord,
   RosterStatusRecord,
 } from '@/types/commissionerDashboard'
 import type { Team } from '@/types/team'
@@ -270,6 +271,15 @@ describe('summarize（要約タイルの数え方）', () => {
   })
 })
 
+const progress = (team_id: number, over: Partial<GameProgressRecord> = {}): GameProgressRecord => ({
+  team_id,
+  regular_played: 34,
+  regular_total: 143,
+  regular_unrescheduled: 0,
+  playoff_played: 0,
+  ...over,
+})
+
 describe('buildTeamRows（チームの表）', () => {
   const input = () => ({
     teams: [
@@ -285,6 +295,11 @@ describe('buildTeamRows（チームの表）', () => {
     cooldowns: [cooldown(2, 4)],
     costs: [cost(1, 190), cost(2, 201), cost(3, 100)],
     rosterStatus: [roster(1), roster(2, ['外の世界枠が上限を超過しています'])],
+    gameProgress: [
+      progress(1, { regular_played: 60 }),
+      progress(2, { regular_played: 10, regular_unrescheduled: 2 }),
+      progress(4, { regular_played: 143 }),
+    ],
   })
 
   it('稼働中のチームだけを行にする（休止中は入れない）', () => {
@@ -314,23 +329,30 @@ describe('buildTeamRows（チームの表）', () => {
     expect(rows.find((r) => r.id === 3)!.attention).toBe(0)
   })
 
-  it('進み具合は稼働中チームの最小〜最大の日付の中の位置（0〜1）。日付なしは null で並べ替えでは末尾', () => {
+  // Test Basis: Operator 決定 2026-11-02「進み具合に試合数を出す」・schedule-extra-game-day 追記（総数 143 固定・未振替は別）
+  it('進み具合は game_progress を team_id で結合する（消化数・総数・未振替）。無いチームは null で並べ替えでは末尾', () => {
     const rows = buildTeamRows(input())
-    expect(rows.find((r) => r.id === 2)!.progressRatio).toBe(0)
-    expect(rows.find((r) => r.id === 1)!.progressRatio).toBe(1)
+    expect(rows.find((r) => r.id === 1)!.games).toEqual(progress(1, { regular_played: 60 }))
+    expect(rows.find((r) => r.id === 2)!.games!.regular_unrescheduled).toBe(2)
+    expect(rows.find((r) => r.id === 3)!.games).toBeNull()
     expect(rows.find((r) => r.id === 3)!.progressRatio).toBeNull()
-    const sorted = [...rows].sort((a, b) => a.progressKey.localeCompare(b.progressKey))
+    const sorted = [...rows].sort((a, b) => a.progressKey - b.progressKey)
     expect(sorted.map((r) => r.id)).toEqual([2, 1, 3])
   })
 
-  it('稼働中が 1 チームだけ（最小 = 最大）でも割り算で落ちない', () => {
-    const rows = buildTeamRows({
-      teams: [team(1, { season_current_date: '2026-05-08' })],
-      absences: [],
-      cooldowns: [],
-      costs: [],
-      rosterStatus: [],
+  it('並べ替えの値は消化数。割合は消化数 / 総数（0 割りしない）', () => {
+    const rows = buildTeamRows(input())
+    expect(rows.find((r) => r.id === 1)!.progressKey).toBe(60)
+    expect(rows.find((r) => r.id === 1)!.progressRatio).toBeCloseTo(60 / 143)
+    const zero = buildTeamRows({
+      ...input(),
+      gameProgress: [progress(1, { regular_played: 0, regular_total: 0 })],
     })
-    expect(rows[0]!.progressRatio).toBe(0)
+    expect(zero.find((r) => r.id === 1)!.progressRatio).toBeNull()
+    expect(zero.find((r) => r.id === 1)!.progressKey).toBe(0)
+  })
+
+  it('休止中のチームの game_progress は行にならない', () => {
+    expect(buildTeamRows(input()).some((r) => r.id === 4)).toBe(false)
   })
 })

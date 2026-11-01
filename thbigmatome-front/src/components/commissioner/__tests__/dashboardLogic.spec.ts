@@ -10,6 +10,8 @@ import {
   buildTeamRows,
   buildCheckRows,
   checkState,
+  rosterWarnings,
+  OUTSIDE_WORLD_BALANCE_WARNING,
 } from '../dashboardLogic'
 import type {
   AbsenceRecord,
@@ -354,5 +356,78 @@ describe('buildTeamRows（チームの表）', () => {
 
   it('休止中のチームの game_progress は行にならない', () => {
     expect(buildTeamRows(input()).some((r) => r.id === 4)).toBe(false)
+  })
+})
+
+// Test Basis: Operator 決定 2026-11-02（cmd_1808）「外の世界枠の内訳の違反は規定違反として概況の要確認に入る」。
+// サーバの warnings には内訳の違反が載らない（コスト超過・外の世界枠の人数超過だけ）ので、画面側で足す
+describe('外の世界枠の内訳の違反（要確認に入る）', () => {
+  const bd = (
+    pitcher_only: number,
+    fielder_only: number,
+    two_way: number,
+    balance_ok: boolean,
+  ) => ({
+    pitcher_only,
+    fielder_only,
+    two_way,
+    balance_ok,
+  })
+  const withBd = (
+    team_id: number,
+    breakdown: ReturnType<typeof bd> | undefined,
+    warnings: string[] = [],
+  ) => ({
+    ...roster(team_id, warnings),
+    outside_world_count: 4,
+    outside_world_breakdown: breakdown,
+  })
+
+  it('balance_ok=false なら warnings に内訳の違反を足す。true・内訳なしは足さない', () => {
+    expect(rosterWarnings(withBd(1, bd(4, 0, 0, false)))).toEqual([OUTSIDE_WORLD_BALANCE_WARNING])
+    expect(rosterWarnings(withBd(1, bd(2, 2, 0, true)))).toEqual([])
+    expect(rosterWarnings(withBd(1, undefined))).toEqual([])
+  })
+
+  it('サーバの warnings（コスト超過）と並べて出す', () => {
+    expect(rosterWarnings(withBd(1, bd(0, 4, 0, false), ['コスト上限を超過しています']))).toEqual([
+      'コスト上限を超過しています',
+      OUTSIDE_WORLD_BALANCE_WARNING,
+    ])
+  })
+
+  it('要確認のチーム数（checkTeams）・規定違反のチーム数に数える。同じチームは 1 回', () => {
+    const s = summarize({
+      teams: [],
+      absences: [],
+      cooldowns: [],
+      costs: [cost(1, 100), cost(2, 100), cost(3, 100)],
+      rosterStatus: [
+        withBd(1, bd(4, 0, 0, false)), // 内訳だけ違反
+        withBd(2, bd(4, 0, 0, false), ['コスト上限を超過しています']), // 両方 → 1 回
+        withBd(3, bd(2, 2, 0, true)), // 規定内
+      ],
+    })
+    expect(s.violationTeams).toBe(2)
+    expect(s.checkTeams).toBe(2)
+  })
+
+  it('要確認の一覧に規定違反として入り、チーム表の行にも warnings が載る', () => {
+    const rows = buildCheckRows([withBd(1, bd(4, 0, 0, false)), withBd(2, bd(2, 2, 0, true))], [])
+    expect(rows).toHaveLength(1)
+    expect(rows[0]).toMatchObject({ team_id: 1, warnings: [OUTSIDE_WORLD_BALANCE_WARNING] })
+  })
+
+  it('チームの表の行（概況の表）にも warnings として載る。概況の表に列は足さない（既存の「要確認」チップが出る）', () => {
+    const rows = buildTeamRows({
+      teams: [team(1, { season_current_date: '2026-05-08' })],
+      absences: [],
+      cooldowns: [],
+      costs: [],
+      rosterStatus: [withBd(1, bd(0, 4, 0, false))],
+      gameProgress: [],
+    })
+    expect(rows[0]!.warnings).toEqual([OUTSIDE_WORLD_BALANCE_WARNING])
+    expect(rows[0]!.attention).toBe(1)
   })
 })

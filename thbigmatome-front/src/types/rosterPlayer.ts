@@ -28,6 +28,8 @@ export interface RosterPlayer {
   same_day_exempt?: boolean
   is_outside_world?: boolean
   is_pitcher?: boolean
+  /** 外の世界枠の内訳の区分（サーバが決める）。カードが無い選手は null */
+  pitcher_fielder_kind?: 'pitcher_only' | 'fielder_only' | 'two_way' | null
   is_starter_pitcher?: boolean
   is_relief_only?: boolean
   is_absent?: boolean

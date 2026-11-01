@@ -29,8 +29,9 @@
         >
         <v-spacer />
         <v-btn
-          color="action"
-          variant="flat"
+          :color="isCalendarTab ? 'action' : undefined"
+          :variant="isCalendarTab ? 'flat' : 'outlined'"
+          :style="isCalendarTab ? undefined : { borderColor: 'rgb(var(--v-theme-border-strong))' }"
           append-icon="mdi-arrow-right"
           :to="gameResultRoute"
           :disabled="!isGameDayToday"
@@ -744,6 +745,8 @@ const teamId = props.teamId ?? parseInt(<string>route.params.teamId, 10)
 
 // タブ状態をURLクエリパラメータで管理
 const activeTab = ref((route.query.tab as string) || 'calendar')
+// 画面の塗りの緑は 1 つまで。「今日の試合へ」が緑になるのはカレンダーの時だけ（チーム編成タブでは「保存」が主操作）
+const isCalendarTab = computed(() => activeTab.value === 'calendar')
 
 // オーダータブのサブタブ（リリース非表示中）
 // const lineupSubTab = ref('template')

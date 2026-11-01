@@ -516,6 +516,42 @@ describe('TeamMembers.vue', () => {
     expect(wrapper.text()).toContain('200')
   })
 
+  // Test Basis: Operator 決定 2026-11-01（上限のツールチップは上限だけ。除外の説明はコスト除外のヒントが持つ）
+  it('合計コストのツールチップは上限だけを述べ、除外の説明はコスト除外のヒントに残る', async () => {
+    setupDefaultMocks([makeTeamPlayer({ id: 1, name: '選手A' })])
+    const router = createTestRouter()
+    router.push('/teams/1/members')
+    await router.isReady()
+
+    const wrapper = mount(TeamMembers, {
+      attachTo: document.body,
+      global: {
+        plugins: [vuetify, i18n, router],
+        stubs: { TeamNavigation: TeamNavigationStub },
+      },
+    })
+    await flushPromises()
+
+    // 実際に開いたツールチップの本文を読む（ホバーで開き、body に teleport される）
+    const icons = wrapper.findAll('.mdi-help-circle-outline')
+    const texts: string[] = []
+    for (const icon of icons) {
+      await icon.trigger('mouseenter')
+      await flushPromises()
+      await new Promise((r) => setTimeout(r, 50))
+      const open = Array.from(document.body.querySelectorAll('.v-tooltip .v-overlay__content'))
+      texts.push(...open.map((el) => el.textContent ?? ''))
+      await icon.trigger('mouseleave')
+      await flushPromises()
+    }
+    expect(texts).toContain('チーム全体のコスト上限は200です。')
+    expect(texts.some((t) => t.includes('合計コストに算入されません'))).toBe(false)
+    expect(
+      texts.some((t) => t.includes('除外特例を受けた選手をチームの合計コスト計算から除外します。')),
+    ).toBe(true)
+    wrapper.unmount()
+  })
+
   it('excluded_from_team_totalチェックボックスが存在する', async () => {
     const players = [makeTeamPlayer({ id: 1, name: '選手A' })]
     // コスト表はonMounted内で自動選択される（/costsエンドポイント経由）

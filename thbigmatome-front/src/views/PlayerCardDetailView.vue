@@ -32,20 +32,24 @@
           <div class="detail-top">
             <!-- カード画像 -->
             <div class="card-img-wrap">
-              <v-img
+              <!-- v-img は aria-label / title を内側の img へ渡すため、押せる要素は外側の div にする -->
+              <div
                 v-if="card.image_url"
-                :src="card.image_url"
-                width="108"
-                height="150"
-                cover
-                class="rounded card-img-clickable"
+                class="card-img-clickable rounded"
+                role="button"
+                tabindex="0"
+                aria-label="拡大"
+                title="拡大"
                 @click="imageDialog = true"
-              ></v-img>
+                @keydown.enter.prevent="imageDialog = true"
+                @keydown.space.prevent="imageDialog = true"
+              >
+                <v-img :src="card.image_url" width="100%" height="100%" cover></v-img>
+              </div>
               <div v-else class="card-img-placeholder">
                 <v-icon size="36" class="on-surface-variant">mdi-card-account-details</v-icon>
                 <span>カード画像</span>
               </div>
-              <div v-if="card.image_url" class="card-img-hint">🔍 クリックで拡大</div>
             </div>
 
             <!-- 基本情報グリッド -->
@@ -1047,8 +1051,11 @@ function extractErrorMessage(error: unknown): string {
 }
 
 .card-img-clickable {
+  width: 108px;
+  height: 150px;
+  overflow: hidden;
   border: 1px solid rgb(var(--v-theme-border-strong));
-  cursor: pointer;
+  cursor: zoom-in;
   transition:
     box-shadow 0.15s ease,
     transform 0.15s ease;
@@ -1057,13 +1064,6 @@ function extractErrorMessage(error: unknown): string {
 .card-img-clickable:hover {
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
   transform: scale(1.02);
-}
-
-.card-img-hint {
-  text-align: center;
-  font-size: 0.68em;
-  color: rgb(var(--v-theme-on-surface-variant));
-  margin-top: 3px;
 }
 
 .card-img-placeholder {

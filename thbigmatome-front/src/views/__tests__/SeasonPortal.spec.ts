@@ -720,6 +720,41 @@ describe('SeasonPortal', () => {
       expect(go.attributes('href')).toBe('/teams/1/season/schedules/7/game')
     })
 
+    // Test Basis: Operator 決定 2026-11-01（画面の緑の塗りは 1 つまで。チーム編成タブでは「保存」が主操作）
+    it('「今日の試合へ」はカレンダーのタブだけ緑の塗り。ほかのタブでは枠だけの副ボタン（border-strong）', async () => {
+      const calendar = await mountSeasonPortal({ season })
+      const calendarGo = calendar.find('[data-testid="go-to-game"]')
+      expect(calendarGo.classes()).toContain('bg-action')
+      expect(calendarGo.classes()).toContain('v-btn--variant-flat')
+      expect(calendarGo.classes()).not.toContain('v-btn--variant-outlined')
+
+      for (const tab of ['members', 'roster', 'absences', 'promotion_history']) {
+        const wrapper = await mountSeasonPortal({ season, query: `?tab=${tab}` })
+        const go = wrapper.find('[data-testid="go-to-game"]')
+        expect(go.classes(), tab).toContain('v-btn--variant-outlined')
+        expect(go.classes(), tab).not.toContain('bg-action')
+        expect(go.classes(), tab).not.toContain('v-btn--variant-flat')
+        expect(go.attributes('style'), tab).toContain('--v-theme-border-strong')
+        // 動作は同じ（押せる・遷移先も変わらない）
+        expect(go.attributes('disabled'), tab).toBeUndefined()
+        expect(go.attributes('href'), tab).toBe('/teams/1/season/schedules/7/game')
+      }
+    })
+
+    it('タブを切り替えると「今日の試合へ」の塗りも追従する（カレンダー→メンバー→カレンダー）', async () => {
+      const wrapper = await mountSeasonPortal({ season })
+      const go = () => wrapper.find('[data-testid="go-to-game"]')
+      expect(go().classes()).toContain('bg-action')
+      const tabs = wrapper.findAll('.v-tab')
+      await tabs.find((t) => t.text().includes('メンバー'))!.trigger('click')
+      await flushPromises()
+      expect(go().classes()).toContain('v-btn--variant-outlined')
+      expect(go().classes()).not.toContain('bg-action')
+      await tabs.find((t) => t.text().includes('カレンダー'))!.trigger('click')
+      await flushPromises()
+      expect(go().classes()).toContain('bg-action')
+    })
+
     it('「いま」の帯: 現在日が試合日でなければ「今日の試合へ」は押せない', async () => {
       const wrapper = await mountSeasonPortal({
         season: { ...season, current_date: '2026-05-10' },

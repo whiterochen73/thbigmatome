@@ -154,11 +154,7 @@
                         >mdi-help-circle-outline</v-icon
                       >
                     </template>
-                    <span
-                      >チーム全体のコスト上限は{{
-                        TEAM_TOTAL_MAX_COST
-                      }}です。コスト除外にチェックした選手は合計コストに算入されません。</span
-                    >
+                    <span>チーム全体のコスト上限は{{ TEAM_TOTAL_MAX_COST }}です。</span>
                   </v-tooltip>
                 </div>
                 <span

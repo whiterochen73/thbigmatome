@@ -1,5 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { mount, flushPromises } from '@vue/test-utils'
+import { readFileSync } from 'node:fs'
+import { resolve } from 'node:path'
 import { createVuetify } from 'vuetify'
 import { createI18n } from 'vue-i18n'
 import ja from '@/locales/ja.json'
@@ -157,6 +159,62 @@ describe('PlayerCardDetailView', () => {
     expect(wrapper.find('[data-testid="state-error"]').exists()).toBe(false)
     expect(appBarTitle.value?.title).toBe('博麗霊夢')
     wrapper.unmount()
+  })
+
+  // Test Basis: Operator 決定 2026-11-01（説明文を足さず、拡大できることはカーソルと名前で示す）
+  it('カード画像: 「クリックで拡大」の文を出さず、拡大のカーソルと名前（aria-label / title）を持ち、クリックで拡大する', async () => {
+    vi.mocked(axios.get).mockResolvedValue({
+      data: { ...mockCard, image_url: 'https://example.test/card.png' },
+    })
+    const router = createTestRouter()
+    await router.isReady()
+    const wrapper = mount(PlayerCardDetailView, {
+      attachTo: document.body,
+      global: { plugins: [vuetify, i18n, router] },
+    })
+    await flushPromises()
+
+    expect(wrapper.text()).not.toContain('クリックで拡大')
+    expect(wrapper.find('.card-img-hint').exists()).toBe(false)
+    const img = wrapper.find('.card-img-clickable')
+    expect(img.exists()).toBe(true)
+    expect(img.attributes('aria-label')).toBe('拡大')
+    expect(img.attributes('title')).toBe('拡大')
+    expect(img.attributes('role')).toBe('button')
+    expect(img.attributes('tabindex')).toBe('0')
+
+    // カーソルは scoped CSS なので、ソースの宣言で固定する
+    const css = readFileSync(resolve(__dirname, '../PlayerCardDetailView.vue'), 'utf-8').match(
+      /\.card-img-clickable \{[^}]*\}/,
+    )![0]
+    expect(css).toContain('cursor: zoom-in')
+
+    // クリックで拡大する動作はそのまま
+    expect(document.body.querySelector('.v-dialog')).toBeNull()
+    await img.trigger('click')
+    await flushPromises()
+    expect(document.body.querySelector('.v-dialog')).not.toBeNull()
+    wrapper.unmount()
+  })
+
+  it('カード画像: キーボード（Enter / Space）でも拡大できる', async () => {
+    vi.mocked(axios.get).mockResolvedValue({
+      data: { ...mockCard, image_url: 'https://example.test/card.png' },
+    })
+    const router = createTestRouter()
+    await router.isReady()
+    for (const key of ['Enter', ' ']) {
+      const wrapper = mount(PlayerCardDetailView, {
+        attachTo: document.body,
+        global: { plugins: [vuetify, i18n, router] },
+      })
+      await flushPromises()
+      expect(document.body.querySelector('.v-dialog .v-overlay__content')).toBeNull()
+      await wrapper.find('.card-img-clickable').trigger('keydown', { key })
+      await flushPromises()
+      expect(document.body.querySelector('.v-dialog .v-overlay__content'), key).not.toBeNull()
+      wrapper.unmount()
+    }
   })
 
   it('基本情報セクションが表示されること', async () => {

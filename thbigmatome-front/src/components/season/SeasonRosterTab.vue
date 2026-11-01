@@ -107,17 +107,29 @@
           <span>
             <strong>{{ t('seasonRosterTab.firstSquadCostLabel') }}: </strong>
             <span
-              :class="{
-                'text-error font-weight-bold': costBarColor === 'error',
-                'text-warning font-weight-bold': costBarColor === 'warning',
-              }"
+              class="d-inline-flex align-center ga-1 font-weight-bold text-no-wrap"
+              :class="costState ? `text-${LIMIT_APPEARANCE[costState].color}` : undefined"
+              data-testid="cost-status"
             >
+              <LimitMark :state="costState" />
               {{ firstSquadTotalCost }} / {{ firstSquadCostLimit ?? '-' }}
             </span>
           </span>
-          <span class="text-caption text-medium-emphasis d-flex align-center ga-1">
-            {{ firstSquadPlayers.length }}/{{ MAX_FIRST_SQUAD_PLAYERS }}人 &nbsp;
-            <span :class="{ 'text-error': outsideWorldFirstSquadCount > OUTSIDE_WORLD_LIMIT }">
+          <span class="text-caption d-flex align-center justify-end flex-wrap ga-x-2">
+            <span
+              class="d-inline-flex align-center ga-1 font-weight-bold text-no-wrap"
+              :class="`text-${LIMIT_APPEARANCE[countState].color}`"
+              data-testid="count-status"
+            >
+              <LimitMark :state="countState" :size="16" />
+              {{ firstSquadPlayers.length }}/{{ MAX_FIRST_SQUAD_PLAYERS }}人
+            </span>
+            <span
+              class="d-inline-flex align-center ga-1 font-weight-bold text-no-wrap"
+              :class="`text-${LIMIT_APPEARANCE[outsideState].color}`"
+              data-testid="outside-status"
+            >
+              <LimitMark :state="outsideState" :size="16" />
               {{
                 t('activeRoster.outsideWorldCount', {
                   count: outsideWorldFirstSquadCount,
@@ -629,6 +641,17 @@ import PlayerNameLink from '@/components/shared/PlayerNameLink.vue'
 import { useSnackbar } from '@/composables/useSnackbar'
 import type { RosterPlayer } from '@/types/rosterPlayer'
 import { ABSENCE_APPEARANCE } from '@/components/gameDay/gameDayStatus'
+import LimitMark from '@/components/shared/LimitMark.vue'
+import {
+  FIRST_SQUAD_MIN_PLAYERS,
+  LIMIT_APPEARANCE,
+  MAX_FIRST_SQUAD_PLAYERS,
+  OUTSIDE_WORLD_LIMIT,
+  costLimitForCount,
+  costLimitState,
+  countLimitState,
+  outsideWorldLimitState,
+} from '@/components/shared/rosterLimits'
 
 // asOfDate / phase: 読む日付と区分。GET と POST の両方に同じ値を送る（省略時は GET の応答の current_date と pre_game を POST に送り返す）。
 // readonly: 操作できない日（試合日ページで「今の範囲」の外の日）。昇降格・保存の操作を出さない。
@@ -644,16 +667,6 @@ const { t } = useI18n()
 const { showSnackbar } = useSnackbar()
 const seasonId = ref<number | null>(null)
 
-// 1軍制限定数
-const MAX_FIRST_SQUAD_PLAYERS = 29
-const FIRST_SQUAD_MIN_PLAYERS = 25
-const OUTSIDE_WORLD_LIMIT = 4
-const COST_LIMIT_TIERS = [
-  { minPlayers: 28, maxCost: 120 },
-  { minPlayers: 27, maxCost: 119 },
-  { minPlayers: 26, maxCost: 117 },
-  { minPlayers: 25, maxCost: 114 },
-]
 const rosterPlayers = ref<RosterPlayer[]>([])
 const currentDate = ref(new Date())
 const currentDateFormatted = computed(() => currentDate.value.toISOString().split('T')[0])
@@ -712,9 +725,7 @@ const firstSquadTotalCost = computed(() => {
 })
 
 const firstSquadCostLimit = computed(() => {
-  const count = firstSquadPlayers.value.length
-  const tier = COST_LIMIT_TIERS.find((t) => count >= t.minPlayers)
-  return tier ? tier.maxCost : null
+  return costLimitForCount(firstSquadPlayers.value.length)
 })
 
 const outsideWorldFirstSquadCount = computed(() => {
@@ -744,13 +755,16 @@ const costBarValue = computed(() => {
   return Math.min((firstSquadTotalCost.value / firstSquadCostLimit.value) * 100, 100)
 })
 
-const costBarColor = computed((): string => {
-  if (!firstSquadCostLimit.value) return 'border-strong'
-  const ratio = firstSquadTotalCost.value / firstSquadCostLimit.value
-  if (ratio >= 1) return 'error'
-  if (ratio >= 0.9) return 'warning'
-  return 'success'
-})
+// 規定内（上限ちょうどまで）は緑のチェック、規定外は赤の✕。途中の段階は無い（ギリギリで運用するのが常）
+const costState = computed(() =>
+  costLimitState(firstSquadTotalCost.value, firstSquadCostLimit.value),
+)
+const countState = computed(() => countLimitState(firstSquadPlayers.value.length))
+const outsideState = computed(() => outsideWorldLimitState(outsideWorldFirstSquadCount.value))
+
+const costBarColor = computed((): string =>
+  costState.value ? LIMIT_APPEARANCE[costState.value].color : 'border-strong',
+)
 
 // 行ハイライト (カスタムテーブル用)
 const getFirstSquadRowClass = (item: RosterPlayer): string => {

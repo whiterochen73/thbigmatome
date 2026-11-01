@@ -93,6 +93,71 @@ describe('RosterStatusTab', () => {
     expect(btn.attributes('href')).toContain('http://localhost:3000/api/v1')
   })
 
+  // cmd_1804 subtask_1804a: 1軍登録タブの人数・コスト・外枠は、規定内=チェック・規定外=✕の記号だけ（行・チップの色は変えない）
+  describe('規定判定の記号', () => {
+    const rec = (over: Partial<(typeof mockRosterStatus)[number]>) => ({
+      ...mockRosterStatus[0]!,
+      ...over,
+    })
+    // 列: 1 チーム名・2 タイプ・3 1軍・4 2軍・5 コスト・6 外枠・7 状態
+    const stateAt = (w: ReturnType<typeof mountComponent>, col: number, row = 0) =>
+      w
+        .findAll('tbody tr')
+        [row]!.findAll('td')
+        [col - 1]!.find('[data-testid="limit-mark"]')
+        .attributes('data-state')
+
+    it('コスト: 上限ちょうど=ok・上限+1=ng・上限なし=記号なし', async () => {
+      const w = mountComponent({
+        records: [
+          rec({ team_id: 1, first_cost: 114, first_cost_limit: 114 }),
+          rec({ team_id: 2, first_cost: 115, first_cost_limit: 114 }),
+          rec({ team_id: 3, first_cost: 90, first_cost_limit: null }),
+        ],
+      })
+      await flushPromises()
+      expect(stateAt(w, 5, 0)).toBe('ok')
+      expect(stateAt(w, 5, 1)).toBe('ng')
+      expect(
+        w.findAll('tbody tr')[2]!.findAll('td')[4]!.find('[data-testid="limit-mark"]').exists(),
+      ).toBe(false)
+    })
+
+    it('外枠: 上限ちょうど（4/4）=ok・上限+1（5/4）=ng。上限は API の outside_world_limit', async () => {
+      const w = mountComponent({
+        records: [
+          rec({ team_id: 1, outside_world_count: 4, outside_world_limit: 4 }),
+          rec({ team_id: 2, outside_world_count: 5, outside_world_limit: 4 }),
+        ],
+      })
+      await flushPromises()
+      expect(stateAt(w, 6, 0)).toBe('ok')
+      expect(stateAt(w, 6, 1)).toBe('ng')
+      expect(w.findAll('tbody tr')[1]!.findAll('td')[5]!.find('.mdi-close-circle').exists()).toBe(
+        true,
+      )
+      expect(w.findAll('tbody tr')[0]!.findAll('td')[5]!.find('.mdi-check-circle').exists()).toBe(
+        true,
+      )
+    })
+
+    it('人数: 24=ng・25=ok・29=ok・30=ng', async () => {
+      const w = mountComponent({
+        records: [24, 25, 29, 30].map((n, i) => rec({ team_id: i + 1, first_count: n })),
+      })
+      await flushPromises()
+      expect([0, 1, 2, 3].map((i) => stateAt(w, 3, i))).toEqual(['ng', 'ok', 'ok', 'ng'])
+    })
+
+    it('記号を足しても既存の「超過」チップ・「警告あり」チップは変わらない', async () => {
+      const w = mountComponent()
+      await flushPromises()
+      const chips = w.findAllComponents(components.VChip).map((c) => c.text())
+      expect(chips.filter((t) => t === '超過')).toHaveLength(2)
+      expect(chips.filter((t) => t === '警告あり')).toHaveLength(1)
+    })
+  })
+
   it('警告ありチームに警告チップが表示される', async () => {
     const wrapper = mountComponent()
     await flushPromises()

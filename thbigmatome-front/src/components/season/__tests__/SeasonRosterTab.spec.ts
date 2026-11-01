@@ -164,7 +164,7 @@ describe('SeasonRosterTab 保存結果の通知', () => {
     }
     expect(chips.filter((chip) => chip.props('color') === 'state-info').length).toBeGreaterThan(1)
     expect(wrapper.find('tr.key-player-row').exists()).toBe(true)
-    expect(wrapper.findComponent(components.VProgressLinear).props('color')).toBe('success')
+    expect(wrapper.findComponent(components.VProgressLinear).props('color')).toBe('meter-ok')
     // Test Basis: subtask_1787o 申し送り5 / thbig-dugout-visual-stage5-mapping.md §2 R2, R5
     const absentRow = wrapper.findAll('tr').find((row) => row.text().includes('選手5'))!
     const demote = absentRow.findComponent('.demote-btn')
@@ -389,5 +389,116 @@ describe('SeasonRosterTab 日付つきの読み書きと操作範囲', () => {
     expect(await selectable(true)).toBe(true)
     expect(await selectable(false)).toBe(false)
     expect(await selectable(true, { readonly: true })).toBe(false)
+  })
+})
+
+// cmd_1804 subtask_1804a: 1軍のコスト・人数・外枠は、規定内=緑のチェック、規定外=赤の✕（途中の段階なし）
+// Test Basis: Operator 要望 2026-11-02「上限までグリーン（＋チェック）、オーバーでレッド（✕）。人数・外枠判定も同様」
+// 規定の値: 人数 25〜29・外枠 4 まで・コスト上限は人数別（25 人 114、28〜29 人 120）
+describe('SeasonRosterTab 1軍の規定判定の記号', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  // count 人の 1軍。コストの合計が total になるよう 1 人目に残りを寄せる。外の世界枠は先頭から outside 人
+  const squad = (count: number, total: number, outside = 0): RosterPlayer[] =>
+    Array.from({ length: count }, (_, i) => ({
+      team_membership_id: i + 1,
+      player_id: i + 1,
+      player_name: `選手${i + 1}`,
+      number: `${i + 1}`,
+      squad: 'first' as const,
+      cost: i === 0 ? total - (count - 1) : 1,
+      selected_cost_type: 'normal_cost' as const,
+      handedness: null,
+      position: null,
+      player_types: [],
+      is_outside_world: i < outside,
+    }))
+
+  async function mountWith(roster: RosterPlayer[]) {
+    mockGet.mockImplementation((url: string) =>
+      url === '/teams/1/roster'
+        ? Promise.resolve({
+            data: { roster, season_id: 1, current_date: '2026-05-07', key_player_id: null },
+          })
+        : Promise.resolve({ data: [] }),
+    )
+    const wrapper = mount(SeasonRosterTab, {
+      props: { teamId: 1 },
+      global: {
+        plugins: [vuetify, i18n],
+        stubs: {
+          AbsenceInfo: true,
+          PromotionCooldownInfo: true,
+          PlayerNameLink: { props: ['playerName'], template: '<span>{{ playerName }}</span>' },
+        },
+      },
+    })
+    await flushPromises()
+    return wrapper
+  }
+  const mark = (w: Awaited<ReturnType<typeof mountWith>>, id: string) =>
+    w.find(`[data-testid="${id}"] [data-testid="limit-mark"]`)
+
+  it('コスト: 上限ちょうど（25 人で 114）は緑のチェックと緑の棒', async () => {
+    const w = await mountWith(squad(25, 114))
+    expect(mark(w, 'cost-status').attributes('data-state')).toBe('ok')
+    expect(mark(w, 'cost-status').classes()).toContain('mdi-check-circle')
+    expect(w.find('[data-testid="cost-status"]').classes()).toContain('text-meter-ok')
+    expect(w.findComponent(components.VProgressLinear).props('color')).toBe('meter-ok')
+  })
+
+  it('コスト: 上限+1（115）は赤の✕と赤の棒。琥珀・黄色の段階は無い', async () => {
+    const w = await mountWith(squad(25, 115))
+    expect(mark(w, 'cost-status').attributes('data-state')).toBe('ng')
+    expect(mark(w, 'cost-status').classes()).toContain('mdi-close-circle')
+    expect(w.find('[data-testid="cost-status"]').classes()).toContain('text-meter-ng')
+    expect(w.findComponent(components.VProgressLinear).props('color')).toBe('meter-ng')
+  })
+
+  it('コスト: 上限の 90%〜99%（旧 warning の帯。113）も緑', async () => {
+    const w = await mountWith(squad(25, 113))
+    expect(w.findComponent(components.VProgressLinear).props('color')).toBe('meter-ok')
+  })
+
+  it('コスト: 28 人は上限 120。120 は緑・121 は赤（人数別の上限を使う）', async () => {
+    expect(mark(await mountWith(squad(28, 120)), 'cost-status').attributes('data-state')).toBe('ok')
+    expect(mark(await mountWith(squad(28, 121)), 'cost-status').attributes('data-state')).toBe('ng')
+  })
+
+  it('コスト: 25 人未満は上限が無いので記号を出さない', async () => {
+    const w = await mountWith(squad(24, 100))
+    expect(mark(w, 'cost-status').exists()).toBe(false)
+    const colors = w.findAllComponents(components.VProgressLinear).map((c) => c.props('color'))
+    expect(colors.some((c) => String(c).startsWith('meter-'))).toBe(false)
+  })
+
+  it.each([
+    [24, 'ng', 'mdi-close-circle'],
+    [25, 'ok', 'mdi-check-circle'],
+    [29, 'ok', 'mdi-check-circle'],
+  ])('人数: %i 人 → %s', async (n, state, icon) => {
+    const w = await mountWith(squad(n, n))
+    expect(mark(w, 'count-status').attributes('data-state')).toBe(state)
+    expect(mark(w, 'count-status').classes()).toContain(icon)
+  })
+
+  it('人数: 上限+1（30 人）は赤の✕', async () => {
+    const w = await mountWith(squad(30, 30))
+    expect(mark(w, 'count-status').attributes('data-state')).toBe('ng')
+  })
+
+  it.each([
+    [0, 'ok'],
+    [3, 'ok'],
+    [4, 'ok'],
+    [5, 'ng'],
+  ])('外枠: %i 人 → %s（上限 4）', async (n, state) => {
+    const w = await mountWith(squad(26, 26, n))
+    expect(mark(w, 'outside-status').attributes('data-state')).toBe(state)
+    expect(w.find('[data-testid="outside-status"]').classes()).toContain(
+      state === 'ok' ? 'text-meter-ok' : 'text-meter-ng',
+    )
   })
 })

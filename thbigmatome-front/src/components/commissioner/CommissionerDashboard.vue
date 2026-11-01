@@ -400,10 +400,13 @@
             <template v-slot:item.first_squad_cost="{ item }">
               <!-- 1軍コストは上限ぴったりが通常なので、棒に注意の色を付けない -->
               <div class="d-flex align-center gap-2 flex-nowrap">
-                <span v-if="item.first_squad_cost_limit !== null" style="white-space: nowrap">
-                  {{ item.first_squad_cost }} / {{ item.first_squad_cost_limit }}
+                <span class="d-inline-flex align-center ga-1" style="white-space: nowrap">
+                  <LimitMark
+                    :state="costLimitState(item.first_squad_cost, item.first_squad_cost_limit)"
+                    :size="16"
+                  />
+                  {{ item.first_squad_cost }} / {{ item.first_squad_cost_limit ?? '—' }}
                 </span>
-                <span v-else style="white-space: nowrap"> {{ item.first_squad_cost }} / — </span>
                 <v-progress-linear
                   v-if="item.first_squad_cost_limit"
                   data-testid="first-cost-bar"
@@ -441,6 +444,8 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import axios from 'axios'
+import LimitMark from '@/components/shared/LimitMark.vue'
+import { costLimitState } from '@/components/shared/rosterLimits'
 import AsyncState from '@/components/shared/AsyncState.vue'
 import DataCard from '@/components/shared/DataCard.vue'
 import RowIconButton from '@/components/shared/RowIconButton.vue'

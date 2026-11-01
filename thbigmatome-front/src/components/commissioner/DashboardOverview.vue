@@ -367,9 +367,13 @@
                 data-testid="cell-loading"
               />
               <span v-else-if="item.firstCost === null" class="on-surface-variant">—</span>
-              <span v-else class="num"
-                >{{ item.firstCost }} / {{ item.firstCostLimit ?? '—' }}</span
-              >
+              <span v-else class="num d-inline-flex align-center ga-1">
+                <LimitMark
+                  :state="costLimitState(item.firstCost, item.firstCostLimit)"
+                  :size="16"
+                />
+                {{ item.firstCost }} / {{ item.firstCostLimit ?? '—' }}
+              </span>
             </template>
             <template #[`item.totalCost`]="{ item }">
               <v-skeleton-loader
@@ -466,7 +470,9 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import AsyncState from '@/components/shared/AsyncState.vue'
+import LimitMark from '@/components/shared/LimitMark.vue'
 import RowIconButton from '@/components/shared/RowIconButton.vue'
+import { costLimitState } from '@/components/shared/rosterLimits'
 import StatusChip from '@/components/shared/StatusChip.vue'
 import { tableCell } from '@/components/shared/tableCells'
 import { ABSENCE_APPEARANCE } from '@/components/gameDay/gameDayStatus'

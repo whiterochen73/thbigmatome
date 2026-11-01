@@ -445,6 +445,47 @@ describe('DashboardOverview チームの表', () => {
     expect(cell.findComponent(components.VChip).exists()).toBe(false)
   })
 
+  // cmd_1804 subtask_1804a: Operator 決定 2026-11-02「ダッシュボードはマークのみ」。棒・チップは変えず記号だけ付ける
+  it('1軍コストの記号: 上限ちょうど=緑のチェック、上限+1=赤の✕。棒・チップは出さない', () => {
+    const w = mountOverview(
+      baseProps({
+        teams: ok([team(1), team(2)]),
+        rosterStatus: ok([
+          { ...roster(1), first_cost: 120, first_cost_limit: 120 },
+          { ...roster(2), first_cost: 121, first_cost_limit: 120 },
+        ]),
+      }),
+    )
+    const cellOf = (name: string) =>
+      w
+        .findAll('[data-testid="team-table-card"] tbody tr')
+        .find((r) => r.find('b').text() === name)!
+        .find('td.first-cost-cell')
+    const ok1 = cellOf('チーム1').find('[data-testid="limit-mark"]')
+    expect(ok1.attributes('data-state')).toBe('ok')
+    expect(ok1.classes()).toContain('mdi-check-circle')
+    expect(ok1.classes()).toContain('text-meter-ok')
+    const ng = cellOf('チーム2').find('[data-testid="limit-mark"]')
+    expect(ng.attributes('data-state')).toBe('ng')
+    expect(ng.classes()).toContain('mdi-close-circle')
+    expect(ng.classes()).toContain('text-meter-ng')
+    for (const n of ['チーム1', 'チーム2']) {
+      expect(cellOf(n).findComponent(components.VProgressLinear).exists()).toBe(false)
+      expect(cellOf(n).findComponent(components.VChip).exists()).toBe(false)
+    }
+  })
+
+  it('1軍コストの上限が無い（25 人未満）時は記号を出さない', () => {
+    const w = mountOverview(
+      baseProps({
+        teams: ok([team(1)]),
+        rosterStatus: ok([{ ...roster(1), first_cost: 90, first_cost_limit: null }]),
+      }),
+    )
+    expect(w.find('td.first-cost-cell [data-testid="limit-mark"]').exists()).toBe(false)
+    expect(w.find('td.first-cost-cell').text()).toContain('90 / —')
+  })
+
   it('合計コストの棒は、通常=link・上限に近い=meter-near・超過=meter-over', () => {
     const w = mountOverview(
       baseProps({

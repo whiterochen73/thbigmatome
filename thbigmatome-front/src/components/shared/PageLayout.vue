@@ -79,6 +79,24 @@ withDefaults(
   opacity: 1;
 }
 
+/* ツールバーの入力欄のラベル。Vuetify 既定（medium-emphasis 0.6）は light で 4.08 になるので、文字色を on-surface-variant・不透明にする */
+.page-layout__filters :deep(.v-field .v-label.v-field-label) {
+  color: rgb(var(--v-theme-on-surface-variant));
+  opacity: 1;
+}
+
+/* 表の「操作」列のアイコンボタン群。折り返さず横に並べる（class="row-actions" の wrapper を表のセルに置く） */
+.page-layout :deep(.row-actions) {
+  display: flex;
+  flex-wrap: nowrap;
+  white-space: nowrap;
+}
+
+/* 選択中の v-btn-toggle（selected-class="bg-primary"）。active のオーバーレイが白を重ねて地を明るくし、dark で白文字が 3.81 まで落ちる（実測）ので、オーバーレイを消して地の色をそのまま出す */
+.page-layout :deep(.v-btn-toggle .v-btn--active > .v-btn__overlay) {
+  opacity: 0;
+}
+
 .page-layout__toolbar {
   display: flex;
   flex-wrap: wrap;

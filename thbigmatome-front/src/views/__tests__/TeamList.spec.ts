@@ -88,12 +88,6 @@ describe('TeamList', () => {
         plugins: [vuetify, i18n, createPinia()],
         stubs: {
           ConfirmDialog: true,
-          PageHeader: {
-            template:
-              '<div><slot /><div data-testid="page-header-actions"><slot name="actions" /></div></div>',
-          },
-          DataCard: { template: '<div><slot /></div>' },
-          FilterBar: { template: '<div />' },
           TeamDialog: {
             name: 'TeamDialog',
             props: ['isVisible', 'team'],
@@ -126,12 +120,6 @@ describe('TeamList', () => {
         plugins: [vuetify, i18n, createPinia()],
         stubs: {
           ConfirmDialog: true,
-          PageHeader: {
-            template:
-              '<div><slot /><div data-testid="page-header-actions"><slot name="actions" /></div></div>',
-          },
-          DataCard: { template: '<div><slot /></div>' },
-          FilterBar: { template: '<div />' },
           TeamDialog: {
             name: 'TeamDialog',
             props: ['isVisible', 'team'],

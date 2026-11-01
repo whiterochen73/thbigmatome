@@ -1,104 +1,101 @@
 <template>
-  <v-container>
-    <PageHeader :title="t('teamList.title')">
-      <template #actions>
-        <v-btn color="action" variant="flat" @click="openDialog()" prepend-icon="mdi-plus">
-          {{ t('teamList.addTeam') }}
-        </v-btn>
+  <PageLayout>
+    <template #actions>
+      <v-btn color="action" variant="flat" prepend-icon="mdi-plus" @click="openDialog()">
+        {{ t('teamList.addTeam') }}
+      </v-btn>
+    </template>
+
+    <AsyncState
+      framed
+      :loading="loading"
+      :error="fetchFailed"
+      :error-message="t('teamList.fetchFailed')"
+      :empty="teams.length === 0"
+      empty-icon="mdi-account-group-outline"
+      empty-message="チームが登録されていません"
+      @retry="fetchTeams"
+    >
+      <template #empty-actions>
+        <p class="text-caption on-surface-variant mb-0">
+          「チーム追加」からチームを作成し、メンバーを登録してシーズンを開始できます
+        </p>
       </template>
-    </PageHeader>
-    <DataCard title="">
-      <FilterBar />
-      <v-data-table
-        :headers="headers"
-        :items="teams"
-        :loading="loading"
-        class="elevation-1"
-        item-value="id"
-        :no-data-text="t('teamList.noData')"
-        :row-props="
-          (row: { item: Team }) => (row.item.is_active ? {} : { class: 'text-medium-emphasis' })
-        "
-      >
-        <template #[`item.team_type`]="{ item }">
-          <v-chip
-            v-if="item.team_type === 'hachinai'"
-            size="small"
-            color="state-info"
-            variant="flat"
-            prepend-icon="mdi-tag-outline"
-          >
-            {{ t('teamList.teamTypes.hachinai') }}
-          </v-chip>
-          <span v-else class="text-caption text-medium-emphasis">{{
-            t('teamList.teamTypes.normal')
-          }}</span>
-        </template>
+      <v-card>
+        <v-data-table
+          :headers="headers"
+          :items="teams"
+          class="ui-table"
+          item-value="id"
+          :no-data-text="t('teamList.noData')"
+          :row-props="
+            (row: { item: Team }) => (row.item.is_active ? {} : { class: 'on-surface-variant' })
+          "
+        >
+          <template #[`item.team_type`]="{ item }">
+            <v-chip
+              v-if="item.team_type === 'hachinai'"
+              size="small"
+              color="state-info"
+              variant="flat"
+              prepend-icon="mdi-tag-outline"
+            >
+              {{ t('teamList.teamTypes.hachinai') }}
+            </v-chip>
+            <span v-else class="text-caption on-surface-variant">{{
+              t('teamList.teamTypes.normal')
+            }}</span>
+          </template>
 
-        <template #[`item.is_active`]="{ item }">
-          <v-icon v-if="item.is_active"> mdi-check </v-icon>
-        </template>
+          <template #[`item.is_active`]="{ item }">
+            <v-icon v-if="item.is_active"> mdi-check </v-icon>
+          </template>
 
-        <template #[`item.last_game_real_date`]="{ item }">
-          {{ item.last_game_real_date ? formatDate(item.last_game_real_date) : '-' }}
-        </template>
+          <template #[`item.last_game_real_date`]="{ item }">
+            {{ item.last_game_real_date ? formatDate(item.last_game_real_date) : '-' }}
+          </template>
 
-        <template #[`item.last_game_date`]="{ item }">
-          {{ item.last_game_date ? formatDate(item.last_game_date) : '-' }}
-        </template>
+          <template #[`item.last_game_date`]="{ item }">
+            {{ item.last_game_date ? formatDate(item.last_game_date) : '-' }}
+          </template>
 
-        <template #[`item.manager_name`]="{ item }">
-          {{ item.director?.name || '-' }}
-        </template>
+          <template #[`item.manager_name`]="{ item }">
+            {{ item.director?.name || '-' }}
+          </template>
 
-        <template #[`item.actions`]="{ item }">
-          <v-tooltip text="シーズンポータル">
-            <template #activator="{ props }">
-              <v-icon v-bind="props" size="small" class="mr-2" @click="navigateToSeason(item)">
-                mdi-calendar-star
-              </v-icon>
-            </template>
-          </v-tooltip>
-          <v-tooltip text="メンバー編集">
-            <template #activator="{ props }">
-              <v-icon v-bind="props" size="small" class="mr-2" @click="navigateToMembers(item.id)">
-                mdi-account-group
-              </v-icon>
-            </template>
-          </v-tooltip>
-          <v-tooltip text="チーム編集">
-            <template #activator="{ props }">
-              <v-icon v-bind="props" size="small" class="mr-2" @click="openDialog(item)">
-                mdi-pencil
-              </v-icon>
-            </template>
-          </v-tooltip>
-          <v-tooltip text="削除">
-            <template #activator="{ props }">
-              <v-icon v-bind="props" size="small" @click="deleteTeam(item.id)"> mdi-delete </v-icon>
-            </template>
-          </v-tooltip>
-        </template>
-
-        <template #no-data>
-          <div class="d-flex flex-column align-center py-8">
-            <v-icon size="48" class="mb-2 text-medium-emphasis">mdi-account-group-outline</v-icon>
-            <p class="text-medium-emphasis mb-1">チームが登録されていません</p>
-            <p class="text-caption text-disabled mb-4">
-              「チーム追加」からチームを作成し、メンバーを登録してシーズンを開始できます
-            </p>
-            <v-btn color="action" variant="flat" prepend-icon="mdi-plus" @click="openDialog()">
-              {{ t('teamList.addTeam') }}
-            </v-btn>
-          </div>
-        </template>
-      </v-data-table>
-    </DataCard>
+          <template #[`item.actions`]="{ item }">
+            <div class="row-actions">
+              <RowIconButton
+                icon="mdi-calendar-star"
+                :label="`${item.name}のシーズンポータル`"
+                @click="navigateToSeason(item)"
+              />
+              <RowIconButton
+                icon="mdi-account-group"
+                :label="`${item.name}のメンバー編集`"
+                @click="navigateToMembers(item.id)"
+              />
+              <RowIconButton
+                icon="mdi-pencil"
+                :label="t('settings.rowActions.edit', { name: item.name })"
+                @click="openDialog(item)"
+              />
+              <RowIconButton
+                icon="mdi-delete-outline"
+                danger
+                :label="t('settings.rowActions.delete', { name: item.name })"
+                @click="deleteTeam(item.id)"
+              />
+            </div>
+          </template>
+        </v-data-table>
+      </v-card>
+    </AsyncState>
 
     <TeamDialog v-model:isVisible="dialogVisible" :team="editingTeam" @save="fetchTeams" />
 
     <ConfirmDialog ref="confirmDialog" />
-  </v-container>
+  </PageLayout>
 </template>
 
 <script lang="ts" setup>
@@ -108,9 +105,9 @@ import { useRouter } from 'vue-router'
 import axios from '@/plugins/axios'
 import { useSnackbar } from '@/composables/useSnackbar'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
-import DataCard from '@/components/shared/DataCard.vue'
-import FilterBar from '@/components/shared/FilterBar.vue'
-import PageHeader from '@/components/shared/PageHeader.vue'
+import AsyncState from '@/components/shared/AsyncState.vue'
+import PageLayout from '@/components/shared/PageLayout.vue'
+import RowIconButton from '@/components/shared/RowIconButton.vue'
 import { type Team } from '@/types/team'
 import TeamDialog from '@/components/TeamDialog.vue'
 import { useTeamSelectionStore } from '@/stores/teamSelection'
@@ -121,19 +118,20 @@ const teamSelectionStore = useTeamSelectionStore()
 
 // v-data-tableのヘッダー定義
 const headers = computed(() => [
-  { title: t('teamList.headers.id'), key: 'id' },
+  { title: t('teamList.headers.id'), key: 'id', nowrap: true },
   { title: t('teamList.headers.name'), key: 'name' },
-  { title: t('teamList.headers.shortName'), key: 'short_name' },
-  { title: t('teamList.headers.teamType'), key: 'team_type', sortable: false },
+  { title: t('teamList.headers.shortName'), key: 'short_name', nowrap: true },
+  { title: t('teamList.headers.teamType'), key: 'team_type', sortable: false, nowrap: true },
   { title: t('teamList.headers.managerName'), key: 'manager_name', sortable: false },
-  { title: t('teamList.headers.isActive'), key: 'is_active', sortable: false },
-  { title: t('teamList.headers.lastGameRealDate'), key: 'last_game_real_date' },
-  { title: t('teamList.headers.lastGameDate'), key: 'last_game_date' },
-  { title: t('teamList.headers.actions'), key: 'actions', sortable: false },
+  { title: t('teamList.headers.isActive'), key: 'is_active', sortable: false, nowrap: true },
+  { title: t('teamList.headers.lastGameRealDate'), key: 'last_game_real_date', nowrap: true },
+  { title: t('teamList.headers.lastGameDate'), key: 'last_game_date', nowrap: true },
+  { title: t('teamList.headers.actions'), key: 'actions', sortable: false, nowrap: true },
 ])
 
 const teams = ref<Team[]>([])
 const loading = ref(true)
+const fetchFailed = ref(false)
 const { showSnackbar } = useSnackbar()
 const confirmDialog = ref<InstanceType<typeof ConfirmDialog> | null>(null)
 
@@ -146,12 +144,14 @@ const editingTeam = ref<Team | null>(null) // 編集中のTeamデータ
  */
 const fetchTeams = async () => {
   loading.value = true
+  fetchFailed.value = false
   try {
     const response = await axios.get<Team[]>('/teams')
     teams.value = response.data
   } catch (error) {
+    // 取得の失敗はページ内のアラート（AsyncState）で出す。スナックバーは保存・削除の成否だけ
     console.error('Error fetching teams:', error)
-    showSnackbar(t('teamList.fetchFailed'), 'error')
+    fetchFailed.value = true
   } finally {
     loading.value = false
   }
@@ -221,7 +221,3 @@ onMounted(() => {
   fetchTeams()
 })
 </script>
-
-<style scoped>
-/* 必要に応じてスタイルを追加 */
-</style>

@@ -1,53 +1,57 @@
 <template>
-  <v-container>
-    <PageHeader title="試合記録" />
+  <PageLayout>
+    <template #filters>
+      <v-select
+        v-model="filterCompetitionId"
+        :items="competitions"
+        item-title="name"
+        item-value="id"
+        label="大会"
+        density="compact"
+        hide-details
+        clearable
+        class="games-filter games-filter--competition"
+      ></v-select>
+      <v-text-field
+        v-model="filterFrom"
+        label="開始日"
+        type="date"
+        density="compact"
+        hide-details
+        class="games-filter games-filter--date"
+      ></v-text-field>
+      <v-text-field
+        v-model="filterTo"
+        label="終了日"
+        type="date"
+        density="compact"
+        hide-details
+        class="games-filter games-filter--date"
+      ></v-text-field>
+    </template>
+    <template #actions>
+      <v-btn
+        color="action"
+        variant="flat"
+        prepend-icon="mdi-magnify"
+        :loading="loading"
+        @click="fetchGames"
+        >検索</v-btn
+      >
+    </template>
 
-    <FilterBar>
-      <template #filters>
-        <v-select
-          v-model="filterCompetitionId"
-          :items="competitions"
-          item-title="name"
-          item-value="id"
-          label="大会"
-          density="compact"
-          clearable
-        ></v-select>
-        <v-text-field
-          v-model="filterFrom"
-          label="開始日"
-          type="date"
-          density="compact"
-        ></v-text-field>
-        <v-text-field
-          v-model="filterTo"
-          label="終了日"
-          type="date"
-          density="compact"
-        ></v-text-field>
-        <v-btn color="action" variant="flat" @click="fetchGames" :loading="loading">検索</v-btn>
-      </template>
-    </FilterBar>
-
-    <v-row>
-      <v-col cols="12">
-        <v-alert
-          v-if="errorMessage"
-          type="error"
-          variant="tonal"
-          class="mb-3"
-          closable
-          @click:close="errorMessage = ''"
-        >
-          {{ errorMessage }}
-        </v-alert>
-        <v-data-table
-          :headers="headers"
-          :items="games"
-          :loading="loading"
-          class="elevation-1"
-          density="compact"
-        >
+    <AsyncState
+      framed
+      :loading="loading"
+      :error="fetchFailed"
+      error-message="試合の取得に失敗しました"
+      :empty="games.length === 0"
+      empty-icon="mdi-scoreboard-outline"
+      empty-message="該当する試合がありません"
+      @retry="fetchGames"
+    >
+      <v-card>
+        <v-data-table :headers="headers" :items="games" class="ui-table" density="compact">
           <template v-slot:[`item.status`]="{ item }">
             <v-chip
               :color="item.status === 'confirmed' ? 'state-done' : 'state-todo'"
@@ -72,20 +76,22 @@
             <span v-else class="on-surface-variant">-</span>
           </template>
           <template v-slot:[`item.actions`]="{ item }">
-            <v-btn size="small" variant="text" @click="navigateToDetail(item.id)">詳細</v-btn>
+            <v-btn size="small" variant="text" color="link" @click="navigateToDetail(item.id)"
+              >詳細</v-btn
+            >
           </template>
         </v-data-table>
-      </v-col>
-    </v-row>
-  </v-container>
+      </v-card>
+    </AsyncState>
+  </PageLayout>
 </template>
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import axios from 'axios'
-import PageHeader from '@/components/shared/PageHeader.vue'
-import FilterBar from '@/components/shared/FilterBar.vue'
+import AsyncState from '@/components/shared/AsyncState.vue'
+import PageLayout from '@/components/shared/PageLayout.vue'
 
 interface Competition {
   id: number
@@ -106,8 +112,8 @@ interface Game {
 const router = useRouter()
 const games = ref<Game[]>([])
 const competitions = ref<Competition[]>([])
-const loading = ref(false)
-const errorMessage = ref('')
+const loading = ref(true)
+const fetchFailed = ref(false)
 
 const filterCompetitionId = ref<number | null>(null)
 const filterFrom = ref('')
@@ -131,7 +137,7 @@ onMounted(() => {
 
 async function fetchGames() {
   loading.value = true
-  errorMessage.value = ''
+  fetchFailed.value = false
   try {
     const params: Record<string, string | number> = {}
     if (filterCompetitionId.value !== null) params.competition_id = filterCompetitionId.value
@@ -140,7 +146,7 @@ async function fetchGames() {
     const response = await axios.get<Game[]>('/games', { params })
     games.value = response.data
   } catch (error) {
-    errorMessage.value = '試合の取得に失敗しました'
+    fetchFailed.value = true
     console.error('Error fetching games:', error)
   } finally {
     loading.value = false
@@ -160,3 +166,21 @@ function navigateToDetail(id: number) {
   router.push({ name: '試合詳細', params: { id } })
 }
 </script>
+
+<style scoped>
+.games-filter--competition {
+  flex: 0 1 220px;
+  min-width: 160px;
+}
+.games-filter--date {
+  flex: 0 1 160px;
+  min-width: 140px;
+}
+
+@media (max-width: 599.98px) {
+  .games-filter--competition,
+  .games-filter--date {
+    flex: 1 1 100%;
+  }
+}
+</style>

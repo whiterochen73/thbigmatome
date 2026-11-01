@@ -6,6 +6,8 @@ import * as directives from 'vuetify/directives'
 import { createRouter, createMemoryHistory } from 'vue-router'
 import { createPinia } from 'pinia'
 import PlayerCardsView from '../PlayerCardsView.vue'
+import { createI18n } from 'vue-i18n'
+import ja from '@/locales/ja.json'
 
 vi.mock('@/plugins/axios', () => {
   return {
@@ -27,6 +29,11 @@ vi.mock('@/plugins/axios', () => {
 import axios from '@/plugins/axios'
 
 const vuetify = createVuetify({ components, directives })
+const i18n = createI18n({
+  legacy: false,
+  locale: 'ja',
+  messages: { ja: { asyncState: ja.asyncState } },
+})
 
 function createTestRouter() {
   return createRouter({
@@ -91,24 +98,27 @@ describe('PlayerCardsView', () => {
   it('コンポーネントがマウントされること', async () => {
     const router = createTestRouter()
     const wrapper = mount(PlayerCardsView, {
-      global: { plugins: [vuetify, router, createPinia()] },
+      global: { plugins: [i18n, vuetify, router, createPinia()] },
     })
     await flushPromises()
     expect(wrapper.exists()).toBe(true)
   })
 
-  it('タイトルが表示されること', async () => {
+  // Test Basis: thbig-dugout-ui-unification-design.md §2.1（画面タイトルはヘッダーバーが持つ。本文に置かない）
+  it('画面タイトルを本文に持たず、骨格（PageLayout）で描く', async () => {
     const router = createTestRouter()
     const wrapper = mount(PlayerCardsView, {
-      global: { plugins: [vuetify, router, createPinia()] },
+      global: { plugins: [i18n, vuetify, router, createPinia()] },
     })
     await flushPromises()
-    expect(wrapper.text()).toContain('選手カード一覧')
+    expect(wrapper.find('[data-testid="page-layout"]').exists()).toBe(true)
+    expect(wrapper.find('h1').exists()).toBe(false)
+    expect(wrapper.text()).not.toContain('選手カード一覧')
   })
 
   it('マウント時にcard_setsとplayer_cardsを取得すること', async () => {
     const router = createTestRouter()
-    mount(PlayerCardsView, { global: { plugins: [vuetify, router, createPinia()] } })
+    mount(PlayerCardsView, { global: { plugins: [i18n, vuetify, router, createPinia()] } })
     await flushPromises()
     expect(axios.get).toHaveBeenCalledWith('/card_sets')
     expect(axios.get).toHaveBeenCalledWith('/player_cards', expect.any(Object))
@@ -117,7 +127,7 @@ describe('PlayerCardsView', () => {
   it('選手カード一覧が表示されること', async () => {
     const router = createTestRouter()
     const wrapper = mount(PlayerCardsView, {
-      global: { plugins: [vuetify, router, createPinia()] },
+      global: { plugins: [i18n, vuetify, router, createPinia()] },
     })
     await flushPromises()
     expect(wrapper.text()).toContain('博麗霊夢')
@@ -127,7 +137,7 @@ describe('PlayerCardsView', () => {
   // Test Basis: thbig-dugout-visual-stage5-mapping.md §7 b5-19〜b5-21 / subtask_1790c §3
   it('カード種別の全チップを投手・野手トークンで区別する', async () => {
     const wrapper = mount(PlayerCardsView, {
-      global: { plugins: [vuetify, createTestRouter(), createPinia()] },
+      global: { plugins: [i18n, vuetify, createTestRouter(), createPinia()] },
     })
     await flushPromises()
     const typeChips = wrapper
@@ -151,7 +161,7 @@ describe('PlayerCardsView', () => {
   it('合計件数が表示されること', async () => {
     const router = createTestRouter()
     const wrapper = mount(PlayerCardsView, {
-      global: { plugins: [vuetify, router, createPinia()] },
+      global: { plugins: [i18n, vuetify, router, createPinia()] },
     })
     await flushPromises()
     expect(wrapper.text()).toContain('2件')
@@ -160,7 +170,7 @@ describe('PlayerCardsView', () => {
   it('フィルターセクションが存在すること', async () => {
     const router = createTestRouter()
     const wrapper = mount(PlayerCardsView, {
-      global: { plugins: [vuetify, router, createPinia()] },
+      global: { plugins: [i18n, vuetify, router, createPinia()] },
     })
     await flushPromises()
     expect(wrapper.text()).toContain('カードセット')
@@ -171,7 +181,7 @@ describe('PlayerCardsView', () => {
     vi.mocked(axios.get).mockRejectedValue(new Error('Network Error'))
     const router = createTestRouter()
     const wrapper = mount(PlayerCardsView, {
-      global: { plugins: [vuetify, router, createPinia()] },
+      global: { plugins: [i18n, vuetify, router, createPinia()] },
     })
     await flushPromises()
     expect(wrapper.text()).toContain('選手カードの取得に失敗しました')

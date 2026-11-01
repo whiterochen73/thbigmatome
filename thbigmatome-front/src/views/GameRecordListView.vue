@@ -1,55 +1,44 @@
 <template>
-  <v-container>
-    <PageHeader title="パーサー結果レビュー">
-      <template #actions>
-        <v-chip
-          color="state-neutral"
-          variant="flat"
-          prepend-icon="mdi-flask-outline"
-          size="small"
-          label
-          >β</v-chip
-        >
-      </template>
-    </PageHeader>
+  <PageLayout>
+    <template #filters>
+      <v-btn-toggle
+        v-model="filterStatus"
+        density="compact"
+        rounded="sm"
+        variant="outlined"
+        selected-class="bg-primary"
+        :style="{ borderColor: 'rgb(var(--v-theme-border-strong))' }"
+      >
+        <v-btn value="">全ステータス</v-btn>
+        <v-btn value="draft">draft</v-btn>
+        <v-btn value="confirmed">confirmed</v-btn>
+      </v-btn-toggle>
+      <v-chip
+        color="state-neutral"
+        variant="flat"
+        prepend-icon="mdi-flask-outline"
+        size="small"
+        label
+        class="record-beta"
+        >β</v-chip
+      >
+    </template>
 
-    <!-- フィルター -->
-    <FilterBar>
-      <template #filters>
-        <v-btn-toggle
-          v-model="filterStatus"
-          density="compact"
-          rounded="sm"
-          variant="outlined"
-          selected-class="bg-primary"
-          :style="{ borderColor: 'rgb(var(--v-theme-border-strong))' }"
-        >
-          <v-btn value="">全ステータス</v-btn>
-          <v-btn value="draft">draft</v-btn>
-          <v-btn value="confirmed">confirmed</v-btn>
-        </v-btn-toggle>
-      </template>
-    </FilterBar>
-
-    <!-- テーブル -->
-    <v-row>
-      <v-col cols="12">
-        <v-alert
-          v-if="errorMessage"
-          type="error"
-          variant="tonal"
-          class="mb-3"
-          closable
-          @click:close="errorMessage = ''"
-        >
-          {{ errorMessage }}
-        </v-alert>
-
+    <AsyncState
+      framed
+      :loading="loading"
+      :error="fetchFailed"
+      error-message="試合記録の取得に失敗しました"
+      :empty="gameRecords.length === 0"
+      empty-icon="mdi-clipboard-text-outline"
+      empty-message="パーサー結果がありません"
+      @retry="fetchGameRecords"
+    >
+      <v-card>
         <v-data-table
           :headers="headers"
           :items="filteredRecords"
-          :loading="loading"
-          class="elevation-1"
+          class="ui-table"
           density="compact"
           item-value="id"
           :items-per-page="50"
@@ -87,22 +76,24 @@
             <v-btn
               size="x-small"
               variant="text"
+              color="link"
               icon="mdi-arrow-right"
+              :aria-label="`${formatDate(item.game_date)} vs ${item.opponent_team_name}の詳細を開く`"
               @click.stop="navigateToDetail(item.id)"
             />
           </template>
         </v-data-table>
-      </v-col>
-    </v-row>
-  </v-container>
+      </v-card>
+    </AsyncState>
+  </PageLayout>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import axios from '@/plugins/axios'
-import PageHeader from '@/components/shared/PageHeader.vue'
-import FilterBar from '@/components/shared/FilterBar.vue'
+import AsyncState from '@/components/shared/AsyncState.vue'
+import PageLayout from '@/components/shared/PageLayout.vue'
 
 interface GameRecord {
   id: number
@@ -117,8 +108,8 @@ interface GameRecord {
 
 const router = useRouter()
 const gameRecords = ref<GameRecord[]>([])
-const loading = ref(false)
-const errorMessage = ref('')
+const loading = ref(true)
+const fetchFailed = ref(false)
 const filterStatus = ref('')
 
 const filteredRecords = computed(() => {
@@ -147,7 +138,7 @@ function formatDate(dateStr: string): string {
 
 async function fetchGameRecords() {
   loading.value = true
-  errorMessage.value = ''
+  fetchFailed.value = false
   try {
     const response = await axios.get<{
       game_records: GameRecord[]
@@ -155,7 +146,7 @@ async function fetchGameRecords() {
     }>('/game_records')
     gameRecords.value = response.data.game_records
   } catch {
-    errorMessage.value = '試合記録の取得に失敗しました'
+    fetchFailed.value = true
   } finally {
     loading.value = false
   }

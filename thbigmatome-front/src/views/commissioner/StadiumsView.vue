@@ -1,54 +1,54 @@
 <template>
-  <v-container>
-    <PageHeader title="球場管理" />
+  <PageLayout>
+    <template #filters>
+      <v-text-field
+        v-model="filterName"
+        label="球場名検索"
+        prepend-inner-icon="mdi-magnify"
+        density="compact"
+        hide-details
+        variant="outlined"
+        clearable
+        class="list-filter list-filter--search"
+        data-testid="stadiums-search"
+      />
+    </template>
+    <template #actions>
+      <v-btn color="action" variant="flat" prepend-icon="mdi-plus" @click="openCreateDialog">
+        新規球場作成
+      </v-btn>
+    </template>
 
-    <FilterBar>
-      <template #search>
-        <v-text-field
-          v-model="filterName"
-          label="球場名検索"
-          prepend-inner-icon="mdi-magnify"
+    <AsyncState
+      framed
+      :loading="loading"
+      :error="fetchFailed"
+      error-message="球場の取得に失敗しました"
+      :empty="stadiums.length === 0"
+      empty-icon="mdi-stadium-outline"
+      empty-message="球場が登録されていません"
+      @retry="fetchStadiums"
+    >
+      <v-card>
+        <v-data-table
+          :headers="headers"
+          :items="filteredStadiums"
+          class="ui-table"
           density="compact"
-          hide-details
-          variant="outlined"
-          clearable
-        />
-      </template>
-    </FilterBar>
-
-    <v-row>
-      <v-col cols="12">
-        <DataCard title="球場一覧">
-          <template #title-actions>
-            <v-btn color="action" variant="flat" @click="openCreateDialog">新規球場作成</v-btn>
+        >
+          <template v-slot:[`item.indoor`]="{ item }">
+            {{ item.indoor ? '屋内' : '屋外' }}
           </template>
-          <v-alert
-            v-if="errorMessage"
-            type="error"
-            variant="tonal"
-            class="mb-3"
-            closable
-            @click:close="errorMessage = ''"
-          >
-            {{ errorMessage }}
-          </v-alert>
-          <v-data-table
-            :headers="headers"
-            :items="filteredStadiums"
-            :loading="loading"
-            class="elevation-1"
-            density="compact"
-          >
-            <template v-slot:[`item.indoor`]="{ item }">
-              {{ item.indoor ? '屋内' : '屋外' }}
-            </template>
-            <template v-slot:[`item.actions`]="{ item }">
-              <v-icon size="small" @click="openEditDialog(item)" title="編集">mdi-pencil</v-icon>
-            </template>
-          </v-data-table>
-        </DataCard>
-      </v-col>
-    </v-row>
+          <template v-slot:[`item.actions`]="{ item }">
+            <RowIconButton
+              icon="mdi-pencil"
+              :label="`${item.name}を編集`"
+              @click="openEditDialog(item)"
+            />
+          </template>
+        </v-data-table>
+      </v-card>
+    </AsyncState>
 
     <!-- 新規球場作成ダイアログ -->
     <v-dialog v-model="createDialog" max-width="500px" persistent>
@@ -137,16 +137,16 @@
         </v-card-actions>
       </v-card>
     </v-dialog>
-  </v-container>
+  </PageLayout>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import axios from 'axios'
 import { useSnackbar } from '@/composables/useSnackbar'
-import PageHeader from '@/components/shared/PageHeader.vue'
-import FilterBar from '@/components/shared/FilterBar.vue'
-import DataCard from '@/components/shared/DataCard.vue'
+import AsyncState from '@/components/shared/AsyncState.vue'
+import PageLayout from '@/components/shared/PageLayout.vue'
+import RowIconButton from '@/components/shared/RowIconButton.vue'
 
 interface Stadium {
   id: number
@@ -159,8 +159,8 @@ interface Stadium {
 const { showSnackbar } = useSnackbar()
 
 const stadiums = ref<Stadium[]>([])
-const loading = ref(false)
-const errorMessage = ref('')
+const loading = ref(true)
+const fetchFailed = ref(false)
 const filterName = ref('')
 
 const filteredStadiums = computed(() => {
@@ -192,11 +192,12 @@ onMounted(fetchStadiums)
 
 async function fetchStadiums() {
   loading.value = true
+  fetchFailed.value = false
   try {
     const response = await axios.get<Stadium[]>('/stadiums')
     stadiums.value = response.data
   } catch (error) {
-    errorMessage.value = '球場の取得に失敗しました'
+    fetchFailed.value = true
     console.error('Error fetching stadiums:', error)
   } finally {
     loading.value = false
@@ -273,3 +274,16 @@ async function updateStadium() {
   }
 }
 </script>
+
+<style scoped>
+.list-filter--search {
+  flex: 0 1 260px;
+  min-width: 180px;
+}
+
+@media (max-width: 599.98px) {
+  .list-filter--search {
+    flex: 1 1 100%;
+  }
+}
+</style>

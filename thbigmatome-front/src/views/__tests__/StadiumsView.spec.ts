@@ -4,6 +4,8 @@ import { createVuetify } from 'vuetify'
 import * as components from 'vuetify/components'
 import * as directives from 'vuetify/directives'
 import StadiumsView from '../commissioner/StadiumsView.vue'
+import { createI18n } from 'vue-i18n'
+import ja from '@/locales/ja.json'
 
 // Mock axios
 vi.mock('axios', () => {
@@ -33,6 +35,11 @@ vi.mock('@/composables/useSnackbar', () => ({
 import axios from 'axios'
 
 const vuetify = createVuetify({ components, directives })
+const i18n = createI18n({
+  legacy: false,
+  locale: 'ja',
+  messages: { ja: { asyncState: ja.asyncState } },
+})
 
 describe('StadiumsView', () => {
   beforeEach(() => {
@@ -41,22 +48,25 @@ describe('StadiumsView', () => {
   })
 
   it('mounts successfully', async () => {
-    const wrapper = mount(StadiumsView, { global: { plugins: [vuetify] } })
+    const wrapper = mount(StadiumsView, { global: { plugins: [i18n, vuetify] } })
     await flushPromises()
     expect(wrapper.exists()).toBe(true)
   })
 
-  it('displays stadium list header', async () => {
-    const wrapper = mount(StadiumsView, { global: { plugins: [vuetify] } })
+  // Test Basis: thbig-dugout-ui-unification-design.md §2.1（画面タイトルはヘッダーバーが持つ。本文に置かない）
+  it('画面タイトルを本文に持たず、骨格（PageLayout）で描く', async () => {
+    const wrapper = mount(StadiumsView, { global: { plugins: [i18n, vuetify] } })
     await flushPromises()
-    expect(wrapper.text()).toContain('球場管理')
+    expect(wrapper.find('[data-testid="page-layout"]').exists()).toBe(true)
+    expect(wrapper.find('h1').exists()).toBe(false)
+    expect(wrapper.text()).not.toContain('球場管理')
   })
 
   it('fetches stadiums on mount', async () => {
     ;(axios.get as ReturnType<typeof vi.fn>).mockResolvedValue({
       data: [{ id: 1, name: '甲子園', code: 'koushien', indoor: false, up_table_ids: [] }],
     })
-    mount(StadiumsView, { global: { plugins: [vuetify] } })
+    mount(StadiumsView, { global: { plugins: [i18n, vuetify] } })
     await flushPromises()
     expect(axios.get).toHaveBeenCalledWith('/stadiums')
   })

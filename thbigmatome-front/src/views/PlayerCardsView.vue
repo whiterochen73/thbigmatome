@@ -1,94 +1,84 @@
 <template>
-  <v-container style="max-width: 1080px">
-    <PageHeader title="選手カード一覧" />
+  <PageLayout>
+    <template #filters>
+      <v-text-field
+        v-model="filterName"
+        label="選手名検索"
+        prepend-inner-icon="mdi-magnify"
+        density="compact"
+        hide-details
+        variant="outlined"
+        clearable
+        class="cards-filter cards-filter--search"
+        data-testid="player-cards-search"
+        @keyup.enter="fetchPlayerCards"
+        @click:clear="fetchPlayerCards"
+      />
+      <v-select
+        v-model="filterCardSetId"
+        :items="cardSets"
+        item-title="name"
+        item-value="id"
+        label="カードセット"
+        density="compact"
+        hide-details
+        clearable
+        variant="outlined"
+        class="cards-filter cards-filter--set"
+      />
+      <v-btn-toggle
+        v-model="filterCardType"
+        mandatory
+        density="compact"
+        rounded="sm"
+        variant="outlined"
+        selected-class="bg-primary"
+        :style="{ borderColor: 'rgb(var(--v-theme-border-strong))' }"
+      >
+        <v-btn value="" size="small">全種</v-btn>
+        <v-btn value="pitcher" size="small">投手</v-btn>
+        <v-btn value="batter" size="small">野手</v-btn>
+      </v-btn-toggle>
+      <span class="text-caption cards-count">{{ totalCount }}件</span>
+      <v-btn-toggle
+        v-model="viewMode"
+        mandatory
+        density="compact"
+        rounded="sm"
+        variant="outlined"
+        selected-class="bg-primary"
+        class="cards-view-mode"
+        :style="{ borderColor: 'rgb(var(--v-theme-border-strong))' }"
+      >
+        <v-btn value="table" size="small" title="テーブル表示" aria-label="テーブル表示">
+          <v-icon size="small">mdi-table</v-icon>
+        </v-btn>
+        <v-btn value="grid" size="small" title="グリッド表示" aria-label="グリッド表示">
+          <v-icon size="small">mdi-view-grid</v-icon>
+        </v-btn>
+      </v-btn-toggle>
+    </template>
 
-    <FilterBar>
-      <template #search>
-        <v-text-field
-          v-model="filterName"
-          label="選手名検索"
-          prepend-inner-icon="mdi-magnify"
-          density="compact"
-          hide-details
-          variant="outlined"
-          clearable
-          @keyup.enter="fetchPlayerCards"
-          @click:clear="fetchPlayerCards"
-        />
-      </template>
-      <template #filters>
-        <div class="d-flex align-center flex-wrap gap-3">
-          <v-select
-            v-model="filterCardSetId"
-            :items="cardSets"
-            item-title="name"
-            item-value="id"
-            label="カードセット"
-            density="compact"
-            hide-details
-            clearable
-            variant="outlined"
-            style="min-width: 160px; max-width: 220px"
-          />
-          <v-btn-toggle
-            v-model="filterCardType"
-            mandatory
-            density="compact"
-            rounded="sm"
-            variant="outlined"
-            selected-class="bg-primary"
-            :style="{ borderColor: 'rgb(var(--v-theme-border-strong))' }"
-          >
-            <v-btn value="" size="small">全種</v-btn>
-            <v-btn value="pitcher" size="small">投手</v-btn>
-            <v-btn value="batter" size="small">野手</v-btn>
-          </v-btn-toggle>
-          <span class="text-caption">{{ totalCount }}件</span>
-        </div>
-      </template>
-      <template #toggles>
-        <v-btn-toggle
-          v-model="viewMode"
-          mandatory
-          density="compact"
-          rounded="sm"
-          variant="outlined"
-          selected-class="bg-primary"
-          :style="{ borderColor: 'rgb(var(--v-theme-border-strong))' }"
-        >
-          <v-btn value="table" size="small" title="テーブル表示">
-            <v-icon size="small">mdi-table</v-icon>
-          </v-btn>
-          <v-btn value="grid" size="small" title="グリッド表示">
-            <v-icon size="small">mdi-view-grid</v-icon>
-          </v-btn>
-        </v-btn-toggle>
-      </template>
-    </FilterBar>
-
-    <!-- エラーメッセージ -->
-    <v-alert
-      v-if="errorMessage"
-      type="error"
-      variant="tonal"
-      class="mb-3"
-      closable
-      @click:close="errorMessage = ''"
+    <AsyncState
+      framed
+      :loading="loading"
+      :error="fetchFailed"
+      error-message="選手カードの取得に失敗しました"
+      :empty="playerCards.length === 0"
+      empty-icon="mdi-card-account-details-outline"
+      empty-message="該当する選手カードがありません"
+      @retry="fetchPlayerCards"
     >
-      {{ errorMessage }}
-    </v-alert>
-
-    <!-- テーブル表示 -->
-    <template v-if="viewMode === 'table'">
-      <DataCard title="">
+      <!-- テーブル表示 -->
+      <v-card v-if="viewMode === 'table'">
         <v-data-table
           :headers="headers"
           :items="playerCards"
-          :loading="loading"
           :server-items-length="totalCount"
           v-model:page="currentPage"
           :items-per-page="perPage"
           :items-per-page-options="[{ value: 50, title: '50' }]"
+          class="ui-table"
           @update:page="fetchPlayerCards"
           density="compact"
           hover
@@ -111,28 +101,28 @@
             </v-chip>
           </template>
         </v-data-table>
-      </DataCard>
-    </template>
+      </v-card>
 
-    <!-- グリッド表示 -->
-    <v-row v-else-if="viewMode === 'grid'">
-      <v-col v-for="card in playerCards" :key="card.id" cols="12" sm="6" md="4" lg="3">
-        <PlayerCardItem :card="card" @click="navigateToDetail(card.id)" />
-      </v-col>
-    </v-row>
+      <!-- グリッド表示 -->
+      <v-row v-else-if="viewMode === 'grid'">
+        <v-col v-for="card in playerCards" :key="card.id" cols="12" sm="6" md="4" lg="3">
+          <PlayerCardItem :card="card" @click="navigateToDetail(card.id)" />
+        </v-col>
+      </v-row>
 
-    <!-- グリッドモード用ページネーション（テーブルはv-data-table内蔵を使用） -->
-    <div v-if="viewMode === 'grid'" class="d-flex align-center justify-end mt-2">
-      <span class="text-caption mr-3">全{{ totalCount }}件</span>
-      <v-pagination
-        v-model="currentPage"
-        :length="totalPages"
-        :total-visible="7"
-        size="small"
-        @update:model-value="fetchPlayerCards"
-      ></v-pagination>
-    </div>
-  </v-container>
+      <!-- グリッドモード用ページネーション（テーブルはv-data-table内蔵を使用） -->
+      <div v-if="viewMode === 'grid'" class="d-flex align-center justify-end mt-2">
+        <span class="text-caption mr-3">全{{ totalCount }}件</span>
+        <v-pagination
+          v-model="currentPage"
+          :length="totalPages"
+          :total-visible="7"
+          size="small"
+          @update:model-value="fetchPlayerCards"
+        ></v-pagination>
+      </div>
+    </AsyncState>
+  </PageLayout>
 </template>
 
 <script setup lang="ts">
@@ -140,9 +130,8 @@ import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter, onBeforeRouteLeave } from 'vue-router'
 import axios from '@/plugins/axios'
 import PlayerCardItem from '@/components/PlayerCardItem.vue'
-import PageHeader from '@/components/shared/PageHeader.vue'
-import FilterBar from '@/components/shared/FilterBar.vue'
-import DataCard from '@/components/shared/DataCard.vue'
+import AsyncState from '@/components/shared/AsyncState.vue'
+import PageLayout from '@/components/shared/PageLayout.vue'
 import { usePlayerCardsSearchStore } from '@/stores/playerCardsSearch'
 
 interface CardSet {
@@ -183,8 +172,8 @@ const router = useRouter()
 const store = usePlayerCardsSearchStore()
 const playerCards = ref<PlayerCard[]>([])
 const cardSets = ref<CardSet[]>([])
-const loading = ref(false)
-const errorMessage = ref('')
+const loading = ref(true)
+const fetchFailed = ref(false)
 const totalCount = ref(0)
 const perPage = 50
 
@@ -227,7 +216,7 @@ async function fetchCardSets() {
 
 async function fetchPlayerCards() {
   loading.value = true
-  errorMessage.value = ''
+  fetchFailed.value = false
   try {
     const params: Record<string, string | number> = {
       page: currentPage.value,
@@ -244,7 +233,7 @@ async function fetchPlayerCards() {
     playerCards.value = response.data.player_cards
     totalCount.value = response.data.meta.total
   } catch (error) {
-    errorMessage.value = '選手カードの取得に失敗しました'
+    fetchFailed.value = true
     console.error('Error fetching player cards:', error)
   } finally {
     loading.value = false
@@ -257,17 +246,36 @@ function navigateToDetail(id: number) {
 </script>
 
 <style scoped>
+.cards-filter--search {
+  flex: 0 1 260px;
+  min-width: 180px;
+}
+.cards-filter--set {
+  flex: 0 1 220px;
+  min-width: 160px;
+}
+.cards-view-mode {
+  margin-inline-start: auto;
+}
+
+@media (max-width: 599.98px) {
+  .cards-filter--search,
+  .cards-filter--set {
+    flex: 1 1 100%;
+  }
+}
+
 .thumb-box {
   width: 28px;
   height: 40px;
-  background: #e8e0d4;
+  background: rgb(var(--v-theme-surface-variant));
   border-radius: 2px;
-  border: 1px solid var(--usuiro);
+  border: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 0.6em;
-  color: #aaa;
+  color: rgb(var(--v-theme-on-surface-variant));
   text-align: center;
   line-height: 1.2;
 }

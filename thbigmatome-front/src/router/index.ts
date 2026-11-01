@@ -94,7 +94,7 @@ const routes: RouteRecordRaw[] = [
         path: 'commissioner/card_sets',
         name: 'CardSets',
         component: () => import('@/views/commissioner/CardSetsView.vue'),
-        meta: { requiresAuth: true, requiresCommissioner: true, title: 'カードセット管理' },
+        meta: { requiresAuth: true, requiresCommissioner: true, title: 'カードセット' },
       },
       {
         path: 'commissioner/competitions',

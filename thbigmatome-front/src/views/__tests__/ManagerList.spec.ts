@@ -148,16 +148,7 @@ describe('ManagerList', () => {
           },
         },
       })
-      .mockResolvedValueOnce({
-        data: {
-          data: [],
-          meta: {
-            total_count: 0,
-            current_page: 1,
-            per_page: 25,
-          },
-        },
-      })
+      // 初回の取得は 1 回（空の間は表を描かないので、表からの取得通知は来ない）
       .mockResolvedValueOnce({
         data: {
           data: [

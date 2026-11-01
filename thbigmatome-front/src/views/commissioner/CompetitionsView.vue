@@ -1,53 +1,51 @@
 <template>
-  <v-container>
-    <PageHeader title="大会管理" />
+  <PageLayout>
+    <template #filters>
+      <v-text-field
+        v-model="filterName"
+        label="大会名検索"
+        prepend-inner-icon="mdi-magnify"
+        density="compact"
+        hide-details
+        variant="outlined"
+        clearable
+        class="list-filter list-filter--search"
+        data-testid="competitions-search"
+      />
+    </template>
+    <template #actions>
+      <v-btn color="action" variant="flat" prepend-icon="mdi-plus" @click="openCreateDialog">
+        新規大会作成
+      </v-btn>
+    </template>
 
-    <FilterBar>
-      <template #search>
-        <v-text-field
-          v-model="filterName"
-          label="大会名検索"
-          prepend-inner-icon="mdi-magnify"
+    <AsyncState
+      framed
+      :loading="loading"
+      :error="fetchFailed"
+      error-message="大会の取得に失敗しました"
+      :empty="competitions.length === 0"
+      empty-icon="mdi-trophy-outline"
+      empty-message="大会が登録されていません"
+      @retry="fetchCompetitions"
+    >
+      <v-card>
+        <v-data-table
+          :headers="headers"
+          :items="filteredCompetitions"
+          class="ui-table"
           density="compact"
-          hide-details
-          variant="outlined"
-          clearable
-        />
-      </template>
-    </FilterBar>
-
-    <v-row>
-      <v-col cols="12">
-        <DataCard title="大会一覧">
-          <template #title-actions>
-            <v-btn color="action" variant="flat" @click="openCreateDialog">新規大会作成</v-btn>
-          </template>
-          <v-alert
-            v-if="errorMessage"
-            type="error"
-            variant="tonal"
-            class="mb-3"
-            closable
-            @click:close="errorMessage = ''"
-          >
-            {{ errorMessage }}
-          </v-alert>
-          <v-data-table
-            :headers="headers"
-            :items="filteredCompetitions"
-            :loading="loading"
-            class="elevation-1"
-            density="compact"
-          >
-            <template v-slot:[`item.actions`]="{ item }">
-              <v-icon size="small" @click="openEditDialog(item)" title="編集">mdi-pencil</v-icon>
-              <v-icon size="small" @click="deleteCompetition(item)" title="削除" class="ml-1"
-                >mdi-delete</v-icon
-              >
-              <v-icon
-                size="small"
-                class="ml-1"
-                title="ロスター管理"
+        >
+          <template v-slot:[`item.actions`]="{ item }">
+            <div class="row-actions">
+              <RowIconButton
+                icon="mdi-pencil"
+                :label="`${item.name}を編集`"
+                @click="openEditDialog(item)"
+              />
+              <RowIconButton
+                icon="mdi-clipboard-list-outline"
+                :label="`${item.name}のロスター管理`"
                 @click="
                   userTeamId &&
                   router.push({
@@ -55,13 +53,18 @@
                     params: { id: item.id, teamId: userTeamId },
                   })
                 "
-                >mdi-clipboard-list</v-icon
-              >
-            </template>
-          </v-data-table>
-        </DataCard>
-      </v-col>
-    </v-row>
+              />
+              <RowIconButton
+                icon="mdi-delete-outline"
+                danger
+                :label="`${item.name}を削除`"
+                @click="deleteCompetition(item)"
+              />
+            </div>
+          </template>
+        </v-data-table>
+      </v-card>
+    </AsyncState>
 
     <!-- 新規大会作成ダイアログ -->
     <v-dialog v-model="createDialog" max-width="500px" persistent>
@@ -150,7 +153,7 @@
         </v-card-actions>
       </v-card>
     </v-dialog>
-  </v-container>
+  </PageLayout>
 </template>
 
 <script setup lang="ts">
@@ -158,9 +161,9 @@ import { ref, computed, onMounted } from 'vue'
 import axios from 'axios'
 import { useRouter } from 'vue-router'
 import { useSnackbar } from '@/composables/useSnackbar'
-import PageHeader from '@/components/shared/PageHeader.vue'
-import FilterBar from '@/components/shared/FilterBar.vue'
-import DataCard from '@/components/shared/DataCard.vue'
+import AsyncState from '@/components/shared/AsyncState.vue'
+import PageLayout from '@/components/shared/PageLayout.vue'
+import RowIconButton from '@/components/shared/RowIconButton.vue'
 
 interface Competition {
   id: number
@@ -175,8 +178,8 @@ const { showSnackbar } = useSnackbar()
 
 const competitions = ref<Competition[]>([])
 const userTeamId = ref<number | null>(null)
-const loading = ref(false)
-const errorMessage = ref('')
+const loading = ref(true)
+const fetchFailed = ref(false)
 const filterName = ref('')
 
 const filteredCompetitions = computed(() => {
@@ -199,7 +202,7 @@ const headers = [
   { title: '年度', key: 'year', width: '100px' },
   { title: '種別', key: 'competition_type' },
   { title: '参加数', key: 'entry_count', width: '100px' },
-  { title: '操作', key: 'actions', sortable: false, width: '100px' },
+  { title: '操作', key: 'actions', sortable: false, nowrap: true },
 ]
 
 onMounted(async () => {
@@ -214,11 +217,12 @@ onMounted(async () => {
 
 async function fetchCompetitions() {
   loading.value = true
+  fetchFailed.value = false
   try {
     const response = await axios.get<Competition[]>('/competitions')
     competitions.value = response.data
   } catch (error) {
-    errorMessage.value = '大会の取得に失敗しました'
+    fetchFailed.value = true
     console.error('Error fetching competitions:', error)
   } finally {
     loading.value = false
@@ -244,7 +248,6 @@ async function createCompetition() {
     showSnackbar('大会を作成しました', 'success')
     closeCreateDialog()
   } catch (error) {
-    errorMessage.value = '大会の作成に失敗しました'
     showSnackbar('大会の作成に失敗しました', 'error')
     console.error('Error creating competition:', error)
   } finally {
@@ -276,7 +279,6 @@ async function updateCompetition() {
     showSnackbar('大会を更新しました', 'success')
     closeEditDialog()
   } catch (error) {
-    errorMessage.value = '大会の更新に失敗しました'
     showSnackbar('大会の更新に失敗しました', 'error')
     console.error('Error updating competition:', error)
   } finally {
@@ -291,9 +293,21 @@ async function deleteCompetition(competition: Competition) {
     competitions.value = competitions.value.filter((c) => c.id !== competition.id)
     showSnackbar('大会を削除しました', 'success')
   } catch (error) {
-    errorMessage.value = '大会の削除に失敗しました'
     showSnackbar('大会の削除に失敗しました', 'error')
     console.error('Error deleting competition:', error)
   }
 }
 </script>
+
+<style scoped>
+.list-filter--search {
+  flex: 0 1 260px;
+  min-width: 180px;
+}
+
+@media (max-width: 599.98px) {
+  .list-filter--search {
+    flex: 1 1 100%;
+  }
+}
+</style>

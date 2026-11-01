@@ -4,6 +4,8 @@ import { createVuetify } from 'vuetify'
 import * as components from 'vuetify/components'
 import * as directives from 'vuetify/directives'
 import RosterStatusTab from '../RosterStatusTab.vue'
+import { createI18n } from 'vue-i18n'
+import ja from '@/locales/ja.json'
 
 vi.mock('axios', () => ({
   default: {
@@ -20,6 +22,11 @@ vi.mock('axios', () => ({
 import axios from 'axios'
 
 const vuetify = createVuetify({ components, directives })
+const i18n = createI18n({
+  legacy: false,
+  locale: 'ja',
+  messages: { ja: { asyncState: ja.asyncState } },
+})
 
 const mockRosterStatus = [
   {
@@ -51,7 +58,7 @@ const mockRosterStatus = [
 const mountComponent = () =>
   mount(RosterStatusTab, {
     global: {
-      plugins: [vuetify],
+      plugins: [i18n, vuetify],
     },
   })
 
@@ -126,5 +133,17 @@ describe('RosterStatusTab', () => {
     const wrapper = mountComponent()
     await flushPromises()
     expect(wrapper.exists()).toBe(true)
+    // 失敗は空状態ではなくページ内のアラート＋再読み込みで出す
+    expect(wrapper.find('[data-testid="state-error"]').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="state-empty"]').exists()).toBe(false)
+  })
+
+  it('0 件なら空状態を出し、読み込み中は空状態を出さない', async () => {
+    vi.mocked(axios.get).mockResolvedValueOnce({ data: [] })
+    const wrapper = mountComponent()
+    expect(wrapper.find('[data-testid="state-loading"]').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="state-empty"]').exists()).toBe(false)
+    await flushPromises()
+    expect(wrapper.find('[data-testid="state-empty"]').exists()).toBe(true)
   })
 })

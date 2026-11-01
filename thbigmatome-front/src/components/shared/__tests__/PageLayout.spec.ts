@@ -95,4 +95,44 @@ describe('PageLayout', () => {
       /\.ui-table \.v-data-table__th:not\(:has\(\.v-data-table__td-sort-select\)\)/,
     )
   })
+
+  // 配色は jsdom では検出できないので、規則が CSS に残っていることを固定する（実測は light 4.08 → 改善後は on-surface-variant）
+  it('ツールバーの入力欄のラベルは on-surface-variant・不透明にする（既定の 0.6 は light で AA を割る）', () => {
+    const source = readFileSync(
+      resolve(process.cwd(), 'src/components/shared/PageLayout.vue'),
+      'utf8',
+    )
+    const css = source.match(/<style scoped>([\s\S]*)<\/style>/)![1]!
+    const rule = css.match(
+      /\.page-layout__filters :deep\(\.v-field \.v-label\.v-field-label\)\s*\{([^}]*)\}/,
+    )
+    expect(rule).not.toBeNull()
+    expect(rule![1]).toMatch(/color:\s*rgb\(var\(--v-theme-on-surface-variant\)\)/)
+    expect(rule![1]).toMatch(/opacity:\s*1/)
+  })
+
+  it('表の操作列（row-actions）は折り返さず横に並べる', () => {
+    const source = readFileSync(
+      resolve(process.cwd(), 'src/components/shared/PageLayout.vue'),
+      'utf8',
+    )
+    const css = source.match(/<style scoped>([\s\S]*)<\/style>/)![1]!
+    const rule = css.match(/\.page-layout :deep\(\.row-actions\)\s*\{([^}]*)\}/)
+    expect(rule).not.toBeNull()
+    expect(rule![1]).toMatch(/display:\s*flex/)
+    expect(rule![1]).toMatch(/flex-wrap:\s*nowrap/)
+  })
+
+  it('選択中のトグルボタンは active のオーバーレイを消す（dark で白文字が 3.81 に落ちるため）', () => {
+    const source = readFileSync(
+      resolve(process.cwd(), 'src/components/shared/PageLayout.vue'),
+      'utf8',
+    )
+    const css = source.match(/<style scoped>([\s\S]*)<\/style>/)![1]!
+    const rule = css.match(
+      /\.page-layout :deep\(\.v-btn-toggle \.v-btn--active > \.v-btn__overlay\)\s*\{([^}]*)\}/,
+    )
+    expect(rule).not.toBeNull()
+    expect(rule![1]).toMatch(/opacity:\s*0\s*;/)
+  })
 })

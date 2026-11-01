@@ -12,6 +12,8 @@ class SeasonSchedule < ApplicationRecord
   # 画面（GET /teams/:id/season の game_date_types）がすべてこれを使う。プレーオフ日も含む。
   # ノーゲームは種別ではなく真偽値 no_game で表す（種別 "no_game" は作れない。NO_GAME_DATE_TYPE）。
   GAME_DATE_TYPES = %w[game_day interleague_game_day playoff_day].freeze
+  # 試合日のうちプレーオフ日（レギュラーの試合数と分けて数える。SeasonGameProgress）
+  PLAYOFF_DATE_TYPE = "playoff_day".freeze
   # 廃止した種別（ノーゲームは真偽値 no_game に一本化した）。新規には作れない
   NO_GAME_DATE_TYPE = "no_game".freeze
 

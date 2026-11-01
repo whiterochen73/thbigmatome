@@ -965,6 +965,16 @@
 - **Controller**: `Api::V1::Commissioner::DashboardController#cooldowns`
 - **Response**: 全アクティブチームのクールダウン中選手一覧（選手名・解除日・残日数）
 
+### GET /api/v1/commissioner/dashboard/game_progress
+
+- **Controller**: `Api::V1::Commissioner::DashboardController#game_progress`
+- **Response**: シーズンのある全チーム（休止中を含む。シーズンの無いチームは含まない）の試合数の進み具合。1 チーム 1 行の配列 `[{ team_id, regular_played, regular_total, playoff_played }]`（すべて整数）
+  - `regular_total`: 日程の「試合数に数える日」（通常・交流戦の試合日でノーゲームでない日）の数。ノーゲームの日は数えず、振り替えた日が増える。固定値（143 等）は持たず日程から数える
+  - `regular_played`: そのうち結果（自軍・相手の得点）が入った日の数
+  - `playoff_played`: 結果が入ったプレーオフ日の数（ノーゲームを除く）。プレーオフの総数は返さない（日程には全チーム同じ日数があり、進出で変わるため）
+  - 日程が 1 行も無いシーズンは 3 つとも 0
+- **集計**: 全チーム分を 2 本の問い合わせで求める（`SeasonGameProgress`）
+
 ### GET /api/v1/commissioner/dashboard/roster_status
 
 - **Controller**: `Api::V1::Commissioner::DashboardController#roster_status`

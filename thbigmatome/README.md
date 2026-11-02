@@ -28,7 +28,7 @@
 | Cache | Solid Cache |
 | Action Cable | Solid Cable |
 | Deploy | Docker Compose (production) |
-| Node.js | 20.x |
+| Node.js | 22.x |
 | Vue.js | 3.5 |
 | Vuetify | 4.0 |
 | Vite | 7.x |

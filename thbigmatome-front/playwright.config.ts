@@ -1,38 +1,32 @@
-import { defineConfig, devices } from '@playwright/test';
-import path from 'path';
-import { fileURLToPath } from 'url';
+import { defineConfig, devices } from '@playwright/test'
+import { API_URL, BASE_URL } from './e2e/env'
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
+// e2e は「今の画面が、実 Rails（test 環境・前提データ入り）と繋がって動くか」を見る。
+// Rails は起動しない（ホストに libvips も PostgreSQL も無いことが多い）。手順は e2e/README.md。
+// フロントの vite だけここで起こす。既に BASE_URL で動いていればそれを使う（CI 以外）
+const { port } = new URL(BASE_URL)
 
 export default defineConfig({
   testDir: './e2e',
+  globalSetup: './e2e/global-setup.ts',
   fullyParallel: false,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
   workers: 1,
   reporter: 'list',
+  outputDir: 'test-results',
   use: {
-    baseURL: 'http://localhost:5173',
+    baseURL: BASE_URL,
     trace: 'on-first-retry',
     headless: true,
   },
-  projects: [
-    { name: 'chromium', use: { ...devices['Desktop Chrome'] } },
-  ],
-  // webServer設定: テスト実行時にサーバーを自動起動
-  // BEとFEの両方を起動する
-  webServer: [
-    {
-      command: `bash -lc "cd ${path.resolve(__dirname, '../thbigmatome')} && bundle exec rails s -p 3000 -b 127.0.0.1 -e test"`,
-      url: 'http://127.0.0.1:3000/api/v1/teams',
-      reuseExistingServer: true,
-      timeout: 90000,
-    },
-    {
-      command: 'npm run dev',
-      url: 'http://localhost:5173',
-      reuseExistingServer: true,
-      timeout: 30000,
-    },
-  ],
-});
+  projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
+  webServer: {
+    // Yarn Berry。`yarn dev -- --port` だと `--` が vite に渡って効かないので付けない
+    command: `yarn dev --host localhost --port ${port} --strictPort`,
+    url: BASE_URL,
+    reuseExistingServer: !process.env.CI,
+    timeout: 60_000,
+    env: { VITE_API_BASE_URL: API_URL },
+  },
+})

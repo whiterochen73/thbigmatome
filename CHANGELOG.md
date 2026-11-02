@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [1.0.0] - 未定
+## [1.0.0] - 2026-11-02
 
 ### Added
 - 試合日ページ: 試合結果ページを作り替え、1 日の作業を「登録・離脱」（選手登録・契約変更／登録・昇降格／負傷・出場停止／投手状態）と「試合日」（予告先発・対戦設定／試合結果／登板記録）の順に 1 ページへ並べた。各段に「済・未入力・要確認」を出す

@@ -1,5 +1,6 @@
 # db/seeds/test.rb
 # E2Eテスト用シードデータ（テスト環境専用）
+# 入れ方: RAILS_ENV=test bin/rails e2e:seed（手順は thbigmatome-front/e2e/README.md）
 
 puts 'Seeding test data...'
 
@@ -15,7 +16,8 @@ puts "  Manager: #{manager.name} (id=#{manager.id})"
 
 # Team
 team = Team.find_or_initialize_by(name: 'テストチーム')
-team.update!(short_name: 'テスト', is_active: true)
+# user を結ぶ: 画面の「自分のチーム」（users/me/teams）はこの紐付けで決まる。無いとホームが「チームが割り当てられていません」になる
+team.update!(short_name: 'テスト', is_active: true, user_id: user.id)
 puts "  Team: #{team.name} (id=#{team.id})"
 
 # TeamManager (director紐付け)
@@ -24,8 +26,8 @@ puts "  TeamManager: #{team.name} <-> #{manager.name}"
 
 # Players（ロスター画面表示確認用: 最低2名）
 [
-  { name: 'テスト投手1', number: '1', speed: 3, bunt: 5, steal_start: 11, steal_end: 11, injury_rate: 4 },
-  { name: 'テスト野手2', number: '2', speed: 3, bunt: 5, steal_start: 11, steal_end: 11, injury_rate: 4 }
+  { name: 'テスト投手1', number: '1', short_name: '投1' },
+  { name: 'テスト野手2', number: '2', short_name: '野2' }
 ].each do |attrs|
   player = Player.find_or_initialize_by(name: attrs[:name])
   player.update!(attrs)

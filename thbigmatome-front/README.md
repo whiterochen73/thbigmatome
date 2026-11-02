@@ -69,6 +69,11 @@ yarn test
 yarn vitest run
 ```
 
+```bash
+# e2e（Playwright。実 Rails と前提データが要る。手順は e2e/README.md）
+yarn playwright test
+```
+
 ## ビルド
 
 ```bash

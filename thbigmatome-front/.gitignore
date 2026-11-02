@@ -50,3 +50,7 @@ coverage
 !.yarn/sdks
 !.yarn/versions
 .pnp.*
+
+# Playwright (e2e)
+test-results/
+playwright-report/

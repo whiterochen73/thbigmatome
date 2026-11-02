@@ -141,10 +141,40 @@ bash /home/deploy/projects/thbigmatome/scripts/backup/restore.sh \
 ```
 
 スクリプトが自動的に以下を行う:
-1. リストア前の事前バックアップを取得
-2. railsコンテナを停止
-3. `pg_restore --clean --if-exists` でリストア
-4. railsコンテナを再起動
+1. 戻すダンプが読めることを確認（読めなければ何も触らずに止まる）
+2. リストア前の事前バックアップを取得（`~/backups/thbigmatome/pre_restore_*.dump`。読めることまで確認）
+3. railsコンテナを停止
+4. `public` スキーマを `drop schema public cascade; create schema public;` で作り直す（1 トランザクション）
+5. `--clean` なしの `pg_restore --single-transaction --exit-on-error` でリストア
+6. `schema_migrations` の最大 version と件数を表示
+7. railsコンテナを再起動
+
+**`pg_restore --clean` で戻さない理由**: `--clean` は表ごとに DROP を流すので、ダンプより新しい表（v1.0.0 の `team_membership_changes` など）が他の表を FK で参照していると DROP が失敗し、一部の表だけ戻って一部は新しいまま残る中途半端な状態になる（リハーサルで 25 件のエラー）。スキーマごと作り直せば、ダンプより新しい表も含めて全部消えて戻る。`public` 以外のスキーマと DB 自体は触らない。
+
+途中で失敗するとその場で止まり、**railsコンテナは停止したまま**になる（壊れた DB につながない）。`public` を作り直した後の失敗なら DB は空か不完全なので、表示される事前バックアップを同じスクリプトで戻す。
+
+環境変数で挙動を変えられる:
+
+| 変数 | 意味 | 既定 |
+|------|------|------|
+| `COMPOSE_FILE` | 停止・起動に使う compose ファイル | `/home/deploy/projects/docker-compose.prod.yml` |
+| `COMPOSE_ENV_FILE` | compose に `--env-file` で渡すファイル | なし |
+| `STOP_SERVICES` | 止めるサービス（空白区切り） | `rails` |
+| `DB_CONTAINER` / `DB_NAME` / `DB_USER` | DB コンテナ・DB 名・ロール | `projects-db-1` / `thbigmatome_production` / `thbigmatome` |
+| `SAFETY_BACKUP_DIR` | 事前バックアップの置き場 | `~/backups/thbigmatome` |
+| `NO_RESTART=1` | リストア後にサービスを起動しない | 起動する |
+
+アプリのコードも古いバージョンへ戻す時（例: v1.0.0 から戻す）は、`NO_RESTART=1` で戻してコードを戻してから起動する。新しいコードのまま rails を起動すると、entrypoint の `db:prepare` が新しい migration を流し直す。
+
+```bash
+cd ~/projects
+NO_RESTART=1 STOP_SERVICES="frontend rails" COMPOSE_ENV_FILE=.env.production \
+  bash thbigmatome/scripts/backup/restore.sh ~/backups/thbigmatome/pre_v1_<TS>.dump
+# コードとイメージを戻してから
+docker compose -f docker-compose.prod.yml --env-file .env.production up -d rails frontend
+```
+
+`ssh dugout-vps bash -s < restore.sh` のように stdin でスクリプトを流す形では使わない（確認の入力が stdin から読まれる）。ファイルとして置いて実行する。
 
 ### リストア後の確認
 

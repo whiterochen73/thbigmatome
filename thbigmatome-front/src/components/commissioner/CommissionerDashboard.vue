@@ -402,24 +402,17 @@
                   rounded
                   style="min-width: 80px; max-width: 120px"
                 />
-                <v-chip
-                  v-if="costLevel(item.total_cost, item.total_cost_limit) === 'over'"
-                  color="state-warn"
-                  variant="flat"
-                  size="small"
-                  prepend-icon="mdi-alert-circle"
-                >
-                  超過
-                </v-chip>
-                <v-chip
-                  v-else-if="costLevel(item.total_cost, item.total_cost_limit) === 'near'"
-                  color="state-todo"
-                  variant="flat"
-                  size="small"
-                  prepend-icon="mdi-alert"
-                >
-                  上限に近い
-                </v-chip>
+                <v-icon
+                  v-if="costMark(item.total_cost, item.total_cost_limit)"
+                  :icon="costMark(item.total_cost, item.total_cost_limit)!.icon"
+                  :color="costBarColor(costLevel(item.total_cost, item.total_cost_limit))"
+                  size="18"
+                  role="img"
+                  :aria-label="costMark(item.total_cost, item.total_cost_limit)!.label"
+                  :title="costMark(item.total_cost, item.total_cost_limit)!.label"
+                  :data-level="costLevel(item.total_cost, item.total_cost_limit)"
+                  data-testid="total-cost-mark"
+                />
               </div>
             </template>
             <template v-slot:item.first_squad_cost="{ item }">
@@ -486,6 +479,7 @@ import {
   type DashboardTab,
   costBarColor,
   costLevel,
+  costMark,
   summarize,
   checkState,
   CHECK_COLOR,

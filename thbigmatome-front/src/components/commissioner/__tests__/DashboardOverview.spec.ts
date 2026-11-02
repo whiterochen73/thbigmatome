@@ -208,7 +208,7 @@ describe('DashboardOverview API ごとの読み込み中・失敗', () => {
     for (const id of ['active', 'violation', 'absence', 'cooldown']) {
       expect(tile(w, id).find('[data-testid="state-error"]').exists()).toBe(false)
     }
-    // 「上限に近い」の段にも同じ失敗が出て、空（なし）とは出さない
+    // 「チーム上限」の段にも同じ失敗が出て、空（なし）とは出さない
     const near = w.find('[data-testid="attention-cost"]')
     expect(near.find('[data-testid="state-error"]').exists()).toBe(true)
     expect(near.text()).not.toContain('なし')
@@ -373,7 +373,7 @@ describe('DashboardOverview 注意が要るもの', () => {
     expect(chip.props('variant')).toBe('flat')
   })
 
-  it('上限に近いチームは、残りコストつきで合計コストの多い順に並べる（95% 未満は出さない）', () => {
+  it('チーム上限（95% 以上）のチームは、残りコストつきで合計コストの多い順に並べる（95% 未満は出さない）', () => {
     const w = mountOverview(
       baseProps({
         costs: ok([cost(1, 189), cost(2, 190), cost(3, 199), cost(4, 201)]),
@@ -392,7 +392,7 @@ describe('DashboardOverview 注意が要るもの', () => {
     expect(text).toContain('超過 1')
   })
 
-  it('まもなく動く: 2 日以内に復帰する人を並べ、3 日以上は出さない。クールダウンは人数で出す', () => {
+  it('復帰間近: 2 日以内に復帰する人を並べ、3 日以上は出さない。クールダウンは人数で出す', () => {
     const w = mountOverview(
       baseProps({
         absences: ok([absence(1, 2, '霧雨魔理沙'), absence(2, 3, '博麗霊夢')]),
@@ -405,6 +405,59 @@ describe('DashboardOverview 注意が要るもの', () => {
     expect(a.text()).not.toContain('博麗霊夢')
     const c = w.find('[data-testid="attention-soon-cooldown"]')
     expect(c.text()).toContain('1 人')
+  })
+})
+
+// Test Basis: cmd_1817 Operator 2026-11-02「『まもなく動く』は『復帰間近』、『上限に近い』は『チーム上限』。注意がいるもの節の補足説明は余計なので削除」
+describe('DashboardOverview 注意が要るものの見出し', () => {
+  const headOf = (w: ReturnType<typeof mountOverview>, testid: string) =>
+    w.find(`[data-testid="${testid}"] .attention-group__head`)
+
+  it('見出しチップは「要確認」「チーム上限」「復帰間近」。旧名の「上限に近い」「まもなく動く」は出ない', () => {
+    const w = mountOverview(
+      baseProps({
+        costs: ok([cost(1, 195)]),
+        teams: ok([team(1)]),
+        absences: ok([absence(1, 2, '霧雨魔理沙')]),
+        cooldowns: ok([cooldown(1, 1)]),
+      }),
+    )
+    expect(headOf(w, 'attention-violation').text()).toMatch(/^要確認/)
+    expect(headOf(w, 'attention-cost').text()).toMatch(/^チーム上限/)
+    expect(headOf(w, 'attention-soon').text()).toMatch(/^復帰間近/)
+    // 復帰間近の中身（離脱者・クールダウン）と件数（離脱 1 + クールダウン 1）は残る
+    expect(headOf(w, 'attention-soon').text()).toContain('2')
+    expect(w.find('[data-testid="attention-soon-absence"]').text()).toContain('霧雨魔理沙')
+    expect(w.find('[data-testid="attention-soon-cooldown"]').text()).toContain('1 人')
+    const groups = w.find('[data-testid="attention-soon"]').element.parentElement!.textContent!
+    expect(groups).not.toContain('まもなく動く')
+    expect(w.find('[data-testid="attention-cost"]').text()).not.toContain('上限に近い')
+  })
+
+  it('各グループの見出しの横に補足の説明を出さない', () => {
+    const w = mountOverview(
+      baseProps({
+        costs: ok([cost(1, 195)]),
+        teams: ok([team(1)]),
+        absences: ok([absence(1, 2)]),
+      }),
+    )
+    for (const id of ['attention-violation', 'attention-cost', 'attention-soon']) {
+      const head = headOf(w, id)
+      expect(head.find('.attention-group__caption').exists()).toBe(false)
+      expect(head.text()).not.toContain('規定を外れている')
+      expect(head.text()).not.toContain('合計コスト 95% 以上')
+      expect(head.text()).not.toContain('2日以内に復帰・明ける')
+    }
+  })
+
+  it('数字タイル「コスト上限に近い」と、表の行のチップ「上限に近い」は今回は変えない', () => {
+    const w = mountOverview(baseProps({ costs: ok([cost(1, 195)]), teams: ok([team(1)]) }))
+    expect(tile(w, 'cost').text()).toContain('コスト上限に近い')
+    const rowChips = w
+      .findAll('[data-testid="team-table-card"] tbody tr .v-chip')
+      .map((c) => c.text())
+    expect(rowChips).toContain('上限に近い')
   })
 })
 
@@ -539,7 +592,7 @@ describe('DashboardOverview チームの表', () => {
   })
 
   // Test Basis: cmd_1814 ダッシュボードのチーム名を押してそのチームのシーズン画面（カレンダー）へ。a 要素なのでキーボードでも辿れる
-  it('注意の欄（要確認・上限に近い・まもなく動く）とチームの表のチーム名は、そのチームのシーズン画面へのリンク', async () => {
+  it('注意の欄（要確認・チーム上限・復帰間近）とチームの表のチーム名は、そのチームのシーズン画面へのリンク', async () => {
     const w = mountOverview(
       baseProps({
         teams: ok([team(1, { name: '紅魔館' }), team(2, { name: '白玉楼' })]),

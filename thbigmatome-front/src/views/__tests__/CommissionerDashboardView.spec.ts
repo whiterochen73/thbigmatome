@@ -1210,16 +1210,56 @@ describe('CommissionerDashboard コスト状況の色', () => {
     wrapper.unmount()
   })
 
-  it('合計コストのチップ: 94.5% は無し、95% と 100% は「上限に近い」（黄）、超過は「超過」（赤）。旧い「警告」は出さない', async () => {
+  // Test Basis: cmd_1817 Operator 2026-11-02「コストタブではマークだけで十分かも」。文字は出さず、印と読み上げ用の aria-label・title を付ける
+  it('合計コストの印: 94.5% は無し、95% と 100% は「上限に近い」の印（黄）、超過は「超過」の印（赤）。文字は出さず、チップも使わない', async () => {
     const { wrapper, row } = await mountCosts()
-    const chips = (name: string) =>
+    const marks = (name: string) =>
       row(name)
-        .findAllComponents(components.VChip)
-        .map((c) => ({ text: c.text(), color: c.props('color'), variant: c.props('variant') }))
-    expect(chips('チーム1')).toEqual([])
-    expect(chips('チーム2')).toEqual([{ text: '上限に近い', color: 'state-todo', variant: 'flat' }])
-    expect(chips('チーム3')).toEqual([{ text: '上限に近い', color: 'state-todo', variant: 'flat' }])
-    expect(chips('チーム4')).toEqual([{ text: '超過', color: 'state-warn', variant: 'flat' }])
+        .findAll('[data-testid="total-cost-mark"]')
+        .map((m) => ({
+          level: m.attributes('data-level'),
+          role: m.attributes('role'),
+          label: m.attributes('aria-label'),
+          title: m.attributes('title'),
+          icon: m.classes().find((c) => c.startsWith('mdi-') && c !== 'mdi'),
+          text: m.text(),
+        }))
+    expect(marks('チーム1')).toEqual([])
+    const near = {
+      level: 'near',
+      role: 'img',
+      label: '合計コストが上限に近い',
+      title: '合計コストが上限に近い',
+      icon: 'mdi-alert',
+      text: '',
+    }
+    expect(marks('チーム2')).toEqual([near])
+    expect(marks('チーム3')).toEqual([near])
+    expect(marks('チーム4')).toEqual([
+      {
+        level: 'over',
+        role: 'img',
+        label: '合計コスト超過',
+        title: '合計コスト超過',
+        icon: 'mdi-alert-circle',
+        text: '',
+      },
+    ])
+    // 印の色は棒と同じ（黄系 = meter-near・赤系 = meter-over）
+    const colorOf = (name: string) =>
+      row(name).findComponent('[data-testid="total-cost-mark"]').props('color')
+    expect(colorOf('チーム2')).toBe('meter-near')
+    expect(colorOf('チーム4')).toBe('meter-over')
+    // 文字のチップは出ない。「上限に近い」「超過」の文字も行に出ない。旧い「警告」も出さない
+    for (const name of ['チーム1', 'チーム2', 'チーム3', 'チーム4']) {
+      expect(
+        row(name)
+          .findAllComponents(components.VChip)
+          .map((c) => c.text()),
+      ).toEqual([])
+      expect(row(name).text()).not.toContain('上限に近い')
+      expect(row(name).text()).not.toContain('超過')
+    }
     expect(wrapper.text()).not.toContain('警告')
     wrapper.unmount()
   })

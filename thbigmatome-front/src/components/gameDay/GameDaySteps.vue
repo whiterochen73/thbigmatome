@@ -43,19 +43,6 @@
               <slot :name="`body-${step.id}`" />
             </template>
           </GameDaySection>
-          <GameDaySection
-            v-if="step.sub"
-            :class="`game-day-stack__section--${group.id}`"
-            no="–"
-            :title="step.sub.title"
-            state="info"
-            lazy
-            :open="!!open[step.sub.id]"
-            :test-id="`section-${step.sub.slug}`"
-            @update:open="emit('update:open', step.sub.id, $event)"
-          >
-            <slot :name="`body-${step.sub.id}`" />
-          </GameDaySection>
         </template>
       </div>
     </div>
@@ -145,19 +132,6 @@
             v-if="step.hasBody && (!step.lazy || visited.has(step.id))"
             :name="`body-${step.id}`"
           />
-          <GameDaySection
-            v-if="step.sub"
-            class="mt-4"
-            no="–"
-            :title="step.sub.title"
-            state="info"
-            lazy
-            :open="!!open[step.sub.id]"
-            :test-id="`section-${step.sub.slug}`"
-            @update:open="emit('update:open', step.sub.id, $event)"
-          >
-            <slot :name="`body-${step.sub.id}`" />
-          </GameDaySection>
         </section>
       </template>
     </div>
@@ -171,12 +145,6 @@ import type { RouteLocationRaw } from 'vue-router'
 import GameDaySection from './GameDaySection.vue'
 import GameDayStateChip from './GameDayStateChip.vue'
 import { STAGE_STATE_APPEARANCE, type StageState } from './gameDayStatus'
-
-export interface GameDayStepSub {
-  id: string
-  slug: string
-  title: string
-}
 
 export interface GameDayStep {
   id: string
@@ -192,8 +160,6 @@ export interface GameDayStep {
   // true: 初めて開かれるまで中身を描画しない（重い部品を遅延させる）
   lazy?: boolean
   link?: { to: RouteLocationRaw; label: string; testId: string }
-  // 親の段の中（スマホ幅では直後の段）に置く補助の段（投手状態）
-  sub?: GameDayStepSub
 }
 
 const props = defineProps<{
@@ -201,7 +167,7 @@ const props = defineProps<{
   mode: 'tabs' | 'stack'
   // 選択中のステップ（PC 幅）
   active: string
-  // 開いている段（スマホ幅）。補助の段の id も含む
+  // 開いている段（スマホ幅）
   open: Record<string, boolean>
 }>()
 
@@ -300,6 +266,8 @@ const onSelect = (id: unknown) => {
   border-top: 3px solid;
 }
 .game-day-stepper__group--registration {
+  /* 4 段（投手状態を含む）。試合日の 3 段より段数が多いので、幅を多めに取る */
+  flex-grow: 5;
   background: rgb(var(--v-theme-zone-roster));
   border-color: rgb(var(--v-theme-on-zone-roster));
 }
@@ -368,6 +336,25 @@ const onSelect = (id: unknown) => {
   margin-top: 4px;
   line-height: 1.2;
   opacity: 1;
+}
+/* 960〜1199px は本文の幅が約 660px に固定される。登録・離脱の 4 段と試合日の 3 段（チップは「試合日前」が最長）を
+   同時に収めるため、段の左右の余白とアイコンの隙間を詰め、2 つのグループは同じ幅で分ける */
+@media (max-width: 1199.98px) {
+  .game-day-stepper__group--registration,
+  .game-day-stepper__group--game {
+    flex-grow: 1;
+  }
+  .game-day-stepper :deep(.v-stepper-item) {
+    padding-inline: 4px;
+  }
+  .game-day-stepper :deep(.v-stepper-item__avatar.v-avatar) {
+    margin-inline-end: 4px;
+  }
+  /* 状態のチップは「試合日前」（4 文字）が最長。左右の余白とアイコンとの間を詰めて段の幅に収める */
+  .game-day-stepper :deep(.gd-state-chip) {
+    padding-inline: 5px;
+    gap: 2px;
+  }
 }
 .game-day-stepper__panels {
   padding: 16px;

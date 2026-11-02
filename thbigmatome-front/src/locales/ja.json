@@ -368,9 +368,6 @@
       "pitcherStatus": "投手状態"
     },
     "summary": {
-      "members": "新規登録・契約変更",
-      "roster": "1軍・2軍の入れ替え",
-      "absences": "負傷・出場停止の登録・編集",
       "absencesByPhase": "試合前 {pre} 件・試合中 {inGame} 件",
       "pitcherCount": "登板 {count} 人",
       "noGame": "ノーゲーム",

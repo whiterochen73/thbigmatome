@@ -762,7 +762,8 @@ const todaysAbsences = computed(
     ) ?? null,
 )
 const absenceSummary = computed(() => {
-  if (!todaysAbsences.value) return t('gameDay.summary.absences')
+  // 読み込み前は何も出さない（件数は状態なので残すが、段の説明文は付けない）
+  if (!todaysAbsences.value) return ''
   return t('gameDay.summary.absencesByPhase', {
     pre: todaysAbsences.value.filter((a) => a.phase === 'pre_game').length,
     inGame: todaysAbsences.value.filter((a) => a.phase === 'in_game').length,
@@ -874,7 +875,6 @@ const steps = computed<GameDayStep[]>(() => {
       no: 1,
       icon: 'mdi-account-multiple-plus-outline',
       title: t('gameDay.sections.members'),
-      summary: t('gameDay.summary.members'),
       state: 'info',
       hasBody: true,
       lazy: true,
@@ -887,7 +887,6 @@ const steps = computed<GameDayStep[]>(() => {
       no: 2,
       icon: 'mdi-swap-vertical-bold',
       title: t('gameDay.sections.roster'),
-      summary: t('gameDay.summary.roster'),
       state: 'info',
       hasBody: true,
       lazy: true,
@@ -911,27 +910,34 @@ const steps = computed<GameDayStep[]>(() => {
       },
     },
     {
+      // 投手状態は、試合前に確かめる状態なので登録・離脱の最後に置く。入力を求めない段（info）で、
+      // 見るだけなので登録・離脱の操作範囲（registrationOperable）には従わず、どの日でも出す
+      id: 'pitcherStatus',
+      slug: 'pitcher-status',
+      group: 'registration',
+      no: 4,
+      icon: 'mdi-clipboard-pulse-outline',
+      title: t('gameDay.sections.pitcherStatus'),
+      state: 'info',
+      hasBody: true,
+      lazy: true,
+    },
+    {
       id: 'setup',
       slug: 'setup',
       group: 'game',
-      no: 4,
+      no: 5,
       icon: 'mdi-clipboard-list-outline',
       title: t('gameDay.sections.setup'),
       summary: setupSummary.value,
       state: setupState.value,
       hasBody: true,
-      // 投手状態は試合前の状態なので、試合前の段（予告先発・対戦設定）に置く。登板記録の段には、登板した投手の分だけを出す
-      sub: {
-        id: 'pitcherStatus',
-        slug: 'pitcher-status',
-        title: t('gameDay.sections.pitcherStatus'),
-      },
     },
     {
       id: 'result',
       slug: 'result',
       group: 'game',
-      no: 5,
+      no: 6,
       icon: 'mdi-scoreboard-outline',
       title: t('gameDay.sections.result'),
       summary: resultSummary.value,
@@ -942,7 +948,7 @@ const steps = computed<GameDayStep[]>(() => {
       id: 'pitchers',
       slug: 'pitchers',
       group: 'game',
-      no: 6,
+      no: 7,
       icon: 'mdi-baseball',
       title: t('gameDay.sections.pitchers'),
       summary: pitcherSummary.value,
@@ -951,7 +957,10 @@ const steps = computed<GameDayStep[]>(() => {
       lazy: true,
     },
   ]
-  return allSteps.filter((step) => isGameDay.value || step.group === 'registration')
+  // 登録・離脱の 3 段は試合の無い日にも出す。投手状態は試合日の段なので試合の無い日には出さない
+  return allSteps.filter(
+    (step) => isGameDay.value || (step.group === 'registration' && step.id !== 'pitcherStatus'),
+  )
 })
 const progressSteps = computed(() =>
   steps.value.filter((step) => ['setup', 'result', 'pitchers'].includes(step.id)),
@@ -967,8 +976,7 @@ const openSections = reactive<Record<string, boolean>>({
   setup: false,
   result: false,
   pitchers: false,
-  // 試合前の段の投手状態。PC 幅（ステッパー）は試合前の判断材料としてそのまま見せ、狭い幅は他の段と同じく閉じておく
-  pitcherStatus: mdAndUp.value,
+  pitcherStatus: false,
 })
 
 // 開くたびに離脱一覧を再取得する。
@@ -989,7 +997,7 @@ const setOpen = (id: string, value: boolean) => {
 const TAB_OPEN: Record<string, string[]> = {
   overview: ['setup', 'result'],
   pitchers: ['pitchers'],
-  pitcher_status: ['pitcherStatus', 'setup'],
+  pitcher_status: ['pitcherStatus'],
   absences: ['absences'],
   'in-game-absences': ['absences'],
 }
@@ -1008,13 +1016,12 @@ const stepForTab = (tab: string): string =>
     : tab === 'pitchers'
       ? 'pitchers'
       : tab === 'pitcher_status'
-        ? 'setup'
+        ? 'pitcherStatus'
         : (attentionStep(['setup', 'result']) ?? 'result')
 
 const scrollToSection = (id: string) => {
   nextTick(() => {
-    const slug =
-      id === 'pitcherStatus' ? 'pitcher-status' : (steps.value.find((s) => s.id === id)?.slug ?? id)
+    const slug = steps.value.find((s) => s.id === id)?.slug ?? id
     const el = document.querySelector(`[data-testid="section-${slug}"]`)
     if (el && typeof el.scrollIntoView === 'function') el.scrollIntoView({ block: 'start' })
   })

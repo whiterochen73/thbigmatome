@@ -25,7 +25,6 @@ export interface GameData {
   home_away: 'home' | 'visitor' | null
   designated_hitter_enabled: boolean | null
   opponent_team_id: number | null
-  opponent_team_name: string
   // 保存済みの相手の短縮形（無ければ正式名）と予告先発の選手名。決まっていなければ null（GET /game/:id が返す）
   opponent_team_short_name?: string | null
   announced_starter_name?: string | null

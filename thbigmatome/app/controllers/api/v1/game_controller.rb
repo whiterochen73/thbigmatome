@@ -36,6 +36,7 @@ class Api::V1::GameController < Api::V1::BaseController
       no_game: season_schedule.no_game,
       opponent_team_id: season_schedule.opponent_team&.id,
       opponent_team: season_schedule.opponent_team&.name,
+      **head_names(season_schedule),
       winning_pitcher_id: season_schedule.winning_pitcher&.id,
       losing_pitcher_id: season_schedule.losing_pitcher&.id,
       save_pitcher_id: season_schedule.save_pitcher&.id,
@@ -60,7 +61,7 @@ class Api::V1::GameController < Api::V1::BaseController
       if season_schedule.pitcher_rebuild_error
         warnings << "得点は保存しましたが、投手の判定の作り直しに失敗しました。後で作り直しが必要です（登板記録の区分が古いままです）"
       end
-      render json: season_schedule.as_json.merge("warnings" => warnings), status: :ok
+      render json: season_schedule.as_json.merge("warnings" => warnings).merge(head_names(season_schedule).stringify_keys), status: :ok
     else
       render json: { errors: season_schedule.errors.full_messages }, status: :unprocessable_content
     end
@@ -69,6 +70,15 @@ class Api::V1::GameController < Api::V1::BaseController
   end
 
   private
+
+  # 試合日ページの上の段に出す名前。相手は短縮形（無ければ正式名）、予告先発は選手名（背番号なし）。決まっていなければ nil
+  def head_names(season_schedule)
+    opponent = season_schedule.opponent_team
+    {
+      opponent_team_short_name: opponent && (opponent.short_name.presence || opponent.name),
+      announced_starter_name: season_schedule.announced_starter&.player&.name
+    }
+  end
 
   def game_params
     # フロントエンドから送られてくるパラメータ

@@ -243,3 +243,58 @@ export function calendarDayMark(input: CalendarDayMarkInput): 'warn' | 'todo' | 
   if (scored) return null
   return input.arrived ? 'todo' : null
 }
+
+// 試合日ページ上の段の 1 行（cmd_1812・もっく案1＋予告先発）。相手・得点・勝敗の札を大きく、ホーム/ビジター・DH を小さな印、予告先発を添える。
+// 渡す値はすべて「保存済み」の値（入力途中の値で揺れない）。決まっていないものは null にして出さない。何も決まっていなければ null（行ごと出さない）
+export type GameResultKind = 'win' | 'lose' | 'draw' | 'no_game'
+
+export interface GameDayHeadInput {
+  opponentName: string | null | undefined
+  score: number | string | null | undefined
+  opponentScore: number | string | null | undefined
+  noGame: boolean | null | undefined
+  homeAway: string | null | undefined
+  designatedHitter: boolean | null | undefined
+  starterName: string | null | undefined
+}
+
+export interface GameDayHead {
+  opponent: string | null
+  // 「得点 - 失点」。ノーゲームと、得点・失点のどちらかが空の時は null
+  score: string | null
+  result: GameResultKind | null
+  homeAway: 'home' | 'visitor' | null
+  // true = DH あり、false = DH なし、null = 未定
+  dh: boolean | null
+  starter: string | null
+}
+
+const textOrNull = (value: string | null | undefined): string | null => {
+  const text = typeof value === 'string' ? value.trim() : ''
+  return text === '' ? null : text
+}
+
+export function buildGameDayHead(input: GameDayHeadInput): GameDayHead | null {
+  // ノーゲームは得点では表せない（得点が残っていても出さない）。勝敗は得点と失点の両方が入って初めて出す（hasSavedScore と同じ条件）
+  const noGame = !!input.noGame
+  const scored = !noGame && hasSavedScore(input.score, input.opponentScore)
+  const mine = Number(input.score)
+  const theirs = Number(input.opponentScore)
+  const head: GameDayHead = {
+    opponent: textOrNull(input.opponentName),
+    score: scored ? `${mine} - ${theirs}` : null,
+    result: noGame
+      ? 'no_game'
+      : scored
+        ? mine > theirs
+          ? 'win'
+          : mine < theirs
+            ? 'lose'
+            : 'draw'
+        : null,
+    homeAway: input.homeAway === 'home' || input.homeAway === 'visitor' ? input.homeAway : null,
+    dh: typeof input.designatedHitter === 'boolean' ? input.designatedHitter : null,
+    starter: textOrNull(input.starterName),
+  }
+  return Object.values(head).every((value) => value === null) ? null : head
+}

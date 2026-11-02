@@ -369,9 +369,18 @@
     },
     "summary": {
       "absencesByPhase": "試合前 {pre} 件・試合中 {inGame} 件",
-      "pitcherCount": "登板 {count} 人",
-      "noGame": "ノーゲーム",
-      "vsOpponent": "vs {name}"
+      "pitcherCount": "登板 {count} 人"
+    },
+    "head": {
+      "result": {
+        "win": "勝",
+        "lose": "負",
+        "draw": "分",
+        "no_game": "ノーゲーム"
+      },
+      "dhOn": "DH あり",
+      "dhOff": "DH なし",
+      "starter": "先発 {name}"
     },
     "links": {
       "members": "シーズンポータルで開く",
@@ -385,8 +394,7 @@
       "link": "シーズン画面で修正する"
     },
     "progress": {
-      "label": "進み具合",
-      "text": "{done} / {total} 済"
+      "label": "進み具合"
     },
     "nav": {
       "prev": "前の日程",

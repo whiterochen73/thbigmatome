@@ -32,8 +32,60 @@
             <span v-if="hasUnsavedChanges" class="text-caption text-medium-emphasis">{{
               t('gameDay.dateType.saveFirst')
             }}</span>
-            <span v-if="isGameDay" class="text-medium-emphasis">{{ headLine }}</span>
           </div>
+        </div>
+        <!-- 上の段の 1 行（保存済みの値）。相手・得点・勝敗を大きく、ホーム/ビジター・DH は小さな印、予告先発を添える。決まっていないものは出さない -->
+        <div
+          v-if="isGameDay && gameDayHead"
+          class="game-day-headline"
+          data-testid="game-day-headline"
+        >
+          <span
+            v-if="gameDayHead.opponent"
+            class="game-day-headline__vs"
+            data-testid="head-opponent"
+            ><small>vs</small>{{ gameDayHead.opponent }}</span
+          >
+          <span
+            v-if="gameDayHead.score"
+            class="game-day-headline__score"
+            data-testid="head-score"
+            >{{ gameDayHead.score }}</span
+          >
+          <span
+            v-if="gameDayHead.result"
+            class="game-day-headline__result"
+            :class="`game-day-headline__result--${gameDayHead.result}`"
+            :data-result="gameDayHead.result"
+            data-testid="head-result"
+            >{{ t(`gameDay.head.result.${gameDayHead.result}`) }}</span
+          >
+          <span
+            v-if="gameDayHead.homeAway"
+            class="game-day-headline__tag"
+            data-testid="head-home-away"
+            ><v-icon size="small" aria-hidden="true">{{
+              gameDayHead.homeAway === 'home' ? 'mdi-home' : 'mdi-airplane'
+            }}</v-icon
+            >{{
+              gameDayHead.homeAway === 'home'
+                ? t('gameResult.homeAway.home')
+                : t('gameResult.homeAway.away')
+            }}</span
+          >
+          <span
+            v-if="gameDayHead.dh !== null"
+            class="game-day-headline__tag"
+            data-testid="head-dh"
+            >{{ gameDayHead.dh ? t('gameDay.head.dhOn') : t('gameDay.head.dhOff') }}</span
+          >
+          <span
+            v-if="gameDayHead.starter"
+            class="game-day-headline__starter"
+            data-testid="head-starter"
+            ><v-icon size="small" aria-hidden="true">mdi-baseball</v-icon
+            >{{ t('gameDay.head.starter', { name: gameDayHead.starter }) }}</span
+          >
         </div>
         <div
           v-if="isGameDay"
@@ -48,12 +100,6 @@
               <span>{{ step.title }}</span>
             </span>
           </span>
-          <span class="text-caption" data-testid="game-day-progress-text">{{
-            t('gameDay.progress.text', {
-              done: progress.filter((m) => m === 'on').length,
-              total: progress.length,
-            })
-          }}</span>
         </div>
         <div data-testid="game-day-nav" class="d-flex flex-wrap justify-end ga-2 ms-auto">
           <v-btn
@@ -439,11 +485,11 @@ import {
   isOffRoster,
   dateKey,
   type CurrentRange,
+  buildGameDayHead,
   hasSavedScore,
   isGameType,
   mismatchMessageKey,
   pitcherStageState,
-  progressMarks,
   resultStageState,
   setupStageState,
   SCHEDULE_DATE_TYPES,
@@ -570,6 +616,8 @@ watch(
 interface SavedFields {
   announcedStarterId: number | null
   opponentTeamId: number | null
+  homeAway: GameData['home_away']
+  designatedHitter: boolean | null
   score: number | null
   opponentScore: number | null
   noGame: boolean
@@ -609,10 +657,14 @@ const baseline = reactive({
 const savedFields = ref<SavedFields>({
   announcedStarterId: null,
   opponentTeamId: null,
+  homeAway: null,
+  designatedHitter: null,
   score: null,
   opponentScore: null,
   noGame: false,
 })
+// 上の段に出す名前（相手の短縮形・予告先発の選手名）。サーバが保存済みの値から返す
+const savedHeadNames = ref({ opponentShortName: '', starterName: '' })
 
 // 読み込み・保存に成功した時点の値を「保存済み」にする
 const takeBaseline = () => {
@@ -622,6 +674,8 @@ const takeBaseline = () => {
   savedFields.value = {
     announcedStarterId: g.announced_starter_id ?? null,
     opponentTeamId: g.opponent_team_id ?? null,
+    homeAway: g.home_away ?? null,
+    designatedHitter: g.designated_hitter_enabled ?? null,
     score: normNumber(g.score),
     opponentScore: normNumber(g.opponent_score),
     noGame: !!g.no_game,
@@ -806,52 +860,22 @@ const rosterWarningMessage = computed(() => {
   return t('gameDay.rosterWarning.message', { names })
 })
 
-const progress = computed(() =>
-  progressMarks([setupState.value, resultState.value, pitcherState.value]),
-)
-
 // ─────────────────────────────────────────
 // 表示用の文
 // ─────────────────────────────────────────
 
-const homeAwayLabel = computed(() => {
-  if (gameData.value.home_away === 'home') return t('gameResult.homeAway.home')
-  if (gameData.value.home_away === 'visitor') return t('gameResult.homeAway.away')
-  return ''
-})
-
-const dhLabel = computed(() => {
-  const dh = gameData.value.designated_hitter_enabled
-  if (dh === null || dh === undefined) return ''
-  return `${t('gameResult.dhSystem.title')}${dh ? t('gameResult.dhSystem.enabled') : t('gameResult.dhSystem.disabled')}`
-})
-
-const opponentName = computed(() => {
-  const g = gameData.value as GameData & { opponent_team?: string | null }
-  return g.opponent_team_name || g.opponent_team || ''
-})
-
-const setupSummary = computed(() =>
-  [
-    opponentName.value ? t('gameDay.summary.vsOpponent', { name: opponentName.value }) : '',
-    homeAwayLabel.value,
-    dhLabel.value,
-  ]
-    .filter(Boolean)
-    .join(' ・ '),
+// 上の段の 1 行。得点・予告先発だけでなく相手・ホーム/ビジター・DH も保存済みの値で出す（入力途中の値で揺れない）
+const gameDayHead = computed(() =>
+  buildGameDayHead({
+    opponentName: savedHeadNames.value.opponentShortName,
+    score: savedFields.value.score,
+    opponentScore: savedFields.value.opponentScore,
+    noGame: savedFields.value.noGame,
+    homeAway: savedFields.value.homeAway,
+    designatedHitter: savedFields.value.designatedHitter,
+    starterName: savedHeadNames.value.starterName,
+  }),
 )
-
-const headLine = computed(() =>
-  isGameDay.value
-    ? [`Game ${gameData.value.game_number}`, setupSummary.value].filter(Boolean).join(' ・ ')
-    : dateTypeLabel(currentDateType.value),
-)
-
-const resultSummary = computed(() => {
-  if (savedFields.value.noGame) return t('gameDay.summary.noGame')
-  if (!hasSavedScore(savedFields.value.score, savedFields.value.opponentScore)) return ''
-  return `${savedFields.value.score} - ${savedFields.value.opponentScore}`
-})
 
 const pitcherSummary = computed(() =>
   appearanceCount.value ? t('gameDay.summary.pitcherCount', { count: appearanceCount.value }) : '',
@@ -929,7 +953,6 @@ const steps = computed<GameDayStep[]>(() => {
       no: 5,
       icon: 'mdi-clipboard-list-outline',
       title: t('gameDay.sections.setup'),
-      summary: setupSummary.value,
       state: setupState.value,
       hasBody: true,
     },
@@ -940,7 +963,6 @@ const steps = computed<GameDayStep[]>(() => {
       no: 6,
       icon: 'mdi-scoreboard-outline',
       title: t('gameDay.sections.result'),
-      summary: resultSummary.value,
       state: resultState.value,
       hasBody: true,
     },
@@ -1101,6 +1123,10 @@ const fetchGame = async () => {
     if (gameData.value) {
       gameDate.value = new Date(gameData.value.game_date)
       takeBaseline()
+      savedHeadNames.value = {
+        opponentShortName: gameData.value.opponent_team_short_name ?? '',
+        starterName: gameData.value.announced_starter_name ?? '',
+      }
     }
   } catch (error) {
     console.error('Failed to fetch season data:', error)
@@ -1333,8 +1359,23 @@ const saveGame = async () => {
     return
   }
   try {
+    const previousStarter = savedFields.value.announcedStarterId
+    const previousStarterName = savedHeadNames.value.starterName
     const response = await axios.put(`/game/${scheduleId.value}`, gameData.value)
     takeBaseline()
+    // 保存した相手・予告先発の名前は、サーバの応答から取る。応答に無い時（古いサーバ）は、相手はチーム一覧から引き、
+    // 予告先発は選び直していなければ前の名前を残し、選び直していれば名前が分からないので出さない
+    const savedOpponent = allTeams.value.find(
+      (team) => team.id === savedFields.value.opponentTeamId,
+    )
+    savedHeadNames.value = {
+      opponentShortName:
+        response?.data?.opponent_team_short_name ??
+        (savedOpponent ? savedOpponent.short_name || savedOpponent.name : ''),
+      starterName:
+        response?.data?.announced_starter_name ??
+        (savedFields.value.announcedStarterId === previousStarter ? previousStarterName : ''),
+    }
     // 得点・ノーゲームの保存でサーバが登板記録の区分を作り直す。登板記録タブを開いていれば保存済みの区分を取り直す
     await pitcherTabRef.value?.refreshSavedResultCategories?.()
     // 結果の保存で「今の範囲」が進む。取り直さないと、範囲を出た登録・昇降格・負傷・出場停止の 3 段が操作可能のまま残る
@@ -1485,6 +1526,84 @@ onBeforeUnmount(() => {
   font-size: 0.75rem;
   font-weight: 600;
   white-space: nowrap;
+}
+/* 上の段の 1 行（もっく案1＋予告先発）。日付の下に 1 行ぶん全幅で置く。親の行間（16px）の半分だけ日付に寄せる */
+.game-day-headline {
+  flex: 0 0 100%;
+  min-width: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 12px;
+  margin-top: -8px;
+}
+.game-day-headline__vs,
+.game-day-headline__score {
+  font-size: 1.375rem;
+  font-weight: 700;
+  line-height: 1.4;
+}
+.game-day-headline__vs {
+  min-width: 0;
+  letter-spacing: 0.02em;
+  overflow-wrap: anywhere;
+}
+.game-day-headline__vs small {
+  margin-right: 4px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: rgb(var(--v-theme-on-surface-variant));
+}
+.game-day-headline__score {
+  font-variant-numeric: tabular-nums;
+}
+/* 勝敗の札。色だけで伝えないため文字（勝・負・分・ノーゲーム）を付ける。配色はシーズン画面の勝敗の印と同じ */
+.game-day-headline__result {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 28px;
+  height: 26px;
+  padding: 0 6px;
+  border-radius: 6px;
+  font-size: 0.875rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.game-day-headline__result--win {
+  background: rgb(var(--v-theme-result-win));
+  color: rgb(var(--v-theme-on-result-win));
+}
+.game-day-headline__result--lose {
+  background: rgb(var(--v-theme-result-loss));
+  color: rgb(var(--v-theme-on-result-loss));
+}
+.game-day-headline__result--draw {
+  background: rgb(var(--v-theme-result-draw));
+  color: rgb(var(--v-theme-on-result-draw));
+}
+/* ノーゲームは勝敗の色を付けず、枠だけの札にする */
+.game-day-headline__result--no_game {
+  border: 1px solid rgb(var(--v-theme-on-result-nogame));
+  color: rgb(var(--v-theme-on-result-nogame));
+}
+.game-day-headline__tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 1px 8px;
+  border: 1px solid rgb(var(--v-theme-border-strong));
+  border-radius: 999px;
+  font-size: 0.75rem;
+  white-space: nowrap;
+}
+.game-day-headline__starter {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  min-width: 0;
+  font-size: 0.8125rem;
+  overflow-wrap: anywhere;
 }
 .game-day-mismatch {
   border: 1px solid rgb(var(--v-theme-on-state-warn));

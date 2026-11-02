@@ -93,7 +93,6 @@
           role="group"
           :aria-label="t('gameDay.progress.label')"
         >
-          <span class="text-caption">{{ t('gameDay.progress.label') }}</span>
           <span class="game-day-progress__pills">
             <span v-for="step in progressSteps" :key="step.id" class="game-day-progress__pill">
               <GameDayStateChip :state="step.state" />
@@ -527,7 +526,6 @@ const defaultGameData: GameData = {
   home_away: null,
   designated_hitter_enabled: null,
   opponent_team_id: null,
-  opponent_team_name: '',
   score: null,
   opponent_score: null,
   no_game: false,
@@ -594,20 +592,6 @@ const pitcherGameResult = computed<'win' | 'lose' | 'draw' | 'no_game'>(() => {
   if (myScore === oppScore) return 'draw'
   return myScore > oppScore ? 'win' : 'lose'
 })
-
-watch(
-  () => gameData.value.opponent_team_id,
-  (newOpponentId) => {
-    if (newOpponentId) {
-      const opponentTeam = allTeams.value.find((team) => team.id === newOpponentId)
-      if (opponentTeam) {
-        gameData.value.opponent_team_name = opponentTeam.short_name
-      }
-    } else {
-      gameData.value.opponent_team_name = ''
-    }
-  },
-)
 
 // ─────────────────────────────────────────
 // 保存済みの値・未保存の入力

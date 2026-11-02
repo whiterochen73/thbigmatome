@@ -807,6 +807,13 @@ describe.each(LAYOUTS)('GameResult 試合日ページ: $name', ({ width, kind })
     expect(pills.map((pill) => pill.attributes('data-state'))).toEqual(['none', 'done', 'done'])
     expect(wrapper.find('[data-testid="game-day-progress-text"]').exists()).toBe(false)
     expect(wrapper.find('[data-testid="game-day-progress"]').exists()).toBe(false)
+    // 見出しの文字「進み具合」は出さない（cmd_1813）。読み上げ用の aria-label は残す
+    const group = wrapper.find('.game-day-progress')
+    expect(group.text()).not.toContain('進み具合')
+    expect(group.attributes('role')).toBe('group')
+    expect(group.attributes('aria-label')).toBe('進み具合')
+    expect(group.findAll('.game-day-progress__pill')).toHaveLength(3)
+    expect(wrapper.text()).not.toContain('進み具合')
   })
 
   it('両方なし・試合日が来ている → 結果・登板記録とも未入力（黄）', async () => {
@@ -2359,7 +2366,6 @@ describe.each(LAYOUTS)('GameResult 試合日ページ: $name', ({ width, kind })
       wrapper.vm.gameData.score = 9
       wrapper.vm.gameData.opponent_score = 10
       wrapper.vm.gameData.opponent_team_id = 3
-      wrapper.vm.gameData.opponent_team_name = '若尊'
       wrapper.vm.gameData.announced_starter_id = 6
       wrapper.vm.gameData.home_away = 'visitor'
       wrapper.vm.gameData.designated_hitter_enabled = true

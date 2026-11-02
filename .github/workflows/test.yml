@@ -9,6 +9,7 @@ on:
     branches:
       - main
       - develop
+      - 'preview/**'
 
 jobs:
   # ============================================================
@@ -92,6 +93,10 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
 
+      # Yarn Berry は corepack 経由。setup-node の cache: 'yarn' が yarn を呼ぶ前に有効化する
+      - name: Enable corepack
+        run: corepack enable
+
       - name: Set up Node.js
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
@@ -100,7 +105,7 @@ jobs:
           cache-dependency-path: thbigmatome-front/yarn.lock
 
       - name: Install dependencies
-        run: yarn install --frozen-lockfile
+        run: yarn install --immutable
 
       - name: Run Vitest
         run: yarn vitest run

@@ -1,16 +1,14 @@
 <template>
   <div>
-    <template v-if="loading">
-      <div data-testid="loading-spinner" class="d-flex justify-center">
-        <v-progress-circular indeterminate color="primary" size="24" />
-      </div>
-    </template>
-
-    <template v-else-if="error">
-      <v-alert type="error" density="compact">投手状態の取得に失敗しました</v-alert>
-    </template>
-
-    <template v-else>
+    <AsyncState
+      :loading="loading"
+      :error="error"
+      error-message="投手状態の取得に失敗しました"
+      :empty="pitchers.length === 0"
+      empty-icon="mdi-baseball"
+      empty-message="投手がいません"
+      @retry="fetchPitcherStatuses"
+    >
       <!-- 先発投手 -->
       <div class="mb-4">
         <div class="d-flex align-center justify-space-between mb-1">
@@ -53,7 +51,7 @@
               @drop="onDrop(idx, 'starters')"
               @dragend="onDragEnd"
             >
-              <td class="text-center text-grey" style="cursor: grab">☰</td>
+              <td class="text-center on-surface-variant" style="cursor: grab">☰</td>
               <td>
                 <PlayerNameLink
                   :player-id="pitcher.player_id"
@@ -85,7 +83,9 @@
               </td>
             </tr>
             <tr v-if="orderedStarters.length === 0">
-              <td colspan="7" class="text-center text-grey text-caption py-2">先発投手なし</td>
+              <td colspan="7" class="text-center on-surface-variant text-caption py-2">
+                先発投手なし
+              </td>
             </tr>
           </tbody>
         </v-table>
@@ -133,7 +133,7 @@
               @drop="onDrop(idx, 'relievers')"
               @dragend="onDragEnd"
             >
-              <td class="text-center text-grey" style="cursor: grab">☰</td>
+              <td class="text-center on-surface-variant" style="cursor: grab">☰</td>
               <td>
                 <PlayerNameLink
                   :player-id="pitcher.player_id"
@@ -167,18 +167,21 @@
               </td>
             </tr>
             <tr v-if="orderedRelievers.length === 0">
-              <td colspan="7" class="text-center text-grey text-caption py-2">リリーフ投手なし</td>
+              <td colspan="7" class="text-center on-surface-variant text-caption py-2">
+                リリーフ投手なし
+              </td>
             </tr>
           </tbody>
         </v-table>
       </div>
-    </template>
+    </AsyncState>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
 import axios from 'axios'
+import AsyncState from '@/components/shared/AsyncState.vue'
 import PlayerNameLink from '@/components/shared/PlayerNameLink.vue'
 import PitcherRoleStateCell from './PitcherRoleStateCell.vue'
 import { cardFatiguePLabel, openerHeaderTitle } from './pitcherRoleState'

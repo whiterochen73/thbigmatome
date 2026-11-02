@@ -2,7 +2,7 @@
 
 ## 概要
 
-シーズン管理は、チームごとの年間シーズン進行を管理する機能である。日程表（Schedule）を元にシーズンを初期化し、カレンダーUI上で日々の進行（current_date の更新）、日程種別の変更、試合結果の確認、キープレイヤーの設定を行う。
+シーズン管理は、チームごとの年間シーズン進行を管理する機能である。日程表（Schedule）を元にシーズンを初期化し、カレンダーUI上で現在日と今の範囲の表示（日程の結果から自動で導く）、日程種別の変更、試合結果の確認、キープレイヤーの設定を行う。
 
 1チームにつき1シーズンのみ存在可能（`team_id` に uniqueness バリデーション）。シーズン作成時に日程表テンプレート（`Schedule` + `ScheduleDetail`）から `SeasonSchedule` レコードを一括生成し、以降はシーズン固有のデータとして独立管理する。
 
@@ -35,11 +35,10 @@
 
 | 要素 | 色 | 動作 | 条件 |
 |------|-----|------|------|
-| シーズン名（h1） | — | 表示のみ | `season.name` |
-| 試合結果入力ボタン | primary（outlined） | `GameResult` 画面へ遷移 | 当日が試合日（`game_day`, `interleague_game_day`, `playoff_day`, `no_game`）の場合のみ有効 |
+| タイトル（h1） | — | 表示のみ。シーズンに題は付けないので、チーム名（`GET /teams/:teamId` の `name`）を出す | — |
+| 試合結果入力ボタン | primary（outlined） | `GameResult` 画面へ遷移 | 当日が試合日（`game_day`, `interleague_game_day`, `playoff_day`。サーバが `game_date_types` で返す）の場合のみ有効 |
 | 離脱登録ボタン | teal（outlined） | `PlayerAbsenceFormDialog` を開く | 常時有効。アイコン: `mdi-hospital-box` |
-| ◀ / ▶（日付移動） | — | `prevDay()` / `nextDay()` で `current_date` を±1日更新 | 開始日以前 / 終了日以降は disabled |
-| 現在日付表示 | — | `ja-JP` ロケールで「○月○日」形式 | — |
+| 現在日付表示 | — | `ja-JP` ロケールで「○月○日」形式。日程の結果から導いた現在日（今の範囲の最後の日）を表示するだけで、手で動かす操作は無い | — |
 
 **注意**: 「登録選手」「離脱履歴」ボタンは `TeamNavigation` タブに移行されたため、ツールバーからは削除されている。
 
@@ -67,7 +66,7 @@
 | `interleague_reserve_day` | brown | なし |
 | `no_game_day` | red | なし |
 | `postponed` | indigo | なし |
-| `no_game` | indigo | あり |
+| `no_game`（廃止。移行前の行の表示のみ） | indigo | なし |
 
 - `current_date` より前の日付のボタンは `disabled`（変更不可）
 - 日程種別変更時: `PATCH /teams/:teamId/season/season_schedules/:id` を呼び出し、ローカルの `season_schedules` 配列も即時更新
@@ -98,7 +97,6 @@
 
 | フィールド | v-model | 入力形式 | 説明 |
 |-----------|---------|---------|------|
-| シーズン名 | `seasonName` | `v-text-field` | 必須。シーズンの表示名 |
 | 日程表選択 | `selectedSchedule` | `v-select`（`item-title="name"`, `item-value="id"`） | 必須。`ScheduleList[]` から選択 |
 
 #### Props
@@ -111,8 +109,8 @@
 
 #### 動作フロー
 
-1. ユーザーがシーズン名を入力し、日程表を選択
-2. 「初期化」ボタンクリック → `POST /seasons` に `{ team_id, schedule_id, name }` を送信
+1. ユーザーが日程表を選択（シーズンの題の入力欄は無い）
+2. 「初期化」ボタンクリック → `POST /seasons` に `{ team_id, schedule_id }` を送信
 3. 成功時: フォームリセット + `emit('save')` で親に通知 + ダイアログ閉じる
 4. ダイアログ非表示時: `watch` でフォーム値を自動リセット
 
@@ -138,7 +136,8 @@ POST /api/v1/seasons
 |-----------|-----|------|------|
 | `team_id` | integer | ○ | チームID |
 | `schedule_id` | integer | ○ | 日程表テンプレートID |
-| `name` | string | ○ | シーズン名 |
+
+`name` は受け取らない。シーズンに題は付けず、列 `name`（NOT NULL）にはモデルが作成時にチーム名を入れる。
 
 **処理フロー**（トランザクション内）:
 
@@ -174,25 +173,18 @@ GET /api/v1/teams/:team_id/season
 | `200 OK` | シーズンあり | `SeasonDetailSerializer` の出力（後述） |
 | `404 Not Found` | チームにシーズンなし | `{ error: 'Season not found for this team' }` |
 
-### シーズン現在日付更新
+### 現在日と今の範囲（日程の結果から導く）
 
 ```
-PATCH /api/v1/teams/:team_id/season
+GET /api/v1/teams/:team_id/season
 ```
 
-**コントローラー**: `Api::V1::TeamSeasonsController#update`
+現在日を手で動かす `PATCH /api/v1/teams/:team_id/season` は廃止した（ルートが無い）。現在日は日程の結果から毎回導く（`SeasonCurrentRange`、`Season#current_date` / `Season#current_range`）。
 
-**パラメータ**: `season[current_date]`（date 形式）
-
-**Strong Parameters**: `params.require(:season).permit(:current_date)`
-
-**レスポンス**:
-
-| ステータス | 条件 | Body |
-|-----------|------|------|
-| `200 OK` | 成功 | `{ season: Season }` |
-| `404 Not Found` | チームが存在しない | `{ error: message }` |
-| `422 Unprocessable Entity` | 更新失敗 | `{ errors: [messages] }` |
+- **今の範囲** = 最後に結果が入った日の翌日〜次の試合日（移動日・予備日などを含む）。レスポンスの `current_range` は `{ start_date, end_date }`。最終試合日の後など範囲が無い時は `null`
+- **現在日** `current_date` = 範囲の最後の日（次の試合日）。範囲が無い時は最後に結果が入った日
+- 「結果が入った」= 得点（自軍・相手とも）が保存済み、または真偽値 `no_game`。結果を保存すると、範囲は次へ進む
+- 列 `seasons.current_date` は、日程が 1 行も無いシーズンの初期値としてだけ読む
 
 ### シーズン日程種別更新
 
@@ -267,7 +259,7 @@ resources :seasons, only: [:create]
 |--------|-----|------|-----------|------|
 | `id` | bigint | NO | (auto) | 主キー |
 | `team_id` | bigint | NO | — | 所属チーム（FK → teams） |
-| `name` | string | NO | — | シーズン名（例: 「2025年シーズン」） |
+| `name` | string | NO | — | 使わない列（画面はチーム名をタイトルにする）。作成時にモデルがチーム名を入れる。既存の行は書き換えない |
 | `current_date` | date | NO | — | 現在進行中の日付（シーズン作成時は `schedule.start_date`） |
 | `key_player_id` | bigint | YES | — | キープレイヤー（FK → team_memberships） |
 | `team_type` | string | YES | — | チーム種別（用途未使用） |
@@ -337,7 +329,7 @@ resources :seasons, only: [:create]
 | `interleague_reserve_day` | 交流戦予備日 |
 | `no_game_day` | 試合なし日 |
 | `postponed` | 延期 |
-| `no_game` | ノーゲーム（中止等。試合結果入力画面へのリンクあり） |
+| `no_game`（廃止） | cmd_1784 段4 で廃止。ノーゲームは試合結果の真偽値 `no_game` で表し、日付の種類は元のまま |
 
 ### リレーション
 
@@ -363,7 +355,7 @@ Team
 ### バリデーション
 
 **Season**:
-- `name`: presence（必須）
+- `name`: 検証なし。作成時（`before_validation`, `on: :create`）に空ならチーム名を入れる
 - `team_id`: uniqueness（1チーム1シーズン。メッセージ: 「は既にシーズンが開始されています。」）
 
 **SeasonSchedule**:
@@ -373,12 +365,12 @@ Team
 
 #### `calculated_game_number`
 
-試合番号を返す。`game_number` カラムに値が設定されている場合はそれを返し、未設定の場合はシーズン内の `game_day` / `interleague_game_day` タイプの日程のうち、当該日付より前のレコード数 + 1 を動的に計算して返す。
+試合番号を返す。`game_number` カラムに値が設定されている場合はそれを返し、未設定の場合はシーズン内の試合日（`game_day` / `interleague_game_day` / `playoff_day`）のうちノーゲームでない日程のうち、当該日付より前のレコード数 + 1 を動的に計算して返す。
 
 ```ruby
 def calculated_game_number
   game_number || season.season_schedules
-    .where(date_type: ["game_day", "interleague_game_day"])
+    .counted_games # 試合日の種別で、no_game が偽の日
     .where("date < ?", date)
     .count + 1
 end
@@ -413,7 +405,7 @@ end
 
 ```ruby
 class SeasonDetailSerializer < ActiveModel::Serializer
-  attributes :id, :name, :current_date, :start_date, :end_date
+  attributes :id, :current_date, :start_date, :end_date
   has_many :season_schedules, serializer: SeasonScheduleSerializer
 end
 ```
@@ -426,7 +418,6 @@ end
 ```json
 {
   "id": 1,
-  "name": "2025年シーズン",
   "current_date": "2025-04-01",
   "start_date": "2025-03-28",
   "end_date": "2025-10-15",
@@ -479,9 +470,9 @@ end
 
 ### 日付進行
 
-- フロントエンドの ◀ / ▶ ボタンで `current_date` を1日ずつ増減
-- `PATCH /teams/:team_id/season` で `current_date` をサーバーに永続化
-- `start_date`（スケジュール最小日付）以前・`end_date`（最大日付）以降への移動は UI で disabled
+- 現在日は日程の結果から自動で導く。手で動かす ◀ / ▶ ボタンと `PATCH /teams/:team_id/season` は廃止した
+- 今の範囲 = 最後に結果が入った日の翌日〜次の試合日、現在日 = 範囲の最後の日（次の試合日）。試合日の結果を保存すると次の範囲へ進む
+- 試合日ページで選手登録・昇降格・負傷・出場停止を操作できるのは、開いた日が今の範囲の時だけ。範囲の外は読み取り専用にして、過去分の修正はシーズン画面（日付と試合前／試合後を指定）へ案内する
 
 ### キープレイヤー設定
 
@@ -545,7 +536,6 @@ export interface SeasonSchedule {
 | 操作 | HTTP | URL | タイミング |
 |------|------|-----|-----------|
 | シーズン詳細取得 | GET | `/teams/:teamId/season` | `onMounted` |
-| 現在日付更新 | PATCH | `/teams/:teamId/season` | ◀ / ▶ ボタン押下時 |
 | 日程種別変更 | PATCH | `/teams/:teamId/season/season_schedules/:id` | 日程種別メニュー選択時 |
 | シーズン初期化 | POST | `/seasons` | SeasonInitializationDialog で初期化実行時 |
 | キープレイヤー設定 | POST | `/teams/:teamId/key_player` | キープレイヤー設定時 |

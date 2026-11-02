@@ -107,8 +107,8 @@
                       <v-chip
                         v-if="getValidationStatus(entry.battingOrder) !== 'ok'"
                         size="x-small"
-                        color="warning"
-                        variant="tonal"
+                        color="state-todo"
+                        variant="flat"
                       >
                         {{ getValidationReason(entry.battingOrder) }}
                       </v-chip>
@@ -135,8 +135,9 @@
                   <v-btn-toggle
                     :model-value="getHitterCategory(p.player_id)"
                     density="compact"
-                    color="primary"
+                    color="link"
                     variant="outlined"
+                    :style="{ borderColor: 'rgb(var(--v-theme-border-strong))' }"
                     @update:model-value="
                       (v: 'bench' | 'off' | null) => setHitterCategory(p.player_id, v)
                     "
@@ -159,8 +160,9 @@
                   <v-btn-toggle
                     :model-value="getPitcherCategory(p.player_id)"
                     density="compact"
-                    color="primary"
+                    color="link"
                     variant="outlined"
+                    :style="{ borderColor: 'rgb(var(--v-theme-border-strong))' }"
                     @update:model-value="
                       (v: 'relief' | 'starter_bench' | 'off' | null) =>
                         setPitcherCategory(p.player_id, v)
@@ -199,7 +201,7 @@
             <!-- リセットボタン -->
             <v-btn
               variant="text"
-              color="error"
+              color="danger-ink"
               size="small"
               prepend-icon="mdi-restart"
               @click="resetAndRestart"
@@ -222,7 +224,7 @@
 
             <div class="d-flex align-center ga-2 mt-3">
               <v-btn
-                color="primary"
+                color="action"
                 variant="elevated"
                 prepend-icon="mdi-content-copy"
                 :loading="copying"

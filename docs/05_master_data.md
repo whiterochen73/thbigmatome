@@ -2,18 +2,18 @@
 
 ## 1. 概要
 
-本システムでは、選手の属性を構成する6種類のマスタデータを管理する。対象5種（打撃スタイル、打撃スキル、投球スタイル、投球スキル、選手タイプ）はYAML設定ファイルで管理されており、Settings画面およびAPIは**読み取り専用**となっている。バイオリズムのみDB管理のまま維持され、Settings画面からCRUD操作が可能。選手データとは直接参照または中間テーブルを介した多対多で関連付けられる。
+本システムでは、選手の属性を構成する4種類のマスタデータを管理する。対象3種（打撃スタイル、投球スタイル、選手タイプ）はYAML設定ファイルで管理されており、Settings画面およびAPIは**読み取り専用**となっている。バイオリズムのみDB管理のまま維持され、Settings画面からCRUD操作が可能。選手データとは直接参照または中間テーブルを介した多対多で関連付けられる。
+
+> **打撃スキル（BattingSkill）・投球スキル（PitchingSkill）のマスタは廃止済み。** `batting_skills` / `pitching_skills` テーブルと中間テーブル `player_batting_skills` / `player_pitching_skills`、関連するモデル・コントローラ・エンドポイント・設定ファイルは、2026-03-09 の subtask_511b（commit `012e3ab`）で削除された。以下の「廃止」と書いた節は経緯の記録として見出しだけを残している。同じコミットで `player_player_types` / `player_biorhythms` も廃止されているが、これらの記述の追従は本修正の範囲外（未反映）。
 
 ### 1.1 マスタデータ一覧
 
 | # | マスタデータ | 用途 | 選手との関連 |
 |---|------------|------|-------------|
 | 1 | 打撃スタイル（BattingStyle） | 選手の打撃フォーム分類 | 選手が1つ選択（belongs_to） |
-| 2 | 打撃スキル（BattingSkill） | 選手の打撃特殊能力 | 選手が複数保持（多対多） |
-| 3 | 投球スタイル（PitchingStyle） | 選手の投球フォーム分類 | 選手が最大3つ選択（belongs_to × 3） |
-| 4 | 投球スキル（PitchingSkill） | 選手の投球特殊能力 | 選手が複数保持（多対多） |
-| 5 | 選手タイプ（PlayerType） | 選手の役割分類 | 選手が複数保持（多対多） |
-| 6 | バイオリズム（Biorhythm） | 選手の調子変動期間 | 選手が複数保持（多対多） |
+| 2 | 投球スタイル（PitchingStyle） | 選手の投球フォーム分類 | 選手が最大3つ選択（belongs_to × 3） |
+| 3 | 選手タイプ（PlayerType） | 選手の役割分類 | 選手が複数保持（多対多） |
+| 4 | バイオリズム（Biorhythm） | 選手の調子変動期間 | 選手が複数保持（多対多） |
 
 ### 1.2 ER図（マスタデータ関連）
 
@@ -23,20 +23,17 @@ PitchingStyle ──1:N── Player（pitching_style_id）
 PitchingStyle ──1:N── Player（pinch_pitching_style_id）
 PitchingStyle ──1:N── Player（catcher_pitching_style_id）
 
-BattingSkill ──M:N── Player（via player_batting_skills）
-PitchingSkill ──M:N── Player（via player_pitching_skills）
 PlayerType ──M:N── Player（via player_player_types）
 Biorhythm ──M:N── Player（via player_biorhythms）
 ```
 
-スタイル系（BattingStyle, PitchingStyle）はPlayerから直接参照（`belongs_to`）、スキル系・タイプ・バイオリズムは中間テーブル経由の多対多関連。PitchingStyleは1つのマスタデータに対し、Player側に3つの外部キー（通常投球・代打時投球・捕手時投球）がある。
+スタイル系（BattingStyle, PitchingStyle）はPlayerから直接参照（`belongs_to`）、タイプ・バイオリズムは中間テーブル経由の多対多関連。PitchingStyleは1つのマスタデータに対し、Player側に3つの外部キー（通常投球・代打時投球・捕手時投球）がある。
 
 ### 1.3 構造パターンによる分類
 
 | パターン | マスタデータ | データ構造 |
 |---------|-------------|----------|
 | name + description | PlayerType, BattingStyle, PitchingStyle | 基本的な名前と説明のペア |
-| name + description + skill_type | BattingSkill, PitchingSkill | スキル分類（positive/negative/neutral）を含む |
 | name + start_date + end_date | Biorhythm | 期間情報を持つ（descriptionなし） |
 
 ---
@@ -54,22 +51,19 @@ Settings画面は2つのタブで構成される。マスタデータ管理は�
 
 | タブ | v-tab value | 内容 |
 |------|------------|------|
-| 選手（Player） | `player` | 打撃/投球スタイル、打撃/投球スキル、選手タイプ、バイオリズム |
+| 選手（Player） | `player` | 打撃/投球スタイル、選手タイプ、バイオリズム |
 | 編成（Squad） | `squad` | コスト設定、日程設定（本仕様書の範囲外） |
 
 デフォルトで「選手」タブが選択される（`selectedTab = ref('player')`）。
 
 #### 2.1.2 「選手」タブのレイアウト
 
-2カラム構成（`md="8" lg="6"` の `v-col` × 2）で、6つのマスタデータ管理コンポーネントを配置する。
+2カラム構成（`md="8" lg="6"` の `v-col` × 2）で、4つのマスタデータ管理コンポーネントを配置する。
 
 ```
 +-------------------------------+-------------------------------+
 | PitchingStyleSettings         | BattingStyleSettings          |
 |   投球スタイル                |   打撃スタイル                |
-+-------------------------------+-------------------------------+
-| PitchingSkillSettings         | BattingSkillSettings          |
-|   投球スキル                  |   打撃スキル                  |
 +-------------------------------+-------------------------------+
 | PlayerTypeSettings            | BiorhythmSettings             |
 |   選手タイプ                  |   バイオリズム                |
@@ -82,9 +76,7 @@ Settings画面は2つのタブで構成される。マスタデータ管理は�
 
 ```typescript
 import PitchingStyleSettings from '@/components/settings/PitchingStyleSettings.vue'
-import PitchingSkillSettings from '@/components/settings/PitchingSkillSettings.vue'
 import BattingStyleSettings from '@/components/settings/BattingStyleSettings.vue'
-import BattingSkillSettings from '@/components/settings/BattingSkillSettings.vue'
 import PlayerTypeSettings from '@/components/settings/PlayerTypeSettings.vue'
 import BiorhythmSettings from '@/components/settings/BiorhythmSettings.vue'
 import CostSettings from '@/components/settings/CostSettings.vue'
@@ -102,7 +94,7 @@ import ScheduleSettings from '@/components/settings/ScheduleSettings.vue'
 | Prop | 型 | デフォルト | 説明 |
 |------|-----|----------|------|
 | `title` | `string` | - | 展開パネルのタイトル |
-| `endpoint` | `string` | - | APIエンドポイントパス（例: `/batting-skills`） |
+| `endpoint` | `string` | - | APIエンドポイントパス（例: `/batting-styles`） |
 | `i18nKey` | `string` | - | i18n翻訳キーのプレフィックス |
 | `dialogComponent` | `Component` | - | 編集/追加用ダイアログコンポーネント |
 | `additionalHeaders` | `any[]` | - | テーブルに追加するカラムヘッダー |
@@ -164,28 +156,13 @@ import ScheduleSettings from '@/components/settings/ScheduleSettings.vue'
 - **readonly**: `true`（読み取り専用）
 - カスタマイズなし
 
-#### 2.3.3 PitchingSkillSettings
+#### ~~2.3.3 PitchingSkillSettings~~ （廃止）
 
-- **ファイル**: `src/components/settings/PitchingSkillSettings.vue`
-- **endpoint**: `/pitching-skills`
-- **ダイアログ**: `PitchingSkillDialog`
-- **descriptionMaxWidth**: `400px`
-- **readonly**: `true`（読み取り専用）
-- **カスタマイズ**: `item.name` スロットで `skill_type` に応じた色付き `v-chip` を表示
-  - `positive` → 青（`blue`）
-  - `negative` → 赤（`red`）
-  - `neutral` → 緑（`green`）
-- **SkillType**: `@/types/skill` からインポート
+`PitchingSkillSettings.vue` / `PitchingSkillDialog` は 2026-03-09 の subtask_511b（commit `012e3ab`）で廃止済み。
 
-#### 2.3.4 BattingSkillSettings
+#### ~~2.3.4 BattingSkillSettings~~ （廃止）
 
-- **ファイル**: `src/components/settings/BattingSkillSettings.vue`
-- **endpoint**: `/batting-skills`
-- **ダイアログ**: `BattingSkillDialog`
-- **descriptionMaxWidth**: `400px`
-- **readonly**: `true`（読み取り専用）
-- **カスタマイズ**: PitchingSkillSettingsと同一のスキルタイプ色付きチップ表示
-- **SkillType**: `@/types/skill` からインポート
+`BattingSkillSettings.vue` / `BattingSkillDialog` は 2026-03-09 の subtask_511b（commit `012e3ab`）で廃止済み。
 
 #### 2.3.5 PlayerTypeSettings
 
@@ -219,18 +196,9 @@ import ScheduleSettings from '@/components/settings/ScheduleSettings.vue'
 - **保存時ペイロード**: `{ pitching_style: { name, description } }` / `{ batting_style: { name, description } }`
 - **フォーム有効条件**: `name` が空でないこと
 
-#### 2.4.2 スキル系ダイアログ（PitchingSkillDialog / BattingSkillDialog）
+#### ~~2.4.2 スキル系ダイアログ（PitchingSkillDialog / BattingSkillDialog）~~ （廃止）
 
-| フィールド | コンポーネント | バリデーション |
-|-----------|--------------|--------------|
-| name | `v-text-field` | required |
-| skill_type | `v-select`（positive/negative/neutral） | required |
-| description | `v-textarea`（3行） | なし |
-
-- **skill_type選択肢**: positive（青背景 `blue-lighten-5`）、negative（赤背景 `red-lighten-5`）、neutral（緑背景 `green-lighten-5`）
-- **保存時ペイロード**: `{ batting_skill: { name, skill_type, description } }` / `{ pitching_skill: { name, skill_type, description } }`
-- **フォーム有効条件**: `name` と `skill_type` の両方が空でないこと
-- **デフォルト値**: 新規作成時のskill_typeは `'neutral'`
+両ダイアログは 2026-03-09 の subtask_511b（commit `012e3ab`）で廃止済み。
 
 #### 2.4.3 PlayerTypeDialog
 
@@ -276,10 +244,6 @@ Settings.vue
 │   │   └── GenericMasterSettings.vue
 │   │       ├── PitchingStyleDialog.vue
 │   │       └── ConfirmDialog.vue
-│   ├── PitchingSkillSettings.vue
-│   │   └── GenericMasterSettings.vue
-│   │       ├── PitchingSkillDialog.vue
-│   │       └── ConfirmDialog.vue
 │   ├── PlayerTypeSettings.vue
 │   │   └── GenericMasterSettings.vue
 │   │       ├── PlayerTypeDialog.vue
@@ -287,10 +251,6 @@ Settings.vue
 │   ├── BattingStyleSettings.vue
 │   │   └── GenericMasterSettings.vue
 │   │       ├── BattingStyleDialog.vue
-│   │       └── ConfirmDialog.vue
-│   ├── BattingSkillSettings.vue
-│   │   └── GenericMasterSettings.vue
-│   │       ├── BattingSkillDialog.vue
 │   │       └── ConfirmDialog.vue
 │   └── BiorhythmSettings.vue
 │       └── GenericMasterSettings.vue
@@ -308,51 +268,17 @@ Settings.vue
 ### 3.1 共通事項
 
 - **ベースURL**: `/api/v1`
-- **コントローラー継承**: 6種類とも `Api::V1::*Controller < Api::V1::BaseController` を継承
+- **コントローラー継承**: 4種類とも `Api::V1::*Controller < Api::V1::BaseController` を継承
 - **認証**: `Api::V1::BaseController` で `before_action :authenticate_user!` が設定されており、全エンドポイントで認証必須
 - **レスポンス形式**: `to_json` による直接シリアライズ（専用シリアライザーなし）。`created_at`, `updated_at` もレスポンスに含まれる
-- **エラーレスポンス**: バイオリズムのみ `{ errors: ["エラーメッセージ1", ...] }`（422 Unprocessable Entity）。YAML管理対象5種は `{ error: "..." }`（403 Forbidden）
+- **エラーレスポンス**: バイオリズムのみ `{ errors: ["エラーメッセージ1", ...] }`（422 Unprocessable Entity）。YAML管理対象3種は `{ error: "..." }`（403 Forbidden）
 - **ソート**: 全indexアクションで `order(:id)` を適用（Biorhythmのみ `order(:start_date, :name)`）
 - **アクション**: 全マスタデータとも `index`, `create`, `update`, `destroy` の4アクション。`show` アクションはなし
-- **YAML管理対象の書き込み制限**: 打撃スタイル、打撃スキル、投球スタイル、投球スキル、選手タイプの5種は、`create`/`update`/`destroy` アクションが `403 Forbidden` を返す（`I18n.t("master_data.managed_by_config_file")`）。`index`（読み取り）のみ許可
+- **YAML管理対象の書き込み制限**: 打撃スタイル、投球スタイル、選手タイプの3種は、`create`/`update`/`destroy` アクションが `403 Forbidden` を返す（`I18n.t("master_data.managed_by_config_file")`）。`index`（読み取り）のみ許可
 
-### 3.2 打撃スキル（BattingSkill）
+### ~~3.2 打撃スキル（BattingSkill）~~ （廃止）
 
-#### GET /api/v1/batting-skills
-
-全打撃スキルの一覧を取得する。
-
-```
-GET /api/v1/batting-skills
-```
-
-**レスポンス（200 OK）**:
-```json
-[
-  {
-    "id": 1,
-    "name": "パワーヒッター",
-    "description": "長打力が高い",
-    "skill_type": "positive",
-    "created_at": "2025-01-01T00:00:00.000Z",
-    "updated_at": "2025-01-01T00:00:00.000Z"
-  }
-]
-```
-
-#### POST /api/v1/batting-skills（無効化）
-
-YAML設定ファイル管理のため、書き込みは禁止。
-
-- **レスポンス**: 403 Forbidden `{ "error": "(master_data.managed_by_config_fileの翻訳メッセージ)" }`
-
-#### PATCH/PUT /api/v1/batting-skills/:id（無効化）
-
-- **レスポンス**: 403 Forbidden
-
-#### DELETE /api/v1/batting-skills/:id（無効化）
-
-- **レスポンス**: 403 Forbidden
+`/api/v1/batting-skills`（GET / POST / PATCH / DELETE）は 2026-03-09 の subtask_511b（commit `012e3ab`）で廃止済み。
 
 ---
 
@@ -393,29 +319,9 @@ YAML設定ファイル管理のため、書き込みは禁止。
 
 ---
 
-### 3.4 投球スキル（PitchingSkill）
+### ~~3.4 投球スキル（PitchingSkill）~~ （廃止）
 
-#### GET /api/v1/pitching-skills
-
-```
-GET /api/v1/pitching-skills
-```
-
-**レスポンス**: BattingSkillと同一構造（`id`, `name`, `description`, `skill_type`, `created_at`, `updated_at`）
-
-#### POST /api/v1/pitching-skills（無効化）
-
-YAML設定ファイル管理のため、書き込みは禁止。
-
-- **レスポンス**: 403 Forbidden
-
-#### PATCH/PUT /api/v1/pitching-skills/:id（無効化）
-
-- **レスポンス**: 403 Forbidden
-
-#### DELETE /api/v1/pitching-skills/:id（無効化）
-
-- **レスポンス**: 403 Forbidden
+`/api/v1/pitching-skills`（GET / POST / PATCH / DELETE）は 2026-03-09 の subtask_511b（commit `012e3ab`）で廃止済み。
 
 ---
 
@@ -541,21 +447,19 @@ GET /api/v1/biorhythms
 # 各種設定マスタ
 resources :player_types, path: 'player-types', only: [:index, :create, :update, :destroy]
 resources :pitching_styles, path: 'pitching-styles', only: [:index, :create, :update, :destroy]
-resources :pitching_skills, path: 'pitching-skills', only: [:index, :create, :update, :destroy]
 resources :batting_styles, path: 'batting-styles', only: [:index, :create, :update, :destroy]
-resources :batting_skills, path: 'batting-skills', only: [:index, :create, :update, :destroy]
 resources :biorhythms, only: [:index, :create, :update, :destroy]
 ```
 
-URLパスはケバブケース（`player-types`, `batting-skills` 等）。`biorhythms` のみアンダースコアなしの単語のためパス変換なし。
+URLパスはケバブケース（`player-types`, `batting-styles` 等）。`biorhythms` のみアンダースコアなしの単語のためパス変換なし。
 
 ### 3.9 コントローラ構造
 
-すべてのコントローラは `Api::V1::BaseController` を継承する。YAML管理対象5種とバイオリズムで構造が異なる。
+すべてのコントローラは `Api::V1::BaseController` を継承する。YAML管理対象3種とバイオリズムで構造が異なる。
 
 #### 3.9.1 YAML管理対象コントローラ（読み取り専用）
 
-打撃スタイル、打撃スキル、投球スタイル、投球スキル、選手タイプの5種:
+打撃スタイル、投球スタイル、選手タイプの3種:
 
 ```ruby
 module Api
@@ -598,9 +502,7 @@ end
 
 | コントローラ | 許可パラメータ | 状態 |
 |------------|--------------|------|
-| BattingSkillsController | - | 読み取り専用（403） |
 | BattingStylesController | - | 読み取り専用（403） |
-| PitchingSkillsController | - | 読み取り専用（403） |
 | PitchingStylesController | - | 読み取り専用（403） |
 | PlayerTypesController | - | 読み取り専用（403） |
 | BiorhythmsController | `name`, `start_date`, `end_date` | CRUD有効 |
@@ -609,18 +511,9 @@ end
 
 ## 4. データモデル
 
-### 4.1 batting_skills テーブル
+### ~~4.1 batting_skills テーブル~~ （廃止）
 
-| カラム名 | 型 | 制約 | 説明 |
-|---------|-----|------|------|
-| id | bigint | PRIMARY KEY, 自動採番 | ID |
-| name | string | NOT NULL, UNIQUE INDEX | スキル名 |
-| description | text | - | 説明 |
-| skill_type | string | NOT NULL, default: `"neutral"` | スキル分類（positive/negative/neutral） |
-| created_at | datetime | NOT NULL | 作成日時 |
-| updated_at | datetime | NOT NULL | 更新日時 |
-
-**インデックス**: `index_batting_skills_on_name`（UNIQUE）
+`batting_skills` テーブルは 2026-03-09 の subtask_511b（commit `012e3ab`）で廃止済み。
 
 ### 4.2 batting_styles テーブル
 
@@ -634,20 +527,9 @@ end
 
 **備考**: DB定義では `name` に NOT NULL 制約なし。モデルバリデーション（`validates :name, presence: true, uniqueness: true`）でのみ制約。`description` の型は `text` ではなく `string`。UNIQUEインデックスもDB上にはなく、モデルの `uniqueness` バリデーションのみ。
 
-### 4.3 pitching_skills テーブル
+### ~~4.3 pitching_skills テーブル~~ （廃止）
 
-| カラム名 | 型 | 制約 | 説明 |
-|---------|-----|------|------|
-| id | bigint | PRIMARY KEY, 自動採番 | ID |
-| name | string | - | スキル名 |
-| description | text | - | 説明 |
-| skill_type | string | - | スキル分類（positive/negative/neutral） |
-| created_at | datetime | NOT NULL | 作成日時 |
-| updated_at | datetime | NOT NULL | 更新日時 |
-
-**インデックス**: `index_pitching_skills_on_name`（UNIQUE）
-
-**備考**: `batting_skills` と異なり、`name` と `skill_type` にDB上の NOT NULL 制約がない。モデルバリデーション（`validates :name, presence: true, uniqueness: true` / `validates :skill_type, presence: true`）でのみ制約。また `skill_type` のDB上のデフォルト値もない。
+`pitching_skills` テーブルは 2026-03-09 の subtask_511b（commit `012e3ab`）で廃止済み。
 
 ### 4.4 pitching_styles テーブル
 
@@ -688,33 +570,13 @@ end
 
 ### 4.7 中間テーブル
 
-#### 4.7.1 player_batting_skills
+#### ~~4.7.1 player_batting_skills~~ （廃止）
 
-| カラム名 | 型 | 制約 | 説明 |
-|---------|-----|------|------|
-| id | bigint | PRIMARY KEY | ID |
-| player_id | bigint | NOT NULL, FK(players) | 選手ID |
-| batting_skill_id | bigint | NOT NULL, FK(batting_skills) | 打撃スキルID |
-| created_at | datetime | NOT NULL | 作成日時 |
-| updated_at | datetime | NOT NULL | 更新日時 |
+`player_batting_skills` テーブルは 2026-03-09 の subtask_511b（commit `012e3ab`）で廃止済み。
 
-**インデックス**: `(player_id, batting_skill_id)` UNIQUE — 同一選手に同じスキルの重複登録を防止
+#### ~~4.7.2 player_pitching_skills~~ （廃止）
 
-**モデルバリデーション**: `validates :batting_skill_id, uniqueness: { scope: :player_id }`
-
-#### 4.7.2 player_pitching_skills
-
-| カラム名 | 型 | 制約 | 説明 |
-|---------|-----|------|------|
-| id | bigint | PRIMARY KEY | ID |
-| player_id | bigint | NOT NULL, FK(players) | 選手ID |
-| pitching_skill_id | bigint | NOT NULL, FK(pitching_skills) | 投球スキルID |
-| created_at | datetime | NOT NULL | 作成日時 |
-| updated_at | datetime | NOT NULL | 更新日時 |
-
-**インデックス**: `(player_id, pitching_skill_id)` UNIQUE
-
-**モデルバリデーション**: `validates :pitching_skill_id, uniqueness: { scope: :player_id }`
+`player_pitching_skills` テーブルは 2026-03-09 の subtask_511b（commit `012e3ab`）で廃止済み。
 
 #### 4.7.3 player_player_types
 
@@ -759,13 +621,11 @@ end
 
 ### 4.9 DB制約とモデルバリデーションの不整合
 
-6種類のマスタデータテーブル間で、DB制約とモデルバリデーションの対応にばらつきがある:
+4種類のマスタデータテーブル間で、DB制約とモデルバリデーションの対応にばらつきがある:
 
 | テーブル | name NOT NULL（DB） | name UNIQUE INDEX（DB） | name presence（Model） | name uniqueness（Model） |
 |---------|:---:|:---:|:---:|:---:|
-| batting_skills | YES | YES | YES | YES |
 | batting_styles | NO | NO | YES | YES |
-| pitching_skills | NO | YES | YES | YES |
 | pitching_styles | NO | NO | YES | YES |
 | player_types | YES | YES | YES | YES |
 | biorhythms | YES | YES | YES | YES |
@@ -776,21 +636,9 @@ end
 
 ## 5. ビジネスロジック
 
-### 5.1 スキルタイプ分類（skill_type）
+### ~~5.1 スキルタイプ分類（skill_type）~~ （廃止）
 
-`BattingSkill` と `PitchingSkill` は `skill_type` 属性を持ち、ActiveRecord enum で管理される:
-
-```ruby
-enum :skill_type, { positive: 'positive', negative: 'negative', neutral: 'neutral' }
-```
-
-| 値 | 意味 | フロントエンド表示色 |
-|----|------|-------------------|
-| `positive` | 有利なスキル | 青（`blue`） |
-| `negative` | 不利なスキル | 赤（`red`） |
-| `neutral` | 中立的なスキル | 緑（`green`） |
-
-DBには文字列値（`'positive'`, `'negative'`, `'neutral'`）として保存される。デフォルト値は `batting_skills` テーブルでのみ `"neutral"` が設定されている（`pitching_skills` はDBデフォルトなし、ただしフロントエンドのダイアログで新規作成時のデフォルト値として `'neutral'` を使用）。
+`skill_type` を持つ `BattingSkill` / `PitchingSkill` は 2026-03-09 の subtask_511b（commit `012e3ab`）で廃止済み。
 
 ### 5.2 削除制約
 
@@ -798,14 +646,12 @@ DBには文字列値（`'positive'`, `'negative'`, `'neutral'`）として保存
 
 | マスタデータ | 削除制約の種類 | 選手紐づき時の動作 |
 |------------|--------------|------------------|
-| BattingSkill | `dependent: :restrict_with_error` | Railsレベルで削除拒否（エラーメッセージ返却） |
-| PitchingSkill | 外部キー制約のみ | DB側で外部キー制約違反エラー |
 | PlayerType | `dependent: :restrict_with_error` | Railsレベルで削除拒否（エラーメッセージ返却） |
 | Biorhythm | `dependent: :restrict_with_error` | Railsレベルで削除拒否（エラーメッセージ返却） |
 | BattingStyle | 外部キー制約（players.batting_style_id） | DB側で外部キー制約違反エラー |
 | PitchingStyle | 外部キー制約（players.pitching_style_id 等3カラム） | DB側で外部キー制約違反エラー |
 
-**備考**: `BattingSkill`, `PlayerType`, `Biorhythm` は `has_many :players, through:` と `dependent: :restrict_with_error` により、Railsレベルで削除を制限する。`BattingStyle`, `PitchingStyle` はPlayerモデル側で `belongs_to` として直接参照されており、外部キー制約でDB側が削除を拒否する。`PitchingSkill` はモデルに `has_many` 定義がないが、`player_pitching_skills` テーブルの外部キー制約がDB側で機能する。
+**備考**: `PlayerType`, `Biorhythm` は `has_many :players, through:` と `dependent: :restrict_with_error` により、Railsレベルで削除を制限する。`BattingStyle`, `PitchingStyle` はPlayerモデル側で `belongs_to` として直接参照されており、外部キー制約でDB側が削除を拒否する。
 
 ### 5.3 バリデーション一覧
 
@@ -813,11 +659,7 @@ DBには文字列値（`'positive'`, `'negative'`, `'neutral'`）として保存
 
 | モデル | フィールド | バリデーション |
 |--------|----------|--------------|
-| BattingSkill | name | presence, uniqueness |
-| BattingSkill | skill_type | presence, inclusion（positive/negative/neutral） |
 | BattingStyle | name | presence, uniqueness |
-| PitchingSkill | name | presence, uniqueness |
-| PitchingSkill | skill_type | presence, inclusion（positive/negative/neutral） |
 | PitchingStyle | name | presence, uniqueness |
 | PlayerType | name | presence, uniqueness |
 | Biorhythm | name | presence, uniqueness |
@@ -830,8 +672,6 @@ DBには文字列値（`'positive'`, `'negative'`, `'neutral'`）として保存
 
 | モデル | フィールド | バリデーション |
 |--------|----------|--------------|
-| PlayerBattingSkill | batting_skill_id | uniqueness（scope: player_id） |
-| PlayerPitchingSkill | pitching_skill_id | uniqueness（scope: player_id） |
 | PlayerPlayerType | player_type_id | uniqueness（scope: player_id） |
 | PlayerBiorhythm | biorhythm_id | uniqueness（scope: player_id） |
 
@@ -849,10 +689,6 @@ belongs_to :pinch_pitching_style, class_name: 'PitchingStyle', optional: true
 belongs_to :catcher_pitching_style, class_name: 'PitchingStyle', optional: true
 
 # 多対多（has_many through）
-has_many :player_batting_skills, dependent: :destroy
-has_many :batting_skills, through: :player_batting_skills
-has_many :player_pitching_skills, dependent: :destroy
-has_many :pitching_skills, through: :player_pitching_skills
 has_many :player_player_types, dependent: :destroy
 has_many :player_types, through: :player_player_types
 has_many :player_biorhythms, dependent: :destroy
@@ -864,8 +700,6 @@ has_many :biorhythms, through: :player_biorhythms
 `Player` モデルには、各マスタデータの紐づけIDを取得するヘルパーメソッドが定義されている:
 
 ```ruby
-def batting_skill_ids    # player_batting_skills.map(&:batting_skill_id)
-def pitching_skill_ids   # player_pitching_skills.map(&:pitching_skill_id)
 def player_type_ids      # player_player_types.map(&:player_type_id)
 def biorhythm_ids        # player_biorhythms.map(&:biorhythm_id)
 ```
@@ -880,18 +714,9 @@ Playerが削除された場合、中間テーブルのレコードは `dependent
 
 ### 6.1 TypeScript型定義
 
-#### 6.1.1 BattingSkill（src/types/battingSkill.ts）
+#### ~~6.1.1 BattingSkill（src/types/battingSkill.ts）~~ （廃止）
 
-```typescript
-export type SkillType = 'positive' | 'negative' | 'neutral'
-
-export interface BattingSkill {
-  id: number
-  name: string
-  description: string | null
-  skill_type: SkillType
-}
-```
+`src/types/battingSkill.ts` は 2026-03-09 の subtask_511b（commit `012e3ab`）で廃止済み。
 
 #### 6.1.2 BattingStyle（src/types/battingStyle.ts）
 
@@ -903,20 +728,9 @@ export interface BattingStyle {
 }
 ```
 
-#### 6.1.3 PitchingSkill（src/types/pitchingSkill.ts）
+#### ~~6.1.3 PitchingSkill（src/types/pitchingSkill.ts）~~ （廃止）
 
-```typescript
-export type SkillType = 'positive' | 'negative' | 'neutral'
-
-export interface PitchingSkill {
-  id: number
-  name: string
-  description: string | null
-  skill_type: SkillType
-}
-```
-
-**備考**: `SkillType` 型は `battingSkill.ts` と `pitchingSkill.ts` の両方で個別に定義されている（共通化されていない）。
+`src/types/pitchingSkill.ts` は 2026-03-09 の subtask_511b（commit `012e3ab`）で廃止済み。
 
 #### 6.1.4 PitchingStyle（src/types/pitchingStyle.ts）
 
@@ -973,7 +787,7 @@ export interface Biorhythm {
 
 ### ~~7.1 認証未実装~~ （解決済み）
 
-6種類のマスタデータコントローラは全て `Api::V1::BaseController` を継承しており、`before_action :authenticate_user!` により認証が必須となった。
+4種類のマスタデータコントローラは全て `Api::V1::BaseController` を継承しており、`before_action :authenticate_user!` により認証が必須となった。
 
 ### 7.2 専用シリアライザー不在
 
@@ -986,11 +800,9 @@ export interface Biorhythm {
 
 セクション4.9で詳述した通り、`batting_styles` と `pitching_styles` はDB上の NOT NULL 制約・UNIQUE INDEX がなく、モデルバリデーションに完全に依存している。これはマイグレーションが段階的に追加された結果と考えられるが、データ整合性の観点ではDB制約の追加が望ましい。
 
-### 7.4 PitchingSkillの has_many 未定義
+### ~~7.4 PitchingSkillの has_many 未定義~~ （廃止）
 
-`PitchingSkill` モデルには `has_many :player_pitching_skills` / `has_many :players, through:` の定義がない。`BattingSkill`, `PlayerType`, `Biorhythm` には定義されている。これにより:
-- `PitchingSkill` の削除時は `dependent: :restrict_with_error` ではなくDB外部キー制約のみで制限される
-- エラーメッセージの形式がRails側（`restrict_with_error`）とDB側（外部キー制約違反）で異なる
+`PitchingSkill` モデルは 2026-03-09 の subtask_511b（commit `012e3ab`）で廃止済み。
 
 ### 7.5 BattingStyleの has_many 未定義
 
@@ -1000,9 +812,9 @@ export interface Biorhythm {
 
 `Biorhythm` モデルでは `start_date` と `end_date` の存在チェックのみ行っており、`start_date <= end_date` の論理チェック、期間重複チェック、年度範囲チェック等は未実装。フロントエンド側も日付形式の正規表現チェックのみで、論理的な期間バリデーションは行っていない。
 
-### ~~7.7 SkillType型の重複定義~~ （解決済み）
+### ~~7.7 SkillType型の重複定義~~ （廃止）
 
-`SkillType` 型は `src/types/skill.ts` に共通定義として統合された。`BattingSkillSettings` と `PitchingSkillSettings` は `@/types/skill` からインポートしている。ただし、`battingSkill.ts` と `pitchingSkill.ts` にも個別の `SkillType` 定義が残っている可能性がある。
+`SkillType` 型を使っていた打撃スキル・投球スキルは 2026-03-09 の subtask_511b（commit `012e3ab`）で廃止済み。
 
 ---
 
@@ -1010,16 +822,16 @@ export interface Biorhythm {
 
 ### 8.1 YAML設定ファイル管理への移行
 
-対象5種（打撃特徴、投球特徴、打撃特殊能力、投球特殊能力、選手タイプ）はYAML設定ファイルでの管理に移行中。バイオリズムはDB管理のまま維持（将来的に日程表との連動予定）。
+対象は3種（打撃特徴、投球特徴、選手タイプ）。当初の対象だった打撃特殊能力・投球特殊能力は、移行の途中で 2026-03-09 にマスタごと廃止された（冒頭の注記）。YAML設定ファイルでの管理に移行中。バイオリズムはDB管理のまま維持（将来的に日程表との連動予定）。
 
 #### 8.1.1 移行方針（案A: DBシード方式）— 実装済み
 
-- **既存テーブルと関連は維持**: `batting_skills`, `batting_styles`, `pitching_skills`, `pitching_styles`, `player_types` テーブルおよび中間テーブルはそのまま残す
+- **既存テーブルと関連は維持**: `batting_styles`, `pitching_styles`, `player_types` テーブルおよび中間テーブルはそのまま残す（当時の方針。当時対象だった `batting_skills` / `pitching_skills` は後に削除）
 - **YAML設定ファイル**: `config/master_data/*.yml` に各マスタデータを配置
 - **Rakeタスクによる同期**（`lib/tasks/master_data.rake`）:
   - `rake master_data:sync`: YAML → DB 同期（`find_or_initialize_by(name:)` で upsert、削除は行わない）
   - `rake master_data:export`: DB → YAML 出力（現在のDBデータをYAMLに書き出し）
-- **APIの書き込み制限**: 対象5種のコントローラで `create`/`update`/`destroy` が `403 Forbidden` を返すように変更済み
+- **APIの書き込み制限**: 対象3種のコントローラで `create`/`update`/`destroy` が `403 Forbidden` を返すように変更済み
 
 この方式により、既存の選手データとの関連やAPIエンドポイントの動作を維持したまま、マスタデータの管理を YAML ファイルで一元化できる。
 
@@ -1031,8 +843,6 @@ export interface Biorhythm {
 |------|--------|-------|--------------|
 | `batting_styles` | BattingStyle | `:id` | `name`, `description` |
 | `pitching_styles` | PitchingStyle | `:id` | `name`, `description` |
-| `batting_skills` | BattingSkill | `:id` | `name`, `description`, `skill_type` |
-| `pitching_skills` | PitchingSkill | `:id` | `name`, `description`, `skill_type` |
 | `player_types` | PlayerType | `:id` | `name`, `description`, `category` |
 
 **`master_data:sync` の動作**:
@@ -1064,8 +874,6 @@ export interface Biorhythm {
 | `GenericMasterSettings.vue` | `readonly` prop を追加（default: false）。readonly=true でCRUD UI非表示、案内表示 |
 | `PitchingStyleSettings.vue` | `:readonly="true"` を指定 |
 | `BattingStyleSettings.vue` | `:readonly="true"` を指定 |
-| `PitchingSkillSettings.vue` | `:readonly="true"` を指定 |
-| `BattingSkillSettings.vue` | `:readonly="true"` を指定 |
 | `PlayerTypeSettings.vue` | `:readonly="true"` を指定 |
 | `BiorhythmSettings.vue` | `readonly` 指定なし（CRUD操作可能のまま） |
 

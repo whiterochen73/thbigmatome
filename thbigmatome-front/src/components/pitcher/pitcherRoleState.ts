@@ -30,13 +30,13 @@ export function roleStatusLabel(status: string): string {
 }
 
 export function roleStatusColor(status: string): string {
-  if (status === 'full') return 'success'
-  if (status === 'injury_check') return 'warning'
-  if (status === 'unavailable' || status === 'injured') return 'error'
-  if (status === 'fatigued_start') return 'deep-orange'
-  if (status === 'fatigued_start_check') return 'deep-orange-darken-2'
-  if (status.startsWith('reduced_')) return 'info'
-  return 'default'
+  if (status === 'full') return 'state-done'
+  if (status === 'injury_check') return 'state-todo'
+  if (status === 'unavailable' || status === 'injured') return 'absence-out'
+  if (status === 'fatigued_start') return 'absence-cooldown'
+  if (status === 'fatigued_start_check') return 'absence-cooldown'
+  if (status.startsWith('reduced_')) return 'state-info'
+  return 'state-neutral'
 }
 
 export function roleNoteLabel(note: string): string {

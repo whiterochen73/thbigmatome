@@ -6,7 +6,7 @@
 
 - WSL / ローカル Docker 上で実行すること
 - `~/.ssh/config` に `dugout-vps` が設定済みであること
-- `docker compose up -d db rails frontend parser` 済みであること
+- `docker compose up -d db rails frontend` 済みであること
 - 開発 DB を上書きするため、必要ならローカル変更データを別途退避しておくこと
 
 ## 手順
@@ -34,7 +34,7 @@ bash scripts/backup/restore_dev.sh ~/backups/thbigmatome/daily/thbigmatome_YYYYM
 - `~/backups/thbigmatome/daily/` の最新 `.dump` を自動選択（無ければ `weekly/` を確認）
 - 実行前に `yes/no` 確認
 - 現在の `thbigmatome_development` を `~/backups/thbigmatome/dev_pre_restore_*.dump` に退避
-- `rails` / `frontend` / `parser` を一時停止
+- `rails` / `frontend` を一時停止
 - `pg_restore --no-owner --role=morinaga --clean --if-exists --no-privileges` を実行
 - 完了後にコンテナ再起動、`players.count` と簡易 bonus query を表示
 

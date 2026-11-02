@@ -28,11 +28,6 @@ const routes: RouteRecordRaw[] = [
         meta: { requiresAuth: true, title: 'ホーム' },
       },
       {
-        path: 'home',
-        component: () => import('@/views/HomeView.vue'),
-        meta: { requiresAuth: true, title: 'ホーム（旧）' },
-      },
-      {
         path: 'managers',
         name: '監督一覧',
         component: ManagerList,
@@ -42,13 +37,13 @@ const routes: RouteRecordRaw[] = [
         path: '/teams',
         name: 'TeamList',
         component: () => import('@/views/TeamList.vue'),
-        meta: { requiresAuth: true },
+        meta: { requiresAuth: true, title: 'チーム一覧' },
       },
       {
         path: '/teams/:teamId/members',
         name: 'TeamMembers',
         component: () => import('@/views/TeamMembers.vue'),
-        meta: { requiresAuth: true, title: 'チームメンバー登録' },
+        meta: { requiresAuth: true, title: 'チーム編成' },
       },
       {
         path: '/players',
@@ -72,7 +67,7 @@ const routes: RouteRecordRaw[] = [
         path: 'settings',
         name: '各種設定',
         component: Settings,
-        meta: { title: '各種設定' },
+        meta: { title: '設定' },
       },
       {
         path: 'commissioner/dashboard',
@@ -94,7 +89,7 @@ const routes: RouteRecordRaw[] = [
         path: 'commissioner/card_sets',
         name: 'CardSets',
         component: () => import('@/views/commissioner/CardSetsView.vue'),
-        meta: { requiresAuth: true, requiresCommissioner: true, title: 'カードセット管理' },
+        meta: { requiresAuth: true, requiresCommissioner: true, title: 'カードセット' },
       },
       {
         path: 'commissioner/competitions',
@@ -116,7 +111,7 @@ const routes: RouteRecordRaw[] = [
         path: '/teams/:teamId/season',
         name: 'SeasonPortal',
         component: () => import('@/views/SeasonPortal.vue'),
-        meta: { requiresAuth: true, title: 'シーズンポータル' },
+        meta: { requiresAuth: true, title: 'シーズン' },
       },
       {
         path: '/teams/:teamId/roster',
@@ -136,41 +131,10 @@ const routes: RouteRecordRaw[] = [
         }),
       },
       {
-        path: '/games',
-        name: '試合記録',
-        component: () => import('@/views/GamesView.vue'),
-        meta: { requiresAuth: true, title: '試合記録' },
-      },
-      {
-        path: '/games/import',
-        name: 'ログ取り込み',
-        component: () => import('@/views/GameImportView.vue'),
-        meta: { requiresAuth: true, title: '試合インポート' },
-      },
-      {
-        path: '/games/:id',
-        name: '試合詳細',
-        component: () => import('@/views/GameDetailView.vue'),
-        meta: { requiresAuth: true, title: '試合詳細' },
-        props: true,
-      },
-      {
-        path: '/games/:id/lineup',
-        name: 'GameLineup',
-        component: () => import('@/views/GameLineupView.vue'),
-        meta: { requiresAuth: true },
-      },
-      {
-        path: '/stats',
-        name: '成績集計',
-        component: () => import('@/views/StatsView.vue'),
-        meta: { requiresAuth: true, title: '成績集計' },
-      },
-      {
         path: '/competitions/:id/roster/:teamId',
         name: 'CompetitionRoster',
         component: () => import('@/views/CompetitionRosterView.vue'),
-        meta: { requiresAuth: true },
+        meta: { requiresAuth: true, title: '大会ロスター' },
       },
       {
         path: '/player-cards',
@@ -183,18 +147,6 @@ const routes: RouteRecordRaw[] = [
         name: 'PlayerCardDetail',
         component: () => import('@/views/PlayerCardDetailView.vue'),
         meta: { requiresAuth: true, title: '選手カード詳細' },
-      },
-      {
-        path: '/game-records',
-        name: 'GameRecordList',
-        component: () => import('@/views/GameRecordListView.vue'),
-        meta: { requiresAuth: true, title: 'パーサーレビュー' },
-      },
-      {
-        path: '/game-records/:id',
-        name: 'GameRecordDetail',
-        component: () => import('@/views/GameRecordDetailView.vue'),
-        meta: { requiresAuth: true, title: 'パーサーレビュー詳細' },
       },
     ],
   },

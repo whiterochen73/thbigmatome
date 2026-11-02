@@ -13,6 +13,7 @@
 - `app/controllers/api/v1/team_rosters_controller.rb`
 - `app/controllers/api/v1/team_players_controller.rb`
 - `app/controllers/api/v1/team_memberships_controller.rb`
+- `app/controllers/api/v1/team_membership_changes_controller.rb`
 - `app/controllers/api/v1/team_key_players_controller.rb`
 - `app/controllers/api/v1/lineup_templates_controller.rb`
 - `app/controllers/api/v1/game_lineups_controller.rb`
@@ -20,9 +21,6 @@
 - `app/controllers/api/v1/roster_changes_controller.rb`
 - `app/controllers/api/v1/game_controller.rb`
 - `app/controllers/api/v1/games_controller.rb`
-- `app/controllers/api/v1/game_lineup_entries_controller.rb`
-- `app/controllers/api/v1/game_records_controller.rb`
-- `app/controllers/api/v1/at_bat_records_controller.rb`
 - `app/controllers/api/v1/players_controller.rb`
 - `app/controllers/api/v1/player_cards_controller.rb`
 - `app/controllers/api/v1/team_registration_players_controller.rb`
@@ -42,7 +40,6 @@
 - `app/controllers/api/v1/managers_controller.rb`
 - `app/controllers/api/v1/stadiums_controller.rb`
 - `app/controllers/api/v1/home_controller.rb`
-- `app/controllers/api/v1/stats_controller.rb`
 - `app/controllers/api/v1/users_controller.rb`
 
 ---
@@ -157,12 +154,11 @@
 
 - **Controller**: `Api::V1::TeamSeasonsController#show`
 - **Response**: `SeasonDetailSerializer`
+- 各 `season_schedules[]` に `pitcher_appearance_count`（その試合日の自チームの登板記録の件数）を含む。シーズンポータルのカレンダーが「得点だけ保存済みで登板記録が無い」「登板記録だけあって得点が無い」といった入力漏れの印を出すために使う（cmd_1783）
+- **`game_date_types`**: 試合日とみなす種別（サーバの定義 `SeasonSchedule::GAME_DATE_TYPES` をそのまま返す。cmd_1784 段4）。画面の `isGameType` はこれを使い、種別の一覧を持たない。
+- **現在日は日程の結果から導く**（cmd_1784 段2b。`SeasonCurrentRange`）。`current_date` = 今の範囲の最後の日（次の試合日）。`current_range` = `{ start_date, end_date }`（最後に結果が入った日の翌日〜次の試合日）。範囲が無い時（最終試合日の後など）は `null` で、その時の `current_date` は最後に結果が入った日。「結果が入った」= 得点（自軍・相手とも）が保存済み、または真偽値 `no_game`。試合日 = `SeasonSchedule::GAME_DATE_TYPES`（`game_day` / `interleague_game_day` / `playoff_day`）。ノーゲームの日も種別が試合日なら試合日（試合数には数えない）。登録・昇降格・負傷・出場停止を試合日ページで操作できるのは、この範囲の日だけ（画面側の規則。API は日付を指定すれば過去日も書ける）
 
-### PATCH/PUT /api/v1/teams/:team_id/season
-
-- **Controller**: `Api::V1::TeamSeasonsController#update`
-- **Body Params**: `season: { current_date }`
-- **Response**: `{ season: ... }`
+> **廃止**: `PATCH/PUT /api/v1/teams/:team_id/season`（現在日カーソルを動かす API）は cmd_1784 段2b で廃止した。ルートが無い。`seasons.current_date` の列は日程の無いシーズンの初期値としてだけ読む。
 
 ### PATCH /api/v1/teams/:team_id/season/season_schedules/:id
 
@@ -178,6 +174,9 @@
 ### GET /api/v1/teams/:team_id/roster
 
 - **Controller**: `Api::V1::TeamRostersController#show`
+- **Query Params**: `target_date` (YYYY-MM-DD, 省略時は現在日カーソル), `phase` (`pre_game` | `in_game` | `post_game`, 省略時は `pre_game`。不正な値は 400)
+- **1軍/2軍の決め方**: 昇降格の変更記録（`season_rosters`）を `RosterState` で (日付, 区分) 時点まで畳んで導く。記録が無い選手は 2軍（`team_memberships.squad` の写しには倒さない）。クールダウンも同じ記録から求める（直前と同じ区分への記録は畳む）
+- **在籍・契約の決め方**: 在籍・契約種別・カード・コストは、チーム編成の変更記録（`team_membership_changes`）を同じ時点まで畳んで導く。その時点にまだいない・放出済みの選手は `roster` に出さない。記録が無い行は `team_memberships` の今の値
 - **Response**:
   ```json
   {
@@ -185,7 +184,9 @@
     "current_date": date,
     "season_start_date": date,
     "key_player_id": int|null,
+    "key_player_selectable": bool,
     "previous_game_date": date|null,
+    "outside_world_breakdown": { "pitcher_only": int, "fielder_only": int, "two_way": int, "balance_ok": bool },
     "roster": [
       {
         "team_membership_id": int,
@@ -200,6 +201,8 @@
         "cooldown_until": date|null,
         "same_day_exempt": boolean,
         "is_outside_world": boolean,
+        "is_pitcher": boolean,
+        "pitcher_fielder_kind": "pitcher_only"|"fielder_only"|"two_way"|null,
         "is_starter_pitcher": boolean,
         "is_relief_only": boolean,
         "is_absent": boolean,
@@ -209,14 +212,28 @@
   }
   ```
 
+- **外の世界枠の内訳**（`outside_world_breakdown`）: 指定時点の 1軍にいる外の世界枠の選手を、`pitcher_only`（投手だけに数える）・`fielder_only`（野手だけに数える）・`two_way`（両方に数える）に分けた人数。`balance_ok` は 4 人以上の時に投手に数える人・野手に数える人がどちらも 1 人以上いること（3 人以下は常に true。`Team.outside_world_breakdown`）。各行の `pitcher_fielder_kind` が同じ区分（`TeamMembership#pitcher_fielder_kind` = `pitcher_role?` / `fielder_role?` の組み合わせ。どちらにも数えない選手は null）で、画面が 1軍を入れ替えた時は行の区分から数え直せる。数え方は AMB-29 の改訂（2026-11-02・暫定）: ①専任契約が最優先（投手専任・救援専任＝投手のみ、野手専任＝野手のみ）、②二刀流契約（`two_way_cost`）のときだけ両方に数える（選んだコスト区分で決める。`hachinai_two_way?` かどうかでは決めない）、③それ以外の契約は選んだカードの主な位置（`PlayerCard#primary_position` = 守備位置の 1 つ目・id 順。画面の `primary_position` と同じ）で、P＝投手・それ以外＝野手（`card_type` や P 守備の有無では決めない）。カードが無い選手は決められないので、どちらにも数えない（`pitcher_fielder_kind` が null）。`is_pitcher`（画面の表示・先発/救援の判定）は従来のまま
+
 ### POST /api/v1/teams/:team_id/roster
 
 - **Controller**: `Api::V1::TeamRostersController#create`
 - **Body Params**:
-  - `roster_updates`: `[{ team_membership_id: int, squad: "first"|"second" }]`
-  - `target_date`: date string
+  - `roster_updates`: `[{ team_membership_id: int, squad: "first"|"second" }]`（`squad` が `first`/`second` 以外、同じ選手の重複は 422）
+  - `target_date`: date string（省略時は現在日カーソル。過去日・未来日どちらも保存できる）
+  - `phase`: `pre_game` | `in_game` | `post_game`（省略時は `pre_game`。同じ日の中の試合前・試合後の区分。不正な値は 422）
 - **バリデーション**: 1軍人数上限(29)、最小人数（game_rules.yaml#team_composition.first_squad_minimum_players）、コスト上限（game_rules.yaml#team_composition.team_total_max_cost: 200）、クールダウン(10日: game_rules.yaml#season.cooldown_days)、再調整中選手の昇格禁止
+- **書き込みの規則**（`RosterWriter` / `RosterConstraintChecker`。設計 `context/thbig-dugout-season-record-restructure-design.md` §4.4）:
+  - 書き込んだ時点そのもの（対象日・対象区分）は絶対の基準で検査する（試合日の試合前は最低人数、1軍上限 29、1軍コスト、外の世界枠）。再調整中の昇格と、直接の昇格のクールダウン（降格から 10 日未満。同日の昇降格は免除）は、コミッショナーでも 422
+  - それより後の各時点（記録のある時点と、日程の試合日の試合前）は、この保存で**新たに生じた、または悪化した**違反だけを検査する（保存の前から外れていた日は、悪化させない限り止めない）。昇格がクールダウンに掛かる場合も同じ
+  - 違反があればコミッショナー以外は保存せず 422 `{ error, violations: [{ date, phase, kind, message }] }`（`kind`: `first_squad_min` / `first_squad_max` / `first_squad_cost` / `outside_world_limit` / `outside_world_balance` / `cooldown`）。コミッショナーは保存し、`warnings` に `{ type: "commissioner_override", message, kind, date, phase }` を返す
+  - 保存のたびに `team_memberships.squad`（写し）を変更記録の最新の状態に作り直す（現在日カーソルとの一致で条件づけない）
 - **Response**: `{ message: "Roster updated successfully", warnings: [] }`
+
+### DELETE /api/v1/teams/:team_id/roster_entries/:id
+
+- **Controller**: `Api::V1::RosterEntriesController#destroy`
+- **説明**: 昇降格の変更記録（`season_rosters` の 1 行）を取り消す。そのチームの記録でなければ 404。消したあと、その時点以降の各時点を POST /roster と同じ規則で検査し直し、新たに生じた（悪化した）違反があればコミッショナー以外は 422（記録は残る）、コミッショナーは警告つきで消す。写しは作り直す
+- **Response**: `{ message: "Roster entry deleted successfully", warnings: [] }`
 
 ---
 
@@ -236,17 +253,27 @@
 ### GET /api/v1/teams/:team_id/team_players
 
 - **Controller**: `Api::V1::TeamPlayersController#index`
-- **Query Params**: `cost_list_id` (integer, optional)
+- **Query Params**: `cost_list_id` (integer, optional), `target_date` (YYYY-MM-DD, optional), `phase` (`pre_game` / `in_game` / `post_game`, optional。既定 `pre_game`。`target_date` と組で使う)
+- **動き**: `target_date` を省くと今のチーム編成（在籍中の写し）。付けると、その時点（日付 + 区分）に在籍していた選手を、その時点の契約・カード・コスト除外・表示名で返す（チーム編成の変更記録から導く）。応答の形は同じ
+- **エラー**: 不正な日付・区分は 400
 - **Response**: `[...TeamPlayerSerializer]`
 
 ### POST /api/v1/teams/:team_id/team_players
 
 - **Controller**: `Api::V1::TeamPlayersController#create`
 - **Body Params**:
-  - `players`: `[{ player_id, selected_cost_type, excluded_from_team_total, display_name, player_card_id }]`
-  - `cost_list_id`: integer (optional, チーム合計コスト検証用)
-- **挙動**: 既存メンバーシップをupsert、リストにないプレイヤーを削除
-- **Response**: `{ message: "Team members updated successfully" }`
+  - `players`: `[{ player_id, selected_cost_type, excluded_from_team_total, display_name, player_card_id }]`（全員分）
+  - `cost_list_id`: integer (optional, チーム合計コスト検査用)
+  - `target_date`: YYYY-MM-DD (optional, 省略時は現在日カーソル)
+  - `phase`: `pre_game` / `in_game` / `post_game` (optional, 省略時は `pre_game`)
+- **動き（シーズンのあるチーム）**: 送られた値と `target_date`・`phase` 時点の状態の差を、チーム編成の変更記録（`team_membership_changes`）として足す（`TeamMembershipWriter`）。
+  - その時点にいない・放出済みの選手 → `join`（登録・再登録）／ 契約・カード・コスト除外・表示名が違う選手 → `contract` ／ 送られなかった在籍中の選手 → `release`（行は消さない。1軍なら同じ時点に 2軍への降格も足す）。値が同じ選手は記録しない
+  - 記録の無い行（移行前）に初めて書く時は、先にその行の今の値で初期の `join` を足す
+  - 足したあと、その時点以降の各時点・各試合日を検査し直す（1軍人数・1軍コスト・外の世界枠・クールダウン。書いた時点ではチーム合計コスト 200 も、`cost_list_id` がある時）。この保存で新たに生じた（悪化した）違反があれば、コミッショナー以外は保存を止める（422、`violations` に違反した日付）。コミッショナーは `warnings`（文字列）つきで保存する
+  - 保存のたびに `team_memberships` の写し（在籍・契約・squad）を作り直す
+- **動き（シーズンの無いチーム）**: 日付が無いのでこれまでどおり行を直接書き換え、送られなかった選手の行は削除する（変更記録は作らない）
+- **Response**: `{ message: "Team members updated successfully", warnings: [...] }`
+- **エラー**: 検証エラーは 422 `{ error }`、検査で止めた時は 422 `{ error, violations: [{ date, phase, kind, message }] }`、不正な日付・区分は 400
 
 ---
 
@@ -256,6 +283,15 @@
 
 - **Controller**: `Api::V1::TeamMembershipsController#index`
 - **Response**: `[{ id, name: "#{number} #{name}", player_id }]`
+
+### GET /api/v1/teams/:team_id/team_membership_changes
+
+- **Controller**: `Api::V1::TeamMembershipChangesController#index`
+- **説明**: チーム編成の変更記録（登録・契約の変更・放出）の一覧。試合日ページの「その日の登録・契約変更」などの表示用。書き込みは `POST /teams/:team_id/team_players`
+- **Query Params**: `date` (YYYY-MM-DD, optional。その日の記録だけ), `from` / `to` (YYYY-MM-DD, optional。`effective_on` の範囲。`date` があれば無視)。省略すると全件
+- **並び**: 時点順（`effective_on`、試合前 → 試合中 → 試合後、作成順）
+- **Response**: `[{ id, team_membership_id, player_id, player_name, number, kind, effective_on, phase, selected_cost_type, player_card_id, excluded_from_team_total, display_name, recorded_by_user_id, created_at }]`
+- **エラー**: 不正な日付は 400
 
 ---
 
@@ -337,15 +373,15 @@
 
 - **Controller**: `Api::V1::GameController#show`
 - **Path Params**: `:id` (SeasonSchedule ID)
-- **Response**: `{ team_id, team_name, season_id, game_date, game_number, announced_starter_id, stadium, home_away, designated_hitter_enabled, score, opponent_score, no_game, opponent_team_id, opponent_team, winning_pitcher_id, losing_pitcher_id, save_pitcher_id, scoreboard, starting_lineup, opponent_starting_lineup, game_result }`
+- **Response**: `{ team_id, team_name, season_id, game_date, game_number, announced_starter_id, stadium, home_away, designated_hitter_enabled, score, opponent_score, no_game, opponent_team_id, opponent_team, opponent_team_short_name, announced_starter_name, opponent_schedule_id, winning_pitcher_id, losing_pitcher_id, save_pitcher_id, scoreboard, starting_lineup, opponent_starting_lineup, game_result }`
 
 ### PATCH/PUT /api/v1/game/:id
 
 - **Controller**: `Api::V1::GameController#update`
 - **Path Params**: `:id` (SeasonSchedule ID)
 - **Body Params**: `announced_starter_id, stadium, home_away, designated_hitter_enabled, score, opponent_score, no_game, opponent_team_id, winning_pitcher_id, losing_pitcher_id, save_pitcher_id, scoreboard: { home: [], away: [] }, starting_lineup: [{ player_id, position, order }], opponent_starting_lineup: [...]`
-- **Response**: SeasonSchedule JSON
-- **no_game**: ノーゲーム（試合が成立しなかった）。得点では表せないので試合概要に持つ。true の日は登板記録の `result_category` が全員 `no_game` になり、先発の次回の休養は KO・ノーゲームの表（rulebook 08 §8.3.1）で計算される。得点・`no_game` のどちらかが変わった保存で、その日の先発の判定と、区分が変わった投手の後続の先発が作り直される（`PitcherResultCategoryRebuilder`）
+- **Response**: SeasonSchedule JSON（`warnings` と、`opponent_team_short_name`・`announced_starter_name`・`opponent_schedule_id` を加える。GET と同じ意味）
+- **no_game**: ノーゲーム（試合が成立しなかった）。得点では表せないので試合概要に持つ。true の日は登板記録の `result_category` が全員 `no_game` になり、先発の次回の休養は KO・ノーゲームの表（rulebook 08 §8.3.1）で計算される。得点・`no_game` のどちらかが変わった保存で、その日の先発の投手に絞って、その試合日以降の先発の保存値（結果区分・疲労P・連続中4日回数）が作り直される（`PitcherHistoryRebuild`。保存値の作り直しの 1 入口で、中身は `PitcherResultCategoryRebuilder`）。得点が未入力の先発は、その日の分だけ「負けではない」として作り直し、それ以降の未入力の先発の保存値は動かさない。作り直しが失敗しても保存は取り消さず、警告を返す
 
 ---
 
@@ -362,98 +398,7 @@
 - **Controller**: `Api::V1::GamesController#show`
 - **Response**: `GameSerializer` (includes at_bats)
 
-### POST /api/v1/games
-
-- **Controller**: `Api::V1::GamesController#create`
-- **Body Params**: `game: { competition_id, home_team_id, visitor_team_id, real_date, stadium_id, status, source }`
-- **Response**: `GameSerializer` 201
-
-### POST /api/v1/games/import_log
-
-- **Controller**: `Api::V1::GamesController#import_log`
-- **Body Params**: `log` (string), `raw_at_bats` (string JSON, optional), `competition_id`, `home_team_id`, `visitor_team_id`, `real_date`, `stadium_id`
-- **挙動**: ゲームログをパース → draft Game + AtBat + GameRecord + AtBatRecord を作成
-- **Response**: `{ game: GameSerializer, game_record_id, parsed_at_bats: { at_bats: [...], innings }, at_bat_count, imported_count }` 201
-
-### POST /api/v1/games/parse_log
-
-- **Controller**: `Api::V1::GamesController#parse_log`
-- **Body Params**: `log` (string)
-- **挙動**: ログをパースして結果を返すのみ（DB変更なし）
-- **Response**: `{ pregame_info, parsed_at_bats: { at_bats: [...], innings }, at_bat_count, raw_at_bats }`
-
-### POST /api/v1/games/:id/confirm
-
-- **Controller**: `Api::V1::GamesController#confirm`
-- **挙動**: draft → confirmed ステータス変更、配下AtBatsも confirmed に
-- **Response**: `{ game: GameSerializer, confirmed_count }`
-
----
-
-## 試合オーダーエントリ (Game Lineup Entries)
-
-### GET /api/v1/games/:game_id/lineup
-
-- **Controller**: `Api::V1::GameLineupEntriesController#show`
-- **Response**: `{ lineup: [...GameLineupEntrySerializer] }`
-
-### POST /api/v1/games/:game_id/lineup
-
-- **Controller**: `Api::V1::GameLineupEntriesController#create`
-- **Body Params**: `lineup: [{ player_card_id, role, batting_order, position, is_dh_pitcher, is_reliever }]`
-- **挙動**: 既存エントリを全削除して再作成
-- **Response**: `{ lineup: [...GameLineupEntrySerializer] }` 201
-
-### PUT /api/v1/games/:game_id/lineup
-
-- **Controller**: `Api::V1::GameLineupEntriesController#update`
-- **Body Params**: POST と同じ
-- **挙動**: 既存エントリを全削除して再作成
-- **Response**: `{ lineup: [...GameLineupEntrySerializer] }`
-
----
-
-## 試合記録 (Game Records)
-
-### GET /api/v1/game_records
-
-- **Controller**: `Api::V1::GameRecordsController#index`
-- **Query Params**: `team_id` (integer), `status` (string), `game_date_from` (date), `game_date_to` (date), `page` (integer, default: 1), `per_page` (integer, default: 20, max: 100)
-- **Response**:
-  ```json
-  {
-    "game_records": [...],
-    "pagination": { "page", "per_page", "total", "total_pages" }
-  }
-  ```
-
-### GET /api/v1/game_records/:id
-
-- **Controller**: `Api::V1::GameRecordsController#show`
-- **Response**: game_record JSON with at_bat_records included
-
-### POST /api/v1/game_records
-
-- **Controller**: `Api::V1::GameRecordsController#create`
-- **Body Params**: `team_id, opponent_team_name, game_date, played_at, stadium, score_home, score_away, result, source_log, parser_version, parsed_at` + `at_bat_records: [...]`
-- **Response**: game_record JSON with at_bat_records 201
-
-### POST /api/v1/game_records/:id/confirm
-
-- **Controller**: `Api::V1::GameRecordsController#confirm`
-- **挙動**: draft → confirmed、全AtBatRecordをis_reviewed=true、打撃・投球成績を計算・保存
-- **Response**: game_record JSON
-
----
-
-## 打席記録 (At Bat Records)
-
-### PATCH /api/v1/at_bat_records/:id
-
-- **Controller**: `Api::V1::AtBatRecordsController#update`
-- **Body Params**: `result_code, runs_scored, outs_before, outs_after, pitcher_name, pitcher_id, batter_name, batter_id, pitch_roll, pitch_result, bat_roll, bat_result, strategy, play_description, is_reviewed, review_notes, runners_before: [], runners_after: [], extra_data: {}`
-- **挙動**: is_modified=true、modified_fieldsに差分記録、discrepanciesにresolution追加、adopted_value更新、後続レコードgsm_value再計算
-- **Response**: at_bat_record JSON
+廃止（cmd_1795）: `POST /api/v1/games`・`POST /api/v1/games/:id/confirm`・`/api/v1/games/:game_id/lineup`（GET/POST/PUT）・`/api/v1/game_records`（一覧・詳細・確定）・`PATCH /api/v1/at_bat_records/:id` は、パーサー経由の画面（試合記録・試合詳細・オーダー確認・パーサーレビュー）と一緒に削除した。`GET /api/v1/games` と `GET /api/v1/games/:id` は Clubhouse の `games:pull` が読むので残している。
 
 ---
 
@@ -640,7 +585,7 @@
 
 - **Controller**: `Api::V1::SeasonsController#create`
 - **認可**: TeamAccessible（チームオーナーまたはCommissioner）
-- **Body Params**: `team_id` (integer), `schedule_id` (integer), `name` (string)
+- **Body Params**: `team_id` (integer), `schedule_id` (integer)。`name` は受け取らない（シーズンに題は付けず、モデルが作成時にチーム名を入れる）
 - **挙動**: Season作成 + 指定Scheduleの全ScheduleDetailをSeasonScheduleとしてコピー
 - **Response**: `{ season: {...}, schedule_count: integer }` 201
 
@@ -670,13 +615,13 @@
 ### POST /api/v1/player_absences
 
 - **Controller**: `Api::V1::PlayerAbsencesController#create`
-- **Body Params**: `player_absence: { team_membership_id, season_id, absence_type, reason, start_date, duration, duration_unit }`
-- **Response**: PlayerAbsenceSerializer 201
+- **Body Params**: `player_absence: { team_membership_id, season_id, absence_type, reason, start_date, duration, duration_unit, phase }`（phase は `pre_game` / `in_game`。省略時 `pre_game`、不正値は 422）
+- **Response**: PlayerAbsenceSerializer 201。作成・変更・削除のたびに、その選手の登板の保存値を離脱の開始日（変更前の開始日の早い方）から作り直す（`PitcherHistoryRebuild`）。作り直しが失敗しても離脱の保存は取り消さず、作成・変更の応答に `warnings` を足す
 
 ### PATCH/PUT /api/v1/player_absences/:id
 
 - **Controller**: `Api::V1::PlayerAbsencesController#update`
-- **Body Params**: `player_absence: { team_membership_id, season_id, absence_type, reason, start_date, duration, duration_unit }`
+- **Body Params**: `player_absence: { team_membership_id, season_id, absence_type, reason, start_date, duration, duration_unit, phase }`（phase は `pre_game` / `in_game`。省略時 `pre_game`、不正値は 422）
 - **Response**: PlayerAbsenceSerializer
 
 ### DELETE /api/v1/player_absences/:id
@@ -724,7 +669,7 @@
 - **Controller**: `Api::V1::ScheduleDetailsController#upsert_all`
 - **Body Params**: `schedule_details: [{ id, date, date_type, schedule_id, priority }]`
 - **挙動**: `upsert_all` (unique_by: [schedule_id, date])
-- **Response**: 200 OK
+- **Response**: 200 OK（本文なし）。保存のあと、日程表のレギュラー（通常・交流戦）の試合日が 143 日でなければ（AMB-11）、保存したうえで `200 OK` と本文 `{ warnings: ["…"] }` を返す（止めない）
 
 ---
 
@@ -793,45 +738,9 @@
 
 ---
 
-## ホーム画面 (Home)
+## ホーム画面 (Home)・成績集計 (Stats)
 
-### GET /api/v1/home/summary
-
-- **Controller**: `Api::V1::HomeController#summary`
-- **Query Params**: `competition_id` (integer, 必須)
-- **Response**:
-  ```json
-  {
-    "season_progress": { "completed": int, "total": 143 },
-    "recent_games": [{ "id", "real_date", "home_team", "visitor_team", "home_score", "visitor_score" }],
-    "batting_top3": [{ ...stats, "hr", "batting_average" }],
-    "pitching_top3": [{ ...stats, "era" }],
-    "team_summary": { ...TeamStatsCalculator 返り値 }
-  }
-  ```
-- **ノーゲーム**: ノーゲームの試合は消化試合数・直近試合・成績に入れない（台帳 D-11。`Game.excluding_no_game` / `NoGameGames`）
-
----
-
-## 成績集計 (Stats)
-
-### GET /api/v1/stats/batting
-
-- **Controller**: `Api::V1::StatsController#batting`
-- **Query Params**: `competition_id` (integer, 必須)
-- **Response**: `{ batting_stats: [...] }` (BattingStatsCalculator)。ノーゲームの試合は集計に入れない（台帳 D-11）
-
-### GET /api/v1/stats/pitching
-
-- **Controller**: `Api::V1::StatsController#pitching`
-- **Query Params**: `competition_id` (integer, 必須)
-- **Response**: `{ pitching_stats: [...] }` (PitchingStatsCalculator)。ノーゲームの試合は集計に入れない（台帳 D-11）
-
-### GET /api/v1/stats/team
-
-- **Controller**: `Api::V1::StatsController#team`
-- **Query Params**: `competition_id` (integer, 必須)
-- **Response**: `{ team_stats: [...] }` (TeamStatsCalculator)。ノーゲームの試合は集計に入れない（台帳 D-11）
+廃止（cmd_1795）: `GET /api/v1/home/summary`（旧ホーム画面）と `GET /api/v1/stats/batting|pitching|team`（成績集計画面）は、画面・集計の計算（`BattingStatsCalculator` / `PitchingStatsCalculator` / `TeamStatsCalculator`）とあわせて削除した。パーサー経由で取り込んだ打席から集計するだけのもので、役目が無かったため。DB の表・データは残している。不在は `spec/routing/removed_parser_screens_spec.rb` が固定する。
 
 ---
 
@@ -929,7 +838,10 @@
 
 - **Controller**: `Api::V1::PitcherAppearancesController#index`
 - **Query Params**: `team_id` (integer, 必須), `schedule_date` (date string, 必須)
-- **Response**: 指定チーム・日付の投手登板状態一覧（appearance_order順）。各エントリにid, pitcher_id, role, innings_pitched, earned_runs, decision, is_opener, consecutive_short_rest_count, pre_injury_days_excluded, result_category, injury_check等を含む
+- **Response**: 指定チーム・日付の投手登板状態一覧（appearance_order順）。各エントリにid, pitcher_id, pitcher_name, role, innings_pitched, earned_runs, decision, is_opener, consecutive_short_rest_count, pre_injury_days_excluded, result_category, injury_check, season_schedule_id, roster_status等を含む
+  ※ その日の登板は、日程の行に紐づく登板（`season_schedule_id`）を正として引き、まだ紐づけていない登板は `schedule_date` で拾う（日程の行が無い日・同じ日に複数ある日は `schedule_date` だけ）
+  ※ `roster_status` = その試合日の試合中（`in_game`）に 1軍にいたか: `first` / `second`（2軍）/ `not_on_team`（登録前・放出後）/ `no_membership`（チームの登録なし）。日付が読めない・チームが引けない時は null。first 以外は試合日ページの「要確認」の帯に出る（設計書 §7 判断 5）
+  ※ `next_day_cumulative_innings` = リリーフ・オープナーの登板について、登板日の翌日時点の累積イニング（その登板の加算まで含む。登板しなかった日の減衰・中10日リセット・負傷による減衰停止は休養表示（`fatigue_summary`）と同じ計算）。先発・日付が読めない時は null。試合日ページの登板記録の「登板による変化」に出る
 
 ### POST /api/v1/pitcher_appearances
 
@@ -955,6 +867,9 @@
   ※ `consecutive_short_rest_count` はサーバが決める（先発: 直前の登板（役割を問わない）が先発で、そこからの中日数が中4日以下なら前回値+1、それ以外は 0（間にリリーフ・オープナーが入れば 0・AMB-23）。リリーフは 0）。送っても使わない
   ※ 第二先発（オープナーの次の2番手）は `role: "starter"` で送る。KO・長イニング敗戦の判定と次回の休養表は先発として扱う
 - **Response**: `{ pitcher_appearance: {...}, warnings: [...] }` 201
+  ※ 保存すると `season_schedule_id` を（チーム, 試合日）の日程の行から引いて埋める（行が無い・同じ日に複数ある時は null のまま保存する）
+  ※ 1軍でない投手（その試合日の試合中に 2軍・在籍なし・チームの登録なし）の登板は**止めずに保存**し、`warnings` に「…は1軍にいません」を入れる（設計書 §7 判断 5）
+  ※ 保存後、その投手のそれ以降の登板の保存値（結果区分・疲労P・連続中4日回数）を作り直す（`PitcherHistoryRebuild`）。作り直しが失敗しても保存は取り消さず、`warnings` に出す
 
 ---
 
@@ -969,7 +884,8 @@
 ### GET /api/v1/teams/:team_id/pitcher_game_states/fatigue_summary
 
 - **Controller**: `Api::V1::PitcherGameStatesController#fatigue_summary`
-- **Query Params**: `date` (YYYY-MM-DD, default: 今日)
+- **Query Params**: `date` (YYYY-MM-DD, default: 今日), `phase` (`pre_game` | `in_game` | `post_game`, 省略時は `pre_game`。不正な値は 400)
+- **1軍の決め方**: 昇降格の変更記録を `RosterState` で (date, phase) 時点まで畳んで導く（記録が無い投手は 2軍）
 - **Response**: チーム1軍投手の登板時の状態。投手ごとに `last_role` / `rest_days`（先発明けのみ）/ `cumulative_innings`（リリーフ明けのみ）/ `is_injured` / `is_unavailable`（先発としては登板不可 = 中2日以内。前回の役割に依らない）と、次の 5 つを返す
   - `projected_status`: 前回と同じ役割で続ける場合の状態（旧来の値）
   - `as_starter` / `as_reliever`: 「先発なら」「リリーフなら」の登板時の状態 `{ status, notes: [] }`。省略する投手は `null`（理由は `as_starter_omitted_reason` / `as_reliever_omitted_reason`）
@@ -1055,11 +971,22 @@
 - **Controller**: `Api::V1::Commissioner::DashboardController#cooldowns`
 - **Response**: 全アクティブチームのクールダウン中選手一覧（選手名・解除日・残日数）
 
+### GET /api/v1/commissioner/dashboard/game_progress
+
+- **Controller**: `Api::V1::Commissioner::DashboardController#game_progress`
+- **Response**: シーズンのある全チーム（休止中を含む。シーズンの無いチームは含まない）の試合数の進み具合。1 チーム 1 行の配列 `[{ team_id, regular_played, regular_total, regular_unrescheduled, playoff_played }]`（すべて整数）
+  - `regular_total`: **日程マスタ（schedule_details）のレギュラー（通常・交流戦）の試合日の数**で固定する（ペナント日程表は 143。AMB-11）。チームの雨天中止・ノーゲーム・振り替えでは動かさない。マスタはシーズンの日付の集合と一致する日程表を使う（どれとも合わなければ id が最小の日程表）
+  - `regular_played`: 数える日（試合日でノーゲームでない日）のうち結果（自軍・相手の得点）が入った日の数。ノーゲームの日は数えない
+  - `regular_unrescheduled`: 総数のうち、まだ日程に載っていない試合の数。`max(0, regular_total − そのシーズンの数える日)`（数える日 = レギュラーの試合日でノーゲームでない日）。雨天中止・ノーゲーム・試合日を移動日や予備日へ手で直した日は、どれも数える日が減るので未振替に出る。予備日などを試合日にして振り替えると減る。数える日が総数を超えるチームは 0（超えた数は返さない）
+  - `playoff_played`: 結果が入ったプレーオフ日の数（ノーゲームを除く）。プレーオフの総数は返さない（日程には全チーム同じ日数があり、進出で変わるため）
+  - 日程が 1 行も無いシーズンは 4 つとも 0（team_id を除く）
+- **集計**: 全チーム分を 4 本の問い合わせで求める（`SeasonGameProgress`。チームの数に依らない）
+
 ### GET /api/v1/commissioner/dashboard/roster_status
 
 - **Controller**: `Api::V1::Commissioner::DashboardController#roster_status`
 - **Query Params**: `team_id` (integer, optional — 指定時は対象チームのみ), `format` ("csv" でCSVダウンロード)
-- **Response**: 全アクティブチームのロスター状況（コスト・1軍/2軍人数・外の世界枠・警告等）
+- **Response**: 全アクティブチームのロスター状況（コスト・1軍/2軍人数・外の世界枠・警告等）。`outside_world_breakdown: { pitcher_only, fielder_only, two_way, balance_ok }` に外の世界枠の内訳を返す（`GET /teams/:team_id/roster` と同じ形・同じ数え方。`outside_world_count` は 3 つの人数に「どちらにも数えない選手」を足した数）。外の世界枠の判定は登録カードの series を優先する（保存時の検査と同じ。以前は選手の series だった）。1軍/2軍・クールダウンは写しでなく、シーズンの現在日カーソル・試合前の時点の変更記録（`RosterState`）から求める（`/costs`・`/cooldowns` も同じ）
 - **CSV**: `format=csv` 指定時はCSVファイルをダウンロード
 
 ---
@@ -1076,7 +1003,7 @@ Commissioner ロール必須。チームメンバーシップに紐づく離脱�
 ### POST /api/v1/commissioner/team_memberships/:team_membership_id/player_absences
 
 - **Controller**: `Api::V1::Commissioner::PlayerAbsencesController#create`
-- **Body Params**: `player_absence` → `{ season_id, absence_type, start_date, duration, duration_unit }`
+- **Body Params**: `player_absence` → `{ season_id, absence_type, start_date, duration, duration_unit, phase }`
 - **Response**: 201 Created
 
 ### GET /api/v1/commissioner/team_memberships/:team_membership_id/player_absences/:id
@@ -1086,7 +1013,7 @@ Commissioner ロール必須。チームメンバーシップに紐づく離脱�
 ### PATCH /api/v1/commissioner/team_memberships/:team_membership_id/player_absences/:id
 
 - **Controller**: `Api::V1::Commissioner::PlayerAbsencesController#update`
-- **Body Params**: `player_absence` → `{ season_id, absence_type, start_date, duration, duration_unit }`
+- **Body Params**: `player_absence` → `{ season_id, absence_type, start_date, duration, duration_unit, phase }`
 
 ### DELETE /api/v1/commissioner/team_memberships/:team_membership_id/player_absences/:id
 

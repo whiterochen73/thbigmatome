@@ -69,6 +69,8 @@ const baseAbsence: PlayerAbsence = {
   start_date: '2026-04-01',
   duration: 10,
   duration_unit: 'days',
+  phase: 'pre_game',
+  effective_start_date: '2026-04-01',
   effective_end_date: '2026-04-11',
   created_at: '',
   updated_at: '',
@@ -192,5 +194,86 @@ describe('PlayerAbsenceFormDialog', () => {
       'error',
     )
     expect(wrapper.emitted('saved')).toBeUndefined()
+  })
+
+  // 離脱の区分（試合前 / 試合中。裁定 AMB-25）
+  describe('区分（phase）', () => {
+    it('新規は既定で試合前。保存の payload に phase: pre_game が入る', async () => {
+      vi.mocked(axios.post).mockResolvedValueOnce({ data: { id: 1 } })
+      const wrapper = mountDialog()
+      expect(wrapper.vm.newAbsence.phase).toBe('pre_game')
+
+      Object.assign(wrapper.vm.newAbsence, { team_membership_id: 7, reason: '検査' })
+      await wrapper.vm.saveAbsence()
+      expect(axios.post).toHaveBeenCalledWith(
+        '/player_absences',
+        expect.objectContaining({ phase: 'pre_game' }),
+      )
+    })
+
+    it('区分の選択肢は 試合前 / 試合中 の 2 つで、入力欄がダイアログに出る', () => {
+      const wrapper = mountDialog()
+      expect(wrapper.vm.phases).toEqual([
+        { title: 'enums.player_absence.phase.pre_game', value: 'pre_game' },
+        { title: 'enums.player_absence.phase.in_game', value: 'in_game' },
+      ])
+      expect(wrapper.find('[data-testid="absence-phase"]').exists()).toBe(true)
+    })
+
+    it('initialPhase=in_game を渡すと、新規オープン時の区分が試合中になり、payload に入る', async () => {
+      vi.mocked(axios.post).mockResolvedValueOnce({ data: { id: 1 } })
+      const wrapper = mountDialog({ modelValue: false, initialPhase: 'in_game' })
+      await wrapper.setProps({ modelValue: true })
+      await nextTick()
+      expect(wrapper.vm.newAbsence.phase).toBe('in_game')
+
+      Object.assign(wrapper.vm.newAbsence, { team_membership_id: 7, reason: '死球' })
+      await wrapper.vm.saveAbsence()
+      expect(axios.post).toHaveBeenCalledWith(
+        '/player_absences',
+        expect.objectContaining({ phase: 'in_game' }),
+      )
+    })
+
+    it('開き直した新規登録は、前回選んだ区分を持ち越さず既定値に戻る', async () => {
+      const wrapper = mountDialog({ modelValue: false, initialPhase: 'in_game' })
+      await wrapper.setProps({ modelValue: true })
+      await nextTick()
+      wrapper.vm.newAbsence.phase = 'pre_game'
+      await wrapper.setProps({ modelValue: false })
+      await wrapper.setProps({ modelValue: true })
+      await nextTick()
+      expect(wrapper.vm.newAbsence.phase).toBe('in_game')
+    })
+
+    it('編集は離脱の区分を読み込む（initialPhase の既定値で上書きしない）。変更して PUT できる', async () => {
+      vi.mocked(axios.put).mockResolvedValueOnce({ data: baseAbsence })
+      const wrapper = mountDialog({
+        modelValue: false,
+        initialPhase: 'in_game',
+        initialAbsence: baseAbsence,
+      })
+      await wrapper.setProps({ modelValue: true })
+      await nextTick()
+      expect(wrapper.vm.newAbsence.phase).toBe('pre_game')
+
+      wrapper.vm.newAbsence.phase = 'in_game'
+      await wrapper.vm.saveAbsence()
+      expect(axios.put).toHaveBeenCalledWith(
+        '/player_absences/12',
+        expect.objectContaining({ id: 12, phase: 'in_game' }),
+      )
+    })
+
+    it('区分に応じた説明（数え始め）を出す', async () => {
+      const wrapper = mountDialog({ initialPhase: 'in_game' })
+      await wrapper.setProps({ modelValue: false })
+      await wrapper.setProps({ modelValue: true })
+      await nextTick()
+      expect(wrapper.vm.phaseHint).toBe('playerAbsenceDialog.form.phaseHint.in_game')
+      wrapper.vm.newAbsence.phase = 'pre_game'
+      await nextTick()
+      expect(wrapper.vm.phaseHint).toBe('playerAbsenceDialog.form.phaseHint.pre_game')
+    })
   })
 })

@@ -4,7 +4,7 @@
 
 **推奨構成:**
 - OS: Ubuntu 24.04 LTS
-- インフラ: Docker Compose（db / rails / frontend / parser）
+- インフラ: Docker Compose（db / rails / frontend）
 - SSL: Let's Encrypt + certbot
 - ドメイン: dugout.thbig.fun
 
@@ -22,7 +22,6 @@
 ~/projects/
 ├── thbigmatome/           # Rails API
 ├── thbigmatome-front/     # Vue 3 フロントエンド
-├── thbig-irc-parser/      # 打席ログパーサー（Flask）
 └── docker-compose.prod.yml
 ```
 
@@ -122,7 +121,6 @@ cd ~/projects
 # コード取得
 git -C thbigmatome pull origin main
 git -C thbigmatome-front pull origin main
-git -C thbig-irc-parser pull origin develop
 
 # リビルド・再起動
 docker compose -f docker-compose.prod.yml --env-file .env.production build

@@ -1,40 +1,17 @@
 <template>
-  <v-container style="max-width: 1080px">
-    <v-progress-linear
-      v-if="loading"
-      indeterminate
-      color="primary"
-      class="mb-3"
-    ></v-progress-linear>
-
-    <v-alert
-      v-if="errorMessage"
-      type="error"
-      variant="tonal"
-      class="mb-3"
-      closable
-      @click:close="errorMessage = ''"
+  <PageLayout>
+    <AsyncState
+      framed
+      skeleton="article"
+      :loading="loading"
+      :error="fetchFailed"
+      :error-message="errorMessage"
+      :empty="!player"
+      empty-icon="mdi-account-off-outline"
+      empty-message="選手が見つかりません"
+      @retry="fetchPlayer"
     >
-      {{ errorMessage }}
-    </v-alert>
-
-    <!-- 戻るボタン -->
-    <button class="detail-back-btn" @click="router.push('/players')">← 一覧に戻る</button>
-
-    <template v-if="player">
-      <div class="detail-wrap">
-        <!-- ヘッダー (藍色帯) -->
-        <div class="detail-card-header">
-          <div>
-            <div class="detail-player-name">#{{ player.number }} {{ player.name }}</div>
-            <div class="detail-player-sub" v-if="player.short_name">
-              {{ player.short_name }}
-            </div>
-          </div>
-          <div style="flex: 1"></div>
-          <span class="header-badge">選手一覧</span>
-        </div>
-
+      <v-card v-if="player" class="detail-card">
         <div class="detail-body">
           <!-- 基本情報セクション -->
           <div class="section-header-row">
@@ -102,7 +79,7 @@
               </tbody>
             </table>
           </div>
-          <div v-else class="text-grey text-caption pa-2 mb-4">コストなし</div>
+          <div v-else class="on-surface-variant text-caption pa-2 mb-4">コストなし</div>
 
           <div v-if="player.player_cards && player.player_cards.length > 0" class="section-box">
             <table class="card-table">
@@ -143,16 +120,15 @@
               </tbody>
             </table>
           </div>
-          <div v-else class="text-grey text-caption pa-2">選手カードなし</div>
+          <div v-else class="on-surface-variant text-caption pa-2">選手カードなし</div>
         </div>
         <!-- /detail-body -->
-      </div>
-      <!-- /detail-wrap -->
-    </template>
+      </v-card>
+    </AsyncState>
 
     <!-- 編集ダイアログ -->
     <PlayerDialog v-model="editDialog" :item="player" @save="onSave" />
-  </v-container>
+  </PageLayout>
 </template>
 
 <script setup lang="ts">
@@ -160,6 +136,9 @@ import { ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import axios from '@/plugins/axios'
 import PlayerDialog from '@/components/players/PlayerDialog.vue'
+import AsyncState from '@/components/shared/AsyncState.vue'
+import PageLayout from '@/components/shared/PageLayout.vue'
+import { useAppBarTitle } from '@/composables/useAppBarTitle'
 import type { PlayerDetail } from '@/types/playerDetail'
 
 const SERIES_LABEL_MAP: Record<string, string> = {
@@ -193,9 +172,17 @@ function handednessToJa(val: string | null | undefined): string {
 const route = useRoute()
 const router = useRouter()
 const player = ref<PlayerDetail | null>(null)
-const loading = ref(false)
-const errorMessage = ref('')
+const loading = ref(true)
+const fetchFailed = ref(false)
+const errorMessage = '選手情報の取得に失敗しました'
 const editDialog = ref(false)
+
+// ヘッダーバー: タイトル=選手名、サブタイトル=背番号、戻り先=選手一覧（取得前・失敗時も戻れるよう常に宣言する）
+useAppBarTitle(() => ({
+  title: player.value?.name ?? '選手詳細',
+  subtitle: player.value?.number ? `#${player.value.number}` : null,
+  back: { to: '/players', label: '選手一覧' },
+}))
 
 onMounted(() => {
   fetchPlayer()
@@ -203,13 +190,13 @@ onMounted(() => {
 
 async function fetchPlayer() {
   loading.value = true
-  errorMessage.value = ''
+  fetchFailed.value = false
   try {
     const id = route.params.id
     const response = await axios.get<PlayerDetail>(`/players/${id}`)
     player.value = response.data
   } catch {
-    errorMessage.value = '選手情報の取得に失敗しました'
+    fetchFailed.value = true
   } finally {
     loading.value = false
   }
@@ -225,61 +212,6 @@ function onSave() {
 </script>
 
 <style scoped>
-/* ── 戻るボタン ── */
-.detail-back-btn {
-  background: none;
-  border: 1px solid #bbb;
-  padding: 3px 10px;
-  border-radius: 3px;
-  cursor: pointer;
-  font-size: 0.79em;
-  margin-bottom: 8px;
-  color: #555;
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-}
-
-.detail-back-btn:hover {
-  background: #e8e0d4;
-  border-color: #999;
-}
-
-/* ── 詳細ラッパー ── */
-.detail-wrap {
-  background: white;
-  border: 1px solid #ddd;
-  border-radius: 6px;
-  overflow: hidden;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
-}
-
-/* ── ヘッダー (藍色帯) ── */
-.detail-card-header {
-  background: var(--ai);
-  color: white;
-  padding: 7px 14px;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.detail-player-name {
-  font-size: 1.05em;
-  font-weight: bold;
-}
-
-.detail-player-sub {
-  font-size: 0.76em;
-  opacity: 0.75;
-  margin-top: 1px;
-}
-
-.header-badge {
-  font-size: 0.72em;
-  opacity: 0.6;
-}
-
 /* ── デタイルボディ ── */
 .detail-body {
   padding: 10px 14px;
@@ -296,8 +228,8 @@ function onSave() {
 .section-header-title {
   font-size: 0.85em;
   font-weight: bold;
-  color: #5a3e20;
-  background: #ece4d8;
+  color: rgb(var(--v-theme-on-surface-variant));
+  background: rgb(var(--v-theme-surface-variant));
   padding: 3px 10px;
   border-radius: 3px;
 }
@@ -314,19 +246,19 @@ function onSave() {
 
 .info-label {
   font-size: 0.68em;
-  color: #999;
+  color: rgb(var(--v-theme-on-surface-variant));
   line-height: 1.2;
 }
 
 .info-val {
   font-size: 0.9em;
   font-weight: bold;
-  color: #222;
+  color: rgb(var(--v-theme-on-surface));
 }
 
 /* ── カードテーブル ── */
 .section-box {
-  border: 1px solid #e0d8cc;
+  border: 1px solid rgb(var(--v-theme-border-strong));
   border-radius: 4px;
   overflow: hidden;
 }
@@ -340,17 +272,17 @@ function onSave() {
 .card-table th {
   padding: 4px 8px;
   text-align: left;
-  color: #999;
+  color: rgb(var(--v-theme-on-surface-variant));
   font-size: 0.8em;
   font-weight: normal;
-  background: #ece4d8;
-  border-bottom: 1px solid #d4c5a9;
+  background: rgb(var(--v-theme-surface-variant));
+  border-bottom: 1px solid rgb(var(--v-theme-border-strong));
   white-space: nowrap;
 }
 
 .card-table td {
   padding: 5px 8px;
-  border-bottom: 1px solid #f4f0ea;
+  border-bottom: 1px solid rgb(var(--v-theme-border-strong));
 }
 
 .card-table tr:last-child td {
@@ -362,7 +294,7 @@ function onSave() {
 }
 
 .card-row:hover td {
-  background: #faf5ec;
+  background: rgb(var(--v-theme-surface-variant));
 }
 
 /* ── タイプチップ ── */
@@ -375,20 +307,20 @@ function onSave() {
 }
 
 .type-chip.pitcher {
-  background: rgba(219, 234, 254, 0.85);
-  color: #1e40af;
-  border: 1px solid #93c5fd;
+  background: rgb(var(--v-theme-tag-pitcher));
+  color: rgb(var(--v-theme-on-tag-pitcher));
+  border: 1px solid rgb(var(--v-theme-border-strong));
 }
 
 .type-chip.batter {
-  background: rgba(220, 252, 231, 0.85);
-  color: #166534;
-  border: 1px solid #6ee7b7;
+  background: rgb(var(--v-theme-tag-fielder));
+  color: rgb(var(--v-theme-on-tag-fielder));
+  border: 1px solid rgb(var(--v-theme-border-strong));
 }
 
 /* ── 詳細リンク ── */
 .detail-link {
-  color: #5a3e20;
+  color: rgb(var(--v-theme-link));
   font-size: 0.78em;
   text-decoration: none;
 }

@@ -5,10 +5,30 @@
 #
 # 参照: thbig-rules/README.md, thbig-rules/docs/
 
-version: "1.4"
+version: "1.8"
 created_at: "2026-04-01"
 format_updated: "2026-04-04"
 changelog:
+  - version: "1.8"
+    date: "2026-11-02"
+    breaking: false
+    changes:
+      - "outside_world に series_basis 追加、team_types.original の description を合わせる: 外の世界かどうかは選手のシリーズではなく登録したカードのシリーズで決める。PM2026 のカードは original なので東方のキャラクターでも外の世界枠を取る（AMB-30）"
+  - version: "1.7"
+    date: "2026-11-02"
+    breaking: false
+    changes:
+      - "outside_world.balance.role_counting を AMB-29 再改訂（暫定）に合わせる: 契約の種類で数える。両方に数えるのは二刀流契約（two_way_cost）のときだけ"
+  - version: "1.6"
+    date: "2026-11-02"
+    breaking: false
+    changes:
+      - "outside_world.balance.role_counting を AMB-29 改訂（暫定）に合わせる: 二刀流をハチナイの二刀流に限り、それ以外は選んだカードの主な位置で数える"
+  - version: "1.5"
+    date: "2026-11-02"
+    breaking: false
+    changes:
+      - "outside_world.balance に role_counting 追加（専任契約・二刀流の投手/野手の数え方。救援専任は投手専任と同じ扱い。AMB-29）"
   - version: "1.4"
     date: "2026-04-04"
     breaking: false
@@ -183,9 +203,29 @@ lpena:
 
     outside_world:
       max: 4
+      series_basis:
+        rule: "外の世界かどうかは、選手のシリーズ（player.series）ではなく登録したカード（選んだカード）のカードセットのシリーズで決める。カードを選んでいない所属は選手のシリーズで判定する（Dugout の Team#outside_world_first_squad_memberships と同じ）"
+        card_set_series: "2025THBIG=touhou / ハチナイ=hachinai / 球詠=tamayomi / PM2026=original"
+        examples:
+          - "西行寺幽々子を通常チームに登録: 2025THBIG のカードなら外の世界枠を取らない。PM2026 のカード（シリーズ original）なら外の世界枠を取る"
+        why: "PM2026 のカードには東方のキャラクターのカードもある。外の世界かどうかは登録したカードで決める（AMB-30、Operator 裁定 2026-11-02）"
       balance:
         trigger_count: 4
         requirement: "投手1名以上 AND 野手1名以上"
+        role_counting:
+          order: "契約の種類（契約したコスト区分）で決まる"
+          pitcher_only_cost: "投手専任コストで契約した選手は投手だけに数える"
+          relief_only_cost: "救援専任コストで契約した選手は投手としての専任契約なので投手だけに数える"
+          fielder_only_cost: "野手専任コストで契約した選手は野手だけに数える"
+          two_way_cost: "二刀流コストで契約した選手は投手・野手のどちらにも数える（都合の良い方）。両方に数えるのは二刀流契約のときだけで、投手カードと野手カードの両方を持つ選手でも二刀流契約でなければ契約の種類どおりに数える。二刀流契約ができる範囲は二刀流コストを選べる選手と同じ（投手カードと野手カードの両方を持つ選手と、ハチナイの二刀流の選手。Dugout の Player#available_cost_types）。ハチナイのカードを持つ背番号 39 以下の選手は、片方のカードしか持たなくても二刀流契約ができる"
+          others: "それ以外の契約（通常コストなど）は選んだカードの主な位置で数える（カードの主な位置。Dugout では守備位置の 1 つ目で、取込データの position に当たる）: 投手＝投手、内野手・外野手・捕手＝野手。card_type や守備位置の P では決めない"
+          examples:
+            - "霧雨魔理沙（2025THBIG）: 通常契約なら投手。野手専任なら野手。二刀流契約はできない"
+            - "天弓千亦（2025THBIG）: 通常契約なら野手（救援専任のカードでも主な位置は内野手）"
+            - "涼宮ハルヒ（hachinai6.1）: 通常契約で野手（背番号 46 で 39 以下でなく、カードも 1 枚なので二刀流契約はできない。カードの主な位置は内野手）。実際に問題になったら裁定を確認する"
+            - "ハチナイの二刀流の選手: 契約次第。二刀流契約なら投手・野手のどちらにも数え、専任契約ならその役だけに数える"
+          provisional: "暫定（2026-11-02、Operator 決定）。リーグの正式な裁定を聞けたら改める"
+          why: "専任契約は契約した役で数え、二刀流契約はどちらの枠も埋められる（AMB-29、Operator 裁定 2026-11-02、同日改訂・再改訂・暫定）。4人全員が投手のみ・野手のみの編成を禁止するのが目的"
       why: "外の世界（他シリーズ）選手の無制限参加を制限し、ゲームの世界観整合性を保つ。4名フル活用時は混成を必須とし多様な戦術を促す"
       exception: "チームタイプ（normal/hachinai）によって外の世界の定義が反転する。team_typesセクション参照"
       related:
@@ -235,7 +275,7 @@ lpena:
         - "lpena.team_composition.outside_world"
 
     original:
-      description: "オリジナル選手（series=original）"
+      description: "オリジナル選手（series=original）。series は登録したカードのシリーズで、PM2026 のカードは original。東方のキャラクターでも PM2026 のカードで登録すれば外の世界枠を取る（lpena.team_composition.outside_world.series_basis。AMB-30）"
       classification: "always_outside"
       why: "特定シリーズに属さないオリジナル選手は、チームタイプに関わらず常に外の世界枠扱い"
       exception: null

@@ -374,6 +374,8 @@ resources :game, only: [:show, :update]
   "opponent_score": 3,
   "opponent_team_id": 2,
   "opponent_team": "白玉楼",
+  "opponent_team_short_name": "白玉",
+  "announced_starter_name": "魂魄 妖夢",
   "winning_pitcher_id": 8,
   "losing_pitcher_id": 15,
   "save_pitcher_id": null,

@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { ref } from 'vue'
 import { mount, flushPromises } from '@vue/test-utils'
 import { createVuetify } from 'vuetify'
@@ -92,6 +92,7 @@ function createTestRouter() {
       { path: '/menu', name: 'dashboard', component: { template: '<div />' } },
       { path: '/managers', name: 'managers', component: { template: '<div />' } },
       { path: '/teams', name: 'teams', component: { template: '<div />' } },
+      { path: '/teams/:id/season', name: 'season', component: { template: '<div />' } },
       { path: '/players', name: 'players', component: { template: '<div />' } },
       { path: '/cost_assignment', name: 'costAssignment', component: { template: '<div />' } },
       { path: '/settings', name: 'settings', component: { template: '<div />' } },
@@ -257,8 +258,10 @@ describe('DefaultLayout.vue', () => {
       await flushPromises()
 
       expect(wrapper.text()).toContain('ホーム')
-      expect(wrapper.text()).toContain('試合ログ')
-      // リリース向けUI整理: 試合一覧・成績は非表示
+      // ログ取り込み（cmd_1791）とパーサー経由の画面（cmd_1795）を廃止したので、「試合」グループは無い
+      expect(wrapper.text()).not.toContain('ログ取り込み')
+      expect(wrapper.text()).not.toContain('試合')
+      expect(wrapper.text()).not.toContain('レビュー')
       expect(wrapper.text()).not.toContain('試合一覧')
       expect(wrapper.text()).not.toContain('成績')
     })
@@ -290,5 +293,71 @@ describe('DefaultLayout.vue', () => {
 
       expect(wrapper.text()).toContain('THBIG Dugout')
     })
+  })
+
+  // Test Basis: thbig-dugout-ui-unification-design.md §1.2 #9 / §2.8、cmd_1816（Operator 2026-11-02:
+  // 開いた直後は左メニューを閉じておく。PC 幅でも同じ）
+  describe('ナビの初期状態', () => {
+    const originalWidth = window.innerWidth
+    afterEach(() => {
+      window.innerWidth = originalWidth
+      localStorage.removeItem('selectedTeam')
+    })
+
+    const mountAt = async (width: number) => {
+      window.innerWidth = width
+      const wrapper = mount(DefaultLayout, {
+        global: {
+          plugins: [
+            createVuetify({ components, directives }),
+            i18n,
+            createTestRouter(),
+            createPinia(),
+          ],
+        },
+      })
+      await flushPromises()
+      return wrapper
+    }
+    const drawerOpen = (wrapper: Awaited<ReturnType<typeof mountAt>>) =>
+      wrapper.findComponent({ name: 'NavigationDrawer' }).props('modelValue')
+
+    it.each([390, 1440])('幅 %ipx でも起動時は閉じていて、本文を覆わない', async (width) => {
+      const wrapper = await mountAt(width)
+      expect(drawerOpen(wrapper)).toBe(false)
+      wrapper.unmount()
+    })
+
+    it.each([390, 1440])(
+      '幅 %ipx でメニューボタンを押すと開き、もう一度押すと閉じる',
+      async (width) => {
+        const wrapper = await mountAt(width)
+        expect(drawerOpen(wrapper)).toBe(false)
+        await wrapper.find('.v-app-bar-nav-icon').trigger('click')
+        expect(drawerOpen(wrapper)).toBe(true)
+        await wrapper.find('.v-app-bar-nav-icon').trigger('click')
+        expect(drawerOpen(wrapper)).toBe(false)
+        wrapper.unmount()
+      },
+    )
+
+    it.each([390, 1440])(
+      '幅 %ipx で開いたメニューに「チーム」見出しも「シーズン」も出ない（チーム選択済みでも）',
+      async (width) => {
+        // 以前はチームを選んでいると「チーム」見出しの下に「シーズン」が出ていた
+        localStorage.setItem('selectedTeam', JSON.stringify({ teamId: 7, teamName: '豊玉' }))
+        mockIsCommissioner.value = true
+        const wrapper = await mountAt(width)
+        await wrapper.find('.v-app-bar-nav-icon').trigger('click')
+        await flushPromises()
+        const drawer = wrapper.findComponent({ name: 'NavigationDrawer' })
+        const subheaders = drawer.findAll('.v-list-subheader').map((h) => h.text())
+        expect(subheaders).toEqual(['選手', '管理', '外部リンク'])
+        expect(drawer.text()).toContain('ホーム')
+        expect(drawer.text()).not.toContain('シーズン')
+        expect(wrapper.find('a[href$="/season"]').exists()).toBe(false)
+        wrapper.unmount()
+      },
+    )
   })
 })

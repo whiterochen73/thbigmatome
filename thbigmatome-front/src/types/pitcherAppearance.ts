@@ -1,6 +1,8 @@
 export type PitcherRole = 'starter' | 'reliever' | 'opener'
 export type PitcherDecision = 'W' | 'L' | 'S' | 'H' | null
 export type ResultCategory = 'normal' | 'ko' | 'no_game' | 'long_loss' | null
+// その試合日の試合中に 1軍にいたか。first 以外は要確認（second = 2軍 / not_on_team = 在籍なし / no_membership = チームの登録なし）
+export type RosterStatus = 'first' | 'second' | 'not_on_team' | 'no_membership'
 
 export interface PitcherAppearanceInput {
   pitcher_id: number | null
@@ -27,4 +29,11 @@ export interface PitcherAppearanceRecord extends PitcherAppearanceInput {
   injury_check: 'safe' | 'injured' | null
   is_opener: boolean
   appearance_order: number
+  // 日程の行への紐づけ（対応する日程の行が無い登板は null）
+  season_schedule_id?: number | null
+  // 登板の保存は止めず、1軍でない投手は試合日ページの要確認の帯に出す。取れない時は null
+  roster_status?: RosterStatus | null
+  pitcher_name?: string | null
+  // リリーフ・オープナーの、登板した日の翌日時点の累積イニング（サーバが保存した登板から求める。先発は null）
+  next_day_cumulative_innings?: number | null
 }

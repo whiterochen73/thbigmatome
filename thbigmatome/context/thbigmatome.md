@@ -8,14 +8,14 @@
 - **公式Wiki**: https://thbigbaseball.wiki.fc2.com/
 
 ## 概要
-野球ボードゲーム「東方BIG野球」のリーグ戦・チーム運営を管理するWebアプリケーション。バックエンドAPI + フロントエンドSPAの2リポジトリ + Pythonパーサーの計3リポジトリ構成。IRCログ解析→試合記録管理→成績集計を一貫して処理する。
+野球ボードゲーム「東方BIG野球」のリーグ戦・チーム運営を管理するWebアプリケーション。バックエンドAPI + フロントエンドSPAの2リポジトリ構成（Pythonパーサーは凍結。カード読み取りの道具としてだけ残る）。試合日ページでの結果入力→試合記録管理を行う。
 
 ## 技術スタック
 - バックエンド: Ruby on Rails ~> 8.0.2 (thbigmatome/)
 - フロントエンド: Vue.js 3 + TypeScript + Vuetify 3 (thbigmatome-front/)
 - データベース: PostgreSQL
 - ビルド: Vite 7
-- パーサー: Python 3 (thbig-irc-parser/)
+- パーサー: Python 3 (thbig-irc-parser/)。凍結。選手カードの PDF 読み取り・画像切り出しにだけ使う
 - コンテナ: Docker Compose
 
 ## システム構成
@@ -23,23 +23,17 @@
 ```
 thbigmatome (Rails 8 API)
   ├─ 試合管理・チーム管理・選手マスタ等のCRUD API
-  ├─ IRCログ取り込み（parse_log / import_log）
-  ├─ AtBatRecordBuilder: パーサー出力→source_events/discrepancies正規化
-  └─ game_records / at_bat_records: パーサーレビュー用テーブル
+  └─ game_records / at_bat_records: 表だけ残す（画面と API は cmd_1795 で廃止。migration は作らない）
 
 thbigmatome-front (Vue.js 3 SPA)
-  ├─ 試合記録一覧 → ログ取り込みウィザード → パーサーレビュー
-  ├─ タイムライン表示（3色分類: 宣言/ダイス/自動計算）
-  └─ インライン編集 → 確定フロー
+  └─ 試合日ページ（GameResult）での結果入力など。パーサー経由の画面（試合記録・試合詳細・オーダー確認・成績集計・パーサーレビュー）は廃止
 
-thbig-irc-parser (Python独立パッケージ)
-  ├─ IRCログ → 打席レコード変換（atbat_parser）
-  ├─ GameStateMachine: 走者・得点・アウトの状態追跡
-  ├─ UP表・レンジチェック・エラーチェック処理
-  └─ 選手カードPDF解析（card_parser）
+thbig-irc-parser (Python独立パッケージ・凍結)
+  ├─ IRCログ解析（atbat_parser ほか）: Rails とも Clubhouse とも繋がらない。開発 compose のサービスも外した（cmd_1795）。テストは repo で直接 `uv run pytest tests/`
+  └─ 選手カードPDF解析（card_parser）: 現役の使い道
 ```
 
-BE→パーサー連携: Rails側の `games#parse_log` がPythonパーサーを呼び出し、結果を `game_records` + `at_bat_records` に格納。`import_log` で確定メタデータと紐づけ、`game_record_id` を返却。
+BE→パーサー連携: 廃止済み（cmd_1791 でログ取り込み、cmd_1795 でパーサー経由の画面と API）。Rails 側の `games#parse_log` / `games#import_log` / `game_records#create` と PARSER_API_URL 連携は削除した。試合日ページの試合ログ保存（`season_schedules.game_log`）は別機能で、内容を解析せずに保存するだけなので残している。
 
 ## ドキュメント一覧
 

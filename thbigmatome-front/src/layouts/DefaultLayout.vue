@@ -38,6 +38,7 @@ const {
   timeout: snackbarTimeout,
 } = useSnackbar()
 
-const drawer = ref(true)
+// 左メニューは、幅によらず開いた直後は閉じておく（Operator 2026-11-02）。上の青い帯のハンバーガーで開く
+const drawer = ref(false)
 const rail = ref(false)
 </script>

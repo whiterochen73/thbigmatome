@@ -7,7 +7,6 @@
 - `src/router/index.ts`
 - `src/views/LoginForm.vue`
 - `src/views/HomePortalView.vue`
-- `src/views/HomeView.vue`
 - `src/views/ManagerList.vue`
 - `src/views/Players.vue`
 - `src/views/PlayerDetailView.vue`
@@ -16,18 +15,11 @@
 - `src/views/SeasonPortal.vue`
 - `src/views/GameResult.vue`
 - `src/views/ScoreSheet.vue`
-- `src/views/GamesView.vue`
-- `src/views/GameImportView.vue`
-- `src/views/GameDetailView.vue`
-- `src/views/GameLineupView.vue`
-- `src/views/StatsView.vue`
 - `src/views/CostAssignment.vue`
 - `src/views/Settings.vue`
 - `src/views/CompetitionRosterView.vue`
 - `src/views/PlayerCardsView.vue`
 - `src/views/PlayerCardDetailView.vue`
-- `src/views/GameRecordListView.vue`
-- `src/views/GameRecordDetailView.vue`
 - `src/views/ActiveRoster.vue` ※ルーター未登録（レガシー）
 - `src/views/PlayerAbsenceHistory.vue` ※ルーター未登録（レガシー）
 - `src/views/commissioner/CardSetsView.vue`
@@ -43,7 +35,6 @@
 |------|---------|--------------|-----------|---------|
 | `/login` | `Login` | `LoginForm` | — | 不要 |
 | `/` | `ホーム` | `HomePortalView` | — | 要（authGuard） |
-| `/home` | — | `HomeView` | — | 要（authGuard） |
 | `/managers` | `監督一覧` | `ManagerList` | — | 要（authGuard） |
 | `/players` | `Players` | `Players` | — | 要（authGuard） |
 | `/players/:id` | `PlayerDetail` | `PlayerDetailView` | `id` | 要（authGuard） |
@@ -54,16 +45,9 @@
 | `/teams/:teamId/season` | `SeasonPortal` | `SeasonPortal` | `teamId` | 要（authGuard） |
 | `/teams/:teamId/season/games/:scheduleId` | `GameResult` | `GameResult` | `teamId`, `scheduleId` | 要（authGuard） |
 | `/teams/:teamId/season/games/:scheduleId/scoresheet` | `ScoreSheet` | `ScoreSheet` | `teamId`, `scheduleId` | 要（authGuard） |
-| `/games` | `試合記録` | `GamesView` | — | 要（authGuard） |
-| `/games/import` | `ログ取り込み` | `GameImportView` | — | 要（authGuard） |
-| `/games/:id` | `試合詳細` | `GameDetailView` | `id` | 要（authGuard） |
-| `/games/:id/lineup` | `GameLineup` | `GameLineupView` | `id` | 要（authGuard） |
-| `/stats` | `成績集計` | `StatsView` | — | 要（authGuard） |
 | `/competitions/:id/roster/:teamId` | `CompetitionRoster` | `CompetitionRosterView` | `id`, `teamId` | 要（authGuard） |
 | `/player-cards` | `PlayerCards` | `PlayerCardsView` | — | 要（authGuard） |
 | `/player-cards/:id` | `PlayerCardDetail` | `PlayerCardDetailView` | `id` | 要（authGuard） |
-| `/game-records` | `GameRecordList` | `GameRecordListView` | — | 要（authGuard） |
-| `/game-records/:id` | `GameRecordDetail` | `GameRecordDetailView` | `id` | 要（authGuard） |
 | `commissioner/stadiums` | `Stadiums` | `StadiumsView` | — | 要（requiresCommissioner） |
 | `commissioner/card_sets` | `CardSets` | `CardSetsView` | — | 要（requiresCommissioner） |
 | `commissioner/competitions` | `Competitions` | `CompetitionsView` | — | 要（requiresCommissioner） |
@@ -100,26 +84,18 @@
 
 - **画面名**: ホームポータル / HomePortalView
 - **ルートパス**: `/`
-- **主要機能・目的**: ログイン後の入口。チームが1件の場合は自動的にSeasonPortalへリダイレクト。複数チームの場合はチーム選択へ
-- **使用APIエンドポイント**:
-  - GET `/teams`
-- **主要なcomposable/store**: `useTeamSelectionStore`（Pinia）
-- **画面構成**: チーム一覧表示 → チーム選択
-- **他画面への遷移先**: `/teams/:teamId/season`（SeasonPortal）
+- **主要機能・目的**: ログイン後の入口。コミッショナーはダッシュボード（CommissionerDashboard）を出す。それ以外はチームが1件なら SeasonPortal をその場に埋め込み、2件以上ならチーム切り替えのタブの下に SeasonPortal を置く
+- **使用APIエンドポイント**: なし（チームは `useAuth` がログイン時に `useTeamSelectionStore` へ読み込み済み）
+- **主要なcomposable/store**: `useTeamSelectionStore`（Pinia）, `useAuth`
+- **ヘッダーバー**: コミッショナーとチーム0件は `route.meta.title`（ホーム）。チームを出している時は、埋め込んだ SeasonPortal が宣言するチーム名＋「シーズン」
+- **画面構成**: `PageLayout`（コミッショナー: ダッシュボード / チーム0件: 空状態 `AsyncState`（コミッショナーへの問い合わせを示す））。SeasonPortal は自分の骨格を持つので二重に包まない。チーム2件以上のタブだけは下余白を詰めた `PageLayout` に置く
+- **他画面への遷移先**: `/teams/:teamId/season`（SeasonPortal、埋め込み）
 
 ---
 
-### 2.3 ホーム（レガシー）
+### 2.3 （削除）旧ホーム（HomeView）
 
-- **画面名**: ホーム / HomeView
-- **ルートパス**: `/home`
-- **主要機能・目的**: 大会ごとの試合サマリー表示（旧ホーム画面）
-- **使用APIエンドポイント**:
-  - GET `/competitions`
-  - GET `/home/summary?competition_id=N`
-- **主要なcomposable/store**: なし（直接axios）
-- **画面構成**: 大会選択タブ・試合サマリーカード
-- **他画面への遷移先**: なし（参照のみ）
+`/home` の旧ホーム画面と `GET /home/summary` は cmd_1795 で削除した。ホームは `/` の HomePortalView。
 
 ---
 
@@ -163,9 +139,10 @@
 - **使用APIエンドポイント**:
   - GET `/players/:id`
   - PATCH `/players/:id`（PlayerDialog経由）
-- **主要なcomposable/store**: `useRoute`, `useRouter`
-- **画面構成**: 選手基本情報（名前・背番号）・選手カード一覧テーブル・PlayerDialogコンポーネント
-- **他画面への遷移先**: `/player-cards/:id`（PlayerCardDetailView）
+- **主要なcomposable/store**: `useRoute`, `useRouter`, `useAppBarTitle`
+- **ヘッダーバー**: タイトル=選手名、サブタイトル=`#背番号`、戻り先=「← 選手一覧」（`/players`）。取得前・取得失敗でも戻り先は出る
+- **画面構成**: `PageLayout` ＋ `AsyncState`（読み込み=スケルトン、失敗=アラート＋再読み込み）。基本情報（背番号・選手名・略称・所属作品）・コスト表・選手カード一覧テーブルを1枚のカードに収め、PlayerDialog で編集
+- **他画面への遷移先**: `/player-cards/:id`（PlayerCardDetailView）、`/players`（バーの戻り先）
 
 ---
 
@@ -196,9 +173,10 @@
   - POST `/teams/:id/team_players`
   - GET `/costs`
   - GET `/player-types`
-- **主要なcomposable/store**: `useSnackbar`
-- **画面構成**: 登録済みメンバーテーブル・選手追加UI・コスト/タイプ選択
-- **他画面への遷移先**: なし
+- **主要なcomposable/store**: `useSnackbar`, `useAppBarTitle`
+- **ヘッダーバー**: 単独の画面として開いた時（props に `teamId` が無い）のみ、タイトル=チーム名（`GET /teams/:id`）、サブタイトル=チーム編成、戻り先=「← シーズン」。シーズンのタブ・試合日ページへ埋め込まれた時（`teamId` を props で受ける）はバーを変えず、骨格（`PageLayout`）も持たず中身だけを出す
+- **画面構成**: 違反表示・選手追加UI（ポジション絞り込み・選手選択・カード版・追加ボタン）・メンバー表（人数/コストのゲージ付き）・保存/キャンセル。表は `AsyncState` で包み、読み込み中は「選手が登録されていません」を出さず、取得失敗はアラート＋再読み込み
+- **他画面への遷移先**: `/teams/:teamId/season`（バーの戻り先）
 
 ---
 
@@ -206,10 +184,9 @@
 
 - **画面名**: シーズンポータル / SeasonPortal
 - **ルートパス**: `/teams/:teamId/season`
-- **主要機能・目的**: チームのシーズン管理ハブ。6つのタブでカレンダー・ロスター・欠場履歴・メンバー・オーダー・成績を管理
+- **主要機能・目的**: チームのシーズン管理ハブ。タブでカレンダー・ロスター・欠場履歴・メンバー・昇降格履歴を管理（オーダー・成績のタブは非表示にしていたが、成績の分は cmd_1795 で記述ごと削除）
 - **使用APIエンドポイント**:
   - GET `/teams/:id/season`
-  - PATCH `/teams/:id/season`
   - PATCH `/teams/:id/season/season_schedules/:id`（試合日程更新）
   - GET `/teams/:id`
 - **主要なcomposable/store**: `useTeamSelectionStore`（Pinia）
@@ -219,7 +196,6 @@
   - `absences` タブ: 欠場履歴（PlayerAbsenceHistoryコンポーネント）
   - `members` タブ: チームメンバー
   - `lineup` タブ: 試合オーダー
-  - `stats` タブ: シーズン成績
 - **他画面への遷移先**:
   - `/teams/:teamId/season/games/:scheduleId`（GameResult）
   - `/teams/:teamId/season/games/:scheduleId/scoresheet`（ScoreSheet）
@@ -260,80 +236,33 @@
 
 ---
 
-### 2.12 試合一覧
+### 2.12 （欠番）試合一覧
 
-- **画面名**: 試合一覧 / GamesView
-- **ルートパス**: `/games`
-- **主要機能・目的**: 全試合の一覧表示・大会フィルタリング
-- **使用APIエンドポイント**:
-  - GET `/games`（フィルタパラメータあり）
-  - GET `/competitions`
-- **主要なcomposable/store**: なし（直接axios）
-- **画面構成**: 大会フィルター・試合一覧テーブル（日付/対戦/スコア/大会）
-- **他画面への遷移先**:
-  - `/games/:id`（GameDetailView）
-  - `/games/import`（GameImportView）
-  - `/games/:id/lineup`（GameLineupView）
+廃止済み（cmd_1795）。画面 `/games`（GamesView）を削除した。番号は他の節の参照を保つため欠番にしている。
 
 ---
 
-### 2.13 試合インポート
+### 2.13 （欠番）試合インポート
 
-- **画面名**: 試合インポート / GameImportView
-- **ルートパス**: `/games/import`
-- **主要機能・目的**: ゲームログテキストの解析・インポート
-- **使用APIエンドポイント**:
-  - POST `/games/parse_log`（ログ解析プレビュー）
-  - POST `/games/import_log`（実際のインポート）
-  - GET `/competitions`
-  - GET `/competitions/:id/teams`
-- **主要なcomposable/store**: `useSnackbar`
-- **画面構成**: テキストエリア（ログ入力）・解析プレビュー・大会/チーム選択・インポートボタン
-- **他画面への遷移先**: `/games`（GamesView、インポート完了後）
+廃止済み（cmd_1791）。IRC ログを取り込む画面 `/games/import`（GameImportView）と、裏の `POST /games/parse_log`・`POST /games/import_log` を削除した。番号は他の節の参照を保つため欠番にしている。
 
 ---
 
-### 2.14 試合詳細
+### 2.14 （欠番）試合詳細
 
-- **画面名**: 試合詳細 / GameDetailView
-- **ルートパス**: `/games/:id`
-- **主要機能・目的**: 個別試合の詳細情報表示（スコア・打席結果等）
-- **使用APIエンドポイント**:
-  - GET `/games/:id`
-- **主要なcomposable/store**: なし（直接axios）
-- **画面構成**: 試合基本情報・イニング別スコア・打席結果テーブル
-- **他画面への遷移先**:
-  - `/games/:id/lineup`（GameLineupView）
-  - `/games`（GamesView、戻るボタン）
+廃止済み（cmd_1795）。画面 `/games/:id`（GameDetailView）を削除した。番号は他の節の参照を保つため欠番にしている。
 
 ---
 
-### 2.15 試合ラインナップ
+### 2.15 （欠番）試合ラインナップ
 
-- **画面名**: 試合ラインナップ / GameLineupView
-- **ルートパス**: `/games/:id/lineup`
-- **主要機能・目的**: 試合ごとのラインナップ（打順・ポジション）表示
-- **使用APIエンドポイント**:
-  - GET `/games/:id/lineup`
-- **主要なcomposable/store**: なし（直接axios）
-- **画面構成**: ホーム/ビジターのラインナップテーブル（打順/名前/ポジション）
-- **他画面への遷移先**: `/games/:id`（GameDetailView、戻るボタン）
+廃止済み（cmd_1795）。画面 `/games/:id/lineup`（GameLineupView）と、裏の `/games/:game_id/lineup` API を削除した。番号は他の節の参照を保つため欠番にしている。
 
 ---
 
-### 2.16 成績集計
+### 2.16 （欠番）成績集計
 
-- **画面名**: 成績集計 / StatsView
-- **ルートパス**: `/stats`
-- **主要機能・目的**: 大会別の打撃・投手・チーム成績集計表示
-- **使用APIエンドポイント**:
-  - GET `/competitions`
-  - GET `/stats/batting`（大会IDパラメータ）
-  - GET `/stats/pitching`（大会IDパラメータ）
-  - GET `/stats/team`（大会IDパラメータ）
-- **主要なcomposable/store**: なし（直接axios）
-- **画面構成**: 大会選択・タブ（打撃成績/投手成績/チーム成績）・各成績テーブル
-- **他画面への遷移先**: なし
+廃止済み（cmd_1795）。画面 `/stats`（StatsView）と、裏の `/stats/batting|pitching|team` API を削除した。番号は他の節の参照を保つため欠番にしている。
 
 ---
 
@@ -346,7 +275,8 @@
   - GET `/cost_assignments?cost_id=N`
   - POST `/cost_assignments`
 - **主要なcomposable/store**: `useSnackbar`
-- **画面構成**: コスト区分選択・未割り当て/割り当て済みカードテーブル・割り当てボタン
+- **ヘッダーバー**: `route.meta.title`（コスト登録）
+- **画面構成**: `PageLayout`（wide）の1枚のカード。コスト一覧の選択・選手ごとのコスト入力表・保存。取得失敗はアラート＋再読み込み、保存の成否はスナックバー
 - **他画面への遷移先**: なし
 
 ---
@@ -376,8 +306,9 @@
   - DELETE `/competitions/:id/roster/players/:id`
   - GET `/player_cards`
 - **主要なcomposable/store**: `useSnackbar`
-- **画面構成**: 大会情報・登録済みロスターテーブル・選手カード追加UI・コストチェック表示
-- **他画面への遷移先**: なし
+- **ヘッダーバー**: タイトル=大会名、サブタイトル=大会ロスター、戻り先=「← 大会管理」（`/commissioner/competitions`）
+- **画面構成**: `PageLayout`（wide）。コストサマリー・コスト超過アラート・タブ（ロスター/昇降格履歴）・1軍/2軍の登録済みロスターテーブル・選手追加ダイアログ。ロスターの取得失敗はアラート＋再読み込み
+- **他画面への遷移先**: `/commissioner/competitions`（バーの戻り先）
 
 ---
 
@@ -403,46 +334,31 @@
 
 - **画面名**: 選手カード詳細 / PlayerCardDetailView
 - **ルートパス**: `/player-cards/:id`
-- **主要機能・目的**: 選手カードの詳細情報表示・編集（基本情報・守備・特殊スキル）
+- **主要機能・目的**: 選手カードの詳細情報表示・編集（基本情報・守備値・特徴/能力）
 - **使用APIエンドポイント**:
   - GET `/player_cards/:id`
-  - PATCH `/player_cards/:id`（基本情報、守備情報、特殊スキル各セクションで個別保存）
-- **主要なcomposable/store**: `useSnackbar`
-- **画面構成**:
-  - カード基本情報（選手名/背番号/種別/カードセット/コスト/画像）
-  - 共通能力（走力/盗塁/負傷率）
-  - 投手能力（球種・コントロール等）または野手能力（打撃・守備等）
-  - 守備位置テーブル
-  - 特殊スキル一覧
-- **他画面への遷移先**: `/player-cards`（PlayerCardsView、戻るボタン）
+  - PATCH `/player_cards/:id`（基本情報・守備値・特徴/能力の各編集ダイアログで個別保存）
+- **主要なcomposable/store**: `useAppBarTitle`
+- **ヘッダーバー**: タイトル=選手名、サブタイトル=`#背番号 ・ カードセット名`、戻り先=「← 選手カード」（`/player-cards`）。取得前・取得失敗でも戻り先は出る
+- **画面構成**: `PageLayout` ＋ `AsyncState`。1枚のカードに次を積む
+  - 基本情報（種別チップ・画像・走力/バント/盗塁開始・終了/怪我レベル/利き腕・打席/スタミナ/バイオリズム・クローザー等のフラグ）
+  - 守備値テーブル
+  - 特徴・能力（特徴と能力のチップ、固有特徴テキスト `unique_traits`、怪我特徴）
+  - コスト一覧（現行コストを強調）
+  - 投球P列（投手のみ）・打撃結果表
+- **他画面への遷移先**: `/player-cards`（PlayerCardsView、バーの戻り先）
 
 ---
 
-### 2.22 ゲームレコード一覧
+### 2.22 （欠番）ゲームレコード一覧
 
-- **画面名**: ゲームレコード一覧 / GameRecordListView
-- **ルートパス**: `/game-records`
-- **主要機能・目的**: ゲームレコード（IRC試合ログ）の一覧表示
-- **使用APIエンドポイント**:
-  - GET `/game_records`
-- **主要なcomposable/store**: なし（直接axios）
-- **画面構成**: ゲームレコード一覧テーブル（日付/対戦チーム/スコア/ステータス）
-- **他画面への遷移先**: `/game-records/:id`（GameRecordDetailView）
+廃止済み（cmd_1795）。画面 `/game-records`（GameRecordListView）を削除した。番号は他の節の参照を保つため欠番にしている。
 
 ---
 
-### 2.23 ゲームレコード詳細
+### 2.23 （欠番）ゲームレコード詳細
 
-- **画面名**: ゲームレコード詳細 / GameRecordDetailView
-- **ルートパス**: `/game-records/:id`
-- **主要機能・目的**: 個別ゲームレコードの打席結果確認・修正・確定
-- **使用APIエンドポイント**:
-  - GET `/game_records/:id`
-  - PATCH `/at_bat_records/:id`（打席結果修正）
-  - POST `/game_records/:id/confirm`（レコード確定）
-- **主要なcomposable/store**: `useSnackbar`
-- **画面構成**: ゲーム基本情報・イニング別打席結果テーブル・結果編集モーダル・確定ボタン
-- **他画面への遷移先**: `/game-records`（GameRecordListView、戻るボタン）
+廃止済み（cmd_1795）。画面 `/game-records/:id`（GameRecordDetailView）と AtBatCard を削除した。番号は他の節の参照を保つため欠番にしている。
 
 ---
 
@@ -576,18 +492,6 @@
   /teams (TeamList)
   /teams/:teamId/members (TeamMembers)
 
-  /games (GamesView)
-      ├─ /games/import (GameImportView)
-      │       └─ インポート完了 → /games
-      ├─ /games/:id (GameDetailView)
-      │       └─ /games/:id/lineup (GameLineupView)
-      └─ 戻る → /games
-
-  /game-records (GameRecordListView)
-      └─ /game-records/:id (GameRecordDetailView)
-              └─ 戻る → /game-records
-
-  /stats (StatsView)
   /cost_assignment (CostAssignment)
   /managers (ManagerList)
   /settings (Settings)

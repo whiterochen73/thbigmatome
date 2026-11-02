@@ -9,14 +9,17 @@ class Api::V1::PitcherAppearancesController < Api::V1::BaseController
       return
     end
 
-    appearances = PitcherGameState
-      .where(team_id: team_id, schedule_date: schedule_date)
-      .order(:appearance_order)
+    # 日程の行に紐づく登板（season_schedule_id）を正として引く（まだ紐づけていない登板は schedule_date で拾う）
+    appearances = PitcherGameState.on_day(team_id: team_id, date: schedule_date).order(:appearance_order).to_a
+    roster_statuses = roster_statuses_for(team_id, schedule_date, appearances.map(&:pitcher_id))
+    pitcher_names = Player.where(id: appearances.map(&:pitcher_id)).pluck(:id, :name).to_h
+    next_day_cumulative = next_day_cumulative_innings_for(team_id, schedule_date, appearances)
 
     render json: appearances.map { |a|
       {
         id: a.id,
         pitcher_id: a.pitcher_id,
+        pitcher_name: pitcher_names[a.pitcher_id],
         role: a.role,
         innings_pitched: a.innings_pitched&.to_f,
         earned_runs: a.earned_runs,
@@ -31,8 +34,14 @@ class Api::V1::PitcherAppearancesController < Api::V1::BaseController
         schedule_date: a.schedule_date,
         team_id: a.team_id,
         game_id: a.game_id,
+        season_schedule_id: a.season_schedule_id,
         competition_id: a.competition_id,
-        appearance_order: a.appearance_order
+        appearance_order: a.appearance_order,
+        # その試合日の試合中に 1軍にいたか（first / second / not_on_team / no_membership）。first 以外は試合日ページの要確認の帯に出す。
+        # 登板の保存は止めない（設計書 §7 判断 5）。チームが引けない時は nil
+        roster_status: roster_statuses[a.pitcher_id],
+        # 登板による変化。リリーフ・オープナーの、登板した日の翌日時点の累積イニング（この登板の加算まで含む）。先発・日付が読めない時は nil
+        next_day_cumulative_innings: next_day_cumulative[a.id]
       }
     }
   end
@@ -59,12 +68,13 @@ class Api::V1::PitcherAppearancesController < Api::V1::BaseController
     pitchers_count = appearances_list.count { |a| a[:pitcher_id].present? }
     running_outs = 0
 
+    removed = []
     ActiveRecord::Base.transaction do
       # リクエストに含まれない既存レコードを削除（UIで行を消した投手のDBレコードを掃除）
       submitted_pitcher_ids = appearances_list.map { |a| a[:pitcher_id] }.compact
-      PitcherGameState.where(game_id: game.id, team_id: team_id)
-                      .where.not(pitcher_id: submitted_pitcher_ids)
-                      .destroy_all
+      to_remove = PitcherGameState.where(game_id: game.id, team_id: team_id).where.not(pitcher_id: submitted_pitcher_ids)
+      removed = to_remove.pluck(:pitcher_id, :schedule_date)
+      to_remove.destroy_all
 
       appearances_list.each_with_index do |ap, idx|
         next if ap[:pitcher_id].blank?
@@ -108,6 +118,8 @@ class Api::V1::PitcherAppearancesController < Api::V1::BaseController
     if error_response
       render json: error_response, status: :unprocessable_entity
     else
+      all_warnings.concat(roster_warnings(team_id, bulk[:schedule_date], all_results.map(&:pitcher_id)))
+      rebuild_later_history(team_id, [ bulk[:schedule_date], *removed.map(&:last) ], all_results.map(&:pitcher_id) + removed.map(&:first), all_warnings)
       render json: { pitcher_appearances: all_results.map(&:as_json), warnings: all_warnings }, status: :ok
     end
   end
@@ -147,6 +159,8 @@ class Api::V1::PitcherAppearancesController < Api::V1::BaseController
     warnings = create_warnings + validate_decision(state, game_result)
 
     if state.save
+      warnings.concat(roster_warnings(state.team_id, state.schedule_date, [ state.pitcher_id ]))
+      rebuild_later_history(state.team_id, [ state.schedule_date ], [ state.pitcher_id ], warnings)
       render json: { pitcher_appearance: state.as_json, warnings: warnings }, status: :created
     else
       render json: { errors: state.errors.full_messages }, status: :unprocessable_entity
@@ -169,6 +183,61 @@ class Api::V1::PitcherAppearancesController < Api::V1::BaseController
     render json: { errors: [ "schedule_date を日付として読めません: #{raw}（YYYY-MM-DD 形式で指定してください）" ] },
            status: :unprocessable_content
     false
+  end
+
+  # 登板した投手が、その試合日の試合中に 1軍にいたか { pitcher_id => 状態 }。チームが引けなければ空
+  def roster_statuses_for(team_id, date, pitcher_ids)
+    team = Team.find_by(id: team_id)
+    return {} if team.nil? || pitcher_ids.empty?
+
+    PitcherRosterStatus.for(team: team, date: Date.iso8601(date.to_s), pitcher_ids: pitcher_ids)
+  rescue ArgumentError
+    {}
+  end
+
+  # リリーフ・オープナーの登板ごとの、翌日（登板日 + 1）時点の累積イニング { pitcher_game_state.id => 累積 }。
+  # 累積は PitcherRestStatus と同じ計算（加算・減衰・中10日リセット・負傷控除）で、投手の人数に依らない問い合わせ数で求める
+  def next_day_cumulative_innings_for(team_id, date, appearances)
+    relievers = appearances.select { |a| %w[reliever opener].include?(a.role) }
+    parsed = PitcherGameState.parse_schedule_date(date)
+    return {} if relievers.empty? || parsed.nil?
+
+    pitcher_ids = relievers.map(&:pitcher_id).uniq
+    by_pitcher = PitcherRestStatus.cumulative_innings_by_pitcher(
+      team_id, pitcher_ids, parsed + 1, injury_absences_by_pitcher(team_id, pitcher_ids)
+    )
+    relievers.to_h { |a| [ a.id, by_pitcher[a.pitcher_id] ] }
+  end
+
+  # 投手ごとの負傷の離脱期間 { player_id => [{ start_date:, end_date: }] }（出場停止・再調整は含めない。減衰を止めるのは負傷だけ）
+  def injury_absences_by_pitcher(team_id, pitcher_ids)
+    memberships = TeamMembership.where(team_id: team_id, player_id: pitcher_ids).pluck(:id, :player_id).to_h
+    return {} if memberships.empty?
+
+    by_membership = PitcherRestStatus.injury_absences(memberships.keys)
+    memberships.to_h { |membership_id, player_id| [ player_id, by_membership[membership_id] ] }
+  end
+
+  # 1軍でない投手の登板は止めずに警告にする（設計書 §7 判断 5）。試合日ページの要確認の帯は index の roster_status から出す
+  def roster_warnings(team_id, date, pitcher_ids)
+    off = roster_statuses_for(team_id, date, pitcher_ids).select { |_, status| PitcherRosterStatus.off_roster?(status) }
+    return [] if off.empty?
+
+    names = Player.where(id: off.keys).pluck(:id, :name).to_h
+    off.map do |pitcher_id, status|
+      PitcherRosterStatus.warning_message(pitcher_name: names[pitcher_id] || "投手ID #{pitcher_id}", date: date.to_s, status: status)
+    end
+  end
+
+  # 登板を入れた・消した投手の、それ以降の登板の保存値（結果区分・疲労P・連続中4日回数）を作り直す（PitcherHistoryRebuild。設計書 §4.5）。
+  # 保存した日の値は保存時に求めているので、翌日から。消した登板の日付が早ければそこから。失敗しても保存は取り消さず、警告にする
+  def rebuild_later_history(team_id, dates, pitcher_ids, warnings)
+    first_date = dates.filter_map { |d| PitcherGameState.parse_schedule_date(d) }.min
+    ids = pitcher_ids.compact.map(&:to_i).uniq
+    return if first_date.nil? || ids.empty?
+
+    outcome = PitcherHistoryRebuild.guarded(team_id: team_id.to_i, date: first_date + 1, pitcher_ids: ids)
+    warnings << PitcherHistoryRebuild.failure_message(outcome.error) unless outcome.ok?
   end
 
   # 連続中4日カウントはサーバが決める（E3）。画面が送ってきた値は使わない（常に 0 を送って上書きしていた）。

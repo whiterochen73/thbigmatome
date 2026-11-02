@@ -10,8 +10,13 @@ WORKDIR /app
 ARG VITE_API_BASE_URL
 ENV VITE_API_BASE_URL=${VITE_API_BASE_URL}
 
-COPY package.json yarn.lock ./
-RUN yarn install --frozen-lockfile
+# Yarn Berry は corepack 経由（package.json の packageManager で版を固定）
+RUN corepack enable
+
+# .yarnrc.yml（enableScripts: false / npmMinimalAgeGate）は install より前に COPY する。
+# 届かないと docker build の中で lifecycle script が走る。
+COPY package.json yarn.lock .yarnrc.yml ./
+RUN yarn install --immutable
 
 COPY . .
 RUN yarn build

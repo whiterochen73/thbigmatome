@@ -1,10 +1,13 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { mount, flushPromises } from '@vue/test-utils'
 import { createVuetify } from 'vuetify'
+import { createI18n } from 'vue-i18n'
+import ja from '@/locales/ja.json'
 import * as components from 'vuetify/components'
 import * as directives from 'vuetify/directives'
 import { createRouter, createMemoryHistory } from 'vue-router'
 import PlayerDetailView from '../PlayerDetailView.vue'
+import { appBarTitle } from '@/composables/useAppBarTitle'
 
 vi.mock('@/plugins/axios', () => {
   return {
@@ -30,6 +33,13 @@ vi.mock('@/components/players/PlayerDialog.vue', () => ({
 import axios from '@/plugins/axios'
 
 const vuetify = createVuetify({ components, directives })
+
+// AsyncState（読み込み・空・失敗の出し方）が文言を引く
+const i18n = createI18n({
+  legacy: false,
+  locale: 'ja',
+  messages: { ja: { asyncState: ja.asyncState } },
+})
 
 function createTestRouter(playerId = '1') {
   const router = createRouter({
@@ -86,14 +96,25 @@ describe('PlayerDetailView', () => {
 
     const wrapper = mount(PlayerDetailView, {
       global: {
-        plugins: [vuetify, router],
+        plugins: [vuetify, i18n, router],
       },
     })
 
     await flushPromises()
 
-    expect(wrapper.text()).toContain('テスト選手')
-    expect(wrapper.text()).toContain('#10')
+    // 選手名と背番号はヘッダーバー（タイトル・サブタイトル）が出す。本文には画面独自の帯を持たない
+    expect(appBarTitle.value).toEqual({
+      title: 'テスト選手',
+      subtitle: '#10',
+      back: { to: '/players', label: '選手一覧' },
+    })
+    expect(wrapper.find('h1').exists()).toBe(false)
+    expect(wrapper.find('.detail-card-header').exists()).toBe(false)
+    expect(wrapper.find('.detail-back-btn').exists()).toBe(false)
+    expect(wrapper.text()).not.toContain('一覧に戻る')
+    expect(wrapper.text()).toContain('基本情報')
+    wrapper.unmount()
+    expect(appBarTitle.value).toBeNull()
   })
 
   it('カード一覧テーブルが表示される', async () => {
@@ -103,7 +124,7 @@ describe('PlayerDetailView', () => {
 
     const wrapper = mount(PlayerDetailView, {
       global: {
-        plugins: [vuetify, router],
+        plugins: [vuetify, i18n, router],
       },
     })
 
@@ -120,7 +141,7 @@ describe('PlayerDetailView', () => {
 
     const wrapper = mount(PlayerDetailView, {
       global: {
-        plugins: [vuetify, router],
+        plugins: [vuetify, i18n, router],
       },
     })
 
@@ -136,7 +157,7 @@ describe('PlayerDetailView', () => {
 
     const wrapper = mount(PlayerDetailView, {
       global: {
-        plugins: [vuetify, router],
+        plugins: [vuetify, i18n, router],
       },
     })
 
@@ -152,12 +173,27 @@ describe('PlayerDetailView', () => {
 
     const wrapper = mount(PlayerDetailView, {
       global: {
-        plugins: [vuetify, router],
+        plugins: [vuetify, i18n, router],
       },
     })
 
     await flushPromises()
 
-    expect(wrapper.text()).toContain('選手情報の取得に失敗しました')
+    expect(wrapper.find('[data-testid="state-error"]').text()).toContain(
+      '選手情報の取得に失敗しました',
+    )
+    // 取得に失敗しても戻り先は宣言されている
+    expect(appBarTitle.value).toEqual({
+      title: '選手詳細',
+      subtitle: null,
+      back: { to: '/players', label: '選手一覧' },
+    })
+    // 再読み込みで取り直せる
+    vi.mocked(axios.get).mockResolvedValueOnce({ data: mockPlayer })
+    await wrapper.find('[data-testid="state-retry"]').trigger('click')
+    await flushPromises()
+    expect(wrapper.find('[data-testid="state-error"]').exists()).toBe(false)
+    expect(appBarTitle.value?.title).toBe('テスト選手')
+    wrapper.unmount()
   })
 })

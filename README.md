@@ -14,9 +14,10 @@ npm install
 cd thbigmatome
 bundle install
 
-# フロントエンド依存
+# フロントエンド依存（Yarn 4 / corepack。詳細は thbigmatome-front/README.md）
 cd ../thbigmatome-front
-npm install
+corepack enable   # 初回のみ
+yarn install
 ```
 
 ### 2. Git Hooks (Pre-commit)

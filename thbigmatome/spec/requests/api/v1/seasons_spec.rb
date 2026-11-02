@@ -17,14 +17,26 @@ RSpec.describe "Api::V1::SeasonsController", type: :request do
       it "creates a season for any team and returns 201 with team_type set" do
         post "/api/v1/seasons", params: {
           team_id: team.id,
-          schedule_id: schedule.id,
-          name: "2026シーズン"
+          schedule_id: schedule.id
         }, as: :json
 
         expect(response).to have_http_status(:created)
         json = response.parsed_body
         expect(json["season"]["team_type"]).to eq("normal")
         expect(json["schedule_count"]).to eq(1)
+      end
+
+      # シーズンに題は付けない。name は NOT NULL の列なので、チーム名が入る
+      it "題を受け取らず、シーズンの name にはチーム名が入る" do
+        post "/api/v1/seasons", params: {
+          team_id: team.id,
+          schedule_id: schedule.id,
+          name: "送られてきた題"
+        }, as: :json
+
+        expect(response).to have_http_status(:created)
+        expect(Season.find_by!(team_id: team.id).name).to eq(team.name)
+        expect(response.parsed_body["season"]["name"]).to eq(team.name)
       end
     end
 
@@ -36,8 +48,7 @@ RSpec.describe "Api::V1::SeasonsController", type: :request do
       it "creates a season for own team and returns 201" do
         post "/api/v1/seasons", params: {
           team_id: team.id,
-          schedule_id: schedule.id,
-          name: "2026シーズン"
+          schedule_id: schedule.id
         }, as: :json
 
         expect(response).to have_http_status(:created)
@@ -50,8 +61,7 @@ RSpec.describe "Api::V1::SeasonsController", type: :request do
 
         post "/api/v1/seasons", params: {
           team_id: other_team.id,
-          schedule_id: schedule.id,
-          name: "2026シーズン"
+          schedule_id: schedule.id
         }, as: :json
 
         expect(response).to have_http_status(:forbidden)
@@ -62,8 +72,7 @@ RSpec.describe "Api::V1::SeasonsController", type: :request do
       it "returns 401" do
         post "/api/v1/seasons", params: {
           team_id: team.id,
-          schedule_id: schedule.id,
-          name: "2026シーズン"
+          schedule_id: schedule.id
         }, as: :json
 
         expect(response).to have_http_status(:unauthorized)

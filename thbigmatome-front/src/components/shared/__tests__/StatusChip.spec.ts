@@ -25,13 +25,21 @@ describe('StatusChip', () => {
     expect(wrapper.text()).toContain('スロットテキスト')
   })
 
-  it('既知のstatusに対して正しいcolorが適用されること（active→success）', () => {
+  // Test Basis: subtask_1787u 申し送り1 / thbig-dugout-visual-stage5-mapping.md §2 R1
+  it('active と warning は読める状態色の flat チップになる', () => {
     const wrapper = mount(StatusChip, {
       global: { plugins: [vuetify] },
       props: { status: 'active', label: 'active' },
     })
     const chip = wrapper.findComponent({ name: 'VChip' })
-    expect(chip.props('color')).toBe('success')
+    expect(chip.props('color')).toBe('state-done')
+    expect(chip.props('variant')).toBe('flat')
+    const warning = mount(StatusChip, {
+      global: { plugins: [vuetify] },
+      props: { status: 'warning', label: 'warning' },
+    }).findComponent({ name: 'VChip' })
+    expect(warning.props('color')).toBe('state-todo')
+    expect(warning.props('variant')).toBe('flat')
   })
 
   it('未知のstatusはdefaultカラーになること', () => {
@@ -43,21 +51,42 @@ describe('StatusChip', () => {
     expect(chip.props('color')).toBe('default')
   })
 
-  it('injury→errorマッピングが正しいこと', () => {
+  // Test Basis: thbig-dugout-visual-refresh-design.md §6.1, §6.5, §7 段3
+  it('負傷と出場停止は同じ absence-out で、アイコンと文字で見分ける', () => {
     const wrapper = mount(StatusChip, {
       global: { plugins: [vuetify] },
       props: { status: 'injury', label: '負傷' },
     })
     const chip = wrapper.findComponent({ name: 'VChip' })
-    expect(chip.props('color')).toBe('error')
+    expect(chip.props('color')).toBe('absence-out')
+    expect(chip.props('prependIcon')).toBe('mdi-hospital-box')
+    expect(chip.props('variant')).toBe('flat')
+    expect(wrapper.text()).toContain('負傷')
+
+    const suspended = mount(StatusChip, {
+      global: { plugins: [vuetify] },
+      props: { status: 'suspension', label: '出場停止' },
+    })
+    const suspendedChip = suspended.findComponent({ name: 'VChip' })
+    expect(suspendedChip.props('color')).toBe('absence-out')
+    expect(suspendedChip.props('prependIcon')).toBe('mdi-gavel')
+    expect(suspended.text()).toContain('出場停止')
   })
 
-  it('commissioner→primaryマッピングが正しいこと', () => {
+  // Test Basis: thbig-dugout-visual-stage5-mapping.md §7 b5-15〜b5-18
+  it('commissioner は link、ハチナイは state-info flat とタグアイコン', () => {
     const wrapper = mount(StatusChip, {
       global: { plugins: [vuetify] },
       props: { status: 'commissioner', label: 'コミッショナー' },
     })
     const chip = wrapper.findComponent({ name: 'VChip' })
-    expect(chip.props('color')).toBe('primary')
+    expect(chip.props('color')).toBe('link')
+    const hachinai = mount(StatusChip, {
+      global: { plugins: [vuetify] },
+      props: { status: 'hachinai', label: 'ハチナイ' },
+    }).findComponent({ name: 'VChip' })
+    expect(hachinai.props('color')).toBe('state-info')
+    expect(hachinai.props('variant')).toBe('flat')
+    expect(hachinai.props('prependIcon')).toBe('mdi-tag-outline')
   })
 })

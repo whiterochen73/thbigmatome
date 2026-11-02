@@ -117,6 +117,57 @@ function getPitcherItem(wrapper: ReturnType<typeof mount>) {
 }
 
 describe('PitcherAppearanceTab', () => {
+  // Test Basis: thbig-dugout-visual-stage5-mapping.md §7 b4-10, b4-15〜b4-26
+  it('試合結果・責任投手・結果区分を役割色の flat チップで表示する', async () => {
+    for (const [result, color] of [
+      ['win', 'result-win'],
+      ['lose', 'result-loss'],
+      ['draw', 'result-draw'],
+      ['no_game', 'result-nogame'],
+    ] as const) {
+      mockPitcherRequests(null)
+      const wrapper = mount(PitcherAppearanceTab, {
+        props: { ...defaultProps, gameResult: result },
+        global: { plugins: [vuetify] },
+      })
+      await flushPromises()
+      const chip = wrapper.findAllComponents(components.VChip)[0]!
+      expect(chip.props('color')).toBe(color)
+      expect(chip.props('variant')).toBe('flat')
+      wrapper.unmount()
+    }
+    const wrapper = await mountComponent(null)
+    const row = wrapper.vm.pitcherRows[0]
+    for (const [decision, color] of [
+      ['W', 'result-win'],
+      ['L', 'result-loss'],
+      ['S', 'state-info'],
+      ['H', 'state-neutral'],
+    ] as const) {
+      row.decision = decision
+      await flushPromises()
+      const chips = wrapper
+        .findAllComponents(components.VChip)
+        .filter((chip) => chip.text() === decision)
+      expect(chips.length, decision).toBeGreaterThan(0)
+      for (const chip of chips) {
+        expect(chip.props('color')).toBe(color)
+        expect(chip.props('variant')).toBe('flat')
+      }
+    }
+    for (const [category, color] of [
+      ['ko', 'state-warn'],
+      ['no_game', 'result-nogame'],
+      ['long_loss', 'state-todo'],
+      ['normal', 'state-done'],
+      ['pending', 'state-neutral'],
+    ]) {
+      expect(wrapper.vm.resultCategoryColor(category), category).toBe(color)
+    }
+    expect(
+      wrapper.findAllComponents(components.VChip).some((chip) => chip.props('variant') === 'flat'),
+    ).toBe(true)
+  })
   beforeEach(() => {
     vi.clearAllMocks()
   })
@@ -349,6 +400,28 @@ describe('PitcherAppearanceTab', () => {
         result_category: resultCategory,
       }
     }
+
+    // Test Basis: thbig-dugout-visual-stage5-mapping.md §7 b4-21〜b4-26
+    it('保存済み結果区分の全チップを対応する役割色の flat で表示する', async () => {
+      for (const [category, label, color] of [
+        ['ko', 'KO', 'state-warn'],
+        ['no_game', 'ノーゲーム', 'result-nogame'],
+        ['long_loss', '長イニング敗戦', 'state-todo'],
+        ['normal', '通常', 'state-done'],
+        ['pending', '保存後に確定', 'state-neutral'],
+      ]) {
+        const wrapper = await mountWith('lose', [savedStarter(category!)])
+        const chips = wrapper
+          .findAllComponents(components.VChip)
+          .filter((chip) => chip.text() === label)
+        expect(chips.length, category).toBeGreaterThan(0)
+        for (const chip of chips) {
+          expect(chip.props('color')).toBe(color)
+          expect(chip.props('variant')).toBe('flat')
+        }
+        wrapper.unmount()
+      }
+    })
 
     it('保存済みの先発はサーバの result_category を表示する（画面の fatigue_p_used=0 に引きずられない）', async () => {
       const wrapper = await mountWith('lose', [savedStarter('long_loss')])
@@ -707,180 +780,317 @@ describe('PitcherAppearanceTab', () => {
     })
   })
 
-  // cmd_1775 第3段 E9・E10: 投手状態一覧に「先発なら」「リリーフなら」を並べる（AMB-19 追補: 疲労P0 と最初から疲労状態は別）
-  describe('投手状態一覧（先発なら / リリーフなら）', () => {
-    const summaryRows = [
-      {
-        player_id: 10,
-        player_name: '幽々子',
-        last_role: 'reliever',
-        rest_days: null,
-        cumulative_innings: 4,
-        last_result_category: null,
-        is_injured: false,
-        is_unavailable: true,
-        projected_status: 'fatigued_start_check',
-        as_starter: { status: 'unavailable', notes: [] },
-        as_reliever: {
-          status: 'fatigued_start_check',
-          notes: ['previous_day_one_inning_only'],
-        },
-        as_opener: {
-          status: 'fatigued_start_check',
-          notes: [
-            'opener_check_previous_day',
-            'opener_check_cumulative',
-            'previous_day_one_inning_only',
-          ],
-        },
-        as_starter_omitted_reason: null,
-        as_reliever_omitted_reason: null,
-        as_opener_omitted_reason: null,
-      },
-      {
-        player_id: 11,
-        player_name: '紫',
-        last_role: 'starter',
-        rest_days: 3,
-        cumulative_innings: null,
-        last_result_category: 'normal',
-        is_injured: false,
-        is_unavailable: false,
-        projected_status: 'injury_check',
-        as_starter: null,
-        as_reliever: { status: 'reduced_0', notes: [] },
-        as_opener: null,
-        as_starter_omitted_reason: 'relief_only_contract',
-        as_reliever_omitted_reason: null,
-        as_opener_omitted_reason: 'no_opener_ability',
-      },
-      {
-        player_id: 12,
-        player_name: '妖夢',
-        last_role: 'reliever',
-        rest_days: null,
-        cumulative_innings: 1,
-        last_result_category: null,
-        is_injured: false,
-        is_unavailable: false,
-        projected_status: 'reduced_0',
-        as_starter: { status: 'unavailable', notes: [] },
-        as_reliever: { status: 'reduced_0', notes: [] },
-        as_opener: null,
-        as_starter_omitted_reason: null,
-        as_reliever_omitted_reason: null,
-        as_opener_omitted_reason: 'no_opener_ability',
-      },
-    ]
+  // cmd_1806 / subtask_1806a（Operator 2026-11-02）: 投手状態の一覧は試合前の段（PitcherStatusTab）へ移した。
+  // 登板記録の段は、登板した投手ごとに「その日（試合前）の状態」と「登板による変化」だけを出す。
+  // 先発は結果区分（KO・長イニング敗戦のペナルティ）、リリーフ・オープナーは翌日時点の累積イニング（サーバの保存値から）。
+  describe('その日の状態と登板による変化（投手状態一覧は試合前の段へ移した）', () => {
+    const thirdPitcher = { id: 12, name: '妖夢', position: 'pitcher', is_pitcher: true }
+    const idleState = (id: number): PreGameStateMock => ({
+      player_id: id,
+      rest_days: null,
+      cumulative_innings: 0,
+      last_role: null,
+      is_injured: false,
+    })
 
-    async function mountWithSummary() {
-      mockPitcherRequests({ state: null })
-      const base = vi.mocked(axios.get).getMockImplementation()!
-      vi.mocked(axios.get).mockImplementation((url: string) =>
-        url === '/teams/1/pitcher_game_states/fatigue_summary'
-          ? Promise.resolve({ data: summaryRows })
-          : base(url),
-      )
+    const summaryRow = (over: Record<string, unknown>) => ({
+      player_id: 10,
+      player_name: '幽々子',
+      last_role: null,
+      rest_days: null,
+      cumulative_innings: null,
+      last_result_category: null,
+      is_injured: false,
+      is_unavailable: false,
+      projected_status: 'full',
+      as_starter: { status: 'full', notes: [] },
+      as_reliever: { status: 'full', notes: [] },
+      as_opener: null,
+      ...over,
+    })
+
+    const savedRow = (pitcherId: number, role: string, extra: Record<string, unknown> = {}) => ({
+      id: pitcherId,
+      pitcher_id: pitcherId,
+      role,
+      innings_pitched: role === 'starter' ? 5.0 : 1.0,
+      earned_runs: 0,
+      fatigue_p_used: 0,
+      decision: null,
+      is_opener: false,
+      no_out_exit: false,
+      consecutive_short_rest_count: 0,
+      pre_injury_days_excluded: 0,
+      result_category: role === 'starter' ? 'normal' : 'normal',
+      next_day_cumulative_innings: null,
+      ...extra,
+    })
+
+    async function mountDay(
+      saved: unknown[],
+      summary: unknown[] = [],
+      gameResult: 'win' | 'lose' | 'draw' | 'no_game' = 'lose',
+    ) {
+      vi.mocked(axios.get).mockImplementation((url: string) => {
+        if (url === '/teams/1/team_players') {
+          return Promise.resolve({ data: [basePitcher, otherPitcher, thirdPitcher] })
+        }
+        if (url === '/teams/1/pitcher_game_states') {
+          return Promise.resolve({ data: [10, 11, 12].map(idleState) })
+        }
+        if (url === '/pitcher_appearances') return Promise.resolve({ data: saved })
+        if (url === '/teams/1/team_memberships') return Promise.resolve({ data: [] })
+        if (url === '/teams/1/pitcher_game_states/fatigue_summary')
+          return Promise.resolve({ data: summary })
+        return Promise.reject(new Error(`Unexpected GET ${url}`))
+      })
       const wrapper = mount(PitcherAppearanceTab, {
-        props: defaultProps,
+        props: { ...defaultProps, gameResult },
         global: { plugins: [vuetify] },
       })
       await flushPromises()
       return wrapper
     }
 
-    it('列見出しに「先発なら」「リリーフなら」が出る', async () => {
-      const wrapper = await mountWithSummary()
-      const headers = wrapper.findAll('th').map((th) => th.text())
-      expect(headers).toContain('先発なら')
-      expect(headers).toContain('リリーフなら')
-    })
+    const before = (wrapper: Awaited<ReturnType<typeof mountDay>>, idx: number) =>
+      wrapper.find(`[data-testid="day-state-before-${idx}"]`)
+    const after = (wrapper: Awaited<ReturnType<typeof mountDay>>, idx: number) =>
+      wrapper.find(`[data-testid="day-state-after-${idx}"]`)
 
-    it('投手ごとに 2 つの状態を並べる（紫: 先発なら 省略 / リリーフなら P0）', async () => {
-      const wrapper = await mountWithSummary()
-      expect(wrapper.find('[data-testid="as-starter-11"]').text()).toBe('—')
-      expect(wrapper.find('[data-testid="as-reliever-11"]').text()).toContain('⚡ P0')
-    })
-
-    it('累積4以上の前日登板は、最初から疲労状態 + 負傷CK と 1 イニング限定の注意書きを出す', async () => {
-      const wrapper = await mountWithSummary()
-      const cell = wrapper.find('[data-testid="as-reliever-10"]')
-      expect(cell.text()).toContain('最初から疲労')
-      expect(cell.text()).toContain('負傷CK')
-      expect(cell.text()).toContain('前日の負傷チェックに合格していれば1イニング限定で登板可')
-    })
-
-    it('疲労P0（妖夢）と最初から疲労状態（幽々子）を区別して表示する', async () => {
-      const wrapper = await mountWithSummary()
-      expect(wrapper.find('[data-testid="as-reliever-12"]').text()).toContain('⚡ P0')
-      expect(wrapper.find('[data-testid="as-reliever-12"]').text()).not.toContain('最初から疲労')
-      expect(wrapper.find('[data-testid="as-reliever-10"]').text()).not.toContain('⚡ P0')
-    })
-
-    it('前回リリーフで中2日以内の先発不可が出る', async () => {
-      const wrapper = await mountWithSummary()
-      expect(wrapper.find('[data-testid="as-starter-12"]').text()).toContain('🚫 不可')
-    })
-
-    // Operator 2026-10-27: 「リリーフなら」の隣に「オープナーなら」列を 1 つ増やす。オープナー可の投手にだけ値を出す
-    it('「オープナーなら」列見出しは「リリーフなら」の次に 1 つだけ出る', async () => {
-      const wrapper = await mountWithSummary()
-      const headers = wrapper.findAll('th').map((th) => th.text())
-      expect(headers.filter((h) => h === 'オープナーなら')).toHaveLength(1)
-      expect(headers.indexOf('オープナーなら')).toBe(headers.indexOf('リリーフなら') + 1)
-    })
-
-    it('オープナー可の投手（幽々子）には状態と負傷チェックの理由を出す', async () => {
-      const wrapper = await mountWithSummary()
-      const cell = wrapper.find('[data-testid="as-opener-10"]')
-      expect(cell.text()).toContain('最初から疲労')
-      expect(cell.text()).toContain('前日登板のため負傷チェック')
-      expect(cell.text()).toContain('累積1以上のため負傷チェック')
-    })
-
-    it('オープナー可でない投手（紫・妖夢）は「—」だけでバッジを出さない', async () => {
-      const wrapper = await mountWithSummary()
-      for (const id of [11, 12]) {
-        const cell = wrapper.find(`[data-testid="as-opener-${id}"]`)
-        expect(cell.text()).toBe('—')
-        expect(cell.findComponent({ name: 'VChip' }).exists()).toBe(false)
-      }
-    })
-
-    it('「リリーフなら」の列にはオープナーの負傷チェックの文言が出ない', async () => {
-      const wrapper = await mountWithSummary()
-      for (const id of [10, 11, 12]) {
-        expect(wrapper.find(`[data-testid="as-reliever-${id}"]`).text()).not.toContain('オープナー')
-        expect(wrapper.find(`[data-testid="as-reliever-${id}"]`).text()).not.toContain('累積1')
-      }
-    })
-
-    it('フォールバック中（fallback_all_relievers）は、「オープナーなら」見出しのツールチップで未取込を伝える', async () => {
-      summaryRows.forEach((r) =>
-        Object.assign(r, { opener_capable_source: 'fallback_all_relievers' }),
+    it('登板記録の段に投手状態の一覧（表）を出さない（試合前の段にある）', async () => {
+      const wrapper = await mountDay(
+        [savedRow(10, 'starter')],
+        [summaryRow({ last_role: 'starter', rest_days: 5 })],
       )
-      const wrapper = await mountWithSummary()
-      const head = wrapper.find('[data-testid="opener-column-header"]')
-      expect(head.attributes('title')).toBe(
-        'オープナー可のデータ未取込のため、リリーフ可能な投手すべてに表示',
+      expect(wrapper.text()).not.toContain('投手状態一覧')
+      expect(wrapper.find('table').exists()).toBe(false)
+      expect(wrapper.find('[data-testid="as-starter-10"]').exists()).toBe(false)
+      expect(wrapper.find('[data-testid="opener-column-header"]').exists()).toBe(false)
+    })
+
+    describe('先発: 登板による変化は結果区分（KO・長イニング敗戦のペナルティ）', () => {
+      it('KO あり: 「KO」を出す。ペナルティの「長イニング敗戦」は出ない', async () => {
+        const wrapper = await mountDay([savedRow(10, 'starter', { result_category: 'ko' })])
+        expect(after(wrapper, 0).text()).toContain('KO')
+        expect(after(wrapper, 0).text()).not.toContain('長イニング敗戦')
+        expect(after(wrapper, 0).text()).not.toContain('累積')
+      })
+
+      it('KO なし（通常）: 「KO」を出さない', async () => {
+        const wrapper = await mountDay([savedRow(10, 'starter', { result_category: 'normal' })])
+        expect(after(wrapper, 0).text()).toContain('通常')
+        expect(after(wrapper, 0).text()).not.toContain('KO')
+      })
+
+      it('ペナルティあり（長イニング敗戦）: 「長イニング敗戦」を出す', async () => {
+        const wrapper = await mountDay([savedRow(10, 'starter', { result_category: 'long_loss' })])
+        expect(after(wrapper, 0).text()).toContain('長イニング敗戦')
+        expect(after(wrapper, 0).text()).not.toContain('KO')
+      })
+
+      it('ペナルティなし: 「長イニング敗戦」を出さない', async () => {
+        const wrapper = await mountDay([savedRow(10, 'starter', { result_category: 'normal' })])
+        expect(after(wrapper, 0).text()).not.toContain('長イニング敗戦')
+      })
+
+      it('判定保留（result_category が null）は判定保留と出す', async () => {
+        const wrapper = await mountDay([savedRow(10, 'starter', { result_category: null })])
+        expect(after(wrapper, 0).text()).toContain('判定保留')
+      })
+
+      it('先発の「その日の状態」はサーバが返す「先発なら」の状態と中日数（補正後の疲労P・負傷チェック）', async () => {
+        const wrapper = await mountDay(
+          [savedRow(10, 'starter')],
+          [
+            summaryRow({
+              last_role: 'starter',
+              rest_days: 4,
+              last_result_category: 'ko',
+              as_starter: { status: 'reduced_3', notes: [] },
+            }),
+          ],
+        )
+        const text = before(wrapper, 0).text()
+        expect(text).toContain('⚡ P-3')
+        expect(text).toContain('中4日')
+        expect(before(wrapper, 0).find('[data-testid="day-state-role-0"]').exists()).toBe(true)
+      })
+
+      it('先発には翌日の累積を出さない（累積はリリーフ・オープナーのもの）', async () => {
+        const wrapper = await mountDay([
+          savedRow(10, 'starter', { next_day_cumulative_innings: 2 }),
+        ])
+        expect(after(wrapper, 0).text()).not.toContain('翌日の累積')
+      })
+    })
+
+    describe('リリーフ・オープナー: 登板による変化は翌日時点の累積イニング', () => {
+      const pair = (next: number | null | undefined, relieverExtra = {}) => [
+        savedRow(10, 'starter'),
+        savedRow(11, 'reliever', { next_day_cumulative_innings: next, ...relieverExtra }),
+      ]
+
+      it('保存された翌日の累積を「翌日の累積 N」で出す', async () => {
+        const wrapper = await mountDay(pair(3))
+        expect(after(wrapper, 1).text()).toContain('翌日の累積 3')
+      })
+
+      it('境界: 翌日の累積が 0（登板しても休養で全快する）でも出す（0 を空扱いにしない）', async () => {
+        const wrapper = await mountDay(pair(0))
+        expect(after(wrapper, 1).text()).toContain('翌日の累積 0')
+      })
+
+      it('境界: 累積が 3（負傷チェックの閾値）をまたぐ 2 → 3 → 4 をそのまま出す', async () => {
+        for (const n of [2, 3, 4]) {
+          const wrapper = await mountDay(pair(n))
+          expect(after(wrapper, 1).text(), String(n)).toContain(`翌日の累積 ${n}`)
+          wrapper.unmount()
+        }
+      })
+
+      it('リリーフには結果区分（通常）を出さない。ノーゲームの日だけ「ノーゲーム」も出す', async () => {
+        const normal = await mountDay(pair(1))
+        expect(after(normal, 1).text()).not.toContain('通常')
+        const noGame = await mountDay(pair(1), [], 'no_game')
+        expect(after(noGame, 1).text()).toContain('ノーゲーム')
+        expect(after(noGame, 1).text()).toContain('翌日の累積 1')
+      })
+
+      it('オープナー（1番手 role=opener）にも翌日の累積を出す', async () => {
+        const wrapper = await mountDay([
+          savedRow(10, 'opener', { next_day_cumulative_innings: 1 }),
+          savedRow(11, 'starter'),
+        ])
+        expect(after(wrapper, 0).text()).toContain('翌日の累積 1')
+      })
+
+      it('サーバが値を返さない（古い応答・日付不明）時は「保存後に確定」と出し、数字を作らない', async () => {
+        const wrapper = await mountDay(pair(undefined))
+        expect(after(wrapper, 1).text()).toContain('保存後に確定')
+        expect(after(wrapper, 1).text()).not.toContain('翌日の累積')
+      })
+
+      it('保存後に入力を変えると、保存した時点の累積は古いので出さず「保存後に確定」にする', async () => {
+        const wrapper = await mountDay(pair(2))
+        expect(after(wrapper, 1).text()).toContain('翌日の累積 2')
+        wrapper.vm.pitcherRows[1].innings_int = 3
+        await flushPromises()
+        expect(after(wrapper, 1).text()).toContain('保存後に確定')
+        expect(after(wrapper, 1).text()).not.toContain('翌日の累積')
+      })
+
+      it('未保存の行を追加した直後も「保存後に確定」', async () => {
+        const wrapper = await mountDay([savedRow(10, 'starter')])
+        wrapper.vm.pitcherRows.push({
+          pitcher_id: 11,
+          role: 'reliever',
+          innings_pitched: null,
+          earned_runs: 0,
+          fatigue_p_used: 0,
+          decision: null,
+          is_opener: false,
+          is_second_starter: false,
+          no_out_exit: false,
+          pre_injury_days_excluded: 0,
+          appearance_order: 1,
+          innings_int: 1,
+          innings_frac: '',
+        })
+        await flushPromises()
+        expect(after(wrapper, 1).text()).toContain('保存後に確定')
+      })
+
+      it('リリーフの「その日の状態」は「リリーフなら」の状態と累積（最初から疲労・負傷CK）', async () => {
+        const wrapper = await mountDay(pair(4), [
+          summaryRow({
+            player_id: 11,
+            player_name: '紫',
+            last_role: 'reliever',
+            cumulative_innings: 3,
+            as_reliever: { status: 'fatigued_start_check', notes: [] },
+          }),
+        ])
+        const text = before(wrapper, 1).text()
+        expect(text).toContain('最初から疲労')
+        expect(text).toContain('負傷CK')
+        expect(text).toContain('累積3')
+      })
+
+      it('オープナーの「その日の状態」は「オープナーなら」の状態（注記つき）を出す', async () => {
+        const wrapper = await mountDay(
+          [savedRow(10, 'opener', { next_day_cumulative_innings: 2 }), savedRow(11, 'starter')],
+          [
+            summaryRow({
+              last_role: 'reliever',
+              cumulative_innings: 1,
+              as_reliever: { status: 'reduced_0', notes: [] },
+              as_opener: { status: 'reduced_0', notes: ['opener_check_cumulative'] },
+            }),
+          ],
+        )
+        expect(before(wrapper, 0).text()).toContain('累積1以上のため負傷チェック')
+      })
+    })
+
+    describe('登板のない日・状態が取れない時', () => {
+      it('登板なしの日: 投手が選ばれていない行には状態も変化も出さない', async () => {
+        const wrapper = await mountDay([])
+        expect(before(wrapper, 0).text()).toBe('')
+        expect(after(wrapper, 0).text()).toBe('')
+      })
+
+      it('投手を選んだが未保存の先発: 結果区分は従来どおり（負け・L・後続ありの 4 回は KO）', async () => {
+        const wrapper = await mountDay([])
+        wrapper.vm.pitcherRows[0].pitcher_id = 10
+        wrapper.vm.pitcherRows[0].innings_int = 4
+        wrapper.vm.pitcherRows[0].decision = 'L'
+        wrapper.vm.pitcherRows.push({
+          ...wrapper.vm.pitcherRows[0],
+          pitcher_id: 11,
+          role: 'reliever',
+          decision: null,
+        })
+        await flushPromises()
+        expect(after(wrapper, 0).text()).toContain('KO')
+      })
+
+      it('試合前の状態（fatigue_summary）に載らない投手（2軍など）は、状態の欄に「—」を出す', async () => {
+        const wrapper = await mountDay([savedRow(10, 'starter')], [])
+        expect(before(wrapper, 0).text()).toContain('—')
+      })
+
+      it('試合前の状態の取得に失敗しても登板記録（結果区分）は出る。状態の欄は「—」', async () => {
+        const wrapper = await mountDay([savedRow(10, 'starter', { result_category: 'ko' })])
+        const base = vi.mocked(axios.get).getMockImplementation()!
+        vi.mocked(axios.get).mockImplementation((url: string, config?: unknown) =>
+          url === '/teams/1/pitcher_game_states/fatigue_summary'
+            ? Promise.reject(new Error('boom'))
+            : base(url, config as never),
+        )
+        await wrapper.vm.refreshSavedResultCategories()
+        await flushPromises()
+        expect(before(wrapper, 0).text()).toContain('—')
+        expect(after(wrapper, 0).text()).toContain('KO')
+      })
+    })
+
+    it('保存済みの結果区分を取り直すと翌日の累積も最新になる（得点の保存後）', async () => {
+      const wrapper = await mountDay([savedRow(10, 'starter'), savedRow(11, 'reliever')])
+      expect(after(wrapper, 1).text()).toContain('保存後に確定')
+      const base = vi.mocked(axios.get).getMockImplementation()!
+      vi.mocked(axios.get).mockImplementation((url: string, config?: unknown) =>
+        url === '/pitcher_appearances'
+          ? Promise.resolve({
+              data: [
+                savedRow(10, 'starter'),
+                savedRow(11, 'reliever', { next_day_cumulative_innings: 2 }),
+              ],
+            })
+          : base(url, config as never),
       )
-      expect(head.text()).toBe('オープナーなら')
-    })
-
-    it('カードの記載どおり（card_ability）ならツールチップを出さない', async () => {
-      summaryRows.forEach((r) => Object.assign(r, { opener_capable_source: 'card_ability' }))
-      const wrapper = await mountWithSummary()
-      expect(
-        wrapper.find('[data-testid="opener-column-header"]').attributes('title'),
-      ).toBeUndefined()
-    })
-
-    // Operator 2026-10-27: 累積イニングは単位を付けない（列見出しは「累積」。「累積IP」ではない）
-    it('列見出しは「中日数 / 累積」で、「IP」の単位を付けない', async () => {
-      const wrapper = await mountWithSummary()
-      const headers = wrapper.findAll('th').map((th) => th.text())
-      expect(headers).toContain('中日数 / 累積')
-      expect(headers.join('|')).not.toContain('IP')
+      await wrapper.vm.refreshSavedResultCategories()
+      await flushPromises()
+      expect(after(wrapper, 1).text()).toContain('翌日の累積 2')
     })
   })
 
@@ -948,6 +1158,94 @@ describe('PitcherAppearanceTab', () => {
       await wrapper.vm.refreshSavedResultCategories()
       expect(wrapper.vm.savedResultCategories).toEqual({ 10: 'no_game' })
       expect(wrapper.vm.pitcherRows[0].innings_int).toBe(6)
+    })
+  })
+  // cmd_1783 段A: 未保存の入力を試合日ページへ知らせる（離脱ガード・「編集中」の表示）／保存したことを知らせる（状態の取り直し）
+  describe('未保存の入力と保存の通知', () => {
+    async function mountWithEvents() {
+      mockPitcherRequests({ state: null })
+      const wrapper = mount(PitcherAppearanceTab, {
+        props: defaultProps,
+        global: { plugins: [vuetify] },
+      })
+      await flushPromises()
+      return wrapper
+    }
+    const dirtyEvents = (wrapper: Awaited<ReturnType<typeof mountWithEvents>>) =>
+      (wrapper.emitted('dirty-change') ?? []).map((e) => e[0])
+
+    it('読み込んだだけでは未保存にならない（通知も出さない）', async () => {
+      const wrapper = await mountWithEvents()
+      expect(wrapper.vm.isDirty).toBe(false)
+      expect(dirtyEvents(wrapper)).toEqual([])
+    })
+
+    it('行を編集すると未保存になり、元の値に戻すと未保存でなくなる', async () => {
+      const wrapper = await mountWithEvents()
+      wrapper.vm.pitcherRows[0].innings_int = 6
+      await flushPromises()
+      expect(dirtyEvents(wrapper)).toEqual([true])
+      wrapper.vm.pitcherRows[0].innings_int = null
+      await flushPromises()
+      expect(dirtyEvents(wrapper)).toEqual([true, false])
+    })
+
+    it('投手の追加・削除も未保存として扱う', async () => {
+      const wrapper = await mountWithEvents()
+      wrapper.vm.addRow()
+      await flushPromises()
+      expect(wrapper.vm.isDirty).toBe(true)
+      wrapper.vm.removeRow(1)
+      await flushPromises()
+      expect(wrapper.vm.isDirty).toBe(false)
+    })
+
+    it('保存に成功したら未保存でなくなり、saved を通知する', async () => {
+      const wrapper = await mountWithEvents()
+      wrapper.vm.pitcherRows[0].pitcher_id = 10
+      wrapper.vm.pitcherRows[0].innings_int = 6
+      await flushPromises()
+      expect(wrapper.vm.isDirty).toBe(true)
+      vi.mocked(axios.post).mockResolvedValueOnce({ data: { warnings: [] } })
+
+      await wrapper.vm.saveAll()
+      await flushPromises()
+
+      expect(wrapper.vm.isDirty).toBe(false)
+      expect(dirtyEvents(wrapper)).toEqual([true, false])
+      expect(wrapper.emitted('saved')).toHaveLength(1)
+    })
+
+    it('保存に成功した後の再読み込みが失敗しても、未保存には戻らない（保存した内容が今の行。離脱ガードを出さない）', async () => {
+      const wrapper = await mountWithEvents()
+      wrapper.vm.pitcherRows[0].pitcher_id = 10
+      wrapper.vm.pitcherRows[0].innings_int = 6
+      await flushPromises()
+      expect(dirtyEvents(wrapper)).toEqual([true])
+      // 保存後の取り直し（GET /pitcher_appearances）だけ失敗させる。画面の行は入力のまま残る
+      mockPitcherRequests({ state: null, savedReject: true })
+      vi.mocked(axios.post).mockResolvedValueOnce({ data: { warnings: [] } })
+
+      await wrapper.vm.saveAll()
+      await flushPromises()
+
+      expect(wrapper.vm.pitcherRows[0].innings_int).toBe(6)
+      expect(wrapper.vm.isDirty).toBe(false)
+      expect(dirtyEvents(wrapper)).toEqual([true, false])
+      expect(wrapper.emitted('saved')).toHaveLength(1)
+    })
+
+    it('保存に失敗したら未保存のまま残り、saved は通知しない', async () => {
+      const wrapper = await mountWithEvents()
+      wrapper.vm.pitcherRows[0].pitcher_id = 10
+      wrapper.vm.pitcherRows[0].innings_int = 6
+      vi.mocked(axios.post).mockRejectedValueOnce({ response: { data: { errors: ['NG'] } } })
+
+      await wrapper.vm.saveAll()
+      await flushPromises()
+
+      expect(wrapper.vm.isDirty).toBe(true)
+      expect(wrapper.emitted('saved')).toBeUndefined()
     })
   })
 })

@@ -55,6 +55,76 @@ RSpec.describe "Api::V1::Commissioner::Dashboard", type: :request do
         expect(ended).to be_nil
       end
 
+      context "試合前 / 試合中の区分（phase。AMB-25）" do
+        let(:team) { create(:team, is_active: true) }
+        let(:current) { Date.new(2026, 6, 10) }
+        let(:season) { create(:season, team: team, current_date: current) }
+        let(:tm) { create(:team_membership, team: team, player: create(:player)) }
+
+        def entry
+          get "/api/v1/commissioner/dashboard/absences"
+          response.parsed_body.find { |a| a["team_id"] == team.id }
+        end
+
+        it "日数: 試合前は現在日から数え、残り日数は N。区分と離脱の最初の日が返る" do
+          create(:player_absence, team_membership: tm, season: season, start_date: current, duration: 3, duration_unit: "days")
+
+          expect(entry).to include("phase" => "pre_game", "effective_start_date" => "2026-06-10",
+                                   "effective_end_date" => "2026-06-13", "remaining_days" => 3)
+        end
+
+        it "日数: 試合中は試合日（現在日）を数えず、現在日に見ても残り日数は N、復帰日は D+N+1" do
+          create(:player_absence, team_membership: tm, season: season, start_date: current, duration: 3,
+                                  duration_unit: "days", phase: "in_game")
+
+          expect(entry).to include("phase" => "in_game", "effective_start_date" => "2026-06-11",
+                                   "effective_end_date" => "2026-06-14", "remaining_days" => 3)
+        end
+
+        it "日数: 試合中の負傷は D+1 に見ると残り N、D+N に見ると残り 1" do
+          create(:player_absence, team_membership: tm, season: season, start_date: current - 1, duration: 3,
+                                  duration_unit: "days", phase: "in_game")
+          expect(entry["remaining_days"]).to eq(3)
+
+          season.update!(current_date: current + 2)
+          expect(entry["remaining_days"]).to eq(1)
+        end
+
+        # ノーゲームになった試合は試合数に数えない（Operator 2026-11-01）。振り替えた試合（予備日を試合日にした日）は 1 試合として数える
+        it "試合数: ノーゲームの日は残り試合に数えず、振り替えた試合は数える" do
+          [ [ 10, "game_day", false ], [ 11, "game_day", true ], [ 12, "reserve_day", false ], [ 13, "game_day", false ] ].each do |day, type, no_game|
+            create(:season_schedule, season: season, date: Date.new(2026, 6, day), date_type: type, no_game: no_game)
+          end
+          create(:player_absence, team_membership: tm, season: season, start_date: current, duration: 2, duration_unit: "games")
+          # 6/10 と 6/13 の 2 試合（6/11 はノーゲーム、6/12 は予備日のまま）。ノーゲームの結果が入ったので現在日は 6/13 になり、残りは 6/13 の 1 試合
+          expect(entry).to include("remaining_games" => 1, "effective_end_date" => "2026-06-14")
+
+          # 振替: 予備日 6/12 を試合日にする。6/10 と 6/12 の 2 試合。現在日は次の試合日 6/12 で、残りは 6/12 の 1 試合
+          SeasonSchedule.find_by!(season: season, date: Date.new(2026, 6, 12)).update!(date_type: "game_day")
+          expect(entry).to include("remaining_games" => 1, "effective_end_date" => "2026-06-13")
+        end
+
+        it "試合数: 試合中は試合日の試合を残りに数えない（移動日をはさんでも次の試合日から）" do
+          [ [ 10, "game_day" ], [ 11, "off_day" ], [ 12, "game_day" ], [ 13, "game_day" ] ].each do |day, type|
+            create(:season_schedule, season: season, date: Date.new(2026, 6, day), date_type: type)
+          end
+          absence = create(:player_absence, team_membership: tm, season: season, start_date: current, duration: 2,
+                                            duration_unit: "games", phase: "in_game")
+
+          expect(entry).to include("remaining_games" => 2, "effective_end_date" => "2026-06-14")
+
+          absence.update!(phase: "pre_game")
+          expect(entry).to include("remaining_games" => 2, "effective_end_date" => "2026-06-13")
+        end
+
+        it "試合中・N=1: 復帰日（D+2）に見ると残り 0 日で、まだ一覧に残る（従来の試合前と同じ扱い）" do
+          create(:player_absence, team_membership: tm, season: season, start_date: current - 2, duration: 1,
+                                  duration_unit: "days", phase: "in_game")
+
+          expect(entry).to include("effective_end_date" => "2026-06-10", "remaining_days" => 0)
+        end
+      end
+
       it "inactive チームは含まない" do
         team = create(:team, is_active: false)
         season = create(:season, team: team, current_date: Date.current)
@@ -101,7 +171,8 @@ RSpec.describe "Api::V1::Commissioner::Dashboard", type: :request do
         team = create(:team, is_active: true, team_type: :normal)
         player = create(:player)
         create(:cost_player, cost: cost, player: player, normal_cost: 10)
-        create(:team_membership, team: team, player: player, squad: "first", selected_cost_type: "normal_cost")
+        create(:season, team: team, current_date: Date.current)
+        create(:team_membership, team: team, player: player, squad: "first", selected_cost_type: "normal_cost", first_since: Date.current - 30)
 
         get "/api/v1/commissioner/dashboard/costs"
         json = JSON.parse(response.body)
@@ -131,7 +202,8 @@ RSpec.describe "Api::V1::Commissioner::Dashboard", type: :request do
 
         ur_player = create(:player, name: "リン・レイファ (UR)", number: "38", series: "original")
         ur_card = create(:player_card, player: ur_player, card_set: pm_card_set, card_type: "batter", is_pitcher: false)
-        create(:team_membership, team: team, player: ur_player, player_card: ur_card, squad: "first", selected_cost_type: "normal_cost")
+        create(:season, team: team, current_date: Date.current)
+        create(:team_membership, team: team, player: ur_player, player_card: ur_card, squad: "first", selected_cost_type: "normal_cost", first_since: Date.current - 30)
 
         get "/api/v1/commissioner/dashboard/costs"
 
@@ -145,7 +217,8 @@ RSpec.describe "Api::V1::Commissioner::Dashboard", type: :request do
         team = create(:team, is_active: false, team_type: :normal)
         player = create(:player)
         create(:cost_player, cost: cost, player: player, normal_cost: 5)
-        create(:team_membership, team: team, player: player, squad: "first", selected_cost_type: "normal_cost")
+        create(:season, team: team, current_date: Date.current)
+        create(:team_membership, team: team, player: player, squad: "first", selected_cost_type: "normal_cost", first_since: Date.current - 30)
 
         get "/api/v1/commissioner/dashboard/costs"
         json = JSON.parse(response.body)
@@ -265,7 +338,7 @@ RSpec.describe "Api::V1::Commissioner::Dashboard", type: :request do
         season = create(:season, team: team, current_date: Date.current)
         player = create(:player, series: "touhou")
         create(:cost_player, cost: cost, player: player, normal_cost: 12)
-        create(:team_membership, team: team, player: player, squad: "first", selected_cost_type: "normal_cost")
+        create(:team_membership, team: team, player: player, squad: "first", selected_cost_type: "normal_cost", first_since: Date.current - 30)
 
         get "/api/v1/commissioner/dashboard/roster_status"
         json = JSON.parse(response.body)
@@ -299,8 +372,8 @@ RSpec.describe "Api::V1::Commissioner::Dashboard", type: :request do
         create(:season, team: team, current_date: Date.current)
         native_player = create(:player, series: "touhou")
         outside_player = create(:player, series: "hachinai")
-        create(:team_membership, team: team, player: native_player, squad: "first", selected_cost_type: "normal_cost")
-        create(:team_membership, team: team, player: outside_player, squad: "first", selected_cost_type: "normal_cost")
+        create(:team_membership, team: team, player: native_player, squad: "first", selected_cost_type: "normal_cost", first_since: Date.current - 30)
+        create(:team_membership, team: team, player: outside_player, squad: "first", selected_cost_type: "normal_cost", first_since: Date.current - 30)
 
         get "/api/v1/commissioner/dashboard/roster_status"
         json = JSON.parse(response.body)
@@ -352,7 +425,7 @@ RSpec.describe "Api::V1::Commissioner::Dashboard", type: :request do
         team = create(:team, is_active: true, team_type: :normal)
         season = create(:season, team: team, current_date: Date.current)
         player = create(:player, series: "touhou")
-        create(:team_membership, team: team, player: player, squad: "first", selected_cost_type: "normal_cost")
+        create(:team_membership, team: team, player: player, squad: "first", selected_cost_type: "normal_cost", first_since: Date.current - 30)
 
         get "/api/v1/commissioner/dashboard/roster_status.csv"
         csv = CSV.parse(response.body.delete("\uFEFF"), headers: true)
@@ -368,7 +441,7 @@ RSpec.describe "Api::V1::Commissioner::Dashboard", type: :request do
         create(:season, team: team1, current_date: Date.current)
         create(:season, team: team2, current_date: Date.current)
         player = create(:player, series: "touhou")
-        create(:team_membership, team: team1, player: player, squad: "first", selected_cost_type: "normal_cost")
+        create(:team_membership, team: team1, player: player, squad: "first", selected_cost_type: "normal_cost", first_since: Date.current - 30)
 
         get "/api/v1/commissioner/dashboard/roster_status.csv", params: { team_id: team1.id }
         csv = CSV.parse(response.body.delete("\uFEFF"), headers: true)
@@ -380,7 +453,7 @@ RSpec.describe "Api::V1::Commissioner::Dashboard", type: :request do
         team = create(:team, is_active: true, team_type: :normal)
         create(:season, team: team, current_date: Date.current)
         player = create(:player, series: "touhou", short_name: nil)
-        create(:team_membership, team: team, player: player, squad: "first", selected_cost_type: "normal_cost")
+        create(:team_membership, team: team, player: player, squad: "first", selected_cost_type: "normal_cost", first_since: Date.current - 30)
 
         get "/api/v1/commissioner/dashboard/roster_status.csv"
         csv = CSV.parse(response.body.delete("\uFEFF"), headers: true)

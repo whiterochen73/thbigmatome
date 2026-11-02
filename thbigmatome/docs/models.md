@@ -57,6 +57,7 @@
 | Team | teams | チームマスタ |
 | TeamManager | team_managers | チーム×監督・コーチ |
 | TeamMembership | team_memberships | チーム×選手所属 |
+| TeamMembershipChange | team_membership_changes | チーム編成の変更記録（登録・契約・放出） |
 | TraitCondition | trait_conditions | トレイト発動条件マスタ |
 | TraitDefinition | trait_definitions | トレイト定義マスタ |
 | User | users | ユーザー（認証・ロール） |
@@ -301,7 +302,7 @@ class Game < ApplicationRecord
 
 **バリデーション**:
 - `status`: inclusion in %w[draft confirmed]
-- `source`: inclusion in %w[live log_import summary]
+- `source`: inclusion in %w[live log_import summary]（`log_import` はログ取り込み機能の廃止前に作られた既存データの値。新規には作られない）
 
 **インスタンスメソッド**:
 - `draft?` — status == "draft"
@@ -473,6 +474,7 @@ class PitcherGameState < ApplicationRecord
 - `belongs_to :pitcher, class_name: "Player"` (FK: pitcher_id)
 - `belongs_to :competition, optional: true`
 - `belongs_to :team`
+- `belongs_to :season_schedule, optional: true` — 登板した試合日の日程の行（cmd_1784 段3）。対応する日程の行が無い登板は nil。保存時に（チーム, `schedule_date`）から引いて紐づける（`before_validation`。新規または `schedule_date` を変えた時。`season_schedule_id` を明示した保存はその値を使う）。日程の行の削除は紐づけを外すだけ（FK `on_delete: :nullify`）
 
 **バリデーション**:
 - `pitcher_id`: uniqueness(scope: game_id)
@@ -486,6 +488,8 @@ class PitcherGameState < ApplicationRecord
 - `pre_injury_days_excluded`: numericality >= 0
 
 **クラスメソッド**:
+- `PitcherGameState.schedule_id_for(team_id:, date:)` — チーム・試合日の日程の行の id。ちょうど 1 件の時だけ返す（0 件・複数件・日付が読めない時は nil）
+- `PitcherGameState.on_day(team_id:, date:)` — そのチームのその試合日の登板。日程の行に紐づく登板を正とし、紐づけが空の登板は `schedule_date` で拾う。日程の行が 1 件に決まらない日は `schedule_date` だけで引く
 - `PitcherGameState.calculate_result_category(role:, innings_pitched:, game_result:, pitchers_in_game:, fatigue_p: 0, decision: nil)` — result_category自動計算。先発で5イニング未満・後続あり・敗戦・L判定→"ko"、敗戦でイニング>疲労P+1→"long_loss"、試合なし→"no_game"、その他→"normal"
 
 ---
@@ -544,10 +548,14 @@ class PlayerAbsence < ApplicationRecord
 - `start_date`: presence
 - `duration`: presence, integer > 0
 - `duration_unit`: presence, inclusion in %w[days games]
+- `phase`: inclusion in %w[pre_game in_game]（既定 `pre_game`。試合前 / 試合中。裁定 AMB-25）
 
 **インスタンスメソッド**:
-- `effective_end_date` — 離脱終了日を計算
-  - `duration_unit == "days"`: `start_date + duration.days`
+- `effective_start_date` — 離脱が始まる最初の日。`pre_game` は `start_date`、`in_game` は `start_date + 1日`
+- `active_on?(date)` — date の日に離脱中か（呼び出し側はこれを使う）
+- `remaining_days_on(date)` — date 時点の残り日数（復帰日まで）
+- `effective_end_date` — 離脱終了日（排他的）を計算
+  - `duration_unit == "days"`: `effective_start_date + duration.days`
   - `duration_unit == "games"`: シーズンスケジュールからN試合後の翌日
 
 ---
@@ -732,6 +740,8 @@ class Season < ApplicationRecord
 - `name`: presence
 - `team_id`: uniqueness (message: :season_already_started)
 
+**現在日**（cmd_1784 段2b）: `current_date` は列の値ではなく日程の結果から導く（`SeasonCurrentRange`）。`current_range` が今の範囲（最後に結果が入った日の翌日〜次の試合日）を返し、`current_date` はその最後の日。日程が 1 行も無いシーズンだけ列の値を返す。呼ぶたびに日程を引くので、ループの中では 1 度ローカルに取ってから使う。
+
 ---
 
 ### SeasonRoster
@@ -743,10 +753,14 @@ class SeasonRoster < ApplicationRecord
 **関連**:
 - `belongs_to :season`
 - `belongs_to :team_membership`
+- `belongs_to :recorded_by_user` (User, optional)
 
 **バリデーション**:
 - `squad`: presence
 - `registered_on`: presence
+- `phase`: inclusion in `pre_game` / `in_game` / `post_game`（DB にも check 制約 `season_rosters_phase_check`）
+
+**状態の導き方**: 1軍/2軍は `RosterState`（`app/services/roster_state.rb`）が (日付, 区分) 時点まで畳んで導く。記録が無い選手は 2軍。`team_memberships.squad` は最新の状態のキャッシュ（保存のたびに作り直す）
 
 ---
 
@@ -766,12 +780,17 @@ class SeasonSchedule < ApplicationRecord
 
 **バリデーション**:
 - `home_away`: inclusion in ["home", "visitor"], allow_blank
+- `date_type`: 種別 `no_game` は指定できない（変更する時だけ検査。ノーゲームは真偽値 `no_game`。cmd_1784 段4）
+
+**定数・スコープ**:
+- `GAME_DATE_TYPES` = `game_day` / `interleague_game_day` / `playoff_day` — 試合日とみなす種別の唯一の定義（1軍最低人数の検査・現在日の範囲・点検・画面の `isGameType`〈API の `game_date_types`〉）
+- `game_days` — 種別が試合日の行（ノーゲームの日を含む）。`counted_games` — そのうち `no_game` が偽の日（試合数に数える日。試合番号・離脱の「N試合」・残り試合数。ノーゲームの試合は数えず、振り替えた試合は 1 試合として数える）
 
 **インスタンスメソッド**:
-- `calculated_game_number` — 明示的なgame_numberがなければ該当日までの試合数から算出
+- `calculated_game_number` — 明示的なgame_numberがなければ、当該日付より前の `counted_games` の件数 + 1（ノーゲームの日は数えない）
 - `game_result_hash` — 試合結果を `{ opponent_short_name:, score:, result: }` で返す。`no_game` が立っていれば得点に依らず `{ score: nil, result: "no_game" }`（勝ち・負け・引き分けの印を出さない。台帳 D-11 再確認）
 
-**コールバック**: 得点（`score` / `opponent_score`）または `no_game` が変わった保存の後に、その日の自チーム先発の `result_category` を作り直す（`PitcherResultCategoryRebuilder`）。失敗しても保存は取り消さず `pitcher_rebuild_error` に持つ
+**コールバック**: 得点（`score` / `opponent_score`）または `no_game` が変わった保存の後に、その日の自チーム先発の投手に絞って、その試合日以降の先発の保存値（`result_category`・`fatigue_p_used`・`consecutive_short_rest_count`）を作り直す（`PitcherHistoryRebuild.guarded`。保存値の作り直しの 1 入口で、中身は `PitcherResultCategoryRebuilder`）。得点が未入力の先発は、その日の分だけ「負けではない」として作り直し、それ以降の未入力の先発の保存値は動かさない。失敗しても保存は取り消さず `pitcher_rebuild_error` に持つ
 
 ---
 
@@ -847,7 +866,8 @@ class Team < ApplicationRecord
 **関連**:
 - `belongs_to :user, optional: true`
 - `has_one :season, dependent: :restrict_with_error`
-- `has_many :team_memberships, dependent: :destroy`
+- `has_many :team_memberships, -> { where(on_team: true) }` — 在籍中のみ（放出済みの行は含めない）
+- `has_many :all_team_memberships, class_name: "TeamMembership", dependent: :destroy` — 放出済みを含む全行。過去の時点を導く時（`RosterState`・変更記録）に使う
 - `has_many :players, through: :team_memberships`
 - `has_many :competition_entries, dependent: :destroy`
 - `has_many :competitions, through: :competition_entries`
@@ -915,16 +935,42 @@ class TeamMembership < ApplicationRecord
 - `belongs_to :player`
 - `belongs_to :player_card, optional: true`
 - `has_many :season_rosters`
+- `has_many :team_membership_changes, dependent: :destroy`
 - `has_many :player_absences, dependent: :restrict_with_error`
 
 **スコープ**:
+- `active` — `on_team: true`（在籍中。放出されていない）
 - `included_in_team_total` — `excluded_from_team_total: false`
 - `excluded_from_team_total` — `excluded_from_team_total: true`
 
 **バリデーション**:
 - `squad`: inclusion in %w[first second]
 - `selected_cost_type`: presence, inclusion in %w[normal_cost relief_only_cost pitcher_only_cost fielder_only_cost two_way_cost]
-- カスタムvalidate: `player_not_in_director_sibling_team` (on: :create, unless: skip_commissioner_validation) — 同一監督の兄弟チーム間で選手重複を禁止（game_rules.yaml#team_composition.second_team.player_exclusivity）
+- カスタムvalidate: `player_not_in_director_sibling_team` (on: :create, unless: skip_commissioner_validation) — 同一監督の兄弟チーム間で選手重複を禁止（game_rules.yaml#team_composition.second_team.player_exclusivity）。兄弟チームで放出済み（`on_team: false`）の選手は重複とみなさない
+
+**写し**: `squad` / `on_team` / `selected_cost_type` / `player_card_id` / `excluded_from_team_total` / `display_name` は変更記録の最新の状態の写し（`RosterState#rebuild_cache!` が保存のたびに作り直す）。ある時点の値は `RosterState.at(team, 日付, 区分)` で導く。
+
+---
+
+### TeamMembershipChange
+
+チーム編成の変更記録 1 件（cmd_1784 段2）。設計: `context/thbig-dugout-season-record-restructure-design.md` §4.2。
+
+**定数**: `KINDS = %w[join contract release]`、`PHASES`（`SeasonRoster::PHASES`）、`COST_TYPES`
+
+**関連**:
+- `belongs_to :team_membership`
+- `belongs_to :season`
+- `belongs_to :player_card, optional: true`
+- `belongs_to :recorded_by_user, class_name: "User", optional: true`
+
+**バリデーション**:
+- `effective_on`: presence
+- `kind`: inclusion in `KINDS`
+- `phase`: inclusion in `PHASES`
+- `selected_cost_type`: presence, inclusion in `COST_TYPES`
+
+**クラスメソッド**: `initial_join_date(first_roster_date, season_start)` — 移行時の初期 join の日付（最初の昇降格の日とシーズン開始日の早い方）
 
 ---
 

@@ -56,6 +56,7 @@
 | squad_text_settings | チームのスカッドテキスト生成設定 |
 | stadiums | 球場マスタ |
 | team_managers | チームと監督・コーチの紐付け |
+| team_membership_changes | チーム編成の変更記録（登録・契約の変更・放出。日付と区分つき） |
 | team_memberships | チームと選手の所属関係 |
 | teams | チームマスタ |
 | trait_conditions | トレイト・アビリティの発動条件マスタ |
@@ -543,7 +544,8 @@
 | decision | string | YES | — | 勝敗 (W/L/S/H) |
 | result_category | string | YES | — | 結果カテゴリ (normal/ko/no_game/long_loss) |
 | injury_check | string | YES | — | 怪我チェック結果 (safe/injured) |
-| schedule_date | string | YES | — | スケジュール日付文字列 |
+| schedule_date | string | YES | — | スケジュール日付文字列（互換と日付順の比較のため残す） |
+| season_schedule_id | bigint | YES | — | season_schedules FK（登板した試合日の日程の行。対応する日程の行が無い登板は NULL。FK は `on_delete: :nullify`。cmd_1784 段3） |
 | appearance_order | integer | NO | 0 | 投手の登板順序（リリーフの順番管理） |
 | is_opener | boolean | NO | false | オープナー投手フラグ |
 | consecutive_short_rest_count | integer | NO | 0 | 連続短期登板回数（疲労管理） |
@@ -551,7 +553,7 @@
 | created_at | datetime | NO | — | 作成日時 |
 | updated_at | datetime | NO | — | 更新日時 |
 
-**インデックス**: `competition_id`, `game_id`, `pitcher_id`, `team_id`, `decision`, `(game_id, pitcher_id)` (unique)
+**インデックス**: `competition_id`, `game_id`, `pitcher_id`, `team_id`, `decision`, `season_schedule_id`, `(game_id, pitcher_id)` (unique)
 
 ---
 
@@ -800,10 +802,12 @@
 | team_membership_id | bigint | NO | — | team_memberships FK |
 | squad | string | NO | — | 軍種別 (first/second) |
 | registered_on | date | NO | — | 登録日 |
+| phase | string | NO | `pre_game` | 同じ日の中の区分（`pre_game` 試合前 / `in_game` 試合中 / `post_game` 試合後）。check 制約あり |
+| recorded_by_user_id | bigint | YES | — | 記録した利用者（users FK、削除時 NULL） |
 | created_at | datetime | NO | — | 作成日時 |
 | updated_at | datetime | NO | — | 更新日時 |
 
-**インデックス**: `season_id`, `team_membership_id`
+**インデックス**: `season_id`, `team_membership_id`, `recorded_by_user_id`
 
 ---
 
@@ -816,7 +820,7 @@
 | id | bigint | NO | (auto) | 主キー |
 | season_id | bigint | NO | — | seasons FK |
 | date | date | NO | — | 試合日 |
-| date_type | string | YES | — | 日付種別 (game_day/interleague_game_day/off等) |
+| date_type | string | YES | — | 日付種別 (game_day/interleague_game_day/playoff_day/off等)。種別 `no_game` は廃止（cmd_1784 段4。ノーゲームは `no_game` 列で表す） |
 | home_away | string | YES | — | 主客区分 (home/visitor) |
 | game_number | integer | YES | — | 試合番号 |
 | opponent_team_id | bigint | YES | — | teams FK（対戦チーム） |
@@ -847,8 +851,8 @@
 |---------|-----|------|-----------|------|
 | id | bigint | NO | (auto) | 主キー |
 | team_id | bigint | NO | — | teams FK（一意） |
-| name | string | NO | — | シーズン名 |
-| current_date | date | NO | — | シーズン内現在日 |
+| name | string | NO | — | 使わない列（画面はチーム名をタイトルにする）。作成時にモデルがチーム名を入れる。既存の行は書き換えない |
+| current_date | date | NO | — | シーズン内現在日（初期値）。読む側は `Season#current_date`（日程の結果から導く。日程が無いシーズンだけこの列）を使う |
 | team_type | string | YES | — | チーム種別 |
 | key_player_id | bigint | YES | — | team_memberships FK（キー選手） |
 | created_at | datetime | NO | — | 作成日時 |
@@ -913,9 +917,33 @@
 
 ---
 
+### team_membership_changes
+
+チーム編成の変更記録（cmd_1784 段2）。登録（join）・契約やカードの変更（contract）・放出（release）を 1 件ずつ、日付（ゲーム内日付）と試合前/試合中/試合後の区分つきで残す。変更後の値を丸ごと持つ（差分ではない）。ある時点の在籍・契約・カードはここから導く（`RosterState`）。記録の無い行（移行前・シーズンの無いチーム）は `team_memberships` の今の値を読む。
+
+| カラム名 | 型 | NULL | デフォルト | 説明 |
+|---------|-----|------|-----------|------|
+| id | bigint | NO | (auto) | 主キー |
+| team_membership_id | bigint | NO | — | team_memberships FK |
+| season_id | bigint | NO | — | seasons FK |
+| effective_on | date | NO | — | 効力日（ゲーム内日付） |
+| phase | string | NO | `pre_game` | 同じ日の中の区分（`pre_game` / `in_game` / `post_game`。check 制約 `team_membership_changes_phase_check`） |
+| kind | string | NO | — | `join`（登録・再登録）/ `contract`（契約・カード・コスト除外・表示名の変更）/ `release`（放出）。check 制約 `team_membership_changes_kind_check` |
+| selected_cost_type | string | NO | — | 変更後の契約種別 |
+| player_card_id | bigint | YES | — | 変更後の使用カード（player_cards FK） |
+| excluded_from_team_total | boolean | NO | false | 変更後のチーム合計コスト除外フラグ |
+| display_name | string | YES | — | 変更後の表示名 |
+| recorded_by_user_id | bigint | YES | — | 記録した利用者（users FK、削除時 NULL。移行で作った初期記録は NULL） |
+| created_at | datetime | NO | — | 作成日時（同じ時点の記録の並びに使う） |
+| updated_at | datetime | NO | — | 更新日時 |
+
+**インデックス**: `team_membership_id`, `season_id`, `player_card_id`, `recorded_by_user_id`, `(team_membership_id, effective_on)`
+
+---
+
 ### team_memberships
 
-チームと選手の所属関係。コスト種別・軍種別・除外設定を管理。
+チームと選手の所属関係。コスト種別・軍種別・除外設定を管理。`squad`・`on_team`・契約の列は変更記録（`season_rosters` / `team_membership_changes`）の最新の状態の写し。放出しても行は消さない。
 
 | カラム名 | 型 | NULL | デフォルト | 説明 |
 |---------|-----|------|-----------|------|
@@ -926,6 +954,7 @@
 | selected_cost_type | string | NO | "normal_cost" | 選択コスト種別 |
 | display_name | string | YES | — | 表示名（オーバーライド用） |
 | excluded_from_team_total | boolean | NO | false | チーム合計コスト除外フラグ |
+| on_team | boolean | NO | true | 在籍中か（放出されていれば false）。変更記録の最新の状態の写し |
 | created_at | datetime | NO | — | 作成日時 |
 | updated_at | datetime | NO | — | 更新日時 |
 
@@ -1146,6 +1175,10 @@
 | squad_text_settings | team_id | teams | id | — |
 | team_managers | manager_id | managers | id | — |
 | team_managers | team_id | teams | id | — |
+| team_membership_changes | player_card_id | player_cards | id | — |
+| team_membership_changes | recorded_by_user_id | users | id | ON DELETE SET NULL |
+| team_membership_changes | season_id | seasons | id | — |
+| team_membership_changes | team_membership_id | team_memberships | id | — |
 | team_memberships | player_id | players | id | — |
 | team_memberships | team_id | teams | id | — |
 

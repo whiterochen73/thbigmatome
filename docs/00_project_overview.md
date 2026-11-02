@@ -87,9 +87,7 @@
 | テーブル名 | 用途 |
 |-----------|------|
 | `batting_styles` | 打撃スタイル |
-| `batting_skills` | 打撃スキル（positive/negative/neutral） |
 | `pitching_styles` | 投球スタイル |
-| `pitching_skills` | 投球スキル（positive/negative/neutral） |
 | `player_types` | 選手タイプ |
 | `biorhythms` | バイオリズム（期間付き） |
 | `costs` | コスト表（期間付き） |
@@ -101,8 +99,6 @@
 
 | テーブル名 | 用途 |
 |-----------|------|
-| `player_batting_skills` | 選手 ↔ 打撃スキル |
-| `player_pitching_skills` | 選手 ↔ 投球スキル |
 | `player_player_types` | 選手 ↔ 選手タイプ |
 | `player_biorhythms` | 選手 ↔ バイオリズム |
 | `catchers_players` | 選手（投手） ↔ 選手（捕手）の相性 |
@@ -139,7 +135,7 @@
 | メソッド | パス | 説明 |
 |---------|------|------|
 | POST | `/api/v1/seasons` | シーズン作成 |
-| GET/PATCH | `/api/v1/teams/:team_id/season` | シーズン詳細 / 現在日付更新 |
+| GET | `/api/v1/teams/:team_id/season` | シーズン詳細（現在日 `current_date` と今の範囲 `current_range` は日程の結果から導く。現在日を動かす PATCH は廃止） |
 | PATCH | `/api/v1/teams/:team_id/season/season_schedules/:id` | シーズン日程更新 |
 | GET/POST | `/api/v1/teams/:team_id/roster` | ロースター取得 / 更新 |
 | POST | `/api/v1/teams/:team_id/key_player` | キープレイヤー設定 |
@@ -159,12 +155,10 @@
 |---------|------|------|
 | GET | `/api/v1/player-types` | 選手タイプ（読み取り専用※） |
 | GET | `/api/v1/pitching-styles` | 投球スタイル（読み取り専用※） |
-| GET | `/api/v1/pitching-skills` | 投球スキル（読み取り専用※） |
 | GET | `/api/v1/batting-styles` | 打撃スタイル（読み取り専用※） |
-| GET | `/api/v1/batting-skills` | 打撃スキル（読み取り専用※） |
 | GET/POST/PATCH/DELETE | `/api/v1/biorhythms` | バイオリズム（CRUD可能） |
 
-※ 5種類のマスタデータは YAML → DB 同期（`rake master_data:sync`）で管理。API経由の作成・更新・削除は 403 Forbidden を返す。
+※ 3種類のマスタデータ（選手タイプ・投球スタイル・打撃スタイル）は YAML → DB 同期（`rake master_data:sync`）で管理。API経由の作成・更新・削除は 403 Forbidden を返す。打撃スキル・投球スキル（`batting_skills` / `pitching_skills` と中間テーブル、`/api/v1/batting-skills` / `/api/v1/pitching-skills`）は 2026-03-09 の subtask_511b（commit `012e3ab`）で廃止済み。
 
 ### コスト
 

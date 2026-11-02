@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_26_120000) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_01_140000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -364,6 +364,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_26_120000) do
     t.string "result_category"
     t.string "role", null: false
     t.string "schedule_date"
+    t.bigint "season_schedule_id"
     t.bigint "team_id", null: false
     t.datetime "updated_at", null: false
     t.index [ "competition_id" ], name: "index_pitcher_game_states_on_competition_id"
@@ -371,6 +372,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_26_120000) do
     t.index [ "game_id", "pitcher_id" ], name: "index_pitcher_game_states_on_game_id_and_pitcher_id", unique: true
     t.index [ "game_id" ], name: "index_pitcher_game_states_on_game_id"
     t.index [ "pitcher_id" ], name: "index_pitcher_game_states_on_pitcher_id"
+    t.index [ "season_schedule_id" ], name: "index_pitcher_game_states_on_season_schedule_id"
     t.index [ "team_id" ], name: "index_pitcher_game_states_on_team_id"
   end
 
@@ -387,6 +389,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_26_120000) do
     t.datetime "created_at", null: false
     t.integer "duration", null: false
     t.string "duration_unit", null: false
+    t.string "phase", default: "pre_game", null: false
     t.text "reason"
     t.bigint "season_id", null: false
     t.date "start_date", null: false
@@ -536,13 +539,17 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_26_120000) do
 
   create_table "season_rosters", force: :cascade do |t|
     t.datetime "created_at", null: false
+    t.string "phase", default: "pre_game", null: false
+    t.bigint "recorded_by_user_id"
     t.date "registered_on", null: false
     t.bigint "season_id", null: false
     t.string "squad", null: false
     t.bigint "team_membership_id", null: false
     t.datetime "updated_at", null: false
+    t.index [ "recorded_by_user_id" ], name: "index_season_rosters_on_recorded_by_user_id"
     t.index [ "season_id" ], name: "index_season_rosters_on_season_id"
     t.index [ "team_membership_id" ], name: "index_season_rosters_on_team_membership_id"
+    t.check_constraint "phase::text = ANY (ARRAY['pre_game'::character varying, 'in_game'::character varying, 'post_game'::character varying]::text[])", name: "season_rosters_phase_check"
   end
 
   create_table "season_schedules", force: :cascade do |t|
@@ -551,6 +558,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_26_120000) do
     t.date "date", null: false
     t.string "date_type"
     t.boolean "designated_hitter_enabled"
+    t.text "game_log"
     t.integer "game_number"
     t.string "home_away"
     t.bigint "losing_pitcher_id"
@@ -558,6 +566,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_26_120000) do
     t.integer "opponent_score"
     t.jsonb "opponent_starting_lineup"
     t.bigint "opponent_team_id"
+    t.date "real_date"
+    t.string "real_start_time"
     t.bigint "save_pitcher_id"
     t.integer "score"
     t.jsonb "scoreboard"
@@ -565,6 +575,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_26_120000) do
     t.string "stadium"
     t.jsonb "starting_lineup"
     t.datetime "updated_at", null: false
+    t.string "venue"
     t.bigint "winning_pitcher_id"
     t.index [ "announced_starter_id" ], name: "index_season_schedules_on_announced_starter_id"
     t.index [ "losing_pitcher_id" ], name: "index_season_schedules_on_losing_pitcher_id"
@@ -632,10 +643,33 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_26_120000) do
     t.index [ "team_id" ], name: "index_team_managers_on_team_id"
   end
 
+  create_table "team_membership_changes", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.string "display_name"
+    t.date "effective_on", null: false
+    t.boolean "excluded_from_team_total", default: false, null: false
+    t.string "kind", null: false
+    t.string "phase", default: "pre_game", null: false
+    t.bigint "player_card_id"
+    t.bigint "recorded_by_user_id"
+    t.bigint "season_id", null: false
+    t.string "selected_cost_type", null: false
+    t.bigint "team_membership_id", null: false
+    t.datetime "updated_at", null: false
+    t.index [ "player_card_id" ], name: "index_team_membership_changes_on_player_card_id"
+    t.index [ "recorded_by_user_id" ], name: "index_team_membership_changes_on_recorded_by_user_id"
+    t.index [ "season_id" ], name: "index_team_membership_changes_on_season_id"
+    t.index [ "team_membership_id", "effective_on" ], name: "index_team_membership_changes_on_tm_and_date"
+    t.index [ "team_membership_id" ], name: "index_team_membership_changes_on_team_membership_id"
+    t.check_constraint "kind::text = ANY (ARRAY['join'::character varying, 'contract'::character varying, 'release'::character varying]::text[])", name: "team_membership_changes_kind_check"
+    t.check_constraint "phase::text = ANY (ARRAY['pre_game'::character varying, 'in_game'::character varying, 'post_game'::character varying]::text[])", name: "team_membership_changes_phase_check"
+  end
+
   create_table "team_memberships", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.string "display_name"
     t.boolean "excluded_from_team_total", default: false, null: false
+    t.boolean "on_team", default: true, null: false
     t.bigint "player_card_id"
     t.bigint "player_id", null: false
     t.string "selected_cost_type", default: "normal_cost", null: false
@@ -717,6 +751,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_26_120000) do
   add_foreign_key "pitcher_game_states", "competitions"
   add_foreign_key "pitcher_game_states", "games"
   add_foreign_key "pitcher_game_states", "players", column: "pitcher_id"
+  add_foreign_key "pitcher_game_states", "season_schedules", on_delete: :nullify
   add_foreign_key "pitcher_game_states", "teams"
   add_foreign_key "player_absences", "seasons"
   add_foreign_key "player_absences", "team_memberships"
@@ -741,6 +776,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_26_120000) do
   add_foreign_key "schedule_details", "schedules"
   add_foreign_key "season_rosters", "seasons"
   add_foreign_key "season_rosters", "team_memberships"
+  add_foreign_key "season_rosters", "users", column: "recorded_by_user_id", on_delete: :nullify
   add_foreign_key "season_schedules", "players", column: "losing_pitcher_id"
   add_foreign_key "season_schedules", "players", column: "save_pitcher_id"
   add_foreign_key "season_schedules", "players", column: "winning_pitcher_id"
@@ -752,6 +788,10 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_26_120000) do
   add_foreign_key "squad_text_settings", "teams"
   add_foreign_key "team_managers", "managers"
   add_foreign_key "team_managers", "teams"
+  add_foreign_key "team_membership_changes", "player_cards"
+  add_foreign_key "team_membership_changes", "seasons"
+  add_foreign_key "team_membership_changes", "team_memberships"
+  add_foreign_key "team_membership_changes", "users", column: "recorded_by_user_id", on_delete: :nullify
   add_foreign_key "team_memberships", "player_cards"
   add_foreign_key "team_memberships", "players"
   add_foreign_key "team_memberships", "teams"

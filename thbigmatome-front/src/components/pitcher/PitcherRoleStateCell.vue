@@ -1,7 +1,7 @@
 <template>
   <div :data-testid="testId">
     <template v-if="state">
-      <v-chip :color="roleStatusColor(state.status)" size="x-small">
+      <v-chip :color="roleStatusColor(state.status)" variant="flat" size="x-small">
         {{ roleStatusLabel(state.status) }}
       </v-chip>
       <div
@@ -13,7 +13,7 @@
       </div>
     </template>
     <!-- 省略（リリーフ専門の「先発なら」、リリーフ向けの疲労Pを持たない先発の「リリーフなら」、オープナー可でない投手の「オープナーなら」） -->
-    <span v-else class="text-grey">—</span>
+    <span v-else class="on-surface-variant">—</span>
   </div>
 </template>
 

@@ -1,15 +1,18 @@
 <template>
   <GenericMasterSettings
     :title="t('settings.biorhythm.title')"
+    icon="mdi-chart-line"
     endpoint="/biorhythms"
     i18n-key="settings.biorhythm"
     :dialog-component="BiorhythmDialog"
     :has-description-column="false"
     :additional-headers="additionalHeaders"
   >
+    <!-- eslint-disable-next-line vue/valid-v-slot -->
     <template #item.start_date="{ item }">
       {{ formatDate(item.start_date) }}
     </template>
+    <!-- eslint-disable-next-line vue/valid-v-slot -->
     <template #item.end_date="{ item }">
       {{ formatDate(item.end_date) }}
     </template>
@@ -29,5 +32,6 @@ const additionalHeaders = computed(() => [
   { title: t('settings.biorhythm.headers.end_date'), key: 'end_date', sortable: true },
 ])
 
-const formatDate = (dateString: string) => dateString ? dateString.substring(5).replace('-', '/') : ''
+const formatDate = (dateString: string) =>
+  dateString ? dateString.substring(5).replace('-', '/') : ''
 </script>

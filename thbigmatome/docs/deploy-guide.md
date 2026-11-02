@@ -4,7 +4,7 @@
 
 **構成サマリ:**
 - OS: Ubuntu 24.04 LTS
-- 技術スタック: Docker Compose（db/rails/frontend/parser）
+- 技術スタック: Docker Compose（db/rails/frontend）
 - 外部公開: ポート 80（HTTPSリダイレクト）、443（HTTPS）、Nginx 経由
 - SSL: Let's Encrypt + certbot（ドメイン: dugout.thbig.fun）
 
@@ -192,7 +192,6 @@ cd ~
 mkdir -p projects && cd projects
 git clone https://github.com/whiterochen73/thbigmatome.git
 git clone https://github.com/whiterochen73/thbigmatome-front.git
-git clone https://github.com/whiterochen73/thbig-irc-parser.git
 ```
 
 あるいは既存のプロジェクトディレクトリ構成に合わせて:
@@ -201,7 +200,6 @@ git clone https://github.com/whiterochen73/thbig-irc-parser.git
 ~/projects/
 ├── thbigmatome/
 ├── thbigmatome-front/
-├── thbig-irc-parser/
 └── docker-compose.prod.yml   ← リポジトリルートに含まれる
 ```
 
@@ -521,7 +519,7 @@ sudo apt-get install -y poppler-utils
 
 ### 9-3. 裁断ツール
 
-裁断スクリプトは `thbig-irc-parser` リポジトリに配置されています:
+裁断スクリプトは `thbig-irc-parser` リポジトリに配置されています。このリポジトリは凍結していて、ここで使うカード読み取り・画像切り出しの道具だけが現役です。ローカル（WSL）のホストで実行し、本番 VPS には置きません（本番の docker compose にも parser サービスはありません）:
 
 | スクリプト | 機能 |
 |-----------|------|

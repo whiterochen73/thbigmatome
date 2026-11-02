@@ -106,4 +106,46 @@ describe('PasswordChangeForm', () => {
 
     expect(vm.serverError).toBe('現在のパスワードが正しくありません')
   })
+
+  // サーバのエラーを出している間、VForm が更新を繰り返さない
+  // （error-messages に毎回新しい配列を渡すと、項目 → フォーム → 描き直し → 項目 の輪が止まらず
+  //  "Maximum recursive updates exceeded in component <VForm>" になる。エラーは unhandled rejection で
+  //  出るので app.config.errorHandler では拾えない。コンポーネントの更新回数が落ち着くかで見る。
+  //  直した後は 101 回で止まる。輪が回ると 3000 回を超える）
+  it('サーバのエラーを出しても、描き直しが止まらなくならない', async () => {
+    ;(axios.post as ReturnType<typeof vi.fn>).mockRejectedValue({
+      response: { data: { error: '現在のパスワードが正しくありません' } },
+    })
+    let updates = 0
+    const wrapper = mount(PasswordChangeForm, {
+      global: {
+        plugins: [vuetify],
+        mixins: [
+          {
+            updated() {
+              updates++
+            },
+          },
+        ],
+      },
+    })
+    await flushPromises()
+
+    const vm = wrapper.vm as unknown as FormVm
+    vm.currentPassword = 'wrongpass'
+    vm.newPassword = 'newpass789'
+    vm.confirmPassword = 'newpass789'
+    await flushPromises()
+    updates = 0
+    await vm.callChangePassword()
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('現在のパスワードが正しくありません')
+    expect(updates).toBeLessThan(500)
+    // 落ち着いた後は、何も起きなければ更新も起きない
+    const settled = updates
+    await flushPromises()
+    await flushPromises()
+    expect(updates).toBe(settled)
+  })
 })

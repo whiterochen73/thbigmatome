@@ -33,7 +33,7 @@
               </div>
               <v-img v-if="card.imageUrl" :src="card.imageUrl" width="280" cover />
               <div v-else class="pa-4 text-center">
-                <div class="text-caption text-grey mb-1">画像なし</div>
+                <div class="text-caption on-surface-variant mb-1">画像なし</div>
                 <div class="text-body-2">{{ playerName }}</div>
               </div>
             </div>
@@ -41,7 +41,7 @@
         </template>
         <template v-else>
           <div class="pa-4 text-center">
-            <div class="text-caption text-grey mb-1">画像なし</div>
+            <div class="text-caption on-surface-variant mb-1">画像なし</div>
             <div class="text-body-2">{{ playerName }}</div>
           </div>
         </template>
@@ -52,7 +52,7 @@
       </template>
       <template v-else>
         <div class="pa-4 text-center">
-          <div class="text-caption text-grey mb-1">画像なし</div>
+          <div class="text-caption on-surface-variant mb-1">画像なし</div>
           <div class="text-body-2">{{ playerName }}</div>
         </div>
       </template>
@@ -241,7 +241,7 @@ function onNameClick() {
 <style scoped>
 .player-name-link {
   cursor: pointer;
-  color: rgb(var(--v-theme-primary));
+  color: rgb(var(--v-theme-link));
   text-decoration: underline;
 }
 </style>

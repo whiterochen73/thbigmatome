@@ -1,11 +1,21 @@
 <template>
-  <v-chip :color="resolvedColor" :size="size" variant="tonal">
+  <v-chip
+    :color="resolvedColor"
+    :size="size"
+    :variant="
+      absenceAppearance || ['hachinai', 'active', 'warning'].includes(status) ? 'flat' : 'tonal'
+    "
+    :prepend-icon="
+      absenceAppearance?.icon ?? (status === 'hachinai' ? 'mdi-tag-outline' : undefined)
+    "
+  >
     <slot>{{ label }}</slot>
   </v-chip>
 </template>
 
 <script setup lang="ts">
 import { computed } from 'vue'
+import { ABSENCE_APPEARANCE } from '@/components/gameDay/gameDayStatus'
 
 const props = defineProps<{
   status: string
@@ -14,16 +24,15 @@ const props = defineProps<{
 }>()
 
 const statusColorMap: Record<string, string> = {
-  active: 'success',
+  active: 'state-done',
   inactive: 'default',
-  commissioner: 'primary',
-  hachinai: 'purple',
-  warning: 'warning',
-  injury: 'error',
-  suspension: 'warning',
-  reconditioning: 'info',
-  cooldown: 'info',
+  commissioner: 'link',
+  hachinai: 'state-info',
+  warning: 'state-todo',
 }
 
-const resolvedColor = computed(() => statusColorMap[props.status] ?? 'default')
+const absenceAppearance = computed(() => ABSENCE_APPEARANCE[props.status])
+const resolvedColor = computed(
+  () => absenceAppearance.value?.color ?? statusColorMap[props.status] ?? 'default',
+)
 </script>

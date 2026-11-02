@@ -59,19 +59,5 @@ services:
     depends_on:
       - rails
 
-  parser:
-    build:
-      context: ./thbig-irc-parser
-      dockerfile: Dockerfile.dev
-    restart: unless-stopped
-    depends_on:
-      db:
-        condition: service_healthy
-    environment:
-      DB_HOST: db
-      DB_PORT: 5432
-      DB_USERNAME: thbigmatome
-      DB_PASSWORD: ${DB_PASSWORD}
-
 volumes:
   pgdata:

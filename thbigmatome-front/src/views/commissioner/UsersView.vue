@@ -1,62 +1,64 @@
 <template>
-  <v-container>
-    <PageHeader title="ユーザー管理">
-      <template #actions>
-        <v-btn color="accent" variant="flat" @click="openCreateDialog">新規ユーザー作成</v-btn>
-      </template>
-    </PageHeader>
+  <PageLayout>
+    <template #filters>
+      <v-text-field
+        v-model="filterName"
+        label="ユーザー名検索"
+        prepend-inner-icon="mdi-magnify"
+        density="compact"
+        hide-details
+        variant="outlined"
+        clearable
+        class="list-filter list-filter--search"
+        data-testid="users-search"
+      />
+    </template>
+    <template #actions>
+      <v-btn color="action" variant="flat" prepend-icon="mdi-plus" @click="openCreateDialog">
+        新規ユーザー作成
+      </v-btn>
+    </template>
 
-    <FilterBar>
-      <template #search>
-        <v-text-field
-          v-model="filterName"
-          label="ユーザー名検索"
-          prepend-inner-icon="mdi-magnify"
+    <AsyncState
+      framed
+      :loading="loading"
+      :error="fetchFailed"
+      error-message="ユーザーの取得に失敗しました"
+      :empty="users.length === 0"
+      empty-icon="mdi-account-off-outline"
+      empty-message="ユーザーが登録されていません"
+      @retry="fetchUsers"
+    >
+      <v-card>
+        <v-data-table
+          :headers="headers"
+          :items="filteredUsers"
+          class="ui-table ui-table--rows"
           density="compact"
-          hide-details
-          variant="outlined"
-          clearable
-        />
-      </template>
-    </FilterBar>
-
-    <v-row>
-      <v-col cols="12">
-        <DataCard title="ユーザー一覧">
-          <v-alert
-            v-if="errorMessage"
-            type="error"
-            variant="tonal"
-            class="mb-3"
-            closable
-            @click:close="errorMessage = ''"
-          >
-            {{ errorMessage }}
-          </v-alert>
-          <v-data-table
-            :headers="headers"
-            :items="filteredUsers"
-            :loading="loading"
-            class="elevation-1"
-            density="compact"
-          >
-            <template v-slot:[`item.role`]="{ item }">
-              <v-chip :color="item.role === 'commissioner' ? 'primary' : 'default'" size="small">
-                {{ item.role === 'commissioner' ? 'コミッショナー' : '一般' }}
-              </v-chip>
-            </template>
-            <template v-slot:[`item.actions`]="{ item }">
-              <v-icon size="small" @click="openRoleDialog(item)" title="ロール変更" class="mr-2"
-                >mdi-account-edit</v-icon
-              >
-              <v-icon size="small" @click="openResetDialog(item)" title="パスワードリセット"
-                >mdi-lock-reset</v-icon
-              >
-            </template>
-          </v-data-table>
-        </DataCard>
-      </v-col>
-    </v-row>
+          mobile-breakpoint="sm"
+        >
+          <template v-slot:[`item.role`]="{ item }">
+            <v-chip :color="item.role === 'commissioner' ? 'link' : 'default'" size="small">
+              {{ item.role === 'commissioner' ? 'コミッショナー' : '一般' }}
+            </v-chip>
+          </template>
+          <template v-slot:[`item.actions`]="{ item }">
+            <div class="row-actions">
+              <RowIconButton
+                icon="mdi-account-edit-outline"
+                :label="`${item.name}のロール変更`"
+                @click="openRoleDialog(item)"
+              />
+              <RowIconButton
+                icon="mdi-lock-reset"
+                :label="`${item.name}のパスワードリセット`"
+                @click="openResetDialog(item)"
+              />
+            </div>
+          </template>
+        </v-data-table>
+      </v-card>
+    </AsyncState>
 
     <!-- 新規ユーザー作成ダイアログ -->
     <v-dialog v-model="createDialog" max-width="500px" persistent>
@@ -111,7 +113,7 @@
         <v-card-actions>
           <v-spacer></v-spacer>
           <v-btn variant="text" @click="closeCreateDialog">キャンセル</v-btn>
-          <v-btn color="accent" variant="flat" @click="createUser" :loading="creating">作成</v-btn>
+          <v-btn color="action" variant="flat" @click="createUser" :loading="creating">作成</v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
@@ -138,7 +140,7 @@
         <v-card-actions>
           <v-spacer></v-spacer>
           <v-btn variant="text" @click="closeRoleDialog">キャンセル</v-btn>
-          <v-btn color="accent" variant="flat" @click="submitRoleChange" :loading="roleChanging"
+          <v-btn color="action" variant="flat" @click="submitRoleChange" :loading="roleChanging"
             >変更</v-btn
           >
         </v-card-actions>
@@ -168,22 +170,23 @@
         <v-card-actions>
           <v-spacer></v-spacer>
           <v-btn variant="text" @click="closeResetDialog">キャンセル</v-btn>
-          <v-btn color="accent" variant="flat" @click="submitReset" :loading="resetting"
+          <v-btn color="action" variant="flat" @click="submitReset" :loading="resetting"
             >リセット</v-btn
           >
         </v-card-actions>
       </v-card>
     </v-dialog>
-  </v-container>
+  </PageLayout>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import axios from 'axios'
 import { useSnackbar } from '@/composables/useSnackbar'
-import PageHeader from '@/components/shared/PageHeader.vue'
-import FilterBar from '@/components/shared/FilterBar.vue'
-import DataCard from '@/components/shared/DataCard.vue'
+import AsyncState from '@/components/shared/AsyncState.vue'
+import PageLayout from '@/components/shared/PageLayout.vue'
+import RowIconButton from '@/components/shared/RowIconButton.vue'
+import { tableCell } from '@/components/shared/tableCells'
 
 interface User {
   id: number
@@ -195,8 +198,8 @@ interface User {
 const { showSnackbar } = useSnackbar()
 
 const users = ref<User[]>([])
-const loading = ref(false)
-const errorMessage = ref('')
+const loading = ref(true)
+const fetchFailed = ref(false)
 const filterName = ref('')
 
 const filteredUsers = computed(() => {
@@ -229,22 +232,23 @@ const roleOptions = [
 ]
 
 const headers = [
-  { title: 'ID', key: 'id', width: '80px' },
-  { title: 'ログインID', key: 'name' },
-  { title: '表示名', key: 'display_name' },
-  { title: 'ロール', key: 'role' },
-  { title: '操作', key: 'actions', sortable: false, width: '80px' },
+  { title: 'ID', key: 'id', width: '80px', cellProps: tableCell.lead },
+  { title: 'ログインID', key: 'name', cellProps: tableCell.title },
+  { title: '表示名', key: 'display_name', cellProps: tableCell.sub1 },
+  { title: 'ロール', key: 'role', cellProps: tableCell.sub2 },
+  { title: '操作', key: 'actions', sortable: false, nowrap: true, cellProps: tableCell.act },
 ]
 
 onMounted(fetchUsers)
 
 async function fetchUsers() {
   loading.value = true
+  fetchFailed.value = false
   try {
     const response = await axios.get<User[]>('/users')
     users.value = response.data
   } catch (error) {
-    errorMessage.value = 'ユーザーの取得に失敗しました'
+    fetchFailed.value = true
     console.error('Error fetching users:', error)
   } finally {
     loading.value = false
@@ -354,3 +358,16 @@ async function submitReset() {
   }
 }
 </script>
+
+<style scoped>
+.list-filter--search {
+  flex: 0 1 260px;
+  min-width: 180px;
+}
+
+@media (max-width: 599.98px) {
+  .list-filter--search {
+    flex: 1 1 100%;
+  }
+}
+</style>

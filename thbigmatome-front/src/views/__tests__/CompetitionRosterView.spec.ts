@@ -1,10 +1,13 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { mount, flushPromises } from '@vue/test-utils'
 import { createVuetify } from 'vuetify'
+import { createI18n } from 'vue-i18n'
+import ja from '@/locales/ja.json'
 import * as components from 'vuetify/components'
 import * as directives from 'vuetify/directives'
 import { createRouter, createMemoryHistory } from 'vue-router'
 import CompetitionRosterView from '../CompetitionRosterView.vue'
+import { appBarTitle } from '@/composables/useAppBarTitle'
 
 // Mock axios
 vi.mock('axios', () => {
@@ -30,8 +33,16 @@ vi.mock('@/plugins/axios', () => {
 })
 
 import axios from 'axios'
+import { stackedLayout } from '@/components/shared/__tests__/tableLayout'
 
 const vuetify = createVuetify({ components, directives })
+
+// AsyncState（読み込み・空・失敗の出し方）が文言を引く
+const i18n = createI18n({
+  legacy: false,
+  locale: 'ja',
+  messages: { ja: { asyncState: ja.asyncState } },
+})
 
 function createTestRouter() {
   return createRouter({
@@ -110,7 +121,7 @@ async function mountView(costCheck = mockCostCheckOk) {
   await router.isReady()
   const wrapper = mount(CompetitionRosterView, {
     global: {
-      plugins: [vuetify, router],
+      plugins: [vuetify, i18n, router],
     },
   })
   await flushPromises()
@@ -120,6 +131,31 @@ async function mountView(costCheck = mockCostCheckOk) {
 describe('CompetitionRosterView.vue', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+  })
+
+  // Test Basis: thbig-dugout-visual-stage5-mapping.md §7 b6-2〜b6-3, b6-7〜b6-15
+  it('両軍タブと追加・除外ボタンの役割色を props で示す', async () => {
+    const wrapper = await mountView()
+    const tabs = wrapper.findAllComponents(components.VTabs)
+    expect(tabs).toHaveLength(2)
+    tabs.forEach((tab) => expect(tab.props('color')).toBe('link'))
+    for (const squad of ['first_squad', 'second_squad']) {
+      wrapper.vm.activeTab = squad
+      await flushPromises()
+      const buttons = wrapper.findAllComponents(components.VBtn)
+      const add = buttons.filter((button) => button.text().includes('選手追加'))
+      expect(add.length, squad).toBeGreaterThan(0)
+      add.forEach((button) => expect(button.props('color')).toBe('link'))
+      const remove = buttons.filter((button) => button.attributes('data-testid') === 'remove-btn')
+      expect(remove.length, squad).toBeGreaterThan(0)
+      // 行の操作はアイコンボタン（RowIconButton: 削除は danger-ink・塗らない・名前つきの aria-label）
+      remove.forEach((button) => {
+        expect(button.props('color')).toBe('danger-ink')
+        expect(button.props('variant')).toBe('text')
+        expect(button.props('icon')).toBe('mdi-delete-outline')
+        expect(button.attributes('aria-label')).toMatch(/を除外$/)
+      })
+    }
   })
 
   it('コンポーネントがマウントできる', async () => {
@@ -163,5 +199,75 @@ describe('CompetitionRosterView.vue', () => {
     expect(vi.mocked(axios.delete)).toHaveBeenCalledWith(
       expect.stringContaining('/roster/players/'),
     )
+  })
+
+  it('ヘッダーバー: タイトル=大会名、サブタイトル=大会ロスター、戻り先=大会管理', async () => {
+    const wrapper = await mountView()
+    expect(appBarTitle.value).toEqual({
+      title: 'テスト大会',
+      subtitle: '大会ロスター',
+      back: { to: '/commissioner/competitions', label: '大会管理' },
+    })
+    expect(wrapper.find('h1').exists()).toBe(false)
+    wrapper.unmount()
+    expect(appBarTitle.value).toBeNull()
+  })
+
+  it('ロスターの取得に失敗した時はページ内のアラートを出し、再読み込みで取り直す', async () => {
+    setupDefaultMocks(mockCostCheckOk)
+    const base = vi.mocked(axios.get).getMockImplementation()!
+    let failOnce = true
+    vi.mocked(axios.get).mockImplementation((url: string, config?: unknown) => {
+      if (failOnce && url.endsWith('/roster')) {
+        failOnce = false
+        return Promise.reject(new Error('boom'))
+      }
+      return base(url, config as never)
+    })
+    const router = createTestRouter()
+    router.push('/competitions/1/roster/10')
+    await router.isReady()
+    const wrapper = mount(CompetitionRosterView, { global: { plugins: [vuetify, i18n, router] } })
+    await flushPromises()
+    expect(wrapper.find('[data-testid="state-error"]').text()).toContain(
+      'ロスターの取得に失敗しました',
+    )
+    await wrapper.find('[data-testid="state-retry"]').trigger('click')
+    await flushPromises()
+    expect(wrapper.find('[data-testid="state-error"]').exists()).toBe(false)
+    expect(wrapper.text()).toContain('博麗霊夢')
+    wrapper.unmount()
+  })
+})
+
+// Test Basis: thbig-dugout-ui-unification-design.md §2.5（<600px は縦積み）/ §2.4（行の操作はアイコンボタン）/ §4.2 段 4
+describe('CompetitionRosterView 表のスマホ対応（段 4）', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('1軍・2軍の表は縦積み（選手名=title・契約種別=sub1・コスト=sub2（見出し付き）・操作=act）', async () => {
+    const wrapper = await mountView()
+    for (const squad of ['first_squad', 'second_squad']) {
+      wrapper.vm.activeTab = squad
+      await flushPromises()
+      const table = wrapper.find(
+        `[data-testid="${squad === 'first_squad' ? 'first' : 'second'}-squad-table"]`,
+      )
+      expect(table.exists(), squad).toBe(true)
+    }
+    const layout = stackedLayout(wrapper, 'contract_type')
+    expect(layout).toEqual({
+      mobileBreakpoint: 'sm',
+      rows: true,
+      roles: { player_name: 'title', contract_type: 'sub1', cost: 'sub2', actions: 'act' },
+    })
+  })
+
+  it('除外は .row-actions の中のアイコンボタン', async () => {
+    const wrapper = await mountView()
+    const btn = wrapper.find('.row-actions [data-testid="remove-btn"]')
+    expect(btn.exists()).toBe(true)
+    expect(btn.attributes('aria-label')).toBe('博麗霊夢を除外')
   })
 })

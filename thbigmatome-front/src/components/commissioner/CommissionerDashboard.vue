@@ -1,299 +1,457 @@
 <!-- eslint-disable vue/valid-v-slot -->
 <template>
-  <v-tabs v-model="activeTab" color="primary" class="mb-4">
-    <v-tab value="teams">全チーム管理</v-tab>
-    <v-tab value="absences">離脱者一覧</v-tab>
-    <v-tab value="costs">コスト状況</v-tab>
-    <v-tab value="cooldowns">クールダウン</v-tab>
-    <v-tab value="rosterStatus">1軍登録状況</v-tab>
+  <v-tabs v-model="activeTab" color="link" class="mb-4">
+    <v-tab value="overview" prepend-icon="mdi-view-dashboard-outline">概況</v-tab>
+    <v-tab value="absences" prepend-icon="mdi-account-off-outline">
+      離脱者
+      <v-chip
+        v-if="absencesReady"
+        class="tab-count"
+        color="state-neutral"
+        variant="flat"
+        size="small"
+        >{{ absences.data.length }}</v-chip
+      >
+    </v-tab>
+    <v-tab value="cooldowns" prepend-icon="mdi-timer-sand">
+      クールダウン
+      <v-chip
+        v-if="cooldownsReady"
+        class="tab-count"
+        color="state-neutral"
+        variant="flat"
+        size="small"
+        >{{ cooldowns.data.length }}</v-chip
+      >
+    </v-tab>
+    <v-tab value="costs" prepend-icon="mdi-currency-jpy">
+      コスト
+      <v-chip
+        v-if="costsReady"
+        class="tab-count"
+        :color="summary.costOverTeams > 0 ? 'state-warn' : 'state-neutral'"
+        variant="flat"
+        size="small"
+        >{{ summary.costWatchTeams }}</v-chip
+      >
+    </v-tab>
+    <v-tab value="rosterStatus" prepend-icon="mdi-clipboard-list-outline">
+      1軍登録
+      <v-chip
+        v-if="rosterReady"
+        class="tab-count"
+        :color="CHECK_COLOR[checkState(summary.violationTeams, rosterReady, true)]"
+        variant="flat"
+        size="small"
+        >{{ summary.violationTeams }}</v-chip
+      >
+    </v-tab>
+    <v-tab value="teams" prepend-icon="mdi-account-group-outline">
+      チーム管理
+      <v-chip
+        v-if="teamsReady"
+        class="tab-count"
+        color="state-neutral"
+        variant="flat"
+        size="small"
+        >{{ teams.data.length }}</v-chip
+      >
+    </v-tab>
   </v-tabs>
 
   <v-window v-model="activeTab">
+    <!-- 概況タブ（先頭） -->
+    <v-window-item value="overview">
+      <DashboardOverview
+        :teams="teams"
+        :absences="absences"
+        :cooldowns="cooldowns"
+        :costs="costs"
+        :roster-status="rosterStatus"
+        :game-progress="gameProgress"
+        @navigate="activeTab = $event"
+        @retry="retryResource"
+        @open-season="navigateToSeason"
+      />
+    </v-window-item>
+
     <!-- 全チーム管理タブ -->
     <v-window-item value="teams">
-      <v-row>
-        <v-col cols="12">
-          <DataCard title="全チーム管理">
-            <v-data-table
-              :headers="teamHeaders"
-              :items="teams"
-              :loading="teamsLoading"
-              density="compact"
-              item-value="id"
-              no-data-text="チームなし"
-              :row-props="
-                (row: { item: Team }) =>
-                  row.item.is_active ? {} : { class: 'text-medium-emphasis' }
-              "
-            >
-              <template #[`item.team_type`]="{ item }">
-                <v-chip
-                  v-if="item.team_type === 'hachinai'"
-                  size="small"
-                  color="purple"
-                  variant="tonal"
-                >
-                  ハチナイ
-                </v-chip>
-                <span v-else class="text-caption text-medium-emphasis">通常</span>
-              </template>
-              <template #[`item.is_active`]="{ item }">
-                <v-icon v-if="item.is_active">mdi-check</v-icon>
-              </template>
-              <template #[`item.manager_name`]="{ item }">
-                {{ item.director?.name || '-' }}
-              </template>
-              <template #[`item.last_game_real_date`]="{ item }">
-                <span v-if="item.last_game_real_date" class="text-caption">
-                  {{ formatDate(item.last_game_real_date) }}
-                </span>
-                <span v-else class="text-caption text-medium-emphasis">-</span>
-              </template>
-              <template #[`item.season_current_date`]="{ item }">
-                <span v-if="item.season_current_date" class="text-caption">
-                  {{ formatDate(item.season_current_date) }}
-                </span>
-                <span v-else class="text-caption text-medium-emphasis">-</span>
-              </template>
-              <template #[`item.actions`]="{ item }">
-                <v-tooltip text="シーズンポータル" location="top">
-                  <template #activator="{ props }">
-                    <v-icon
-                      v-bind="props"
-                      size="small"
-                      class="mr-2"
-                      @click="navigateToSeason(item)"
-                    >
-                      mdi-calendar-star
-                    </v-icon>
-                  </template>
-                </v-tooltip>
-                <v-tooltip text="メンバー編集" location="top">
-                  <template #activator="{ props }">
-                    <v-icon
-                      v-bind="props"
-                      size="small"
-                      class="mr-2"
-                      @click="navigateToMembers(item.id)"
-                    >
-                      mdi-account-group
-                    </v-icon>
-                  </template>
-                </v-tooltip>
-                <v-tooltip text="チーム編集" location="top">
-                  <template #activator="{ props }">
-                    <v-icon v-bind="props" size="small" class="mr-2" @click="openTeamDialog(item)">
-                      mdi-pencil
-                    </v-icon>
-                  </template>
-                </v-tooltip>
-                <v-tooltip text="削除" location="top">
-                  <template #activator="{ props }">
-                    <v-icon v-bind="props" size="small" @click="deleteTeam(item.id)"
-                      >mdi-delete</v-icon
-                    >
-                  </template>
-                </v-tooltip>
-              </template>
-            </v-data-table>
-          </DataCard>
-        </v-col>
-      </v-row>
+      <AsyncState
+        framed
+        :loading="teams.loading"
+        :error="teams.failed"
+        error-message="チーム一覧の取得に失敗しました"
+        :empty="teams.data.length === 0"
+        empty-icon="mdi-account-group-outline"
+        empty-message="チームが登録されていません"
+        @retry="fetchTeams"
+      >
+        <DataCard title="">
+          <v-data-table
+            class="ui-table ui-table--rows"
+            mobile-breakpoint="sm"
+            :headers="teamHeaders"
+            :items="teams.data"
+            density="compact"
+            item-value="id"
+            no-data-text="チームなし"
+            :row-props="
+              (row: { item: Team }) => (row.item.is_active ? {} : { class: 'on-surface-variant' })
+            "
+          >
+            <template #[`item.name`]="{ item }">
+              <TeamNameLink :team-id="item.id" :name="item.name" @open="navigateToSeason" />
+            </template>
+            <template #[`item.team_type`]="{ item }">
+              <v-chip
+                v-if="item.team_type === 'hachinai'"
+                size="small"
+                color="state-info"
+                variant="flat"
+                prepend-icon="mdi-tag-outline"
+              >
+                ハチナイ
+              </v-chip>
+              <span v-else class="text-caption on-surface-variant">通常</span>
+            </template>
+            <template #[`item.is_active`]="{ item }">
+              <v-icon v-if="item.is_active">mdi-check</v-icon>
+            </template>
+            <template #[`item.manager_name`]="{ item }">
+              {{ item.director?.name || '-' }}
+            </template>
+            <template #[`item.last_game_real_date`]="{ item }">
+              <span v-if="item.last_game_real_date" class="text-caption">
+                {{ formatDate(item.last_game_real_date) }}
+              </span>
+              <span v-else class="text-caption on-surface-variant">-</span>
+            </template>
+            <template #[`item.season_current_date`]="{ item }">
+              <span v-if="item.season_current_date" class="text-caption">
+                {{ formatDate(item.season_current_date) }}
+              </span>
+              <span v-else class="text-caption on-surface-variant">-</span>
+            </template>
+            <template #[`item.actions`]="{ item }">
+              <!-- 操作が 4 つあるので、スマホ（<600px）では操作メニューにまとめる -->
+              <div class="row-actions row-actions--full">
+                <RowIconButton
+                  icon="mdi-calendar-star"
+                  :label="`${item.name}のシーズンポータル`"
+                  @click="navigateToSeason(item)"
+                />
+                <RowIconButton
+                  icon="mdi-account-group"
+                  :label="`${item.name}のメンバー編集`"
+                  @click="navigateToMembers(item.id)"
+                />
+                <RowIconButton
+                  icon="mdi-pencil"
+                  :label="`${item.name}のチーム編集`"
+                  @click="openTeamDialog(item)"
+                />
+                <RowIconButton
+                  icon="mdi-delete-outline"
+                  danger
+                  :label="`${item.name}を削除`"
+                  @click="deleteTeam(item.id)"
+                />
+              </div>
+              <RowMenu
+                :label="`${item.name}の操作`"
+                :items="[
+                  {
+                    icon: 'mdi-calendar-star',
+                    label: 'シーズンポータル',
+                    onClick: () => navigateToSeason(item),
+                  },
+                  {
+                    icon: 'mdi-account-group',
+                    label: 'メンバー編集',
+                    onClick: () => navigateToMembers(item.id),
+                  },
+                  { icon: 'mdi-pencil', label: 'チーム編集', onClick: () => openTeamDialog(item) },
+                  {
+                    icon: 'mdi-delete-outline',
+                    label: '削除',
+                    danger: true,
+                    onClick: () => deleteTeam(item.id),
+                  },
+                ]"
+              />
+            </template>
+          </v-data-table>
+        </DataCard>
+      </AsyncState>
     </v-window-item>
 
     <!-- 離脱者一覧タブ -->
     <v-window-item value="absences">
-      <v-row>
-        <v-col cols="12">
-          <DataCard title="離脱者一覧">
-            <FilterBar>
-              <template #search>
-                <v-text-field
-                  v-model="searchQuery"
-                  label="選手名検索"
-                  prepend-inner-icon="mdi-magnify"
-                  variant="outlined"
-                  density="compact"
-                  clearable
-                  hide-details
-                />
-              </template>
-              <template #filters>
-                <v-select
-                  v-model="selectedAbsenceType"
-                  :items="absenceTypeOptions"
-                  label="離脱種別"
-                  variant="outlined"
-                  density="compact"
-                  clearable
-                  hide-details
-                />
-              </template>
-            </FilterBar>
+      <AsyncState
+        framed
+        :loading="absences.loading"
+        :error="absences.failed"
+        error-message="離脱者の取得に失敗しました"
+        :empty="absences.data.length === 0"
+        empty-icon="mdi-account-off-outline"
+        empty-message="離脱者はいません"
+        @retry="fetchAbsences"
+      >
+        <DataCard title="">
+          <FilterBar>
+            <template #search>
+              <v-text-field
+                v-model="searchQuery"
+                label="選手名検索"
+                prepend-inner-icon="mdi-magnify"
+                variant="outlined"
+                density="compact"
+                clearable
+                hide-details
+              />
+            </template>
+            <template #filters>
+              <v-select
+                v-model="selectedAbsenceType"
+                :items="absenceTypeOptions"
+                label="離脱種別"
+                variant="outlined"
+                density="compact"
+                clearable
+                hide-details
+              />
+            </template>
+          </FilterBar>
 
-            <v-data-table
-              :headers="absenceHeaders"
-              :items="filteredAbsences"
-              :loading="absencesLoading"
-              density="compact"
-              :row-props="getRowProps"
-            >
-              <template v-slot:item.absence_type="{ item }">
-                <StatusChip
-                  :status="item.absence_type"
-                  :label="absenceTypeLabel(item.absence_type)"
-                />
+          <v-data-table
+            class="ui-table ui-table--rows"
+            mobile-breakpoint="sm"
+            :headers="absenceHeaders"
+            :items="filteredAbsences"
+            density="compact"
+            :row-props="getRowProps"
+          >
+            <template v-slot:item.team_name="{ item }">
+              <TeamNameLink
+                :team-id="item.team_id"
+                :name="item.team_name"
+                @open="navigateToSeason"
+              />
+            </template>
+            <template v-slot:item.absence_type="{ item }">
+              <StatusChip
+                :status="item.absence_type"
+                :label="absenceTypeLabel(item.absence_type)"
+              />
+            </template>
+            <template v-slot:item.start_date="{ item }">
+              {{ formatDate(item.start_date) }}
+            </template>
+            <template v-slot:item.effective_end_date="{ item }">
+              {{ item.effective_end_date ? formatDate(item.effective_end_date) : '不明' }}
+            </template>
+            <template v-slot:item.remaining="{ item }">
+              <template v-if="getRemainingDisplay(item) !== null">
+                <v-chip
+                  :color="
+                    getRemainingCount(item) !== null && getRemainingCount(item)! <= 2
+                      ? 'state-done'
+                      : undefined
+                  "
+                  :variant="
+                    getRemainingCount(item) !== null && getRemainingCount(item)! <= 2
+                      ? 'flat'
+                      : 'text'
+                  "
+                  :prepend-icon="
+                    getRemainingCount(item) !== null && getRemainingCount(item)! <= 2
+                      ? 'mdi-clock-check-outline'
+                      : undefined
+                  "
+                  size="small"
+                >
+                  {{ getRemainingDisplay(item) }}
+                </v-chip>
               </template>
-              <template v-slot:item.start_date="{ item }">
-                {{ formatDate(item.start_date) }}
-              </template>
-              <template v-slot:item.effective_end_date="{ item }">
-                {{ item.effective_end_date ? formatDate(item.effective_end_date) : '不明' }}
-              </template>
-              <template v-slot:item.remaining="{ item }">
-                <template v-if="getRemainingDisplay(item) !== null">
-                  <v-chip
-                    :color="
-                      getRemainingCount(item) !== null && getRemainingCount(item)! <= 2
-                        ? 'green-darken-1'
-                        : undefined
-                    "
-                    :variant="
-                      getRemainingCount(item) !== null && getRemainingCount(item)! <= 2
-                        ? 'tonal'
-                        : 'text'
-                    "
-                    size="small"
-                  >
-                    {{ getRemainingDisplay(item) }}
-                  </v-chip>
-                </template>
-                <span v-else class="text-caption text-medium-emphasis">不明</span>
-              </template>
-            </v-data-table>
-          </DataCard>
-        </v-col>
-      </v-row>
+              <span v-else class="text-caption on-surface-variant">不明</span>
+            </template>
+          </v-data-table>
+        </DataCard>
+      </AsyncState>
     </v-window-item>
 
     <!-- クールダウンタブ -->
     <v-window-item value="cooldowns">
-      <v-row>
-        <v-col cols="12">
-          <DataCard title="クールダウン中選手">
-            <FilterBar>
-              <template #search>
-                <v-text-field
-                  v-model="cooldownSearchQuery"
-                  label="選手名検索"
-                  prepend-inner-icon="mdi-magnify"
-                  variant="outlined"
-                  density="compact"
-                  clearable
-                  hide-details
-                />
-              </template>
-            </FilterBar>
+      <AsyncState
+        framed
+        :loading="cooldowns.loading"
+        :error="cooldowns.failed"
+        error-message="クールダウン中の選手の取得に失敗しました"
+        :empty="cooldowns.data.length === 0"
+        empty-icon="mdi-timer-sand-empty"
+        empty-message="クールダウン中の選手はいません"
+        @retry="fetchCooldowns"
+      >
+        <DataCard title="">
+          <FilterBar>
+            <template #search>
+              <v-text-field
+                v-model="cooldownSearchQuery"
+                label="選手名検索"
+                prepend-inner-icon="mdi-magnify"
+                variant="outlined"
+                density="compact"
+                clearable
+                hide-details
+              />
+            </template>
+          </FilterBar>
 
-            <v-data-table
-              :headers="cooldownHeaders"
-              :items="filteredCooldowns"
-              :loading="cooldownsLoading"
-              density="compact"
-            >
-              <template v-slot:item.demotion_date="{ item }">
-                {{ formatDate(item.demotion_date) }}
-              </template>
-              <template v-slot:item.cooldown_until="{ item }">
-                {{ formatDate(item.cooldown_until) }}
-              </template>
-              <template v-slot:item.remaining_days="{ item }">
-                <v-chip
-                  :color="item.remaining_days <= 2 ? 'green-darken-1' : undefined"
-                  :variant="item.remaining_days <= 2 ? 'tonal' : 'text'"
-                  size="small"
-                >
-                  {{ item.remaining_days }}日
-                </v-chip>
-              </template>
-              <template v-slot:item.same_day_exempt="{ item }">
-                <v-chip v-if="item.same_day_exempt" color="grey" variant="tonal" size="small">
-                  同日免除
-                </v-chip>
-              </template>
-            </v-data-table>
-          </DataCard>
-        </v-col>
-      </v-row>
+          <v-data-table
+            class="ui-table ui-table--rows"
+            mobile-breakpoint="sm"
+            :headers="cooldownHeaders"
+            :items="filteredCooldowns"
+            density="compact"
+          >
+            <template v-slot:item.team_name="{ item }">
+              <TeamNameLink
+                :team-id="item.team_id"
+                :name="item.team_name"
+                @open="navigateToSeason"
+              />
+            </template>
+            <template v-slot:item.demotion_date="{ item }">
+              {{ formatDate(item.demotion_date) }}
+            </template>
+            <template v-slot:item.cooldown_until="{ item }">
+              {{ formatDate(item.cooldown_until) }}
+            </template>
+            <template v-slot:item.remaining_days="{ item }">
+              <v-chip
+                :prepend-icon="item.remaining_days <= 2 ? 'mdi-clock-check-outline' : undefined"
+                :color="item.remaining_days <= 2 ? 'state-done' : undefined"
+                :variant="item.remaining_days <= 2 ? 'flat' : 'text'"
+                size="small"
+              >
+                {{ item.remaining_days }}日
+              </v-chip>
+            </template>
+            <template v-slot:item.same_day_exempt="{ item }">
+              <v-chip v-if="item.same_day_exempt" color="state-neutral" variant="flat" size="small">
+                同日免除
+              </v-chip>
+            </template>
+          </v-data-table>
+        </DataCard>
+      </AsyncState>
     </v-window-item>
 
     <!-- コスト使用状況タブ -->
     <v-window-item value="costs">
-      <v-row>
-        <v-col cols="12">
-          <DataCard title="チーム別コスト使用状況">
-            <v-data-table
-              :headers="costHeaders"
-              :items="costs"
-              :loading="costsLoading"
-              density="compact"
-            >
-              <template v-slot:item.team_type="{ item }">
-                <v-chip
-                  v-if="item.team_type === 'hachinai'"
-                  size="small"
-                  color="purple"
-                  variant="tonal"
+      <AsyncState
+        framed
+        :loading="costs.loading"
+        :error="costs.failed"
+        error-message="コスト使用状況の取得に失敗しました"
+        :empty="costs.data.length === 0"
+        empty-icon="mdi-currency-jpy"
+        empty-message="コスト使用状況がありません"
+        @retry="fetchCosts"
+      >
+        <DataCard title="">
+          <v-data-table
+            class="ui-table"
+            :headers="costHeaders"
+            :items="costs.data"
+            density="compact"
+          >
+            <template v-slot:item.team_name="{ item }">
+              <TeamNameLink
+                :team-id="item.team_id"
+                :name="item.team_name"
+                @open="navigateToSeason"
+              />
+            </template>
+            <template v-slot:item.team_type="{ item }">
+              <v-chip
+                v-if="item.team_type === 'hachinai'"
+                size="small"
+                color="state-info"
+                variant="flat"
+                prepend-icon="mdi-tag-outline"
+              >
+                ハチナイ
+              </v-chip>
+              <span v-else class="text-caption on-surface-variant">通常</span>
+            </template>
+            <template v-slot:item.total_cost="{ item }">
+              <!-- 合計コストは上限の 95% 以上で黄、超過で赤 -->
+              <div class="d-flex align-center gap-2 flex-nowrap">
+                <span style="white-space: nowrap"
+                  >{{ item.total_cost }} / {{ item.total_cost_limit }}</span
                 >
-                  ハチナイ
-                </v-chip>
-                <span v-else class="text-caption text-medium-emphasis">通常</span>
-              </template>
-              <template v-slot:item.total_cost="{ item }">
-                <div class="d-flex align-center gap-2 flex-nowrap">
-                  <span style="white-space: nowrap"
-                    >{{ item.total_cost }} / {{ item.total_cost_limit }}</span
-                  >
-                  <v-progress-linear
-                    :model-value="item.cost_usage_ratio * 100"
-                    :color="getCostColor(item.cost_usage_ratio)"
-                    height="8"
-                    rounded
-                    style="min-width: 80px; max-width: 120px"
+                <v-progress-linear
+                  data-testid="total-cost-bar"
+                  :model-value="(item.total_cost / item.total_cost_limit) * 100"
+                  :color="costBarColor(costLevel(item.total_cost, item.total_cost_limit))"
+                  bg-color="surface-variant"
+                  bg-opacity="1"
+                  height="8"
+                  rounded
+                  style="min-width: 80px; max-width: 120px"
+                />
+                <v-icon
+                  v-if="costMark(item.total_cost, item.total_cost_limit)"
+                  :icon="costMark(item.total_cost, item.total_cost_limit)!.icon"
+                  :color="costBarColor(costLevel(item.total_cost, item.total_cost_limit))"
+                  size="18"
+                  role="img"
+                  :aria-label="costMark(item.total_cost, item.total_cost_limit)!.label"
+                  :title="costMark(item.total_cost, item.total_cost_limit)!.label"
+                  :data-level="costLevel(item.total_cost, item.total_cost_limit)"
+                  data-testid="total-cost-mark"
+                />
+              </div>
+            </template>
+            <template v-slot:item.first_squad_cost="{ item }">
+              <!-- 1軍コストは上限ぴったりが通常なので、棒に注意の色を付けない -->
+              <div class="d-flex align-center gap-2 flex-nowrap">
+                <span class="d-inline-flex align-center ga-1" style="white-space: nowrap">
+                  <LimitMark
+                    :state="costLimitState(item.first_squad_cost, item.first_squad_cost_limit)"
+                    :size="16"
                   />
-                  <StatusChip v-if="item.cost_usage_ratio > 1.0" status="error" label="超過" />
-                  <StatusChip
-                    v-else-if="item.cost_usage_ratio > 0.9"
-                    status="warning"
-                    label="警告"
-                  />
-                </div>
-              </template>
-              <template v-slot:item.first_squad_cost="{ item }">
-                <div class="d-flex align-center gap-2 flex-nowrap">
-                  <span v-if="item.first_squad_cost_limit !== null" style="white-space: nowrap">
-                    {{ item.first_squad_cost }} / {{ item.first_squad_cost_limit }}
-                  </span>
-                  <span v-else style="white-space: nowrap"> {{ item.first_squad_cost }} / — </span>
-                  <v-progress-linear
-                    v-if="item.first_squad_cost_limit"
-                    :model-value="(item.first_squad_cost / item.first_squad_cost_limit) * 100"
-                    :color="getCostColor(item.first_squad_cost / item.first_squad_cost_limit)"
-                    height="8"
-                    rounded
-                    style="min-width: 80px; max-width: 120px"
-                  />
-                </div>
-              </template>
-            </v-data-table>
-          </DataCard>
-        </v-col>
-      </v-row>
+                  {{ item.first_squad_cost }} / {{ item.first_squad_cost_limit ?? '—' }}
+                </span>
+                <v-progress-linear
+                  v-if="item.first_squad_cost_limit"
+                  data-testid="first-cost-bar"
+                  :model-value="(item.first_squad_cost / item.first_squad_cost_limit) * 100"
+                  color="link"
+                  bg-color="surface-variant"
+                  bg-opacity="1"
+                  height="8"
+                  rounded
+                  style="min-width: 80px; max-width: 120px"
+                />
+              </div>
+            </template>
+          </v-data-table>
+        </DataCard>
+      </AsyncState>
     </v-window-item>
 
     <!-- 1軍登録状況タブ -->
     <v-window-item value="rosterStatus">
-      <RosterStatusTab />
+      <RosterStatusTab
+        :records="rosterStatus.data"
+        :loading="rosterStatus.loading"
+        :failed="rosterStatus.failed"
+        @retry="fetchRosterStatus"
+        @open-season="navigateToSeason"
+      />
     </v-window-item>
   </v-window>
 
@@ -305,95 +463,124 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import axios from 'axios'
+import LimitMark from '@/components/shared/LimitMark.vue'
+import { costLimitState } from '@/components/shared/rosterLimits'
+import AsyncState from '@/components/shared/AsyncState.vue'
 import DataCard from '@/components/shared/DataCard.vue'
+import RowIconButton from '@/components/shared/RowIconButton.vue'
+import RowMenu from '@/components/shared/RowMenu.vue'
+import TeamNameLink from '@/components/shared/TeamNameLink.vue'
+import { tableCell } from '@/components/shared/tableCells'
 import FilterBar from '@/components/shared/FilterBar.vue'
 import StatusChip from '@/components/shared/StatusChip.vue'
+import DashboardOverview from '@/components/commissioner/DashboardOverview.vue'
+import {
+  type DashboardResourceKey,
+  type DashboardTab,
+  costBarColor,
+  costLevel,
+  costMark,
+  summarize,
+  checkState,
+  CHECK_COLOR,
+} from '@/components/commissioner/dashboardLogic'
+import { useDashboardResource } from '@/composables/useDashboardResource'
+import type {
+  AbsenceRecord,
+  CooldownRecord,
+  CostRecord,
+  GameProgressRecord,
+  RosterStatusRecord,
+} from '@/types/commissionerDashboard'
 import TeamDialog from '@/components/TeamDialog.vue'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
 import RosterStatusTab from '@/components/commissioner/RosterStatusTab.vue'
 import { useSnackbar } from '@/composables/useSnackbar'
 import { useTeamSelectionStore } from '@/stores/teamSelection'
 import { type Team } from '@/types/team'
-
-interface AbsenceRecord {
-  id: number
-  team_name: string
-  team_id: number
-  player_name: string
-  player_id: number
-  absence_type: string
-  reason: string | null
-  start_date: string
-  duration: number
-  duration_unit: string
-  effective_end_date: string | null
-  remaining_days: number | null
-  remaining_games: number | null
-  season_current_date: string
-}
-
-interface CostRecord {
-  team_id: number
-  team_name: string
-  team_type: string
-  total_cost: number
-  total_cost_limit: number
-  first_squad_cost: number
-  first_squad_cost_limit: number | null
-  first_squad_count: number
-  exempt_count: number
-  cost_usage_ratio: number
-}
-
-interface CooldownRecord {
-  team_id: number
-  team_name: string
-  player_id: number
-  player_name: string
-  demotion_date: string
-  cooldown_until: string
-  remaining_days: number
-  same_day_exempt: boolean
-}
+import { useColumnMinWidth } from '@/composables/useColumnMinWidth'
 
 const router = useRouter()
 const teamSelectionStore = useTeamSelectionStore()
 const { showSnackbar } = useSnackbar()
 
-const activeTab = ref('teams')
+// 先頭のタブは概況。API は 6 本とも最初に取り、API ごとに別々の読み込み中・失敗を持つ（概況と各タブで共用）
+const activeTab = ref<DashboardTab>('overview')
 
-// 全チーム管理
-const teams = ref<Team[]>([])
-const teamsLoading = ref(false)
+const { state: teams, fetch: fetchTeams } = useDashboardResource<Team>('/teams', 'teams')
+const { state: absences, fetch: fetchAbsences } = useDashboardResource<AbsenceRecord>(
+  '/commissioner/dashboard/absences',
+  'absences',
+)
+const { state: costs, fetch: fetchCosts } = useDashboardResource<CostRecord>(
+  '/commissioner/dashboard/costs',
+  'costs',
+)
+const { state: cooldowns, fetch: fetchCooldowns } = useDashboardResource<CooldownRecord>(
+  '/commissioner/dashboard/cooldowns',
+  'cooldowns',
+)
+const { state: rosterStatus, fetch: fetchRosterStatus } = useDashboardResource<RosterStatusRecord>(
+  '/commissioner/dashboard/roster_status',
+  'roster status',
+)
+const { state: gameProgress, fetch: fetchGameProgress } = useDashboardResource<GameProgressRecord>(
+  '/commissioner/dashboard/game_progress',
+  'game progress',
+)
+
+const fetchers: Record<DashboardResourceKey, () => Promise<void>> = {
+  teams: fetchTeams,
+  absences: fetchAbsences,
+  cooldowns: fetchCooldowns,
+  costs: fetchCosts,
+  rosterStatus: fetchRosterStatus,
+  gameProgress: fetchGameProgress,
+}
+const retryResource = (key: DashboardResourceKey) => fetchers[key]()
+
+// タブの件数。読み込み中・失敗の間は出さない（0 件と見分ける）
+const summary = computed(() =>
+  summarize({
+    teams: teams.data,
+    absences: absences.data,
+    cooldowns: cooldowns.data,
+    costs: costs.data,
+    rosterStatus: rosterStatus.data,
+  }),
+)
+const teamsReady = computed(() => !teams.loading && !teams.failed)
+const absencesReady = computed(() => !absences.loading && !absences.failed)
+const cooldownsReady = computed(() => !cooldowns.loading && !cooldowns.failed)
+const costsReady = computed(() => !costs.loading && !costs.failed)
+const rosterReady = computed(() => !rosterStatus.loading && !rosterStatus.failed)
+
 const dialogVisible = ref(false)
 const editingTeam = ref<Team | null>(null)
 const confirmDialog = ref<InstanceType<typeof ConfirmDialog> | null>(null)
 
 const teamHeaders = [
-  { title: 'ID', key: 'id' },
-  { title: 'チーム名', key: 'name' },
-  { title: '略称', key: 'short_name' },
-  { title: '種別', key: 'team_type', sortable: false },
-  { title: '監督', key: 'manager_name', sortable: false },
-  { title: 'アクティブ', key: 'is_active', sortable: false },
-  { title: '最終試合日', key: 'last_game_real_date' },
-  { title: 'ゲーム内日付', key: 'season_current_date' },
-  { title: '操作', key: 'actions', sortable: false },
+  { title: 'ID', key: 'id', nowrap: true, cellProps: tableCell.lead },
+  { title: 'チーム名', key: 'name', cellProps: tableCell.title },
+  { title: '略称', key: 'short_name', nowrap: true },
+  { title: '種別', key: 'team_type', sortable: false, nowrap: true, cellProps: tableCell.sub2 },
+  { title: '監督', key: 'manager_name', sortable: false, cellProps: tableCell.sub1 },
+  { title: 'アクティブ', key: 'is_active', sortable: false, nowrap: true },
+  { title: '最終試合日', key: 'last_game_real_date', nowrap: true },
+  {
+    title: 'ゲーム内日付',
+    key: 'season_current_date',
+    nowrap: true,
+    cellProps: tableCell.noteLabeled,
+  },
+  { title: '操作', key: 'actions', sortable: false, nowrap: true, cellProps: tableCell.act },
 ]
 
 // 離脱者
-const absences = ref<AbsenceRecord[]>([])
-const absencesLoading = ref(false)
 const searchQuery = ref('')
 const selectedAbsenceType = ref<string | null>(null)
 
-// コスト
-const costs = ref<CostRecord[]>([])
-const costsLoading = ref(false)
-
 // クールダウン
-const cooldowns = ref<CooldownRecord[]>([])
-const cooldownsLoading = ref(false)
 const cooldownSearchQuery = ref('')
 
 const absenceTypeOptions = [
@@ -409,35 +596,37 @@ const absenceTypeLabels: Record<string, string> = {
 }
 
 const absenceHeaders = [
-  { title: 'チーム', key: 'team_name' },
-  { title: '選手名', key: 'player_name' },
-  { title: '離脱種別', key: 'absence_type' },
+  { title: 'チーム', key: 'team_name', cellProps: tableCell.sub1 },
+  { title: '選手名', key: 'player_name', cellProps: tableCell.title },
+  { title: '離脱種別', key: 'absence_type', cellProps: tableCell.sub2 },
   { title: '理由', key: 'reason' },
   { title: '開始日', key: 'start_date' },
   { title: '復帰予定日', key: 'effective_end_date' },
-  { title: '残り', key: 'remaining', sortable: false },
+  { title: '残り', key: 'remaining', sortable: false, cellProps: tableCell.noteLabeled },
 ]
 
-const costHeaders = [
-  { title: 'チーム', key: 'team_name' },
-  { title: '種別', key: 'team_type' },
-  { title: '合計コスト / 上限', key: 'total_cost', sortable: false },
-  { title: '1軍コスト / 上限', key: 'first_squad_cost', sortable: false },
-  { title: '1軍人数', key: 'first_squad_count' },
-  { title: 'コスト除外', key: 'exempt_count' },
-]
+const minW = useColumnMinWidth()
+const costHeaders = computed(() => [
+  // 横に比べる数値の表なので縦積みにせず、スマホでは横スクロール。チームの列は左に固定する
+  { title: 'チーム', key: 'team_name', fixed: true, minWidth: minW(130) },
+  { title: '種別', key: 'team_type', minWidth: minW(80) },
+  { title: '合計コスト / 上限', key: 'total_cost', sortable: false, minWidth: minW(260) },
+  { title: '1軍コスト / 上限', key: 'first_squad_cost', sortable: false, minWidth: minW(260) },
+  { title: '1軍人数', key: 'first_squad_count', minWidth: minW(90) },
+  { title: 'コスト除外', key: 'exempt_count', minWidth: minW(100) },
+])
 
 const cooldownHeaders = [
-  { title: 'チーム', key: 'team_name' },
-  { title: '選手名', key: 'player_name' },
+  { title: 'チーム', key: 'team_name', cellProps: tableCell.sub1 },
+  { title: '選手名', key: 'player_name', cellProps: tableCell.title },
   { title: '降格日', key: 'demotion_date' },
-  { title: 'CD終了日', key: 'cooldown_until' },
-  { title: '残り日数', key: 'remaining_days' },
+  { title: 'CD終了日', key: 'cooldown_until', cellProps: tableCell.noteLabeled },
+  { title: '残り日数', key: 'remaining_days', cellProps: tableCell.sub2 },
   { title: '同日免除', key: 'same_day_exempt', sortable: false },
 ]
 
 const filteredAbsences = computed(() => {
-  return absences.value.filter((a) => {
+  return absences.data.filter((a) => {
     if (selectedAbsenceType.value && a.absence_type !== selectedAbsenceType.value) return false
     if (searchQuery.value && !a.player_name.includes(searchQuery.value)) return false
     return true
@@ -445,7 +634,7 @@ const filteredAbsences = computed(() => {
 })
 
 const filteredCooldowns = computed(() => {
-  return cooldowns.value.filter((c) => {
+  return cooldowns.data.filter((c) => {
     if (cooldownSearchQuery.value && !c.player_name.includes(cooldownSearchQuery.value))
       return false
     return true
@@ -473,31 +662,12 @@ const getRemainingDisplay = (absence: AbsenceRecord): string | null => {
 const getRowProps = ({ item }: { item: AbsenceRecord }) => {
   const count = getRemainingCount(item)
   if (count !== null && count <= 2) {
-    return { class: 'bg-green-lighten-4' }
+    return { class: 'bg-state-done' }
   }
   return {}
 }
 
-const getCostColor = (ratio: number): string => {
-  if (ratio > 1.0) return 'error'
-  if (ratio > 0.9) return 'warning'
-  return 'primary'
-}
-
-const fetchTeams = async () => {
-  teamsLoading.value = true
-  try {
-    const response = await axios.get<Team[]>('/teams')
-    teams.value = response.data
-  } catch (error) {
-    console.error('Failed to fetch teams:', error)
-    showSnackbar('チーム一覧の取得に失敗しました', 'error')
-  } finally {
-    teamsLoading.value = false
-  }
-}
-
-const navigateToSeason = (team: Team) => {
+const navigateToSeason = (team: { id: number; name: string }) => {
   teamSelectionStore.selectTeam(team.id, team.name)
   router.push(`/teams/${team.id}/season`)
 }
@@ -514,7 +684,7 @@ const openTeamDialog = (team: Team | null = null) => {
 const deleteTeam = async (id: number) => {
   if (!confirmDialog.value) return
   const result = await confirmDialog.value.open('チーム削除', 'このチームを削除しますか？', {
-    color: 'error',
+    destructive: true,
   })
   if (!result) return
   try {
@@ -527,46 +697,24 @@ const deleteTeam = async (id: number) => {
   }
 }
 
-const fetchAbsences = async () => {
-  absencesLoading.value = true
-  try {
-    const response = await axios.get('/commissioner/dashboard/absences')
-    absences.value = response.data
-  } catch (error) {
-    console.error('Failed to fetch absences:', error)
-  } finally {
-    absencesLoading.value = false
-  }
-}
-
-const fetchCosts = async () => {
-  costsLoading.value = true
-  try {
-    const response = await axios.get('/commissioner/dashboard/costs')
-    costs.value = response.data
-  } catch (error) {
-    console.error('Failed to fetch costs:', error)
-  } finally {
-    costsLoading.value = false
-  }
-}
-
-const fetchCooldowns = async () => {
-  cooldownsLoading.value = true
-  try {
-    const response = await axios.get('/commissioner/dashboard/cooldowns')
-    cooldowns.value = response.data
-  } catch (error) {
-    console.error('Failed to fetch cooldowns:', error)
-  } finally {
-    cooldownsLoading.value = false
-  }
-}
-
 onMounted(() => {
   fetchTeams()
   fetchAbsences()
   fetchCosts()
   fetchCooldowns()
+  fetchRosterStatus()
+  fetchGameProgress()
 })
 </script>
+
+<style scoped>
+/* タブの件数。タブの文字（14px）の隣に小さく置く */
+.tab-count.v-chip {
+  height: 20px;
+  min-width: 20px;
+  margin-inline-start: 8px;
+  padding: 0 6px;
+  justify-content: center;
+  font-weight: 700;
+}
+</style>

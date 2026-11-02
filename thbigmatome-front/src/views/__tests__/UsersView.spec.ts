@@ -4,6 +4,8 @@ import { createVuetify } from 'vuetify'
 import * as components from 'vuetify/components'
 import * as directives from 'vuetify/directives'
 import UsersView from '../commissioner/UsersView.vue'
+import { createI18n } from 'vue-i18n'
+import ja from '@/locales/ja.json'
 
 // Mock axios
 vi.mock('axios', () => {
@@ -31,8 +33,14 @@ vi.mock('@/composables/useSnackbar', () => ({
 }))
 
 import axios from 'axios'
+import { stackedLayout } from '@/components/shared/__tests__/tableLayout'
 
 const vuetify = createVuetify({ components, directives })
+const i18n = createI18n({
+  legacy: false,
+  locale: 'ja',
+  messages: { ja: { asyncState: ja.asyncState } },
+})
 
 describe('UsersView', () => {
   beforeEach(() => {
@@ -41,24 +49,42 @@ describe('UsersView', () => {
   })
 
   it('mounts successfully', async () => {
-    const wrapper = mount(UsersView, { global: { plugins: [vuetify] } })
+    const wrapper = mount(UsersView, { global: { plugins: [i18n, vuetify] } })
     await flushPromises()
     expect(wrapper.exists()).toBe(true)
   })
 
-  it('displays user list header', async () => {
-    const wrapper = mount(UsersView, { global: { plugins: [vuetify] } })
+  // Test Basis: thbig-dugout-ui-unification-design.md §2.1（画面タイトルはヘッダーバーが持つ。本文に置かない）
+  it('画面タイトルを本文に持たず、骨格（PageLayout）で描く', async () => {
+    const wrapper = mount(UsersView, { global: { plugins: [i18n, vuetify] } })
     await flushPromises()
-    expect(wrapper.text()).toContain('ユーザー管理')
+    expect(wrapper.find('[data-testid="page-layout"]').exists()).toBe(true)
+    expect(wrapper.find('h1').exists()).toBe(false)
+    expect(wrapper.text()).not.toContain('ユーザー管理')
   })
 
   it('fetches users on mount', async () => {
     ;(axios.get as ReturnType<typeof vi.fn>).mockResolvedValue({
       data: [{ id: 1, name: 'admin', display_name: '管理者', role: 'commissioner' }],
     })
-    mount(UsersView, { global: { plugins: [vuetify] } })
+    mount(UsersView, { global: { plugins: [i18n, vuetify] } })
     await flushPromises()
     expect(axios.get).toHaveBeenCalledWith('/users')
+  })
+
+  // Test Basis: subtask_1787u 申し送り2 / thbig-dugout-visual-stage5-mapping.md §2 R3
+  it('コミッショナーの tonal チップには link を使う', async () => {
+    ;(axios.get as ReturnType<typeof vi.fn>).mockResolvedValue({
+      data: [{ id: 1, name: 'admin', display_name: '管理者', role: 'commissioner' }],
+    })
+    const wrapper = mount(UsersView, { global: { plugins: [i18n, vuetify] } })
+    await flushPromises()
+    const chips = wrapper
+      .findAllComponents(components.VChip)
+      .filter((chip) => chip.text() === 'コミッショナー')
+    expect(chips).toHaveLength(1)
+    expect(chips[0]!.props('color')).toBe('link')
+    expect(chips[0]!.props('variant')).toBe('tonal')
   })
 
   describe('ロール変更', () => {
@@ -77,7 +103,7 @@ describe('UsersView', () => {
         data: { ...mockUser, role: 'commissioner' },
       })
 
-      const wrapper = mount(UsersView, { global: { plugins: [vuetify] } })
+      const wrapper = mount(UsersView, { global: { plugins: [i18n, vuetify] } })
       await flushPromises()
 
       // submitRoleChange を直接呼び出して検証
@@ -104,7 +130,7 @@ describe('UsersView', () => {
         response: { data: { error: '自分自身のロールは変更できません' } },
       })
 
-      const wrapper = mount(UsersView, { global: { plugins: [vuetify] } })
+      const wrapper = mount(UsersView, { global: { plugins: [i18n, vuetify] } })
       await flushPromises()
 
       const vm = wrapper.vm as unknown as {
@@ -123,7 +149,7 @@ describe('UsersView', () => {
     })
 
     it('openRoleDialog でダイアログが開く', async () => {
-      const wrapper = mount(UsersView, { global: { plugins: [vuetify] } })
+      const wrapper = mount(UsersView, { global: { plugins: [i18n, vuetify] } })
       await flushPromises()
 
       const vm = wrapper.vm as unknown as {
@@ -141,7 +167,7 @@ describe('UsersView', () => {
     })
 
     it('closeRoleDialog でダイアログが閉じる', async () => {
-      const wrapper = mount(UsersView, { global: { plugins: [vuetify] } })
+      const wrapper = mount(UsersView, { global: { plugins: [i18n, vuetify] } })
       await flushPromises()
 
       const vm = wrapper.vm as unknown as {
@@ -156,5 +182,22 @@ describe('UsersView', () => {
 
       expect(vm.roleDialog).toBe(false)
     })
+  })
+})
+
+// Test Basis: thbig-dugout-ui-unification-design.md §2.5（<600px は縦積み。1 行 = 名前＋要点 2 つ＋操作）/ §4.2 段 4
+describe('UsersView 表のスマホ対応（段 4）', () => {
+  it('縦積み: ID=lead・ログインID=title・表示名=sub1・ロール=sub2・操作=act（操作は 2 つなのでアイコンのまま）', async () => {
+    ;(axios.get as ReturnType<typeof vi.fn>).mockResolvedValue({
+      data: [{ id: 1, name: 'admin', display_name: '管理者', role: 'commissioner' }],
+    })
+    const wrapper = mount(UsersView, { global: { plugins: [i18n, vuetify] } })
+    await flushPromises()
+    expect(stackedLayout(wrapper)).toEqual({
+      mobileBreakpoint: 'sm',
+      rows: true,
+      roles: { id: 'lead', name: 'title', display_name: 'sub1', role: 'sub2', actions: 'act' },
+    })
+    expect(wrapper.find('.row-menu').exists()).toBe(false)
   })
 })

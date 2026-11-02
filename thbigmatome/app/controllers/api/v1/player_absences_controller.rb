@@ -32,7 +32,8 @@ module Api
         @player_absence = PlayerAbsence.new(player_absence_params)
 
         if @player_absence.save
-          render json: @player_absence, status: :created
+          warnings = rebuild_pitcher_history([ [ @player_absence.team_membership_id, @player_absence.start_date ] ])
+          render json: with_warnings(@player_absence, warnings), status: :created
         else
           render json: @player_absence.errors, status: :unprocessable_content
         end
@@ -40,8 +41,11 @@ module Api
 
       # PATCH/PUT /api/v1/player_absences/:id
       def update
+        before = [ @player_absence.team_membership_id, @player_absence.start_date ]
         if @player_absence.update(player_absence_params)
-          render json: @player_absence
+          # 開始日や選手を変えた時は、変更前の開始日からも作り直す（早い方から）
+          warnings = rebuild_pitcher_history([ before, [ @player_absence.team_membership_id, @player_absence.start_date ] ])
+          render json: with_warnings(@player_absence, warnings)
         else
           render json: @player_absence.errors, status: :unprocessable_content
         end
@@ -50,10 +54,31 @@ module Api
       # DELETE /api/v1/player_absences/:id
       def destroy
         @player_absence.destroy
+        rebuild_pitcher_history([ [ @player_absence.team_membership_id, @player_absence.start_date ] ])
         head :no_content
       end
 
       private
+
+      # 離脱の作成・変更・削除で、その選手の登板の保存値（疲労P・連続中4日回数ほか）を、離脱の開始日（変更前の開始日の早い方）から作り直す
+      # （PitcherHistoryRebuild。設計書 §4.5）。野手など登板の無い選手では何も動かない。失敗しても離脱の保存は取り消さず、警告にする。
+      # changes: [[team_membership_id, 開始日], ...]
+      def rebuild_pitcher_history(changes)
+        warnings = []
+        changes.group_by(&:first).each do |membership_id, rows|
+          membership = TeamMembership.find_by(id: membership_id)
+          next if membership.nil?
+
+          outcome = PitcherHistoryRebuild.guarded(team_id: membership.team_id, date: rows.map(&:last).min, pitcher_ids: [ membership.player_id ])
+          warnings << PitcherHistoryRebuild.failure_message(outcome.error) unless outcome.ok?
+        end
+        warnings
+      end
+
+      # 作り直しが失敗した時だけ warnings を足す（普段の応答の形は変えない）
+      def with_warnings(absence, warnings)
+        warnings.empty? ? absence : absence.as_json.merge("warnings" => warnings)
+      end
 
       def set_player_absence
         @player_absence = PlayerAbsence.find(params[:id])
@@ -67,7 +92,8 @@ module Api
           :reason,
           :start_date,
           :duration,
-          :duration_unit
+          :duration_unit,
+          :phase
         )
       end
     end

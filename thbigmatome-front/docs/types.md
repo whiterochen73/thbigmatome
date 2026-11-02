@@ -10,7 +10,7 @@
 - `src/types/playerCost.ts`
 - `src/types/team.ts`
 - `src/types/manager.ts`
-- `src/types/game-record.ts`
+- `src/types/playerCard.ts`
 - `src/types/gameData.ts`
 - `src/types/scoreboard.ts`
 - `src/types/seasonDetail.ts`
@@ -22,9 +22,6 @@
 - `src/types/cost.ts`
 - `src/types/costList.ts`
 - `src/types/costPlayer.ts`
-- `src/types/skill.ts`
-- `src/types/battingSkill.ts`
-- `src/types/pitchingSkill.ts`
 - `src/types/battingStyle.ts`
 - `src/types/pitchingStyle.ts`
 - `src/types/biorhythm.ts`
@@ -213,75 +210,13 @@
 
 ---
 
-## 試合記録関連
+## 選手カード関連
 
-### `AtBatRecord` (`src/types/game-record.ts`)
-
-| 属性 | 型 | 必須 | 説明 |
-|------|-----|------|------|
-| `id` | `number` | ✓ | 打席ID |
-| `game_record_id` | `number` | ✓ | 試合記録ID |
-| `inning` | `number` | ✓ | イニング |
-| `half` | `'top' \| 'bottom'` | ✓ | 表/裏 |
-| `ab_num` | `number` | ✓ | 打席番号 |
-| `batter_name` | `string` | ✓ | 打者名 |
-| `pitcher_name` | `string` | ✓ | 投手名 |
-| `result_code` | `string \| null` | ✓ | 結果コード |
-| `runs_scored` | `number \| null` | ✓ | 得点 |
-| `runners_before` | `unknown` | ✓ | 打席前走者 |
-| `runners_after` | `unknown` | ✓ | 打席後走者 |
-| `outs_before` | `number \| null` | ✓ | 打席前アウト数 |
-| `outs_after` | `number \| null` | ✓ | 打席後アウト数 |
-| `strategy` | `string \| null` | ✓ | 作戦 |
-| `play_description` | `string \| null` | ✓ | 原文テキスト |
-| `is_modified` | `boolean` | ✓ | 修正済みフラグ |
-| `is_reviewed` | `boolean` | ✓ | 確認済みフラグ |
-| `review_notes` | `string \| null` | ✓ | レビューメモ |
-| `modified_fields` | `unknown` | ✓ | 修正フィールド |
-| `discrepancies` | `Discrepancy[]` | ✓ | 差異一覧 |
-| `source_events` | `SourceEvent[] \| null` | ✓ | ソースイベント列 |
-
-**使用箇所**: `AtBatCard.vue`, `GameRecordDetailView.vue`
-
-**BEシリアライザ対応**: `AtBatRecordSerializer`
+`AtBatRecord` / `SourceEvent` / `Discrepancy`（パーサーレビュー用の型）は cmd_1795 で削除した。
 
 ---
 
-### `SourceEvent` (`src/types/game-record.ts`)
-
-| 属性 | 型 | 必須 | 説明 |
-|------|-----|------|------|
-| `seq` | `number \| undefined` | - | シーケンス番号 |
-| `type` | `'declaration' \| 'dice' \| 'auto' \| 'skip'` | ✓ | イベント種別 |
-| `dice_type` | `string \| undefined` | - | ダイス種別 |
-| `action` | `string \| undefined` | - | アクション |
-| `text` | `string \| undefined` | - | テキスト |
-| `roll` | `number \| number[] \| undefined` | - | ダイス出目 |
-| `result` | `string \| undefined` | - | 結果 |
-| `reason` | `string \| undefined` | - | スキップ理由 |
-| `from` | `string \| undefined` | - | 起点（走者移動等） |
-| `to` | `string \| undefined` | - | 終点 |
-| `[key]` | `unknown` | - | 拡張フィールド |
-
-**使用箇所**: `AtBatCard.vue`の表示フィルタリング
-
----
-
-### `Discrepancy` (`src/types/game-record.ts`)
-
-| 属性 | 型 | 必須 | 説明 |
-|------|-----|------|------|
-| `field` | `string` | ✓ | フィールド名 |
-| `text_value` | `unknown` | ✓ | テキスト解析値 |
-| `gsm_value` | `unknown` | ✓ | GSM計算値 |
-| `cause` | `'parser_misread' \| 'human_error' \| 'gsm_limitation' \| 'ambiguous' \| 'unknown'` | ✓ | 原因種別 |
-| `resolution` | `'gsm' \| 'text' \| 'manual' \| null` | ✓ | 解決策 |
-| `resolution_value` | `unknown \| undefined` | - | 解決値 |
-| `note` | `string \| undefined` | - | 備考 |
-
----
-
-### `PlayerCard` (`src/types/game-record.ts`)
+### `PlayerCard` (`src/types/playerCard.ts`)
 
 | 属性 | 型 | 必須 | 説明 |
 |------|-----|------|------|
@@ -298,7 +233,7 @@
 | `injury_rate` | `number` | ✓ | 故障率 |
 | `cost` | `number \| null \| undefined` | - | コスト |
 | `defenses` | `Defense[] \| undefined` | - | 守備情報 |
-| `unique_traits` | `string \| null \| undefined` | - | 特殊能力テキスト |
+| `unique_traits` | `string \| null \| undefined` | - | 固有特徴テキスト |
 | `image_url` | `string \| null \| undefined` | - | カード画像URL |
 
 **使用箇所**: `PlayerCardItem.vue`, `PlayerCardsView.vue`, `PlayerCardDetailView.vue`
@@ -307,7 +242,7 @@
 
 ---
 
-### `Defense` (`src/types/game-record.ts`)
+### `Defense` (`src/types/playerCard.ts`)
 
 | 属性 | 型 | 必須 | 説明 |
 |------|-----|------|------|
@@ -316,74 +251,6 @@
 | `range_value` | `number \| undefined` | - | レンジ値 |
 | `error_rank` | `string \| undefined` | - | エラーランク |
 | `throwing` | `string \| null \| undefined` | - | 肩 |
-
----
-
-### 試合前情報関連（`src/types/game-record.ts`）
-
-#### `LineupEntry`（game-record）
-
-| 属性 | 型 | 必須 | 説明 |
-|------|-----|------|------|
-| `order` | `number` | ✓ | 打順 |
-| `position` | `string` | ✓ | ポジション |
-| `name` | `string` | ✓ | 選手名 |
-
-#### `BenchEntry`
-
-| 属性 | 型 | 必須 | 説明 |
-|------|-----|------|------|
-| `name` | `string` | ✓ | 選手名 |
-| `role` | `'pitcher' \| 'fielder' \| 'unknown'` | ✓ | 役割 |
-
-#### `StarterInfo`
-
-| 属性 | 型 | 必須 | 説明 |
-|------|-----|------|------|
-| `name` | `string` | ✓ | 投手名 |
-| `jersey` | `number \| undefined` | - | 背番号 |
-| `rest_days` | `number \| undefined` | - | 休養日数 |
-| `fatigue` | `number \| undefined` | - | 疲労度 |
-| `wins` | `number \| undefined` | - | 勝利数 |
-| `losses` | `number \| undefined` | - | 敗北数 |
-| `era` | `number \| undefined` | - | 防御率 |
-| `appearances` | `number \| undefined` | - | 登板数 |
-
-#### `InjuryCheck`
-
-| 属性 | 型 | 必須 | 説明 |
-|------|-----|------|------|
-| `player` | `string` | ✓ | 選手名 |
-| `roll` | `number` | ✓ | ダイス結果 |
-| `injured` | `boolean` | ✓ | 故障フラグ |
-| `injury_days` | `number \| undefined` | - | 故障日数 |
-| `injury_level` | `number \| undefined` | - | 故障レベル |
-| `note` | `string \| undefined` | - | 備考 |
-
-#### `PregameInfo`
-
-試合前情報（対戦表・ラインナップ・先発情報等）。
-
-| 属性 | 型 | 必須 | 説明 |
-|------|-----|------|------|
-| `venue` | `string \| null` | ✓ | 球場名 |
-| `venue_code_1112` | `string \| null` | ✓ | 球場コード（11/12版） |
-| `venue_code_1314` | `string \| null` | ✓ | 球場コード（13/14版） |
-| `dh_enabled` | `boolean \| null` | ✓ | DH制フラグ |
-| `home_team` | `string \| null` | ✓ | ホームチーム名 |
-| `visitor_team` | `string \| null` | ✓ | ビジターチーム名 |
-| `rain_canceled` | `boolean` | ✓ | 雨天中止フラグ |
-| `home_lineup` | `LineupEntry[]` | ✓ | ホームラインナップ |
-| `visitor_lineup` | `LineupEntry[]` | ✓ | ビジターラインナップ |
-| `home_bench` | `BenchEntry[]` | ✓ | ホームベンチ |
-| `visitor_bench` | `BenchEntry[]` | ✓ | ビジターベンチ |
-| `home_starter` | `string \| null` | ✓ | ホーム先発投手名 |
-| `visitor_starter` | `string \| null` | ✓ | ビジター先発投手名 |
-| `home_starter_info` | `StarterInfo \| null` | ✓ | ホーム先発詳細 |
-| `visitor_starter_info` | `StarterInfo \| null` | ✓ | ビジター先発詳細 |
-| `injury_check_result` | `InjuryCheck \| null` | ✓ | 故障チェック結果 |
-
-**使用箇所**: `GameRecordDetailView.vue`
 
 ---
 
@@ -412,7 +279,7 @@
 | `scoreboard` | `Scoreboard \| null` | ✓ | スコアボード |
 | `starting_lineup` | `LineupItem[] \| null` | ✓ | スターティングラインナップ |
 
-**使用箇所**: `GameResult.vue`, `GameDetailView.vue`, `GameLineupView.vue`
+**使用箇所**: `GameResult.vue`
 
 **BEシリアライザ対応**: `GameDataSerializer`
 
@@ -446,8 +313,8 @@
 | 属性 | 型 | 必須 | 説明 |
 |------|-----|------|------|
 | `id` | `number` | ✓ | シーズンID |
-| `name` | `string` | ✓ | シーズン名 |
-| `current_date` | `string` | ✓ | 現在日付 |
+| `current_date` | `string` | ✓ | 現在日付（今の範囲の最後の試合日。サーバが日程の結果から導く） |
+| `current_range` | `{ start_date: string; end_date: string } \| null` | ✓ | 今の範囲（最後に結果が入った日の翌日〜次の試合日）。登録・離脱を試合日ページで操作できるのはこの範囲の日だけ。最終試合日の後などで範囲が無い時は `null` |
 | `start_date` | `string` | ✓ | 開始日 |
 | `end_date` | `string` | ✓ | 終了日 |
 | `season_schedules` | `SeasonSchedule[]` | ✓ | スケジュール一覧 |
@@ -574,29 +441,6 @@
 
 ## マスタ関連
 
-### `BattingSkill` (`src/types/battingSkill.ts`)
-
-| 属性 | 型 | 必須 | 説明 |
-|------|-----|------|------|
-| `id` | `number` | ✓ | スキルID |
-| `name` | `string` | ✓ | スキル名 |
-| `description` | `string \| null` | ✓ | 説明 |
-| `skill_type` | `SkillType` | ✓ | 種別（positive/negative/neutral） |
-
-**使用箇所**: `BattingSkillSettings.vue`, `BattingSkillDialog.vue`
-
-**BEシリアライザ対応**: `BattingSkillSerializer`
-
----
-
-### `PitchingSkill` (`src/types/pitchingSkill.ts`)
-
-`BattingSkill`と同構造（投手スキル用）。
-
-**使用箇所**: `PitchingSkillSettings.vue`, `PitchingSkillDialog.vue`
-
----
-
 ### `BattingStyle` (`src/types/battingStyle.ts`)
 
 | 属性 | 型 | 必須 | 説明 |
@@ -640,16 +484,6 @@
 | `category` | `'touhou' \| 'outside_world' \| 'cost_regulation' \| null` | ✓ | カテゴリ |
 
 **使用箇所**: `PlayerTypeSettings.vue`, `PlayerTypeDialog.vue`
-
----
-
-### `SkillType` (`src/types/skill.ts`)
-
-```typescript
-type SkillType = 'positive' | 'negative' | 'neutral'
-```
-
-**使用箇所**: `BattingSkill`, `PitchingSkill`の`skill_type`フィールド
 
 ---
 

@@ -1,0 +1,846 @@
+import { describe, it, expect, afterEach } from 'vitest'
+import { mount, type VueWrapper } from '@vue/test-utils'
+import { createVuetify } from 'vuetify'
+import * as components from 'vuetify/components'
+import * as directives from 'vuetify/directives'
+import { createI18n } from 'vue-i18n'
+import ja from '@/locales/ja.json'
+import DashboardOverview from '../DashboardOverview.vue'
+import type {
+  AbsenceRecord,
+  CooldownRecord,
+  CostRecord,
+  DashboardResource,
+  GameProgressRecord,
+  RosterStatusRecord,
+} from '@/types/commissionerDashboard'
+import type { Team } from '@/types/team'
+import { stackedLayout } from '@/components/shared/__tests__/tableLayout'
+
+const vuetify = createVuetify({ components, directives })
+const i18n = createI18n({
+  legacy: false,
+  locale: 'ja',
+  messages: { ja: { asyncState: ja.asyncState } },
+})
+
+const ok = <T>(data: T[]): DashboardResource<T> => ({ data, loading: false, failed: false })
+const pending = <T>(): DashboardResource<T> => ({ data: [], loading: true, failed: false })
+const failed = <T>(): DashboardResource<T> => ({ data: [], loading: false, failed: true })
+
+const team = (id: number, over: Partial<Team> = {}): Team => ({
+  id,
+  name: `チーム${id}`,
+  short_name: `T${id}`,
+  is_active: true,
+  has_season: true,
+  team_type: 'normal',
+  season_current_date: '2026-05-08',
+  ...over,
+})
+const cost = (team_id: number, total_cost: number, total_cost_limit = 200): CostRecord => ({
+  team_id,
+  team_name: `チーム${team_id}`,
+  team_type: 'normal',
+  total_cost,
+  total_cost_limit,
+  first_squad_cost: 120,
+  first_squad_cost_limit: 120,
+  first_squad_count: 28,
+  exempt_count: 0,
+  cost_usage_ratio: total_cost / total_cost_limit,
+})
+const roster = (team_id: number, warnings: string[] = []): RosterStatusRecord => ({
+  team_id,
+  team_name: `チーム${team_id}`,
+  team_type: 'normal',
+  first_count: 28,
+  second_count: 7,
+  first_cost: 120,
+  first_cost_limit: 120,
+  outside_world_count: 3,
+  outside_world_limit: 4,
+  warnings,
+})
+const absence = (team_id: number, remaining: number, name = '霧雨魔理沙'): AbsenceRecord => ({
+  id: team_id * 10 + remaining,
+  team_name: `チーム${team_id}`,
+  team_id,
+  player_name: name,
+  player_id: team_id,
+  absence_type: 'injury',
+  reason: null,
+  start_date: '2026-04-01',
+  duration: 5,
+  duration_unit: 'days',
+  effective_end_date: '2026-04-20',
+  remaining_days: remaining,
+  remaining_games: null,
+  season_current_date: '2026-04-10',
+})
+const cooldown = (team_id: number, remaining_days: number): CooldownRecord => ({
+  team_id,
+  team_name: `チーム${team_id}`,
+  player_id: team_id,
+  player_name: '博麗霊夢',
+  demotion_date: '2026-04-01',
+  cooldown_until: '2026-04-11',
+  remaining_days,
+  same_day_exempt: false,
+})
+
+const progress = (team_id: number, over: Partial<GameProgressRecord> = {}): GameProgressRecord => ({
+  team_id,
+  regular_played: 34,
+  regular_total: 143,
+  regular_unrescheduled: 0,
+  playoff_played: 0,
+  ...over,
+})
+
+type Props = {
+  teams: DashboardResource<Team>
+  absences: DashboardResource<AbsenceRecord>
+  cooldowns: DashboardResource<CooldownRecord>
+  costs: DashboardResource<CostRecord>
+  rosterStatus: DashboardResource<RosterStatusRecord>
+  gameProgress: DashboardResource<GameProgressRecord>
+}
+const baseProps = (over: Partial<Props> = {}): Props => ({
+  teams: ok([team(1), team(2), team(3, { is_active: false })]),
+  absences: ok([]),
+  cooldowns: ok([]),
+  costs: ok([]),
+  rosterStatus: ok([]),
+  gameProgress: ok([progress(1), progress(2)]),
+  ...over,
+})
+
+let mounted: VueWrapper[] = []
+const mountOverview = (props: Props) => {
+  const w = mount(DashboardOverview, {
+    props,
+    global: { plugins: [vuetify, i18n] },
+    attachTo: document.body,
+  })
+  mounted.push(w)
+  return w
+}
+afterEach(() => {
+  mounted.forEach((w) => w.unmount())
+  mounted = []
+})
+
+const tile = (w: VueWrapper, id: string) => w.find(`[data-testid="tile-${id}"]`)
+const rowNames = (w: VueWrapper) =>
+  w.findAll('[data-testid="team-table-card"] tbody tr').map((tr) => tr.find('b').text())
+
+// Test Basis: thbig-dugout-commissioner-dashboard-visual-design.md §2 案 A+（要約タイル 5 つ・注意が要るもの・チームの表）/ §5 段 2
+describe('DashboardOverview 要約タイル', () => {
+  it('5 つのタイルに、稼働中・要確認・離脱・クールダウン・コスト上限の数を出す', () => {
+    const w = mountOverview(
+      baseProps({
+        absences: ok([absence(1, 2), absence(1, 5), absence(2, 4)]),
+        cooldowns: ok([cooldown(2, 1)]),
+        costs: ok([cost(1, 190), cost(2, 201)]),
+        rosterStatus: ok([roster(1), roster(2, ['コスト上限を超過しています'])]),
+      }),
+    )
+    expect(tile(w, 'active').text()).toContain('2')
+    expect(tile(w, 'active').text()).toContain('/ 3')
+    expect(tile(w, 'violation').text()).toContain('1')
+    expect(tile(w, 'absence').text()).toContain('3')
+    expect(tile(w, 'absence').text()).toContain('2 チーム')
+    expect(tile(w, 'absence').text()).toContain('2日以内に復帰 1 人')
+    expect(tile(w, 'cooldown').text()).toContain('1')
+    expect(tile(w, 'cooldown').text()).toContain('2日以内に明ける 1 人')
+    expect(tile(w, 'cost').text()).toContain('2') // 95% 以上 1 + 超過 1
+  })
+
+  it('要確認が 0 件なら緑のチェックと「規定内」、1 件以上なら赤系の警告', () => {
+    const zero = mountOverview(baseProps({ rosterStatus: ok([roster(1)]) }))
+    expect(tile(zero, 'violation').find('.mdi-check-circle').exists()).toBe(true)
+    expect(tile(zero, 'violation').text()).toContain('規定内')
+    expect(tile(zero, 'violation').find('.bg-state-done').exists()).toBe(true)
+    const one = mountOverview(baseProps({ rosterStatus: ok([roster(1, ['x'])]) }))
+    expect(tile(one, 'violation').find('.mdi-alert-circle').exists()).toBe(true)
+    expect(tile(one, 'violation').find('.bg-state-warn').exists()).toBe(true)
+    expect(tile(one, 'violation').text()).not.toContain('規定内')
+  })
+
+  it('タイルを押すと、その明細のタブへ移るよう通知する', async () => {
+    const w = mountOverview(baseProps())
+    const expected: Record<string, string> = {
+      active: 'teams',
+      violation: 'rosterStatus',
+      absence: 'absences',
+      cooldown: 'cooldowns',
+      cost: 'costs',
+    }
+    for (const [id, tab] of Object.entries(expected)) {
+      await tile(w, id).find('button.overview-tile__go').trigger('click')
+      expect(w.emitted('navigate')!.at(-1)).toEqual([tab])
+    }
+  })
+})
+
+// Test Basis: 設計 §5 段 2「AsyncState で API ごとに別々に読み込み中・失敗を出す（1 本が遅くても他を先に出す）」
+describe('DashboardOverview API ごとの読み込み中・失敗', () => {
+  it('costs が読み込み中でも、他のタイルとチームの表は先に出る', () => {
+    const w = mountOverview(
+      baseProps({
+        costs: pending(),
+        absences: ok([absence(1, 2)]),
+        rosterStatus: ok([roster(1)]),
+      }),
+    )
+    expect(tile(w, 'cost').find('[data-testid="state-loading"]').exists()).toBe(true)
+    expect(tile(w, 'cost').find('[data-testid="state-error"]').exists()).toBe(false)
+    expect(tile(w, 'absence').find('[data-testid="state-loading"]').exists()).toBe(false)
+    expect(tile(w, 'absence').text()).toContain('1')
+    expect(tile(w, 'active').find('[data-testid="state-loading"]').exists()).toBe(false)
+    expect(rowNames(w)).toEqual(['チーム1', 'チーム2'])
+  })
+
+  it('costs が失敗しても、他のタイルは巻き込まず、再読み込みはその API だけを指す', async () => {
+    const w = mountOverview(baseProps({ costs: failed(), absences: ok([absence(1, 2)]) }))
+    expect(tile(w, 'cost').find('[data-testid="state-error"]').exists()).toBe(true)
+    for (const id of ['active', 'violation', 'absence', 'cooldown']) {
+      expect(tile(w, id).find('[data-testid="state-error"]').exists()).toBe(false)
+    }
+    // 「チーム上限」の段にも同じ失敗が出て、空（なし）とは出さない
+    const near = w.find('[data-testid="attention-cost"]')
+    expect(near.find('[data-testid="state-error"]').exists()).toBe(true)
+    expect(near.text()).not.toContain('なし')
+    await tile(w, 'cost').find('[data-testid="state-retry"]').trigger('click')
+    expect(w.emitted('retry')!.at(-1)).toEqual(['costs'])
+    // 表は出る（合計コストの列は「—」）
+    expect(rowNames(w)).toEqual(['チーム1', 'チーム2'])
+  })
+
+  it('チームの取得が失敗したら表の場所にアラートを出し、空状態にはしない', async () => {
+    const w = mountOverview(baseProps({ teams: failed() }))
+    const card = w.find('[data-testid="team-table-section"]')
+    expect(card.find('[data-testid="state-error"]').exists()).toBe(true)
+    expect(card.find('[data-testid="state-empty"]').exists()).toBe(false)
+    await card.find('[data-testid="state-retry"]').trigger('click')
+    expect(w.emitted('retry')!.at(-1)).toEqual(['teams'])
+  })
+
+  it('読み込み中のチーム表はスケルトン。読み込みが終わって稼働中が 0 なら空状態', () => {
+    const loading = mountOverview(baseProps({ teams: pending() }))
+    const sec = loading.find('[data-testid="team-table-section"]')
+    expect(sec.find('[data-testid="state-loading"]').exists()).toBe(true)
+    expect(sec.find('[data-testid="state-empty"]').exists()).toBe(false)
+    const empty = mountOverview(baseProps({ teams: ok([team(3, { is_active: false })]) }))
+    expect(
+      empty.find('[data-testid="team-table-section"] [data-testid="state-empty"]').exists(),
+    ).toBe(true)
+  })
+})
+
+// Test Basis: Operator 決定 2026-11-02「要確認に合計コスト超過のチームも数える。重要度は規定違反より低く、一覧は後ろ・控えめ」
+describe('DashboardOverview 要確認（規定違反 または 合計コスト超過）', () => {
+  const warnTone = (w: VueWrapper) =>
+    ['bg-state-warn', 'bg-state-done', 'bg-state-neutral'].filter((c) =>
+      tile(w, 'violation').find(`.${c}`).exists(),
+    )
+
+  it('タイルは違反のみ・超過のみ・両方（1 回）・95% 以上で超過なし（数えない）を数える', () => {
+    const count = (roster_: RosterStatusRecord[], costs: CostRecord[]) => {
+      const w = mountOverview(baseProps({ rosterStatus: ok(roster_), costs: ok(costs) }))
+      return tile(w, 'violation').find('.overview-tile__value').text().replace(/\s/g, '')
+    }
+    expect(count([roster(1, ['x'])], [cost(1, 100)])).toBe('1チーム')
+    expect(count([roster(1)], [cost(1, 201)])).toBe('1チーム')
+    expect(count([roster(1, ['x'])], [cost(1, 201)])).toBe('1チーム')
+    expect(count([roster(1, ['x']), roster(2)], [cost(1, 201), cost(2, 220)])).toBe('2チーム')
+    expect(count([roster(1)], [cost(1, 190), cost(2, 200)])).toBe('0チーム')
+  })
+
+  it('超過だけでもタイルは警告色。内訳（規定違反・合計コスト超過）を補足に出す', () => {
+    const w = mountOverview(
+      baseProps({ rosterStatus: ok([roster(1, ['x']), roster(2)]), costs: ok([cost(2, 201)]) }),
+    )
+    expect(warnTone(w)).toEqual(['bg-state-warn'])
+    expect(tile(w, 'violation').text()).toContain('規定違反 1 ・ 合計コスト超過 1')
+  })
+
+  it('一覧は規定違反のチームが先、超過だけのチームは後ろで控えめ（中立のチップ・太字にしない）', () => {
+    const w = mountOverview(
+      baseProps({
+        rosterStatus: ok([roster(1), roster(2, ['外の世界枠が上限を超過しています']), roster(3)]),
+        costs: ok([cost(1, 230), cost(2, 205), cost(3, 190)]),
+      }),
+    )
+    const g = w.find('[data-testid="attention-violation"]')
+    const rows = g.findAll('.attention-row')
+    expect(rows.map((r) => r.find('.attention-row__name').text())).toEqual(['チーム2', 'チーム1'])
+    expect(rows.map((r) => r.attributes('data-testid'))).toEqual([
+      'check-row-violation',
+      'check-row-cost',
+    ])
+    expect(rows[0]!.classes()).not.toContain('attention-row--minor')
+    expect(rows[1]!.classes()).toContain('attention-row--minor')
+    // 規定違反かつ超過のチームは 1 行。超過は中立のチップで添える（赤にしない）
+    expect(rows[0]!.text()).toContain('外の世界枠が上限を超過しています')
+    expect(rows[0]!.text()).toContain('合計コスト超過 5')
+    expect(rows[1]!.text()).toContain('合計コスト超過 30')
+    const chips = w.findAllComponents(components.VChip)
+    const over30 = chips.find((c) => c.text() === '合計コスト超過 30')!
+    expect(over30.props('color')).toBe('state-neutral')
+    expect(g.text()).not.toContain('チーム3')
+    expect(g.find('[data-testid="check-cost-pending"]').exists()).toBe(false)
+  })
+
+  // cmd_1808 subtask_1808j: 外の世界枠の内訳の違反は、サーバの warnings が空でも規定違反として要確認に入る
+  it('外の世界枠の内訳の違反（4 人全員が投手）は規定違反として要確認に入る。内訳が規定内なら入らない', () => {
+    const bad = {
+      ...roster(1),
+      outside_world_count: 4,
+      outside_world_breakdown: { pitcher_only: 4, fielder_only: 0, two_way: 0, balance_ok: false },
+    }
+    const good = {
+      ...roster(2),
+      outside_world_count: 4,
+      outside_world_breakdown: { pitcher_only: 3, fielder_only: 0, two_way: 1, balance_ok: true },
+    }
+    const w = mountOverview(baseProps({ rosterStatus: ok([bad, good]), costs: ok([cost(1, 100)]) }))
+    const rows = w.find('[data-testid="attention-violation"]').findAll('.attention-row')
+    expect(rows).toHaveLength(1)
+    expect(rows[0]!.attributes('data-testid')).toBe('check-row-violation')
+    expect(rows[0]!.text()).toContain('チーム1')
+    expect(rows[0]!.text()).toContain('外の世界枠は投手と野手の両方が必要です')
+    expect(warnTone(w)).toEqual(['bg-state-warn'])
+    expect(tile(w, 'violation').text()).toContain('規定を外れたチーム')
+  })
+
+  it('コストが読み込み中: 違反 0 件なら緑にせず中立色で「確認中」。違反があれば警告色のまま', () => {
+    const zero = mountOverview(baseProps({ rosterStatus: ok([roster(1)]), costs: pending() }))
+    expect(warnTone(zero)).toEqual(['bg-state-neutral'])
+    expect(tile(zero, 'violation').find('.bg-state-done').exists()).toBe(false)
+    expect(tile(zero, 'violation').text()).toContain('コストを確認中')
+    expect(tile(zero, 'violation').text()).not.toContain('規定内')
+    const g = zero.find('[data-testid="attention-violation"]')
+    expect(g.find('.mdi-check-circle').exists()).toBe(false)
+    expect(g.find('[data-testid="check-cost-pending"]').text()).toContain('確認中')
+    const warn = mountOverview(
+      baseProps({ rosterStatus: ok([roster(1, ['x'])]), costs: pending() }),
+    )
+    expect(warnTone(warn)).toEqual(['bg-state-warn'])
+  })
+
+  it('コストが失敗: 違反 0 件でも緑にせず中立色。失敗の旨を出す', () => {
+    const w = mountOverview(baseProps({ rosterStatus: ok([roster(1)]), costs: failed() }))
+    expect(warnTone(w)).toEqual(['bg-state-neutral'])
+    expect(tile(w, 'violation').text()).toContain('コストを取得できません')
+    const g = w.find('[data-testid="attention-violation"]')
+    expect(g.find('.mdi-check-circle').exists()).toBe(false)
+    expect(g.find('[data-testid="check-cost-pending"]').text()).toContain('取得に失敗')
+    // グループの見出しチップも緑にしない
+    const head = w.findAllComponents(components.VChip).find((c) => c.text().startsWith('要確認'))!
+    expect(head.props('color')).toBe('state-neutral')
+  })
+
+  it('1軍登録状況（roster_status）が読み込み中・失敗の間は、要確認の数を出さない', () => {
+    const loading = mountOverview(baseProps({ rosterStatus: pending(), costs: ok([cost(1, 250)]) }))
+    expect(tile(loading, 'violation').find('.overview-tile__value').exists()).toBe(false)
+    const bad = mountOverview(baseProps({ rosterStatus: failed(), costs: ok([cost(1, 250)]) }))
+    expect(tile(bad, 'violation').find('.overview-tile__value').exists()).toBe(false)
+  })
+})
+
+describe('DashboardOverview 注意が要るもの', () => {
+  it('要確認が 0 件のときも「規定違反はありません」の 1 行を出す（見落としでないことを示す）', () => {
+    const w = mountOverview(baseProps({ rosterStatus: ok([roster(1)]) }))
+    const g = w.find('[data-testid="attention-violation"]')
+    expect(g.find('.mdi-check-circle').exists()).toBe(true)
+    expect(g.text()).toContain('規定違反はありません')
+  })
+
+  it('要確認は、違反のあるチームとその内容（赤系のチップ）を並べる', () => {
+    const w = mountOverview(
+      baseProps({ rosterStatus: ok([roster(1), roster(2, ['外の世界枠が上限を超過しています'])]) }),
+    )
+    const g = w.find('[data-testid="attention-violation"]')
+    expect(g.text()).toContain('チーム2')
+    expect(g.text()).toContain('外の世界枠が上限を超過しています')
+    expect(g.text()).not.toContain('チーム1')
+    const chip = w
+      .findAllComponents(components.VChip)
+      .find((c) => c.text() === '外の世界枠が上限を超過しています')!
+    expect(chip.props('color')).toBe('state-warn')
+    expect(chip.props('variant')).toBe('flat')
+  })
+
+  it('チーム上限（95% 以上）のチームは、残りコストつきで合計コストの多い順に並べる（95% 未満は出さない）', () => {
+    const w = mountOverview(
+      baseProps({
+        costs: ok([cost(1, 189), cost(2, 190), cost(3, 199), cost(4, 201)]),
+        teams: ok([team(1), team(2), team(3), team(4)]),
+      }),
+    )
+    const g = w.find('[data-testid="attention-cost"]')
+    const text = g.text()
+    expect(text).toContain('チーム4')
+    expect(text).toContain('チーム3')
+    expect(text).toContain('チーム2')
+    expect(text).not.toContain('チーム1')
+    expect(text.indexOf('チーム4')).toBeLessThan(text.indexOf('チーム3'))
+    expect(text.indexOf('チーム3')).toBeLessThan(text.indexOf('チーム2'))
+    expect(text).toContain('残り 1')
+    expect(text).toContain('超過 1')
+  })
+
+  it('復帰間近: 2 日以内に復帰する人を並べ、3 日以上は出さない。クールダウンは人数で出す', () => {
+    const w = mountOverview(
+      baseProps({
+        absences: ok([absence(1, 2, '霧雨魔理沙'), absence(2, 3, '博麗霊夢')]),
+        cooldowns: ok([cooldown(1, 1), cooldown(2, 5)]),
+      }),
+    )
+    const a = w.find('[data-testid="attention-soon-absence"]')
+    expect(a.text()).toContain('霧雨魔理沙')
+    expect(a.text()).toContain('あと 2日')
+    expect(a.text()).not.toContain('博麗霊夢')
+    const c = w.find('[data-testid="attention-soon-cooldown"]')
+    expect(c.text()).toContain('1 人')
+  })
+})
+
+// Test Basis: cmd_1817 Operator 2026-11-02「『まもなく動く』は『復帰間近』、『上限に近い』は『チーム上限』。注意がいるもの節の補足説明は余計なので削除」
+describe('DashboardOverview 注意が要るものの見出し', () => {
+  const headOf = (w: ReturnType<typeof mountOverview>, testid: string) =>
+    w.find(`[data-testid="${testid}"] .attention-group__head`)
+
+  it('見出しチップは「要確認」「チーム上限」「復帰間近」。旧名の「上限に近い」「まもなく動く」は出ない', () => {
+    const w = mountOverview(
+      baseProps({
+        costs: ok([cost(1, 195)]),
+        teams: ok([team(1)]),
+        absences: ok([absence(1, 2, '霧雨魔理沙')]),
+        cooldowns: ok([cooldown(1, 1)]),
+      }),
+    )
+    expect(headOf(w, 'attention-violation').text()).toMatch(/^要確認/)
+    expect(headOf(w, 'attention-cost').text()).toMatch(/^チーム上限/)
+    expect(headOf(w, 'attention-soon').text()).toMatch(/^復帰間近/)
+    // 復帰間近の中身（離脱者・クールダウン）と件数（離脱 1 + クールダウン 1）は残る
+    expect(headOf(w, 'attention-soon').text()).toContain('2')
+    expect(w.find('[data-testid="attention-soon-absence"]').text()).toContain('霧雨魔理沙')
+    expect(w.find('[data-testid="attention-soon-cooldown"]').text()).toContain('1 人')
+    const groups = w.find('[data-testid="attention-soon"]').element.parentElement!.textContent!
+    expect(groups).not.toContain('まもなく動く')
+    expect(w.find('[data-testid="attention-cost"]').text()).not.toContain('上限に近い')
+  })
+
+  it('各グループの見出しの横に補足の説明を出さない', () => {
+    const w = mountOverview(
+      baseProps({
+        costs: ok([cost(1, 195)]),
+        teams: ok([team(1)]),
+        absences: ok([absence(1, 2)]),
+      }),
+    )
+    for (const id of ['attention-violation', 'attention-cost', 'attention-soon']) {
+      const head = headOf(w, id)
+      expect(head.find('.attention-group__caption').exists()).toBe(false)
+      expect(head.text()).not.toContain('規定を外れている')
+      expect(head.text()).not.toContain('合計コスト 95% 以上')
+      expect(head.text()).not.toContain('2日以内に復帰・明ける')
+    }
+  })
+
+  it('数字タイル「コスト上限に近い」と、表の行のチップ「上限に近い」は今回は変えない', () => {
+    const w = mountOverview(baseProps({ costs: ok([cost(1, 195)]), teams: ok([team(1)]) }))
+    expect(tile(w, 'cost').text()).toContain('コスト上限に近い')
+    const rowChips = w
+      .findAll('[data-testid="team-table-card"] tbody tr .v-chip')
+      .map((c) => c.text())
+    expect(rowChips).toContain('上限に近い')
+  })
+})
+
+describe('DashboardOverview チームの表', () => {
+  it('稼働中のチームだけを、既定は進みが遅い順に並べる。休止中は末尾に件数だけ出す', () => {
+    const w = mountOverview(
+      baseProps({
+        teams: ok([team(1), team(2), team(3, { is_active: false }), team(4, { is_active: false })]),
+        gameProgress: ok([
+          progress(1, { regular_played: 80 }),
+          progress(2, { regular_played: 20 }),
+          progress(3, { regular_played: 143 }),
+        ]),
+      }),
+    )
+    expect(rowNames(w)).toEqual(['チーム2', 'チーム1'])
+    expect(w.find('[data-testid="inactive-note"]').text()).toContain('休止中のチーム 2 件')
+  })
+
+  it('合計コストの注意は 94.9% / 95% / 100% / 100.1% の境界で、チップなし・上限に近い・上限に近い・超過', () => {
+    const w = mountOverview(
+      baseProps({
+        teams: ok([1, 2, 3, 4].map((id) => team(id))),
+        costs: ok([
+          cost(1, 949, 1000),
+          cost(2, 950, 1000),
+          cost(3, 1000, 1000),
+          cost(4, 1001, 1000),
+        ]),
+      }),
+    )
+    const chipsOf = (name: string) => {
+      const tr = w
+        .findAll('[data-testid="team-table-card"] tbody tr')
+        .find((r) => r.find('b').text() === name)!
+      return tr
+        .findAllComponents(components.VChip)
+        .map((c) => ({ text: c.text(), color: c.props('color') }))
+        .filter((c) => c.text === '上限に近い' || c.text === '超過')
+    }
+    expect(chipsOf('チーム1')).toEqual([])
+    expect(chipsOf('チーム2')).toEqual([{ text: '上限に近い', color: 'state-todo' }])
+    expect(chipsOf('チーム3')).toEqual([{ text: '上限に近い', color: 'state-todo' }])
+    expect(chipsOf('チーム4')).toEqual([{ text: '超過', color: 'state-warn' }])
+  })
+
+  it('チームごとの離脱・クールダウンを件数のチップで出す。注意が無い行は「—」', () => {
+    const w = mountOverview(
+      baseProps({
+        teams: ok([team(1), team(2)]),
+        absences: ok([absence(1, 5), absence(1, 6)]),
+        cooldowns: ok([cooldown(1, 5)]),
+      }),
+    )
+    const rows = w.findAll('[data-testid="team-table-card"] tbody tr')
+    const t1 = rows.find((r) => r.find('b').text() === 'チーム1')!
+    expect(t1.text()).toContain('離脱 2')
+    expect(t1.text()).toContain('クールダウン 1')
+    const t2 = rows.find((r) => r.find('b').text() === 'チーム2')!
+    expect(t2.text()).not.toContain('離脱')
+    expect(t2.find('.attention-none').text()).toBe('—')
+  })
+
+  it('1軍コストは上限ぴったりでも色を付けない（棒もチップも出さない）', () => {
+    const w = mountOverview(
+      baseProps({ teams: ok([team(1)]), rosterStatus: ok([roster(1)]), costs: ok([cost(1, 100)]) }),
+    )
+    const tr = w.find('[data-testid="team-table-card"] tbody tr')
+    expect(tr.text()).toContain('120 / 120')
+    const cell = tr.find('td.first-cost-cell')
+    expect(cell.findComponent(components.VProgressLinear).exists()).toBe(false)
+    expect(cell.findComponent(components.VChip).exists()).toBe(false)
+  })
+
+  // cmd_1804 subtask_1804a: Operator 決定 2026-11-02「ダッシュボードはマークのみ」。棒・チップは変えず記号だけ付ける
+  it('1軍コストの記号: 上限ちょうど=緑のチェック、上限+1=赤の✕。棒・チップは出さない', () => {
+    const w = mountOverview(
+      baseProps({
+        teams: ok([team(1), team(2)]),
+        rosterStatus: ok([
+          { ...roster(1), first_cost: 120, first_cost_limit: 120 },
+          { ...roster(2), first_cost: 121, first_cost_limit: 120 },
+        ]),
+      }),
+    )
+    const cellOf = (name: string) =>
+      w
+        .findAll('[data-testid="team-table-card"] tbody tr')
+        .find((r) => r.find('b').text() === name)!
+        .find('td.first-cost-cell')
+    const ok1 = cellOf('チーム1').find('[data-testid="limit-mark"]')
+    expect(ok1.attributes('data-state')).toBe('ok')
+    expect(ok1.classes()).toContain('mdi-check-circle')
+    expect(ok1.classes()).toContain('text-meter-ok')
+    const ng = cellOf('チーム2').find('[data-testid="limit-mark"]')
+    expect(ng.attributes('data-state')).toBe('ng')
+    expect(ng.classes()).toContain('mdi-close-circle')
+    expect(ng.classes()).toContain('text-meter-ng')
+    for (const n of ['チーム1', 'チーム2']) {
+      expect(cellOf(n).findComponent(components.VProgressLinear).exists()).toBe(false)
+      expect(cellOf(n).findComponent(components.VChip).exists()).toBe(false)
+    }
+  })
+
+  it('1軍コストの上限が無い（25 人未満）時は記号を出さない', () => {
+    const w = mountOverview(
+      baseProps({
+        teams: ok([team(1)]),
+        rosterStatus: ok([{ ...roster(1), first_cost: 90, first_cost_limit: null }]),
+      }),
+    )
+    expect(w.find('td.first-cost-cell [data-testid="limit-mark"]').exists()).toBe(false)
+    expect(w.find('td.first-cost-cell').text()).toContain('90 / —')
+  })
+
+  it('合計コストの棒は、通常=link・上限に近い=meter-near・超過=meter-over', () => {
+    const w = mountOverview(
+      baseProps({
+        teams: ok([1, 2, 3].map((id) => team(id))),
+        costs: ok([cost(1, 100), cost(2, 190), cost(3, 201)]),
+      }),
+    )
+    const colorOf = (name: string) => {
+      const tr = w
+        .findAll('[data-testid="team-table-card"] tbody tr')
+        .find((r) => r.find('b').text() === name)!
+      return tr.find('td.total-cost-cell').findComponent(components.VProgressLinear).props('color')
+    }
+    expect(colorOf('チーム1')).toBe('link')
+    expect(colorOf('チーム2')).toBe('meter-near')
+    expect(colorOf('チーム3')).toBe('meter-over')
+  })
+
+  // Test Basis: cmd_1814 ダッシュボードのチーム名を押してそのチームのシーズン画面（カレンダー）へ。a 要素なのでキーボードでも辿れる
+  it('注意の欄（要確認・チーム上限・復帰間近）とチームの表のチーム名は、そのチームのシーズン画面へのリンク', async () => {
+    const w = mountOverview(
+      baseProps({
+        teams: ok([team(1, { name: '紅魔館' }), team(2, { name: '白玉楼' })]),
+        rosterStatus: ok([roster(1, ['外の世界枠が上限を超過しています']), roster(2)]),
+        costs: ok([{ ...cost(2, 195), team_name: '白玉楼' }]),
+        absences: ok([{ ...absence(2, 1), team_name: '白玉楼' }]),
+      }),
+    )
+    const links = (testid: string) =>
+      w.find(`[data-testid="${testid}"]`).findAll('a.team-name-link')
+
+    const violation = links('attention-violation')
+    expect(violation.map((a) => [a.text(), a.attributes('href')])).toEqual([
+      ['チーム1', '/teams/1/season'],
+    ])
+    const costWatch = links('attention-cost')
+    expect(costWatch.map((a) => [a.text(), a.attributes('href')])).toEqual([
+      ['白玉楼', '/teams/2/season'],
+    ])
+    const soon = links('attention-soon-absence')
+    expect(soon.map((a) => [a.text(), a.attributes('href')])).toEqual([
+      ['白玉楼', '/teams/2/season'],
+    ])
+    const table = links('team-table-card')
+    expect(
+      table.map((a) => [a.text(), a.attributes('href')]).sort((x, y) => (x[1]! < y[1]! ? -1 : 1)),
+    ).toEqual([
+      ['紅魔館', '/teams/1/season'],
+      ['白玉楼', '/teams/2/season'],
+    ])
+
+    // 押すと、正式名のチームの id で open-season を出す（選択中チームの切り替えと遷移は親）。表の行からも、注意の欄からも
+    await table.find((a) => a.text() === '白玉楼')!.trigger('click')
+    await violation[0].trigger('click')
+    expect(w.emitted('open-season')).toEqual([
+      [{ id: 2, name: '白玉楼' }],
+      [{ id: 1, name: 'チーム1' }],
+    ])
+  })
+
+  it('行の操作は、そのチームのシーズンへ移る名前つきボタン', async () => {
+    const w = mountOverview(baseProps({ teams: ok([team(7, { name: '紅魔館' })]) }))
+    const btn = w.find('button[aria-label="紅魔館のシーズン"]')
+    expect(btn.exists()).toBe(true)
+    await btn.trigger('click')
+    expect(w.emitted('open-season')![0]).toEqual([{ id: 7, name: '紅魔館' }])
+  })
+
+  it('他の API が読み込み中の列はスケルトン、失敗した列は「—」（行は出る）', () => {
+    const loading = mountOverview(
+      baseProps({ teams: ok([team(1)]), costs: pending(), rosterStatus: pending() }),
+    )
+    const tr = loading.find('[data-testid="team-table-card"] tbody tr')
+    expect(tr.find('td.total-cost-cell [data-testid="cell-loading"]').exists()).toBe(true)
+    expect(tr.find('td.first-cost-cell [data-testid="cell-loading"]').exists()).toBe(true)
+    const bad = mountOverview(baseProps({ teams: ok([team(1)]), costs: failed() }))
+    const tr2 = bad.find('[data-testid="team-table-card"] tbody tr')
+    expect(tr2.find('td.total-cost-cell').text()).toBe('—')
+  })
+
+  it('スマホ幅では縦積みの行（名前=title・1軍=sub1・合計コスト=sub2・進み具合=note・注意=note2・操作=act）', () => {
+    const w = mountOverview(baseProps({ teams: ok([team(1)]) }))
+    expect(stackedLayout(w, 'progressKey')).toEqual({
+      mobileBreakpoint: 'sm',
+      rows: true,
+      roles: {
+        name: 'title',
+        firstCount: 'sub1',
+        totalCost: 'sub2',
+        progressKey: 'note',
+        attention: 'note2',
+        actions: 'act',
+      },
+    })
+  })
+
+  it('画面に操作の説明文を足していない（Operator 決定）', () => {
+    const w = mountOverview(baseProps({ teams: ok([team(1)]), rosterStatus: ok([roster(1)]) }))
+    expect(w.text()).not.toMatch(/クリック|タップ|押すと|切り替え/)
+  })
+})
+
+// Test Basis: thbig-dugout-commissioner-dashboard-visual-design.md 末尾の Operator 決定 2026-11-02（進み具合は「消化 / 143」・総数は 143 固定・未振替数を別に出す）
+// と schedule-extra-game-day.md 末尾（未振替は max(0, 143 − 数える日)。API は subtask_1802b）
+describe('DashboardOverview 進み具合の欄（消化 / 総数・未振替・プレーオフ）', () => {
+  const cellOf = (w: VueWrapper, name: string) => {
+    const tr = w
+      .findAll('[data-testid="team-table-card"] tbody tr')
+      .find((r) => r.find('b').text() === name)!
+    return tr.find('td.progress-cell')
+  }
+
+  it('「消化 / 143」の形で出す（総数は API の regular_total）。日付は出さない', () => {
+    const w = mountOverview(
+      baseProps({
+        teams: ok([team(1, { season_current_date: '2026-05-08' })]),
+        gameProgress: ok([progress(1, { regular_played: 34, regular_total: 143 })]),
+      }),
+    )
+    const cell = cellOf(w, 'チーム1')
+    expect(cell.find('[data-testid="games-count"]').text().replace(/\s+/g, '')).toBe('34/143')
+    expect(cell.text()).not.toContain('5月8日')
+  })
+
+  it('棒の長さは 消化 / 総数（34/143 ≈ 23.8%）。0 試合でも 3% は見せ、143/143 は満杯', () => {
+    const w = mountOverview(
+      baseProps({
+        teams: ok([team(1), team(2), team(3)]),
+        gameProgress: ok([
+          progress(1, { regular_played: 34 }),
+          progress(2, { regular_played: 0 }),
+          progress(3, { regular_played: 143 }),
+        ]),
+      }),
+    )
+    const value = (name: string) =>
+      Number(cellOf(w, name).find('[role="progressbar"]').attributes('aria-valuenow'))
+    expect(value('チーム1')).toBeCloseTo((34 / 143) * 100, 1)
+    expect(value('チーム2')).toBe(3)
+    expect(value('チーム3')).toBe(100)
+  })
+
+  it('未振替 0 は出さない。1 以上のチームにだけ「未振替 n」を出す（1・複数）', () => {
+    const w = mountOverview(
+      baseProps({
+        teams: ok([team(1), team(2), team(3)]),
+        gameProgress: ok([
+          progress(1, { regular_unrescheduled: 0 }),
+          progress(2, { regular_unrescheduled: 1 }),
+          progress(3, { regular_unrescheduled: 6 }),
+        ]),
+      }),
+    )
+    expect(cellOf(w, 'チーム1').find('[data-testid="unrescheduled"]').exists()).toBe(false)
+    expect(cellOf(w, 'チーム1').text()).not.toContain('未振替')
+    expect(cellOf(w, 'チーム2').find('[data-testid="unrescheduled"]').text()).toBe('未振替 1')
+    expect(cellOf(w, 'チーム3').find('[data-testid="unrescheduled"]').text()).toBe('未振替 6')
+  })
+
+  it('未振替は警告色のチップにしない（控えめな文字）', () => {
+    const w = mountOverview(
+      baseProps({
+        teams: ok([team(1)]),
+        gameProgress: ok([progress(1, { regular_unrescheduled: 2 })]),
+      }),
+    )
+    const mark = cellOf(w, 'チーム1').find('[data-testid="unrescheduled"]')
+    expect(mark.classes()).toContain('on-surface-variant')
+    expect(mark.findAllComponents(components.VChip)).toHaveLength(0)
+  })
+
+  it('プレーオフの消化があるチームは、レギュラーの「消化 / 総数」に加えてプレーオフの消化数だけを添える（総数は出さない）', () => {
+    const w = mountOverview(
+      baseProps({
+        teams: ok([team(1), team(2)]),
+        gameProgress: ok([
+          progress(1, { regular_played: 143, playoff_played: 5 }),
+          progress(2, { regular_played: 143, playoff_played: 0, regular_unrescheduled: 1 }),
+        ]),
+      }),
+    )
+    const c1 = cellOf(w, 'チーム1')
+    expect(c1.find('[data-testid="games-count"]').text().replace(/\s+/g, '')).toBe('143/143')
+    expect(c1.find('[data-testid="playoff-played"]').text()).toBe('プレーオフ 5 試合')
+    expect(c1.find('[data-testid="playoff-played"]').text()).not.toContain('/')
+    expect(cellOf(w, 'チーム2').find('[data-testid="playoff-played"]').exists()).toBe(false)
+  })
+
+  it('並べ替えの既定は消化数の少ない順。列見出しで多い順にも変えられる', async () => {
+    const w = mountOverview(
+      baseProps({
+        teams: ok([team(1), team(2), team(3)]),
+        gameProgress: ok([
+          progress(1, { regular_played: 100 }),
+          progress(2, { regular_played: 20 }),
+          progress(3, { regular_played: 143 }),
+        ]),
+      }),
+    )
+    expect(rowNames(w)).toEqual(['チーム2', 'チーム1', 'チーム3'])
+    const header = w
+      .findAll('[data-testid="team-table-card"] thead th')
+      .find((th) => th.text().includes('進み具合'))!
+    await header.trigger('click')
+    expect(rowNames(w)).toEqual(['チーム3', 'チーム1', 'チーム2'])
+  })
+
+  it('消化数が文字列順でなく数値順で並ぶ（9 < 10 < 100）', () => {
+    const w = mountOverview(
+      baseProps({
+        teams: ok([team(1), team(2), team(3)]),
+        gameProgress: ok([
+          progress(1, { regular_played: 100 }),
+          progress(2, { regular_played: 9 }),
+          progress(3, { regular_played: 10 }),
+        ]),
+      }),
+    )
+    expect(rowNames(w)).toEqual(['チーム2', 'チーム3', 'チーム1'])
+  })
+
+  it('game_progress に無いチームは「—」で、並べ替えでは末尾（他の列は出る）', () => {
+    const w = mountOverview(
+      baseProps({
+        teams: ok([team(1), team(2)]),
+        gameProgress: ok([progress(2, { regular_played: 50 })]),
+      }),
+    )
+    expect(cellOf(w, 'チーム1').text()).toBe('—')
+    expect(rowNames(w)).toEqual(['チーム2', 'チーム1'])
+  })
+
+  it('game_progress が読み込み中: 進み具合の欄だけスケルトン。他の欄・行は先に出る', () => {
+    const w = mountOverview(
+      baseProps({
+        teams: ok([team(1)]),
+        costs: ok([cost(1, 100)]),
+        rosterStatus: ok([roster(1)]),
+        gameProgress: pending(),
+      }),
+    )
+    const cell = cellOf(w, 'チーム1')
+    expect(cell.find('[data-testid="cell-loading"]').exists()).toBe(true)
+    expect(cell.find('[data-testid="games-count"]').exists()).toBe(false)
+    expect(w.find('[data-testid="team-table-card"] td.total-cost-cell').text()).toContain('100/200')
+    expect(w.find('[data-testid="tile-violation"]').text()).toContain('規定内')
+  })
+
+  it('game_progress が失敗: 進み具合の欄は「—」・失敗の旨と再読み込み（その API だけ）。他の欄は巻き込まない', async () => {
+    const w = mountOverview(
+      baseProps({
+        teams: ok([team(1)]),
+        costs: ok([cost(1, 100)]),
+        gameProgress: failed(),
+      }),
+    )
+    expect(cellOf(w, 'チーム1').text()).toBe('—')
+    expect(w.find('[data-testid="team-table-card"] td.total-cost-cell').text()).toContain('100/200')
+    const alert = w.find('[data-testid="game-progress-error"]')
+    expect(alert.text()).toContain('試合数の取得に失敗しました')
+    await alert.find('[data-testid="state-retry"]').trigger('click')
+    expect(w.emitted('retry')).toEqual([['gameProgress']])
+    // 他の API の失敗表示は出ない
+    expect(w.findAll('[data-testid="state-error"]')).toHaveLength(1)
+  })
+
+  it('成功時は失敗の表示を出さない', () => {
+    const w = mountOverview(baseProps())
+    expect(w.find('[data-testid="game-progress-error"]').exists()).toBe(false)
+  })
+})

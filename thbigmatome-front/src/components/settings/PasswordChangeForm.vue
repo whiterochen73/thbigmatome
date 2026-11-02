@@ -6,7 +6,7 @@
         label="現在のパスワード"
         type="password"
         :rules="[rules.required]"
-        :error-messages="serverError ? [serverError] : []"
+        :error-messages="serverErrorMessages"
         variant="outlined"
         density="compact"
         class="mb-3"
@@ -29,13 +29,13 @@
         density="compact"
         class="mb-4"
       />
-      <v-btn type="submit" color="primary" :loading="loading">変更する</v-btn>
+      <v-btn type="submit" color="action" variant="flat" :loading="loading">変更する</v-btn>
     </v-form>
   </DataCard>
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import axios from '@/plugins/axios'
 import DataCard from '@/components/shared/DataCard.vue'
 import { useSnackbar } from '@/composables/useSnackbar'
@@ -48,6 +48,8 @@ const newPassword = ref('')
 const confirmPassword = ref('')
 const loading = ref(false)
 const serverError = ref('')
+// 毎回新しい配列を渡すと、項目 → VForm → 描き直し → 項目 の輪が止まらない。エラーが変わった時だけ作る
+const serverErrorMessages = computed(() => (serverError.value ? [serverError.value] : []))
 
 const rules = {
   required: (v: string) => !!v || '必須項目です',

@@ -142,9 +142,9 @@ bash /home/deploy/projects/thbigmatome/scripts/backup/restore.sh \
 
 スクリプトが自動的に以下を行う:
 1. リストア前の事前バックアップを取得
-2. rails/parserコンテナを停止
+2. railsコンテナを停止
 3. `pg_restore --clean --if-exists` でリストア
-4. rails/parserコンテナを再起動
+4. railsコンテナを再起動
 
 ### リストア後の確認
 

@@ -57,7 +57,19 @@
                   required
                 ></v-text-field>
               </v-col>
-              <v-col cols="12">
+              <v-col cols="12" sm="6">
+                <v-select
+                  v-model="newAbsence.phase"
+                  :items="phases"
+                  data-testid="absence-phase"
+                  :label="t('playerAbsenceDialog.form.phase')"
+                  :hint="phaseHint"
+                  persistent-hint
+                  :rules="[(v) => !!v || t('playerAbsenceDialog.form.selectPhase')]"
+                  required
+                ></v-select>
+              </v-col>
+              <v-col cols="12" sm="6">
                 <v-select
                   v-model="newAbsence.duration_unit"
                   :items="durationUnits"
@@ -72,10 +84,19 @@
       </v-card-text>
       <v-card-actions>
         <v-spacer></v-spacer>
-        <v-btn variant="text" @click="isOpen = false">
+        <v-btn
+          :variant="gameDayActions ? 'outlined' : 'text'"
+          :style="gameDayActions ? { borderColor: 'rgb(var(--v-theme-border-strong))' } : undefined"
+          @click="isOpen = false"
+        >
           {{ t('actions.cancel') }}
         </v-btn>
-        <v-btn color="accent" variant="flat" @click="saveAbsence">
+        <v-btn
+          color="action"
+          variant="flat"
+          :prepend-icon="gameDayActions ? 'mdi-content-save-outline' : undefined"
+          @click="saveAbsence"
+        >
           {{ t('actions.save') }}
         </v-btn>
       </v-card-actions>
@@ -87,7 +108,7 @@ import { ref, computed, watch } from 'vue'
 import axios from 'axios'
 import { useI18n } from 'vue-i18n'
 import { useSnackbar } from '@/composables/useSnackbar'
-import type { PlayerAbsence } from '@/types/playerAbsence'
+import type { AbsencePhase, PlayerAbsence } from '@/types/playerAbsence'
 import TeamMemberSelect from '@/components/shared/TeamMemberSelect.vue'
 
 const { t } = useI18n()
@@ -103,6 +124,9 @@ const props = defineProps<{
   teamId: number
   initialStartDate: string // ADDED
   initialAbsence?: PlayerAbsence | null // ADDED for editing
+  // 新規登録時の区分の既定値。試合日ページの「試合中の負傷」段は in_game を渡す
+  initialPhase?: AbsencePhase
+  gameDayActions?: boolean
 }>()
 
 const emit = defineEmits(['saved'])
@@ -118,6 +142,8 @@ const newAbsence = ref<PlayerAbsence>({
   start_date: props.initialStartDate,
   duration: 1,
   duration_unit: 'days',
+  phase: props.initialPhase ?? 'pre_game',
+  effective_start_date: props.initialStartDate,
   effective_end_date: null,
   created_at: '',
   updated_at: '',
@@ -129,6 +155,17 @@ const absenceTypes = computed(() => [
   { title: t('enums.player_absence.absence_type.suspension'), value: 'suspension' },
   { title: t('enums.player_absence.absence_type.reconditioning'), value: 'reconditioning' },
 ])
+
+const phases = computed(() => [
+  { title: t('enums.player_absence.phase.pre_game'), value: 'pre_game' },
+  { title: t('enums.player_absence.phase.in_game'), value: 'in_game' },
+])
+
+const phaseHint = computed(() =>
+  t(
+    `playerAbsenceDialog.form.phaseHint.${newAbsence.value.phase === 'in_game' ? 'in_game' : 'pre_game'}`,
+  ),
+)
 
 const durationUnits = computed(() => [
   { title: t('enums.player_absence.duration_unit.days'), value: 'days' },
@@ -178,6 +215,8 @@ watch(
           start_date: props.initialStartDate, // Use initialStartDate for new entries
           duration: 1,
           duration_unit: 'days',
+          phase: props.initialPhase ?? 'pre_game',
+          effective_start_date: props.initialStartDate,
           effective_end_date: null,
           created_at: '',
           updated_at: '',

@@ -1,362 +1,378 @@
 <template>
-  <v-container>
-    <PageHeader title="チームメンバー管理" />
-
-    <v-alert v-if="!isTeamIdValid" type="info" icon="mdi-account-question" class="mt-4">
+  <!-- 単独の画面として開いた時は骨格（PageLayout）と、バーのタイトル（チーム名）を持つ。
+       シーズンのタブ・試合日ページへ埋め込まれた時は中身だけを出し、バーは変えない -->
+  <component
+    :is="standalone ? PageLayout : 'div'"
+    :class="{ 'team-members--embedded': !standalone }"
+  >
+    <v-alert v-if="!isTeamIdValid" type="info" icon="mdi-account-question">
       チームが選択されていません。ホーム画面でチームを選択してください。
     </v-alert>
     <template v-if="isTeamIdValid">
+      <ViolationList :violations="violations" />
+
       <!-- Player Selection -->
-      <v-row class="mb-4">
-        <v-col cols="12">
-          <!-- ポジションフィルタ（追加候補） -->
-          <div class="d-flex flex-wrap ga-2 mb-2 align-center">
-            <span class="text-caption text-medium-emphasis"
-              >{{ t('teamMembers.addCandidateLabel') }}:</span
+      <div v-if="!readonly" data-testid="add-player-row">
+        <!-- ポジションフィルタ（追加候補） -->
+        <div class="d-flex flex-wrap ga-2 mb-2 align-center">
+          <span class="text-caption text-medium-emphasis"
+            >{{ t('teamMembers.addCandidateLabel') }}:</span
+          >
+          <v-btn
+            v-for="f in addPlayerPositionFilters"
+            :key="f.value"
+            size="x-small"
+            :variant="addPlayerPositionFilter === f.value ? 'elevated' : 'outlined'"
+            :color="addPlayerPositionFilter === f.value ? 'primary' : undefined"
+            rounded
+            @click="addPlayerPositionFilter = f.value"
+          >
+            {{ f.label }}
+          </v-btn>
+        </div>
+        <div class="team-members__add-row">
+          <div class="team-members__add-select">
+            <v-autocomplete
+              v-model="selectedPlayer"
+              :items="filteredAvailablePlayers"
+              :item-title="(player) => `${player.number} ${player.name}`"
+              item-value="id"
+              :label="t('teamMembers.selectPlayer')"
+              return-object
+              clearable
+              :disabled="!selectedCostListId"
+              :no-data-text="
+                !selectedCostListId
+                  ? t('teamMembers.loadingCostList')
+                  : t('teamMembers.noMatchingPlayers')
+              "
+              :custom-filter="
+                (value, query, item) => {
+                  if (!query) return true
+                  const q = query.toLowerCase()
+                  const raw = item?.raw
+                  if (!raw) return false
+                  return (
+                    raw.name.toLowerCase().includes(q) ||
+                    raw.number.toLowerCase().includes(q) ||
+                    (raw.short_name ?? '').toLowerCase().includes(q)
+                  )
+                }
+              "
             >
+              <template #item="{ props, item }">
+                <v-list-item v-bind="props">
+                  <template #prepend>
+                    <v-chip
+                      size="x-small"
+                      :color="item.position === 'pitcher' ? 'tag-pitcher' : 'tag-fielder'"
+                      variant="flat"
+                      :prepend-icon="
+                        item.position === 'pitcher' ? 'mdi-baseball' : 'mdi-baseball-bat'
+                      "
+                      class="mr-2"
+                    >
+                      {{ item.position ? t(`baseball.positions.${item.position}`) : '—' }}
+                    </v-chip>
+                  </template>
+                  <template #subtitle>
+                    {{ getPlayerCostLabel(item) }}
+                  </template>
+                </v-list-item>
+              </template>
+            </v-autocomplete>
+            <!-- カードバージョン選択（複数バージョンがある場合のみ表示） -->
+            <div v-if="cardSetOptions.length > 1" class="mt-1">
+              <v-radio-group
+                v-model="selectedCardOptionKey"
+                inline
+                density="compact"
+                hide-details
+                class="mt-0"
+              >
+                <v-radio
+                  v-for="opt in cardSetOptions"
+                  :key="opt.option_key"
+                  :value="opt.option_key"
+                  :label="opt.label"
+                />
+              </v-radio-group>
+            </div>
+          </div>
+          <div class="team-members__add-button">
             <v-btn
-              v-for="f in addPlayerPositionFilters"
-              :key="f.value"
-              size="x-small"
-              :variant="addPlayerPositionFilter === f.value ? 'elevated' : 'outlined'"
-              :color="addPlayerPositionFilter === f.value ? 'secondary' : undefined"
-              rounded
-              @click="addPlayerPositionFilter = f.value"
+              :color="gameDayActions ? 'action' : 'link'"
+              :variant="gameDayActions ? 'flat' : 'outlined'"
+              :prepend-icon="gameDayActions ? 'mdi-plus' : undefined"
+              @click="addPlayer"
+              :disabled="!selectedPlayer || !selectedCostListId"
+              :loading="fetchingCards"
             >
-              {{ f.label }}
+              {{ t('teamMembers.addPlayer') }}
             </v-btn>
           </div>
-          <v-row align="center">
-            <v-col cols="12" md="9">
-              <v-autocomplete
-                v-model="selectedPlayer"
-                :items="filteredAvailablePlayers"
-                :item-title="(player) => `${player.number} ${player.name}`"
-                item-value="id"
-                :label="t('teamMembers.selectPlayer')"
-                return-object
-                clearable
-                :disabled="!selectedCostListId"
-                :no-data-text="
-                  !selectedCostListId
-                    ? t('teamMembers.loadingCostList')
-                    : t('teamMembers.noMatchingPlayers')
-                "
-                :custom-filter="
-                  (value, query, item) => {
-                    if (!query) return true
-                    const q = query.toLowerCase()
-                    const raw = item?.raw
-                    if (!raw) return false
-                    return (
-                      raw.name.toLowerCase().includes(q) ||
-                      raw.number.toLowerCase().includes(q) ||
-                      (raw.short_name ?? '').toLowerCase().includes(q)
-                    )
-                  }
-                "
-              >
-                <template #item="{ props, item }">
-                  <v-list-item v-bind="props">
-                    <template #prepend>
-                      <v-chip
-                        size="x-small"
-                        :color="item.position === 'pitcher' ? 'blue' : 'green'"
-                        variant="tonal"
-                        class="mr-2"
-                      >
-                        {{ item.position ? t(`baseball.positions.${item.position}`) : '—' }}
-                      </v-chip>
-                    </template>
-                    <template #subtitle>
-                      {{ getPlayerCostLabel(item) }}
-                    </template>
-                  </v-list-item>
-                </template>
-              </v-autocomplete>
-              <!-- カードバージョン選択（複数バージョンがある場合のみ表示） -->
-              <div v-if="cardSetOptions.length > 1" class="mt-1">
-                <v-radio-group
-                  v-model="selectedCardOptionKey"
-                  inline
-                  density="compact"
-                  hide-details
-                  class="mt-0"
-                >
-                  <v-radio
-                    v-for="opt in cardSetOptions"
-                    :key="opt.option_key"
-                    :value="opt.option_key"
-                    :label="opt.label"
-                  />
-                </v-radio-group>
-              </div>
-            </v-col>
-            <v-col cols="12" md="3">
-              <v-btn
-                color="primary"
-                variant="outlined"
-                @click="addPlayer"
-                :disabled="!selectedPlayer || !selectedCostListId"
-                :loading="fetchingCards"
-              >
-                {{ t('teamMembers.addPlayer') }}
-              </v-btn>
-            </v-col>
-          </v-row>
-        </v-col>
-      </v-row>
+        </div>
+      </div>
 
       <!-- Team Members Table -->
-      <v-row>
-        <v-col cols="12">
-          <v-card variant="outlined">
-            <v-card-title class="d-flex justify-space-between flex-wrap ga-2">
-              <span>{{ t('teamMembers.teamMembersTitle') }}</span>
-              <div class="text-subtitle-1">
-                <span
-                  >{{
-                    t('teamMembers.totalCount', {
-                      count: includedTeamPlayers.length,
-                      max: MAX_PLAYERS,
-                    })
-                  }}
-                  /
-                </span>
-                <span>{{
-                  t('teamMembers.totalCost', { cost: totalTeamCost, max: TEAM_TOTAL_MAX_COST })
-                }}</span>
-              </div>
-            </v-card-title>
-            <v-card-text>
-              <!-- コスト全体ゲージ -->
-              <div class="mb-3">
-                <div class="d-flex justify-space-between align-center mb-1">
-                  <div class="d-flex align-center ga-1">
-                    <span class="text-body-2 font-weight-medium">{{
-                      t('teamMembers.totalCostLabel')
-                    }}</span>
-                    <v-tooltip location="top" max-width="280">
-                      <template #activator="{ props }">
-                        <v-icon v-bind="props" size="x-small" color="grey"
-                          >mdi-help-circle-outline</v-icon
-                        >
-                      </template>
-                      <span
-                        >チーム全体のコスト上限は{{
-                          TEAM_TOTAL_MAX_COST
-                        }}です。コスト除外にチェックした選手は合計コストに算入されません。</span
-                      >
-                    </v-tooltip>
-                  </div>
-                  <span
-                    class="text-body-2 font-weight-bold"
-                    :class="
-                      isCostOverLimit
-                        ? 'text-error'
-                        : costRatio >= 0.85
-                          ? 'text-warning'
-                          : 'text-success'
-                    "
-                  >
-                    {{ totalTeamCost }} / {{ TEAM_TOTAL_MAX_COST }}
-                  </span>
-                </div>
-                <v-progress-linear
-                  :model-value="Math.min(costRatio * 100, 100)"
-                  height="12"
-                  rounded
-                  :color="costGaugeColor"
-                  bg-color="grey-lighten-3"
-                />
-                <div class="d-flex justify-space-between mt-1">
-                  <span class="text-caption text-disabled">0</span>
-                  <span class="text-caption text-disabled">50</span>
-                  <span class="text-caption text-disabled">100</span>
-                  <span class="text-caption text-disabled">150</span>
-                  <span class="text-caption text-disabled">200</span>
-                </div>
-              </div>
-
-              <v-alert v-if="isCostOverLimit" type="warning" density="compact" class="mb-2">
-                {{
-                  t('teamMembers.notifications.costLimitExceeded', {
-                    cost: totalTeamCost,
-                    limit: TEAM_TOTAL_MAX_COST,
+      <AsyncState
+        :loading="loading"
+        :error="loadFailed"
+        :empty="loadFailed && teamPlayers.length === 0"
+        :error-message="t('teamMembers.notifications.fetchTeamPlayersFailed')"
+        @retry="reload"
+      >
+        <v-card variant="outlined">
+          <v-card-title class="team-members__title d-flex justify-space-between flex-wrap ga-2">
+            <span>{{ t('teamMembers.teamMembersTitle') }}</span>
+            <div class="text-subtitle-1">
+              <span
+                >{{
+                  t('teamMembers.totalCount', {
+                    count: includedTeamPlayers.length,
+                    max: MAX_PLAYERS,
                   })
                 }}
-              </v-alert>
-
-              <!-- ポジション内訳バッジ -->
-              <div class="d-flex flex-wrap ga-2 mb-3">
-                <v-chip
-                  v-for="(count, position) in positionCounts"
-                  :key="position"
-                  size="small"
-                  variant="tonal"
-                  color="primary"
-                >
-                  {{ t(`baseball.positions.${position}`) }}: {{ count }}
-                </v-chip>
-              </div>
-
-              <!-- フィルタ -->
-              <FilterBar>
-                <template #filters>
-                  <span class="text-caption text-medium-emphasis"
-                    >{{ t('teamMembers.positionFilterLabel') }}:</span
-                  >
-                  <v-btn
-                    v-for="f in positionFilters"
-                    :key="f.value"
-                    size="x-small"
-                    :variant="positionFilter === f.value ? 'elevated' : 'outlined'"
-                    :color="positionFilter === f.value ? 'primary' : undefined"
-                    rounded
-                    @click="positionFilter = f.value"
-                  >
-                    {{ f.label }}
-                  </v-btn>
-                </template>
-              </FilterBar>
-
-              <!-- eslint-disable vue/valid-v-slot -->
-              <v-data-table
-                :headers="headers"
-                :items="filteredTeamPlayers"
-                :no-data-text="t('teamMembers.noData')"
-                density="compact"
-                items-per-page="-1"
-                :disable-sort="false"
-              >
-                <template #header.excluded_from_team_total>
-                  <div class="d-flex align-center ga-1">
-                    <span>{{ t('teamMembers.headers.costExcluded') }}</span>
-                    <v-tooltip location="top" max-width="240">
-                      <template #activator="{ props }">
-                        <v-icon v-bind="props" size="x-small" color="grey"
-                          >mdi-help-circle-outline</v-icon
-                        >
-                      </template>
-                      <span>除外特例を受けた選手をチームの合計コスト計算から除外します。</span>
-                    </v-tooltip>
-                  </div>
-                </template>
-
-                <template #no-data>
-                  <div class="d-flex flex-column align-center py-6">
-                    <v-icon size="36" class="mb-2 text-medium-emphasis"
-                      >mdi-account-plus-outline</v-icon
-                    >
-                    <p class="text-medium-emphasis mb-1">選手が登録されていません</p>
-                    <p class="text-caption text-disabled">
-                      上の選手選択フォームから選手を検索して追加してください
-                    </p>
-                  </div>
-                </template>
-
-                <template #item.name="{ item }">
-                  <PlayerNameLink
-                    :player-id="item.id"
-                    :player-name="item.name"
-                    :cost-type="item.selected_cost_type"
-                  />
-                </template>
-                <template #item.display_name="{ item }">
-                  <v-text-field
-                    v-model="item.display_name"
-                    :placeholder="t('teamMembers.headers.display_name')"
-                    density="compact"
-                    hide-details
-                    variant="plain"
-                  />
-                </template>
-                <template #item.player_type_ids="{ item }">
-                  <v-chip-group column>
-                    <v-chip v-for="typeId in item.player_type_ids" :key="typeId">
-                      {{
-                        playerTypes.find((pt) => pt.id === typeId)?.name ||
-                        t('teamMembers.unknownType')
-                      }}
-                    </v-chip>
-                  </v-chip-group>
-                </template>
-                <template #item.position="{ item }">
-                  {{ item.position ? t(`baseball.positions.${item.position}`) : '—' }}
-                </template>
-                <template #item.throws="{ item }">
-                  {{
-                    item.handedness
-                      ? t(`baseball.throwingHands.${item.handedness.split('/')[0]}`)
-                      : '—'
-                  }}
-                </template>
-                <template #item.bats="{ item }">
-                  {{
-                    item.handedness
-                      ? t(`baseball.battingHands.${item.handedness.split('/')[1]}`)
-                      : '—'
-                  }}
-                </template>
-                <template #item.player_card_info="{ item }">
-                  <div v-if="item.player_card_info" class="d-flex align-center ga-1">
-                    <span class="text-caption">{{ item.player_card_info.card_set_name }}</span>
-                    <v-chip size="x-small" variant="tonal" color="secondary">
-                      {{ item.player_card_info.card_type }}
-                    </v-chip>
-                  </div>
-                  <span v-else class="text-caption text-disabled">—</span>
-                </template>
-                <template #item.cost="{ item }">
-                  <div class="d-flex align-center">
-                    <v-select
-                      v-model="item.selected_cost_type"
-                      :items="getAvailableCostTypes(item)"
-                      item-title="text"
-                      item-value="value"
-                      density="compact"
-                      hide-details
-                      @update:modelValue="updatePlayerCost(item)"
-                    ></v-select>
-                  </div>
-                </template>
-                <template #item.excluded_from_team_total="{ item }">
-                  <v-checkbox
-                    v-model="item.excluded_from_team_total"
-                    hide-details
-                    density="compact"
-                  />
-                </template>
-                <template #item.actions="{ item }">
-                  <v-tooltip text="チームから除外" location="top">
+                /
+              </span>
+              <span>{{
+                t('teamMembers.totalCost', { cost: totalTeamCost, max: TEAM_TOTAL_MAX_COST })
+              }}</span>
+            </div>
+          </v-card-title>
+          <v-card-text>
+            <!-- コスト全体ゲージ -->
+            <div class="mb-3">
+              <div class="d-flex justify-space-between align-center mb-1">
+                <div class="d-flex align-center ga-1">
+                  <span class="text-body-2 font-weight-medium">{{
+                    t('teamMembers.totalCostLabel')
+                  }}</span>
+                  <v-tooltip location="top" max-width="280">
                     <template #activator="{ props }">
-                      <v-btn
-                        v-bind="props"
-                        icon="mdi-delete"
-                        size="small"
-                        variant="text"
-                        @click="removePlayer(item)"
-                      />
+                      <v-icon v-bind="props" size="x-small" class="on-surface-variant"
+                        >mdi-help-circle-outline</v-icon
+                      >
                     </template>
+                    <span>チーム全体のコスト上限は{{ TEAM_TOTAL_MAX_COST }}です。</span>
                   </v-tooltip>
-                </template>
-              </v-data-table>
-            </v-card-text>
-          </v-card>
-        </v-col>
-      </v-row>
+                </div>
+                <span
+                  class="text-body-2 font-weight-bold"
+                  :class="
+                    isCostOverLimit
+                      ? 'text-error'
+                      : costRatio >= 0.85
+                        ? 'text-warning'
+                        : 'text-success'
+                  "
+                >
+                  {{ totalTeamCost }} / {{ TEAM_TOTAL_MAX_COST }}
+                </span>
+              </div>
+              <v-progress-linear
+                :model-value="Math.min(costRatio * 100, 100)"
+                height="12"
+                rounded
+                :color="costGaugeColor"
+                bg-color="surface-variant"
+              />
+              <div class="d-flex justify-space-between mt-1">
+                <span class="text-caption text-disabled">0</span>
+                <span class="text-caption text-disabled">50</span>
+                <span class="text-caption text-disabled">100</span>
+                <span class="text-caption text-disabled">150</span>
+                <span class="text-caption text-disabled">200</span>
+              </div>
+            </div>
+
+            <v-alert v-if="isCostOverLimit" type="warning" density="compact" class="mb-2">
+              {{
+                t('teamMembers.notifications.costLimitExceeded', {
+                  cost: totalTeamCost,
+                  limit: TEAM_TOTAL_MAX_COST,
+                })
+              }}
+            </v-alert>
+
+            <!-- ポジション内訳バッジ -->
+            <div class="d-flex flex-wrap ga-2 mb-3">
+              <v-chip
+                v-for="(count, position) in positionCounts"
+                :key="position"
+                size="small"
+                variant="tonal"
+                color="link"
+              >
+                {{ t(`baseball.positions.${position}`) }}: {{ count }}
+              </v-chip>
+            </div>
+
+            <!-- フィルタ -->
+            <FilterBar>
+              <template #filters>
+                <span class="text-caption text-medium-emphasis"
+                  >{{ t('teamMembers.positionFilterLabel') }}:</span
+                >
+                <v-btn
+                  v-for="f in positionFilters"
+                  :key="f.value"
+                  size="x-small"
+                  :variant="positionFilter === f.value ? 'elevated' : 'outlined'"
+                  :color="positionFilter === f.value ? 'primary' : undefined"
+                  rounded
+                  @click="positionFilter = f.value"
+                >
+                  {{ f.label }}
+                </v-btn>
+              </template>
+            </FilterBar>
+
+            <!-- eslint-disable vue/valid-v-slot -->
+            <v-data-table
+              :headers="headers"
+              :items="filteredTeamPlayers"
+              :loading="loading"
+              :no-data-text="t('teamMembers.noData')"
+              density="compact"
+              items-per-page="-1"
+              :disable-sort="false"
+            >
+              <template #header.excluded_from_team_total>
+                <div class="d-flex align-center ga-1">
+                  <span>{{ t('teamMembers.headers.costExcluded') }}</span>
+                  <v-tooltip location="top" max-width="240">
+                    <template #activator="{ props }">
+                      <v-icon v-bind="props" size="x-small" class="on-surface-variant"
+                        >mdi-help-circle-outline</v-icon
+                      >
+                    </template>
+                    <span>除外特例を受けた選手をチームの合計コスト計算から除外します。</span>
+                  </v-tooltip>
+                </div>
+              </template>
+
+              <template #no-data>
+                <div class="d-flex flex-column align-center py-6">
+                  <v-icon size="36" class="mb-2 text-medium-emphasis"
+                    >mdi-account-plus-outline</v-icon
+                  >
+                  <p class="text-medium-emphasis mb-1">選手が登録されていません</p>
+                  <p class="text-caption text-disabled">
+                    上の選手選択フォームから選手を検索して追加してください
+                  </p>
+                </div>
+              </template>
+
+              <template #item.name="{ item }">
+                <PlayerNameLink
+                  :player-id="item.id"
+                  :player-name="item.name"
+                  :cost-type="item.selected_cost_type"
+                />
+              </template>
+              <template #item.display_name="{ item }">
+                <v-text-field
+                  v-model="item.display_name"
+                  :placeholder="t('teamMembers.headers.display_name')"
+                  density="compact"
+                  hide-details
+                  variant="plain"
+                  :readonly="readonly"
+                />
+              </template>
+              <template #item.player_type_ids="{ item }">
+                <v-chip-group column>
+                  <v-chip v-for="typeId in item.player_type_ids" :key="typeId">
+                    {{
+                      playerTypes.find((pt) => pt.id === typeId)?.name ||
+                      t('teamMembers.unknownType')
+                    }}
+                  </v-chip>
+                </v-chip-group>
+              </template>
+              <template #item.position="{ item }">
+                {{ item.position ? t(`baseball.positions.${item.position}`) : '—' }}
+              </template>
+              <template #item.throws="{ item }">
+                {{
+                  item.handedness
+                    ? t(`baseball.throwingHands.${item.handedness.split('/')[0]}`)
+                    : '—'
+                }}
+              </template>
+              <template #item.bats="{ item }">
+                {{
+                  item.handedness
+                    ? t(`baseball.battingHands.${item.handedness.split('/')[1]}`)
+                    : '—'
+                }}
+              </template>
+              <template #item.player_card_info="{ item }">
+                <div v-if="item.player_card_info" class="d-flex align-center ga-1">
+                  <span class="text-caption">{{ item.player_card_info.card_set_name }}</span>
+                  <v-chip size="x-small" variant="flat" color="state-neutral">
+                    {{ item.player_card_info.card_type }}
+                  </v-chip>
+                </div>
+                <span v-else class="text-caption text-disabled">—</span>
+              </template>
+              <template #item.cost="{ item }">
+                <div class="d-flex align-center">
+                  <v-select
+                    v-model="item.selected_cost_type"
+                    :items="getAvailableCostTypes(item)"
+                    item-title="text"
+                    item-value="value"
+                    density="compact"
+                    hide-details
+                    :readonly="readonly"
+                    @update:modelValue="updatePlayerCost(item)"
+                  ></v-select>
+                </div>
+              </template>
+              <template #item.excluded_from_team_total="{ item }">
+                <v-checkbox
+                  v-model="item.excluded_from_team_total"
+                  hide-details
+                  density="compact"
+                  :disabled="readonly"
+                />
+              </template>
+              <template #item.actions="{ item }">
+                <div v-if="!readonly" class="row-actions">
+                  <RowIconButton
+                    icon="mdi-delete-outline"
+                    danger
+                    :label="`${item.name}をチームから除外`"
+                    @click="removePlayer(item)"
+                  />
+                </div>
+              </template>
+            </v-data-table>
+          </v-card-text>
+        </v-card>
+      </AsyncState>
 
       <!-- Actions -->
-      <v-row>
-        <v-col class="d-flex justify-end mt-4">
-          <v-btn variant="outlined" @click="goBack" class="mr-4">{{ t('actions.cancel') }}</v-btn>
-          <v-btn color="accent" variant="flat" @click="saveTeamMembers">{{
-            t('actions.save')
-          }}</v-btn>
-        </v-col>
-      </v-row>
+      <div v-if="!readonly" class="d-flex justify-end">
+        <v-btn
+          variant="outlined"
+          @click="goBack"
+          class="mr-4"
+          :style="gameDayActions ? { borderColor: 'rgb(var(--v-theme-border-strong))' } : undefined"
+          >{{ t('actions.cancel') }}</v-btn
+        >
+        <v-btn
+          color="action"
+          variant="flat"
+          :prepend-icon="gameDayActions ? 'mdi-content-save-outline' : undefined"
+          @click="saveTeamMembers"
+          >{{ t('actions.save') }}</v-btn
+        >
+      </div>
     </template>
-  </v-container>
+  </component>
 </template>
 
 <script setup lang="ts">
@@ -365,13 +381,19 @@ import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
 import axios from '@/plugins/axios'
 import { useSnackbar } from '@/composables/useSnackbar'
+import { useAppBarTitle } from '@/composables/useAppBarTitle'
 import type { Player } from '@/types/player'
 import type { PlayerCost } from '@/types/playerCost'
 import type { CostList } from '@/types/costList'
 import type { PlayerType } from '@/types/playerType'
 import FilterBar from '@/components/shared/FilterBar.vue'
-import PageHeader from '@/components/shared/PageHeader.vue'
+import RowIconButton from '@/components/shared/RowIconButton.vue'
+import AsyncState from '@/components/shared/AsyncState.vue'
+import PageLayout from '@/components/shared/PageLayout.vue'
 import PlayerNameLink from '@/components/shared/PlayerNameLink.vue'
+import ViolationList from '@/components/season/ViolationList.vue'
+import type { RosterViolation } from '@/types/rosterViolation'
+import { useColumnMinWidth } from '@/composables/useColumnMinWidth'
 
 type CostType =
   | 'normal_cost'
@@ -415,7 +437,15 @@ interface TeamPlayersSaveResponse {
   warnings?: string[]
 }
 
-const props = defineProps<{ teamId?: number }>()
+// asOfDate / phase: 読む日付と区分。GET と POST の両方に同じ値を送る。省略時は、シーズンの現在日（GET /teams/:id/season の current_date）と pre_game を両方に送る。
+// readonly: 操作できない日（試合日ページで「今の範囲」の外の日）。追加・削除・保存を出さない。
+const props = defineProps<{
+  teamId?: number
+  gameDayActions?: boolean
+  asOfDate?: string
+  phase?: string
+  readonly?: boolean
+}>()
 
 const { t } = useI18n()
 const route = useRoute()
@@ -486,27 +516,64 @@ const resolveCardIdFromCardSet = (
 const teamId = computed(() => props.teamId ?? Number(route.params.teamId))
 const isTeamIdValid = computed(() => Number.isFinite(teamId.value) && teamId.value > 0)
 
+// 単独の画面（/teams/:teamId/members）として開いたか。埋め込み（シーズンのタブ・試合日ページ）は teamId を props で受ける
+const standalone = computed(() => props.teamId === undefined)
+
+// ヘッダーバー（単独の画面のみ）: タイトル=チーム名、サブタイトル=チーム編成、戻り先=シーズン。
+// 埋め込みの時はバーを変えない（宣言しない）。チーム名が届くまでも戻れるよう、単独の間は常に宣言する
+const teamName = ref('')
+useAppBarTitle(() =>
+  standalone.value && isTeamIdValid.value
+    ? {
+        title: teamName.value || t('seasonPortal.tabs.members'),
+        subtitle: teamName.value ? t('seasonPortal.tabs.members') : null,
+        back: {
+          to: { name: 'SeasonPortal', params: { teamId: teamId.value } },
+          label: t('seasonPortal.shortTitle'),
+        },
+      }
+    : null,
+)
+
+// 読み込み中は表の空状態（「選手が登録されていません」）を出さない。取得の失敗はページ内のアラート＋再読み込みで出す
+const loading = ref(isTeamIdValid.value)
+const loadFailed = ref(false)
+
 // Squad limits
 const MAX_PLAYERS = 50
 const TEAM_TOTAL_MAX_COST = 200
 
+const minW = useColumnMinWidth()
 const headers = computed(() => [
-  { title: t('teamMembers.headers.number'), key: 'number' },
-  { title: t('teamMembers.headers.name'), key: 'name' },
-  { title: t('teamMembers.headers.display_name'), key: 'display_name', sortable: false },
-  { title: t('teamMembers.headers.player_types'), key: 'player_type_ids' },
-  { title: t('teamMembers.headers.position'), key: 'position' },
-  { title: t('teamMembers.headers.throws'), key: 'throws' },
-  { title: t('teamMembers.headers.bats'), key: 'bats' },
-  { title: 'カードver.', key: 'player_card_info', sortable: false },
-  { title: t('teamMembers.headers.cost'), value: 'cost' },
+  { title: t('teamMembers.headers.number'), key: 'number', minWidth: minW(64) },
+  // 横に比べる・入力する表なので縦積みにせず、スマホでは横スクロール。名前の列は左に固定する
+  { title: t('teamMembers.headers.name'), key: 'name', fixed: true, minWidth: minW(150) },
+  {
+    title: t('teamMembers.headers.display_name'),
+    key: 'display_name',
+    sortable: false,
+    minWidth: minW(140),
+  },
+  { title: t('teamMembers.headers.player_types'), key: 'player_type_ids', minWidth: minW(140) },
+  { title: t('teamMembers.headers.position'), key: 'position', minWidth: minW(96) },
+  { title: t('teamMembers.headers.throws'), key: 'throws', minWidth: minW(64) },
+  { title: t('teamMembers.headers.bats'), key: 'bats', minWidth: minW(64) },
+  { title: 'カードver.', key: 'player_card_info', sortable: false, minWidth: minW(150) },
+  { title: t('teamMembers.headers.cost'), value: 'cost', minWidth: minW(130) },
   {
     title: t('teamMembers.headers.costExcluded'),
     key: 'excluded_from_team_total',
     sortable: false,
     width: '80px',
+    minWidth: minW(80),
   },
-  { title: t('teamMembers.headers.actions'), key: 'actions', sortable: false, width: '100px' },
+  {
+    title: t('teamMembers.headers.actions'),
+    key: 'actions',
+    sortable: false,
+    width: '100px',
+    minWidth: minW(80),
+  },
 ])
 
 // --- Computed properties ---
@@ -655,10 +722,35 @@ const fetchAllPlayers = async () => {
   }
 }
 
+// 読む日付と区分は、GET と POST の両方に同じ値を送る。GET を日付なしで呼ぶと最新の写し、POST を日付なしで呼ぶと現在日の状態と比べるので、
+// 読んだ値を送り直すだけで余計な変更記録が増えることがある。asOfDate が無い時は、シーズンの現在日を GET /teams/:id/season で読んで使う
+const seasonCurrentDate = ref<string | null>(null)
+const dateParams = computed<{ target_date?: string; phase?: string }>(() => {
+  const date = props.asOfDate ?? seasonCurrentDate.value
+  return date ? { target_date: date, phase: props.phase ?? 'pre_game' } : {}
+})
+// 保存が後の日付の検査で止まった時の違反（422 の violations）
+const violations = ref<RosterViolation[]>([])
+
+const fetchSeasonCurrentDate = async () => {
+  if (props.asOfDate) return
+  try {
+    const response = await axios.get<{ current_date?: string }>(`/teams/${teamId.value}/season`)
+    seasonCurrentDate.value = response.data?.current_date?.slice(0, 10) ?? null
+  } catch {
+    // シーズンが無いチームは日付なし（サーバが行を直接書く）
+    seasonCurrentDate.value = null
+  }
+}
+
 const fetchTeamPlayers = async () => {
   if (!selectedCostListId.value) return
+  loadFailed.value = false
   try {
-    const response = await axios.get<TeamPlayer[]>(`/teams/${teamId.value}/team_players`)
+    const response = await axios.get<TeamPlayer[]>(`/teams/${teamId.value}/team_players`, {
+      params: dateParams.value,
+    })
+    violations.value = []
     teamPlayers.value = response.data.map((player) => {
       let initialSelectedCostType: CostType = 'normal_cost' // Default to normal_cost
 
@@ -710,16 +802,46 @@ const fetchTeamPlayers = async () => {
       }
     })
   } catch (error) {
-    showSnackbar(t('teamMembers.notifications.fetchTeamPlayersFailed'), 'error')
+    loadFailed.value = true
     console.error('Failed to fetch team players:', error)
   }
 }
 
 watch(selectedCost, async () => {
-  await fetchAllPlayers()
-  await fetchTeamPlayers()
-  await fetchPlayerTypes()
+  loading.value = true
+  try {
+    await fetchAllPlayers()
+    await fetchTeamPlayers()
+    await fetchPlayerTypes()
+  } finally {
+    loading.value = false
+  }
 })
+
+// 「再読み込み」: コスト表が決まっていなければ最初から、決まっていれば選手だけを読み直す
+const reload = async () => {
+  if (!selectedCost.value) {
+    await loadInitial()
+    return
+  }
+  loading.value = true
+  try {
+    await fetchTeamPlayers()
+  } finally {
+    loading.value = false
+  }
+}
+
+const fetchTeamName = async () => {
+  if (!standalone.value) return
+  try {
+    const response = await axios.get<{ name?: string }>(`/teams/${teamId.value}`)
+    teamName.value = response.data?.name ?? ''
+  } catch {
+    // チーム名が取れなくても画面は使える（バーは「チーム編成」だけを出す）
+    teamName.value = ''
+  }
+}
 
 const fetchPlayerTypes = async () => {
   try {
@@ -904,20 +1026,30 @@ const saveTeamMembers = async () => {
         display_name: p.display_name || null,
         player_card_id: p.player_card_id ?? null,
       })),
+      ...dateParams.value,
     }
     const response = await axios.post<TeamPlayersSaveResponse>(
       `/teams/${teamId.value}/team_players`,
       payload,
     )
     showSnackbar(t('teamMembers.notifications.saveSuccess'), 'success')
+    violations.value = []
     const warnings = response.data?.warnings ?? []
     for (const warning of warnings) {
       showSnackbar(`警告: ${warning}`, 'warning')
     }
   } catch (error: unknown) {
     const axiosError = error as {
-      response?: { data?: { errors?: { player_id?: string[] }; message?: string; error?: string } }
+      response?: {
+        data?: {
+          errors?: { player_id?: string[] }
+          message?: string
+          error?: string
+          violations?: RosterViolation[]
+        }
+      }
     }
+    violations.value = axiosError.response?.data?.violations ?? []
     const errorMsg =
       axiosError.response?.data?.errors?.player_id?.[0] ||
       axiosError.response?.data?.error ||
@@ -932,9 +1064,19 @@ const goBack = () => {
   router.back()
 }
 
-onMounted(async () => {
-  if (!isTeamIdValid.value) return
-  // コスト表を自動選択（選択UIなし: 現在日時に対応するコスト表 or 最初の1件）
+watch(
+  () => [props.asOfDate, props.phase],
+  () => {
+    void fetchTeamPlayers()
+  },
+)
+
+// シーズンの現在日とコスト表を読んで、コスト表を自動選択する（選択UIなし: 現在日時に対応するコスト表 or 最初の1件）。
+// 選手の取得は selectedCost の watch が続ける
+const loadInitial = async () => {
+  loading.value = true
+  loadFailed.value = false
+  await fetchSeasonCurrentDate()
   try {
     const response = await axios.get<CostList[]>('/costs')
     const costLists = response.data
@@ -946,7 +1088,42 @@ onMounted(async () => {
     })
     selectedCost.value = currentCost ?? costLists[0] ?? null
   } catch (error) {
+    loadFailed.value = true
     console.error('Failed to fetch cost lists:', error)
   }
+  // コスト表が決まらなければ watch(selectedCost) は走らない。読み込み中の表示はここで閉じる
+  if (!selectedCost.value) loading.value = false
+}
+
+onMounted(async () => {
+  if (!isTeamIdValid.value) return
+  void fetchTeamName()
+  await loadInitial()
 })
 </script>
+
+<style scoped>
+/* 埋め込み（シーズンのタブ・試合日ページ）の時も、単独の画面と同じ縦の間隔で積む */
+.team-members--embedded {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+/* v-card-title は nowrap で、スマホ幅だと「合計人数 / 合計コスト」の右が切れる。折り返して全部を見せる */
+.team-members__title {
+  white-space: normal;
+}
+.team-members__add-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 12px;
+}
+.team-members__add-select {
+  flex: 1 1 320px;
+  min-width: 0;
+}
+.team-members__add-button {
+  flex: 0 0 auto;
+}
+</style>

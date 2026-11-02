@@ -1,13 +1,18 @@
 <!-- eslint-disable vue/valid-v-slot -->
 <template>
   <div>
-    <v-row v-if="isSeasonStartDate" class="mt-2">
+    <v-row v-if="keyPlayerSelectable && !readonly" class="mt-2" data-testid="key-player-card">
       <v-col cols="12">
         <v-card variant="outlined">
           <v-card-title class="d-flex">
             {{ t('activeRoster.keyPlayerSelection') }}
             <v-spacer></v-spacer>
-            <v-btn color="accent" variant="flat" @click="saveKeyPlayer">
+            <v-btn
+              color="action"
+              variant="flat"
+              :prepend-icon="gameDayActions ? 'mdi-content-save-outline' : undefined"
+              @click="saveKeyPlayer"
+            >
               {{ t('activeRoster.saveKeyPlayer') }}
             </v-btn>
           </v-card-title>
@@ -102,17 +107,29 @@
           <span>
             <strong>{{ t('seasonRosterTab.firstSquadCostLabel') }}: </strong>
             <span
-              :class="{
-                'text-error font-weight-bold': costBarColor === 'error',
-                'text-warning font-weight-bold': costBarColor === 'warning',
-              }"
+              class="d-inline-flex align-center ga-1 font-weight-bold text-no-wrap"
+              :class="costState ? `text-${LIMIT_APPEARANCE[costState].color}` : undefined"
+              data-testid="cost-status"
             >
+              <LimitMark :state="costState" />
               {{ firstSquadTotalCost }} / {{ firstSquadCostLimit ?? '-' }}
             </span>
           </span>
-          <span class="text-caption text-medium-emphasis d-flex align-center ga-1">
-            {{ firstSquadPlayers.length }}/{{ MAX_FIRST_SQUAD_PLAYERS }}人 &nbsp;
-            <span :class="{ 'text-error': outsideWorldFirstSquadCount > OUTSIDE_WORLD_LIMIT }">
+          <span class="text-caption d-flex align-center justify-end flex-wrap ga-2">
+            <span
+              class="d-inline-flex align-center ga-1 font-weight-bold text-no-wrap"
+              :class="`text-${LIMIT_APPEARANCE[countState].color}`"
+              data-testid="count-status"
+            >
+              <LimitMark :state="countState" :size="16" />
+              {{ firstSquadPlayers.length }}/{{ MAX_FIRST_SQUAD_PLAYERS }}人
+            </span>
+            <span
+              class="d-inline-flex align-center ga-1 font-weight-bold text-no-wrap"
+              :class="`text-${LIMIT_APPEARANCE[outsideState].color}`"
+              data-testid="outside-status"
+            >
+              <LimitMark :state="outsideState" :size="16" />
               {{
                 t('activeRoster.outsideWorldCount', {
                   count: outsideWorldFirstSquadCount,
@@ -120,9 +137,14 @@
                 })
               }}
             </span>
+            <span class="text-no-wrap on-surface-variant" data-testid="outside-breakdown"
+              >（{{ formatOutsideWorldBreakdown(outsideBreakdown) }}）</span
+            >
             <v-tooltip location="top" max-width="260">
               <template #activator="{ props }">
-                <v-icon v-bind="props" size="x-small" color="grey">mdi-help-circle-outline</v-icon>
+                <v-icon v-bind="props" size="x-small" class="on-surface-variant"
+                  >mdi-help-circle-outline</v-icon
+                >
               </template>
               <span
                 >外の世界枠：チーム種別によって異なります。通常チームは東方以外（ハチナイ・球詠・オリジナル等）、ハチナイチームは東方・オリジナルの選手が外枠になります。1軍に最大4人まで登録できます。</span
@@ -144,22 +166,42 @@
     <v-row class="mb-2">
       <v-col cols="12">
         <div class="d-flex flex-wrap ga-2">
-          <v-chip size="small" variant="tonal" color="deep-purple" prepend-icon="mdi-lock">{{
+          <v-chip size="small" variant="flat" color="state-neutral" prepend-icon="mdi-lock">{{
             t('seasonRosterTab.specialLabel')
           }}</v-chip>
-          <v-chip size="small" variant="tonal" color="red" prepend-icon="mdi-hospital-box">
+          <v-chip
+            size="small"
+            variant="flat"
+            :color="ABSENCE_APPEARANCE.injury.color"
+            :prepend-icon="ABSENCE_APPEARANCE.injury.icon"
+          >
             {{ t('activeRoster.legend.injury') }}
           </v-chip>
-          <v-chip size="small" variant="tonal" color="orange" prepend-icon="mdi-gavel">
+          <v-chip
+            size="small"
+            variant="flat"
+            :color="ABSENCE_APPEARANCE.suspension.color"
+            :prepend-icon="ABSENCE_APPEARANCE.suspension.icon"
+          >
             {{ t('activeRoster.legend.suspension') }}
           </v-chip>
-          <v-chip size="small" variant="tonal" color="blue-grey" prepend-icon="mdi-wrench">
+          <v-chip
+            size="small"
+            variant="flat"
+            :color="ABSENCE_APPEARANCE.reconditioning.color"
+            :prepend-icon="ABSENCE_APPEARANCE.reconditioning.icon"
+          >
             {{ t('activeRoster.legend.reconditioning') }}
           </v-chip>
-          <v-chip size="small" variant="tonal" color="amber" prepend-icon="mdi-timer-sand">
+          <v-chip
+            size="small"
+            variant="flat"
+            :color="ABSENCE_APPEARANCE.cooldown.color"
+            :prepend-icon="ABSENCE_APPEARANCE.cooldown.icon"
+          >
             {{ t('activeRoster.legend.cooldown') }}
           </v-chip>
-          <v-chip size="small" variant="tonal" color="purple">{{
+          <v-chip size="small" variant="flat" color="state-info" prepend-icon="mdi-earth">{{
             t('seasonRosterTab.outsideWorldLabel')
           }}</v-chip>
         </div>
@@ -213,14 +255,15 @@
                             :player-name="item.player_name"
                             :cost-type="item.selected_cost_type"
                           />
-                          <v-icon v-if="isKeyPlayer(item)" color="deep-purple" size="x-small"
+                          <v-icon v-if="isKeyPlayer(item)" color="link" size="x-small"
                             >mdi-star</v-icon
                           >
                           <v-chip
                             v-if="item.is_outside_world"
                             size="x-small"
-                            color="purple"
-                            variant="tonal"
+                            color="state-info"
+                            variant="flat"
+                            prepend-icon="mdi-earth"
                             >{{ t('seasonRosterTab.outsideWorldShort') }}</v-chip
                           >
                         </div>
@@ -246,7 +289,7 @@
                       <v-chip
                         v-if="item.selected_cost_type && item.selected_cost_type !== 'normal_cost'"
                         size="x-small"
-                        variant="tonal"
+                        variant="flat"
                         :color="contractChipColor(item.selected_cost_type)"
                       >
                         {{ t(`baseball.construction.${item.selected_cost_type}`) }}
@@ -263,8 +306,8 @@
                           <v-chip
                             v-bind="props"
                             size="x-small"
-                            color="deep-purple"
-                            variant="tonal"
+                            color="state-neutral"
+                            variant="flat"
                             prepend-icon="mdi-lock"
                           >
                             {{ t('activeRoster.chip.special') }}
@@ -281,7 +324,10 @@
                             v-bind="props"
                             size="x-small"
                             :color="getAbsenceColor(item)"
-                            variant="tonal"
+                            :prepend-icon="
+                              ABSENCE_APPEARANCE[item.absence_info?.absence_type ?? '']?.icon
+                            "
+                            variant="flat"
                           >
                             {{ absenceStatusLabel(item) }}
                           </v-chip>
@@ -289,59 +335,61 @@
                       </v-tooltip>
                     </td>
                     <td>
-                      <!-- 特例選手: 降格不可 -->
-                      <v-tooltip
-                        v-if="isKeyPlayer(item)"
-                        :text="t('activeRoster.keyPlayerLocked')"
-                        location="top"
-                      >
-                        <template #activator="{ props }">
-                          <span v-bind="props">
+                      <template v-if="!readonly">
+                        <!-- 特例選手: 降格不可 -->
+                        <v-tooltip
+                          v-if="isKeyPlayer(item)"
+                          :text="t('activeRoster.keyPlayerLocked')"
+                          location="top"
+                        >
+                          <template #activator="{ props }">
+                            <span v-bind="props">
+                              <v-btn
+                                size="x-small"
+                                variant="outlined"
+                                :style="{ borderColor: 'rgb(var(--v-theme-border-strong))' }"
+                                rounded
+                                disabled
+                                class="demote-btn"
+                              >
+                                <v-icon>mdi-arrow-down</v-icon>
+                              </v-btn>
+                            </span>
+                          </template>
+                        </v-tooltip>
+                        <!-- 離脱中: 降格ボタン有効+ツールチップ -->
+                        <v-tooltip
+                          v-else-if="item.is_absent && item.absence_info"
+                          :text="getAbsenceDetailTooltip(item)"
+                          location="top"
+                        >
+                          <template #activator="{ props }">
                             <v-btn
+                              v-bind="props"
                               size="x-small"
-                              color="blue-grey"
-                              variant="elevated"
+                              variant="outlined"
+                              :style="{ borderColor: 'rgb(var(--v-theme-border-strong))' }"
                               rounded
-                              disabled
                               class="demote-btn"
+                              @click="movePlayer(item, 'second')"
                             >
-                              <v-icon>mdi-arrow-down</v-icon>
+                              <v-icon :class="'on-' + getAbsenceColor(item)">mdi-arrow-down</v-icon>
                             </v-btn>
-                          </span>
-                        </template>
-                      </v-tooltip>
-                      <!-- 離脱中: 降格ボタン有効+ツールチップ -->
-                      <v-tooltip
-                        v-else-if="item.is_absent && item.absence_info"
-                        :text="getAbsenceDetailTooltip(item)"
-                        location="top"
-                      >
-                        <template #activator="{ props }">
-                          <v-btn
-                            v-bind="props"
-                            size="x-small"
-                            :color="getAbsenceColor(item)"
-                            variant="elevated"
-                            rounded
-                            class="demote-btn"
-                            @click="movePlayer(item, 'second')"
-                          >
-                            <v-icon>mdi-arrow-down</v-icon>
-                          </v-btn>
-                        </template>
-                      </v-tooltip>
-                      <!-- 通常: 降格ボタン -->
-                      <v-btn
-                        v-else
-                        size="x-small"
-                        color="blue-grey"
-                        variant="elevated"
-                        rounded
-                        class="demote-btn"
-                        @click="movePlayer(item, 'second')"
-                      >
-                        <v-icon>mdi-arrow-down</v-icon>
-                      </v-btn>
+                          </template>
+                        </v-tooltip>
+                        <!-- 通常: 降格ボタン -->
+                        <v-btn
+                          v-else
+                          size="x-small"
+                          variant="outlined"
+                          :style="{ borderColor: 'rgb(var(--v-theme-border-strong))' }"
+                          rounded
+                          class="demote-btn"
+                          @click="movePlayer(item, 'second')"
+                        >
+                          <v-icon>mdi-arrow-down</v-icon>
+                        </v-btn>
+                      </template>
                     </td>
                   </tr>
                 </template>
@@ -385,78 +433,80 @@
                   :class="getSecondSquadRowClass(item)"
                 >
                   <td>
-                    <!-- 再調整中: 昇格不可 -->
-                    <v-tooltip
-                      v-if="
-                        item.is_absent &&
-                        item.absence_info &&
-                        item.absence_info.absence_type === 'reconditioning'
-                      "
-                      :text="t('activeRoster.reconditioningBlocked')"
-                      location="top"
-                    >
-                      <template #activator="{ props }">
-                        <v-chip
-                          v-bind="props"
-                          size="x-small"
-                          color="blue-grey"
-                          variant="tonal"
-                          prepend-icon="mdi-wrench"
-                        >
-                          {{ t('activeRoster.chip.reconditioning') }}
-                        </v-chip>
-                      </template>
-                    </v-tooltip>
-                    <!-- 昇格クールダウン中 -->
-                    <v-tooltip
-                      v-else-if="isPlayerOnCooldown(item)"
-                      :text="getCooldownTooltip(item)"
-                      location="top"
-                    >
-                      <template #activator="{ props }">
-                        <v-chip
-                          v-bind="props"
-                          size="x-small"
-                          color="amber"
-                          variant="tonal"
-                          prepend-icon="mdi-timer-sand"
-                        >
-                          {{ t('activeRoster.chip.cooldown') }}
-                        </v-chip>
-                      </template>
-                    </v-tooltip>
-                    <!-- 離脱中(負傷/出場停止): 昇格ボタン有効+ツールチップ -->
-                    <v-tooltip
-                      v-else-if="item.is_absent && item.absence_info"
-                      :text="getAbsenceDetailTooltip(item)"
-                      location="top"
-                    >
-                      <template #activator="{ props }">
-                        <v-btn
-                          v-bind="props"
-                          size="x-small"
-                          :color="getAbsenceColor(item)"
-                          variant="elevated"
-                          rounded
-                          class="promote-btn"
-                          @click="handlePromotePlayer(item)"
-                        >
-                          <v-icon>mdi-arrow-up</v-icon>
-                        </v-btn>
-                      </template>
-                    </v-tooltip>
-                    <!-- 通常: 昇格ボタン -->
-                    <v-btn
-                      v-else
-                      size="x-small"
-                      color="primary"
-                      variant="elevated"
-                      rounded
-                      class="promote-btn"
-                      @click="handlePromotePlayer(item)"
-                    >
-                      <v-icon>mdi-arrow-up</v-icon>
-                    </v-btn>
+                    <template v-if="!readonly">
+                      <!-- 再調整中: 昇格不可 -->
+                      <v-tooltip
+                        v-if="
+                          item.is_absent &&
+                          item.absence_info &&
+                          item.absence_info.absence_type === 'reconditioning'
+                        "
+                        :text="t('activeRoster.reconditioningBlocked')"
+                        location="top"
+                      >
+                        <template #activator="{ props }">
+                          <v-chip
+                            v-bind="props"
+                            size="x-small"
+                            :color="ABSENCE_APPEARANCE.reconditioning.color"
+                            variant="flat"
+                            :prepend-icon="ABSENCE_APPEARANCE.reconditioning.icon"
+                          >
+                            {{ t('activeRoster.chip.reconditioning') }}
+                          </v-chip>
+                        </template>
+                      </v-tooltip>
+                      <!-- 昇格クールダウン中 -->
+                      <v-tooltip
+                        v-else-if="isPlayerOnCooldown(item)"
+                        :text="getCooldownTooltip(item)"
+                        location="top"
+                      >
+                        <template #activator="{ props }">
+                          <v-chip
+                            v-bind="props"
+                            size="x-small"
+                            :color="ABSENCE_APPEARANCE.cooldown.color"
+                            variant="flat"
+                            :prepend-icon="ABSENCE_APPEARANCE.cooldown.icon"
+                          >
+                            {{ t('activeRoster.chip.cooldown') }}
+                          </v-chip>
+                        </template>
+                      </v-tooltip>
+                      <!-- 離脱中(負傷/出場停止): 昇格ボタン有効+ツールチップ -->
+                      <v-tooltip
+                        v-else-if="item.is_absent && item.absence_info"
+                        :text="getAbsenceDetailTooltip(item)"
+                        location="top"
+                      >
+                        <template #activator="{ props }">
+                          <v-btn
+                            v-bind="props"
+                            size="x-small"
+                            variant="outlined"
+                            :style="{ borderColor: 'rgb(var(--v-theme-border-strong))' }"
+                            rounded
+                            class="promote-btn"
+                            @click="handlePromotePlayer(item)"
+                          >
+                            <v-icon :class="'on-' + getAbsenceColor(item)">mdi-arrow-up</v-icon>
+                          </v-btn>
+                        </template>
+                      </v-tooltip>
+                      <!-- 通常: 昇格ボタン -->
+                      <v-btn
+                        v-else
+                        size="x-small"
+                        color="primary"
+                        variant="elevated"
+                        rounded
+                        class="promote-btn"
+                        @click="handlePromotePlayer(item)"
+                      >
+                        <v-icon>mdi-arrow-up</v-icon>
+                      </v-btn>
+                    </template>
                   </td>
                   <td class="text-caption">{{ item.number }}</td>
                   <td>
@@ -470,8 +520,9 @@
                         <v-chip
                           v-if="item.is_outside_world"
                           size="x-small"
-                          color="purple"
-                          variant="tonal"
+                          color="state-info"
+                          variant="flat"
+                          prepend-icon="mdi-earth"
                           >{{ t('seasonRosterTab.outsideWorldShort') }}</v-chip
                         >
                       </div>
@@ -497,7 +548,7 @@
                     <v-chip
                       v-if="item.selected_cost_type && item.selected_cost_type !== 'normal_cost'"
                       size="x-small"
-                      variant="tonal"
+                      variant="flat"
                       :color="contractChipColor(item.selected_cost_type)"
                     >
                       {{ t(`baseball.construction.${item.selected_cost_type}`) }}
@@ -513,7 +564,10 @@
                       "
                       size="x-small"
                       :color="getAbsenceColor(item)"
-                      variant="tonal"
+                      :prepend-icon="
+                        ABSENCE_APPEARANCE[item.absence_info?.absence_type ?? '']?.icon
+                      "
+                      variant="flat"
                     >
                       {{ absenceStatusLabel(item) }}
                     </v-chip>
@@ -531,11 +585,18 @@
       </v-col>
     </v-row>
 
-    <v-row class="mt-4">
+    <ViolationList :violations="violations" class="mt-4" />
+
+    <v-row v-if="!readonly" class="mt-4">
       <v-col>
-        <v-btn color="accent" variant="flat" @click="saveRoster">{{
-          t('activeRoster.saveRoster')
-        }}</v-btn>
+        <v-btn
+          color="action"
+          variant="flat"
+          :prepend-icon="gameDayActions ? 'mdi-content-save-outline' : undefined"
+          data-testid="save-roster"
+          @click="saveRoster"
+          >{{ t('activeRoster.saveRoster') }}</v-btn
+        >
       </v-col>
     </v-row>
 
@@ -562,7 +623,7 @@
         <v-card-actions>
           <v-spacer />
           <v-btn @click="absenceConfirmDialog = false">{{ t('actions.cancel') }}</v-btn>
-          <v-btn color="accent" variant="flat" @click="confirmPromoteAbsentPlayer">{{
+          <v-btn color="action" variant="flat" @click="confirmPromoteAbsentPlayer">{{
             t('actions.ok')
           }}</v-btn>
         </v-card-actions>
@@ -572,48 +633,70 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, computed, watch } from 'vue'
 import axios from 'axios'
 import { useI18n } from 'vue-i18n'
 import AbsenceInfo from '@/components/AbsenceInfo.vue'
 import PromotionCooldownInfo from '@/components/PromotionCooldownInfo.vue'
+import ViolationList from '@/components/season/ViolationList.vue'
+import type { RosterViolation } from '@/types/rosterViolation'
 import PlayerNameLink from '@/components/shared/PlayerNameLink.vue'
+import { useSnackbar } from '@/composables/useSnackbar'
 import type { RosterPlayer } from '@/types/rosterPlayer'
+import { ABSENCE_APPEARANCE } from '@/components/gameDay/gameDayStatus'
+import LimitMark from '@/components/shared/LimitMark.vue'
+import {
+  FIRST_SQUAD_MIN_PLAYERS,
+  LIMIT_APPEARANCE,
+  MAX_FIRST_SQUAD_PLAYERS,
+  OUTSIDE_WORLD_LIMIT,
+  costLimitForCount,
+  costLimitState,
+  countLimitState,
+  formatOutsideWorldBreakdown,
+  outsideWorldBreakdownFromKinds,
+  outsideWorldLimitState,
+} from '@/components/shared/rosterLimits'
 
+// asOfDate / phase: 読む日付と区分。GET と POST の両方に同じ値を送る（省略時は GET の応答の current_date と pre_game を POST に送り返す）。
+// readonly: 操作できない日（試合日ページで「今の範囲」の外の日）。昇降格・保存の操作を出さない。
 const props = defineProps<{
+  gameDayActions?: boolean
   teamId: number
+  asOfDate?: string
+  phase?: string
+  readonly?: boolean
 }>()
 
 const { t } = useI18n()
+const { showSnackbar } = useSnackbar()
 const seasonId = ref<number | null>(null)
 
-// 1軍制限定数
-const MAX_FIRST_SQUAD_PLAYERS = 29
-const FIRST_SQUAD_MIN_PLAYERS = 25
-const OUTSIDE_WORLD_LIMIT = 4
-const COST_LIMIT_TIERS = [
-  { minPlayers: 28, maxCost: 120 },
-  { minPlayers: 27, maxCost: 119 },
-  { minPlayers: 26, maxCost: 117 },
-  { minPlayers: 25, maxCost: 114 },
-]
 const rosterPlayers = ref<RosterPlayer[]>([])
 const currentDate = ref(new Date())
 const currentDateFormatted = computed(() => currentDate.value.toISOString().split('T')[0])
 
-const seasonStartDate = ref<Date | null>(null)
 const selectedKeyPlayerId = ref<number | null>(null)
+
+// 保存が後の日付の検査で止まった時の違反（422 の violations）
+const violations = ref<RosterViolation[]>([])
+// 保存に送る日付。読んだ日付（応答の current_date）をそのまま送り返す
+const targetDateKey = computed(() => currentDate.value.toISOString().split('T')[0])
+const targetPhase = computed(() => props.phase ?? 'pre_game')
+const keyPlayerSelectable = ref(false)
 
 const fetchRoster = async () => {
   try {
-    const response = await axios.get(`/teams/${props.teamId}/roster`)
+    const params: Record<string, string> = {}
+    if (props.asOfDate) params.target_date = props.asOfDate
+    if (props.asOfDate || props.phase) params.phase = targetPhase.value
+    const response = await axios.get(`/teams/${props.teamId}/roster`, { params })
+    violations.value = []
+    keyPlayerSelectable.value = !!response.data.key_player_selectable
     rosterPlayers.value = response.data.roster
     seasonId.value = response.data.season_id
     if (response.data.current_date) {
       currentDate.value = new Date(response.data.current_date)
-    }
-    if (response.data.season_start_date) {
-      seasonStartDate.value = new Date(response.data.season_start_date)
     }
     if (response.data.key_player_id) {
       selectedKeyPlayerId.value = response.data.key_player_id
@@ -647,28 +730,31 @@ const firstSquadTotalCost = computed(() => {
 })
 
 const firstSquadCostLimit = computed(() => {
-  const count = firstSquadPlayers.value.length
-  const tier = COST_LIMIT_TIERS.find((t) => count >= t.minPlayers)
-  return tier ? tier.maxCost : null
+  return costLimitForCount(firstSquadPlayers.value.length)
 })
 
 const outsideWorldFirstSquadCount = computed(() => {
   return firstSquadPlayers.value.filter((p) => p.is_outside_world).length
 })
 
-// 投手グルーピング: selected_cost_type='relief_only_cost' → 中継ぎ/クローザー, others → 先発
+// 外の世界枠の内訳。区分はサーバが行ごとに返す pitcher_fielder_kind を使い、1軍を入れ替えるたびに数え直す
+const outsideBreakdown = computed(() =>
+  outsideWorldBreakdownFromKinds(
+    firstSquadPlayers.value.filter((p) => p.is_outside_world).map((p) => p.pitcher_fielder_kind),
+  ),
+)
+
+// 投手・野手の 2 つのまとまり。投手は先発・救援を分けず 1 つにする。並びは従来のまま（救援専任以外 → 救援専任）
 const firstSquadGroups = computed(() => {
-  const pitchers = firstSquadPlayers.value.filter(
-    (p) => p.position === 'pitcher' || p.is_pitcher === true,
-  )
-  const fielders = firstSquadPlayers.value.filter(
-    (p) => p.position !== 'pitcher' && p.is_pitcher !== true,
-  )
-  const spPitchers = pitchers.filter((p) => p.selected_cost_type !== 'relief_only_cost')
-  const rpPitchers = pitchers.filter((p) => p.selected_cost_type === 'relief_only_cost')
+  const isPitcher = (p: RosterPlayer) => p.position === 'pitcher' || p.is_pitcher === true
+  const pitchers = firstSquadPlayers.value.filter(isPitcher)
+  const fielders = firstSquadPlayers.value.filter((p) => !isPitcher(p))
+  const sorted = [
+    ...pitchers.filter((p) => p.selected_cost_type !== 'relief_only_cost'),
+    ...pitchers.filter((p) => p.selected_cost_type === 'relief_only_cost'),
+  ]
   return [
-    { label: t('seasonRosterTab.groups.starter'), players: spPitchers },
-    { label: t('seasonRosterTab.groups.reliever'), players: rpPitchers },
+    { label: t('seasonRosterTab.groups.pitcher'), players: sorted },
     { label: t('seasonRosterTab.groups.fielder'), players: fielders },
   ].filter((g) => g.players.length > 0)
 })
@@ -679,41 +765,37 @@ const costBarValue = computed(() => {
   return Math.min((firstSquadTotalCost.value / firstSquadCostLimit.value) * 100, 100)
 })
 
-const costBarColor = computed((): string => {
-  if (!firstSquadCostLimit.value) return 'grey'
-  const ratio = firstSquadTotalCost.value / firstSquadCostLimit.value
-  if (ratio >= 1) return 'error'
-  if (ratio >= 0.9) return 'warning'
-  return 'success'
-})
+// 規定内（上限ちょうどまで）は緑のチェック、規定外は赤の✕。途中の段階は無い（ギリギリで運用するのが常）
+const costState = computed(() =>
+  costLimitState(firstSquadTotalCost.value, firstSquadCostLimit.value),
+)
+const countState = computed(() => countLimitState(firstSquadPlayers.value.length))
+// 人数が上限以下で、内訳（投手側・野手側）も規定内なら緑のチェック。どちらかが外れたら赤の✕
+const outsideState = computed(() =>
+  outsideWorldLimitState(
+    outsideWorldFirstSquadCount.value,
+    OUTSIDE_WORLD_LIMIT,
+    outsideBreakdown.value.balance_ok,
+  ),
+)
+
+const costBarColor = computed((): string =>
+  costState.value ? LIMIT_APPEARANCE[costState.value].color : 'border-strong',
+)
 
 // 行ハイライト (カスタムテーブル用)
 const getFirstSquadRowClass = (item: RosterPlayer): string => {
-  if (isKeyPlayer(item)) return 'bg-deep-purple-lighten-5'
+  if (isKeyPlayer(item)) return 'key-player-row'
   if (item.is_absent && item.absence_info) {
-    switch (item.absence_info.absence_type) {
-      case 'injury':
-        return 'bg-red-lighten-5'
-      case 'suspension':
-        return 'bg-orange-lighten-5'
-      case 'reconditioning':
-        return 'bg-blue-grey-lighten-5'
-    }
+    return `absence-row--${ABSENCE_APPEARANCE[item.absence_info.absence_type]?.color ?? 'state-neutral'}`
   }
   return ''
 }
 
 const getSecondSquadRowClass = (item: RosterPlayer): string => {
-  if (isPlayerOnCooldown(item)) return 'bg-amber-lighten-5'
+  if (isPlayerOnCooldown(item)) return 'absence-row--absence-cooldown'
   if (item.is_absent && item.absence_info) {
-    switch (item.absence_info.absence_type) {
-      case 'injury':
-        return 'bg-red-lighten-5'
-      case 'suspension':
-        return 'bg-orange-lighten-5'
-      case 'reconditioning':
-        return 'bg-blue-grey-lighten-5'
-    }
+    return `absence-row--${ABSENCE_APPEARANCE[item.absence_info.absence_type]?.color ?? 'state-neutral'}`
   }
   return ''
 }
@@ -742,22 +824,17 @@ const absenceStatusLabel = (player: RosterPlayer): string => {
 const contractChipColor = (costType: string): string => {
   switch (costType) {
     case 'relief_only_cost':
-      return 'indigo'
+      return 'tag-pitcher'
     case 'pitcher_only_cost':
-      return 'blue'
+      return 'tag-pitcher'
     case 'fielder_only_cost':
-      return 'teal'
+      return 'tag-fielder'
     case 'two_way_cost':
-      return 'cyan'
+      return 'state-neutral'
     default:
       return ''
   }
 }
-
-const isSeasonStartDate = computed(() => {
-  if (!seasonStartDate.value) return false
-  return currentDate.value.toDateString() === seasonStartDate.value.toDateString()
-})
 
 const availableKeyPlayers = computed(() => {
   return firstSquadPlayers.value
@@ -770,17 +847,7 @@ const isKeyPlayer = (player: RosterPlayer): boolean => {
 }
 
 const getAbsenceColor = (player: RosterPlayer): string => {
-  if (!player.absence_info) return 'blue-grey'
-  switch (player.absence_info.absence_type) {
-    case 'injury':
-      return 'red'
-    case 'suspension':
-      return 'orange'
-    case 'reconditioning':
-      return 'blue-grey'
-    default:
-      return 'blue-grey'
-  }
+  return ABSENCE_APPEARANCE[player.absence_info?.absence_type ?? '']?.color ?? 'state-neutral'
 }
 
 const getCooldownTooltip = (player: RosterPlayer): string => {
@@ -868,15 +935,21 @@ const saveRoster = async () => {
     }))
     await axios.post(`/teams/${props.teamId}/roster`, {
       roster_updates: updates,
-      target_date: currentDate.value.toISOString().split('T')[0],
+      target_date: targetDateKey.value,
+      phase: targetPhase.value,
     })
-    alert(t('activeRoster.saveSuccess'))
+    showSnackbar(t('activeRoster.saveSuccess'), 'success')
     fetchRoster()
   } catch (error: unknown) {
     console.error('Failed to save roster:', error)
-    const axiosError = error as { response?: { data?: { error?: string } }; message?: string }
-    alert(
+    const axiosError = error as {
+      response?: { data?: { error?: string; violations?: RosterViolation[] } }
+      message?: string
+    }
+    violations.value = axiosError.response?.data?.violations ?? []
+    showSnackbar(
       `${t('activeRoster.saveFailed')}: ${axiosError.response?.data?.error || axiosError.message}`,
+      'error',
     )
   }
 }
@@ -886,20 +959,34 @@ const saveKeyPlayer = async () => {
     await axios.post(`/teams/${props.teamId}/key_player`, {
       key_player_id: selectedKeyPlayerId.value,
     })
-    alert(t('activeRoster.keyPlayerSaveSuccess'))
+    showSnackbar(t('activeRoster.keyPlayerSaveSuccess'), 'success')
   } catch (error: unknown) {
     console.error('Failed to save key player:', error)
     const axiosError = error as { response?: { data?: { error?: string } }; message?: string }
-    alert(
+    showSnackbar(
       `${t('activeRoster.keyPlayerSaveFailed')}: ${axiosError.response?.data?.error || axiosError.message}`,
+      'error',
     )
   }
 }
 
 onMounted(fetchRoster)
+watch(() => [props.asOfDate, props.phase], fetchRoster)
 </script>
 
 <style scoped>
+.absence-row--absence-out {
+  background: rgba(var(--v-theme-absence-out), 0.35);
+}
+.absence-row--absence-adjust {
+  background: rgba(var(--v-theme-absence-adjust), 0.35);
+}
+.absence-row--absence-cooldown {
+  background: rgba(var(--v-theme-absence-cooldown), 0.35);
+}
+.key-player-row {
+  background: rgba(var(--v-theme-zone-game), 0.35);
+}
 .promote-btn,
 .demote-btn {
   transition: box-shadow 0.2s ease;
@@ -912,8 +999,8 @@ onMounted(fetchRoster)
 
 /* 投手グループヘッダー行 */
 .group-header-row td {
-  background-color: #ede7f6 !important;
-  color: #7b1fa2;
+  background-color: rgb(var(--v-theme-surface-variant)) !important;
+  color: rgb(var(--v-theme-on-surface-variant));
   font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.03em;

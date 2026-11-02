@@ -54,7 +54,7 @@ end
 
 # Season（テストチームのシーズン: team_idはunique）
 season = Season.find_or_initialize_by(team_id: team.id)
-season.update!(name: 'テストシーズン', current_date: '2025-04-01')
+season.update!(current_date: '2025-04-01')
 puts "  Season: #{season.name} (id=#{season.id}, team=#{team.name})"
 
 puts 'Test seed data complete.'

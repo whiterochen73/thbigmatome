@@ -41,11 +41,13 @@
 
 <script setup lang="ts">
 import { ref, computed, nextTick } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
+import { sanitizeRedirect } from '@/router/loginRedirect'
 import { useAuth } from '@/composables/useAuth'
 import { useI18n } from 'vue-i18n'
 
 const router = useRouter()
+const route = useRoute()
 const { t } = useI18n()
 
 const { login, loading } = useAuth()
@@ -67,7 +69,8 @@ const handleLogin = async () => {
   try {
     await login(form.value.loginName, form.value.password)
     await nextTick() // リアクティビティ伝播を待つ
-    router.push('/') // ログイン成功後のリダイレクト先
+    // ログイン成功後は、セッション切れで離れた元の画面（redirect）へ戻る。無ければホーム
+    router.push(sanitizeRedirect(route.query.redirect))
   } catch (err: unknown) {
     error.value = err instanceof Error ? err.message : t('loginForm.loginFailed')
   }
@@ -80,11 +83,13 @@ const handleLogin = async () => {
   justify-content: center;
   align-items: center;
   min-height: 100vh;
-  background-color: #f5f5f5;
+  background-color: rgb(var(--v-theme-background));
+  color: rgb(var(--v-theme-on-surface));
 }
 
 .login-card {
-  background: white;
+  background: rgb(var(--v-theme-surface));
+  color: rgb(var(--v-theme-on-surface));
   padding: 2rem;
   border-radius: 8px;
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
@@ -95,7 +100,7 @@ const handleLogin = async () => {
 h2 {
   text-align: center;
   margin-bottom: 1.5rem;
-  color: #333;
+  color: rgb(var(--v-theme-on-surface));
 }
 
 .form-group {
@@ -105,14 +110,16 @@ h2 {
 label {
   display: block;
   margin-bottom: 0.5rem;
-  color: #555;
+  color: rgb(var(--v-theme-on-surface-variant));
   font-weight: 500;
 }
 
 input {
   width: 100%;
   padding: 0.75rem;
-  border: 1px solid #ddd;
+  border: 1px solid rgb(var(--v-theme-border-strong));
+  background: rgb(var(--v-theme-surface));
+  color: rgb(var(--v-theme-on-surface));
   border-radius: 4px;
   font-size: 1rem;
   transition: border-color 0.3s;
@@ -120,18 +127,18 @@ input {
 
 input:focus {
   outline: none;
-  border-color: #007bff;
+  border-color: rgb(var(--v-theme-link));
 }
 
 input:disabled {
-  background-color: #f8f9fa;
+  background-color: rgb(var(--v-theme-surface-variant));
   cursor: not-allowed;
 }
 
 .error-message {
-  color: #dc3545;
-  background-color: #f8d7da;
-  border: 1px solid #f5c6cb;
+  color: rgb(var(--v-theme-on-state-warn));
+  background-color: rgb(var(--v-theme-state-warn));
+  border: 1px solid rgb(var(--v-theme-border-strong));
   padding: 0.75rem;
   border-radius: 4px;
   margin-bottom: 1rem;
@@ -140,8 +147,8 @@ input:disabled {
 .login-button {
   width: 100%;
   padding: 0.75rem;
-  background-color: #007bff;
-  color: white;
+  background-color: rgb(var(--v-theme-action));
+  color: rgb(var(--v-theme-on-action));
   border: none;
   border-radius: 4px;
   font-size: 1rem;
@@ -150,11 +157,12 @@ input:disabled {
 }
 
 .login-button:hover:not(:disabled) {
-  background-color: #0056b3;
+  background-color: rgb(var(--v-theme-action));
 }
 
 .login-button:disabled {
-  background-color: #6c757d;
+  background-color: rgb(var(--v-theme-surface-variant));
+  color: rgb(var(--v-theme-on-surface-variant));
   cursor: not-allowed;
 }
 </style>

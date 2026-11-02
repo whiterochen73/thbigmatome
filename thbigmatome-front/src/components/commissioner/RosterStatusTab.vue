@@ -1,98 +1,162 @@
 <!-- eslint-disable vue/valid-v-slot -->
 <template>
-  <v-row>
-    <v-col cols="12">
-      <DataCard title="1軍登録状況">
-        <div class="d-flex align-center mb-4">
-          <v-btn
-            color="primary"
-            variant="outlined"
-            prepend-icon="mdi-download"
-            :href="allCsvUrl"
-            :disabled="loading"
-          >
-            全チームCSV出力
-          </v-btn>
-        </div>
-
-        <v-data-table
-          v-model:expanded="expanded"
-          :headers="summaryHeaders"
-          :items="rosterStatus"
-          :loading="loading"
-          density="compact"
-          item-value="team_id"
-          expand-on-click
-          no-data-text="データなし"
+  <AsyncState
+    framed
+    :loading="loading"
+    :error="failed"
+    error-message="1軍登録状況の取得に失敗しました"
+    :empty="records.length === 0"
+    empty-icon="mdi-clipboard-list-outline"
+    empty-message="1軍登録状況のデータがありません"
+    @retry="emit('retry')"
+  >
+    <DataCard title="">
+      <div class="d-flex align-center mb-4">
+        <v-btn
+          color="link"
+          variant="outlined"
+          prepend-icon="mdi-download"
+          :href="allCsvUrl"
+          :disabled="loading"
         >
-          <template #[`item.team_name`]="{ item }">
-            <span class="text-primary" style="cursor: pointer">{{ item.team_name }}</span>
-          </template>
-          <template #[`item.team_type`]="{ item }">
-            <v-chip
-              v-if="item.team_type === 'hachinai'"
-              size="small"
-              color="purple"
-              variant="tonal"
-            >
-              ハチナイ
-            </v-chip>
-            <span v-else class="text-caption text-medium-emphasis">通常</span>
-          </template>
-          <template #[`item.first_cost`]="{ item }">
-            <div class="d-flex align-center gap-2">
-              <span>{{ item.first_cost }} / {{ item.first_cost_limit ?? '-' }}</span>
-              <StatusChip
-                v-if="item.first_cost_limit !== null && item.first_cost > item.first_cost_limit"
-                status="error"
-                label="超過"
-              />
-            </div>
-          </template>
-          <template #[`item.outside_world_count`]="{ item }">
-            <div class="d-flex align-center gap-2">
-              <span>{{ item.outside_world_count }} / {{ item.outside_world_limit }}</span>
-              <StatusChip
-                v-if="item.outside_world_count > item.outside_world_limit"
-                status="error"
-                label="超過"
-              />
-            </div>
-          </template>
-          <template #[`item.status`]="{ item }">
-            <StatusChip
-              v-if="item.warnings && item.warnings.length > 0"
-              status="warning"
-              label="警告あり"
-            />
-            <StatusChip v-else status="success" label="OK" />
-          </template>
+          全チームCSV出力
+        </v-btn>
+      </div>
 
-          <template #expanded-row="{ item }">
-            <tr>
-              <td :colspan="summaryHeaders.length + 1" class="pa-0">
-                <v-sheet class="pa-4 bg-grey-lighten-5">
-                  <div class="d-flex align-center justify-space-between mb-2">
-                    <span class="text-subtitle-2 font-weight-bold">
-                      {{ item.team_name }} — 1軍選手一覧
-                    </span>
-                    <v-btn
-                      size="small"
-                      variant="outlined"
-                      prepend-icon="mdi-download"
-                      :href="teamCsvUrl(item.team_id)"
-                    >
-                      CSV出力
-                    </v-btn>
-                  </div>
-                  <v-progress-circular
-                    v-if="loadingTeams.has(item.team_id)"
-                    indeterminate
-                    size="24"
-                    class="ma-2"
-                  />
+      <v-data-table
+        v-model:expanded="expanded"
+        :headers="summaryHeaders"
+        :items="records"
+        class="ui-table"
+        density="compact"
+        item-value="team_id"
+        expand-on-click
+        no-data-text="データなし"
+      >
+        <template #[`item.team_name`]="{ item }">
+          <TeamNameLink
+            :team-id="item.team_id"
+            :name="item.team_name"
+            @open="emit('open-season', $event)"
+          />
+        </template>
+        <template #[`item.team_type`]="{ item }">
+          <v-chip
+            v-if="item.team_type === 'hachinai'"
+            size="small"
+            color="state-info"
+            variant="flat"
+            prepend-icon="mdi-tag-outline"
+          >
+            ハチナイ
+          </v-chip>
+          <span v-else class="text-caption on-surface-variant">通常</span>
+        </template>
+        <template #[`item.first_count`]="{ item }">
+          <span class="d-inline-flex align-center ga-1">
+            <LimitMark :state="countLimitState(item.first_count)" :size="16" />
+            {{ item.first_count }}
+          </span>
+        </template>
+        <template #[`item.first_cost`]="{ item }">
+          <div class="d-flex align-center gap-2">
+            <span class="d-inline-flex align-center ga-1">
+              <LimitMark
+                :state="costLimitState(item.first_cost, item.first_cost_limit)"
+                :size="16"
+              />
+              {{ item.first_cost }} / {{ item.first_cost_limit ?? '-' }}
+            </span>
+            <v-chip
+              v-if="item.first_cost_limit !== null && item.first_cost > item.first_cost_limit"
+              color="state-warn"
+              variant="flat"
+              size="small"
+              prepend-icon="mdi-alert-circle"
+            >
+              超過
+            </v-chip>
+          </div>
+        </template>
+        <template #[`item.outside_world_count`]="{ item }">
+          <div class="d-flex align-center gap-2">
+            <!-- 記号（セル）に触れる・フォーカスすると内訳の全部。違反の時だけ、4 人いる側を短く添える -->
+            <v-tooltip v-if="item.outside_world_breakdown" location="top" :open-delay="0">
+              <template #activator="{ props: tipProps }">
+                <span
+                  v-bind="tipProps"
+                  class="d-inline-flex align-center ga-1"
+                  tabindex="0"
+                  data-testid="outside-cell"
+                >
+                  <LimitMark :state="outsideState(item)" :size="16" />
+                  {{ item.outside_world_count }} / {{ item.outside_world_limit }}
+                  <strong
+                    v-if="outsideWorldImbalance(item.outside_world_breakdown)"
+                    class="text-meter-ng text-no-wrap"
+                    data-testid="outside-imbalance"
+                    >{{ outsideWorldImbalance(item.outside_world_breakdown)?.label }}</strong
+                  >
+                </span>
+              </template>
+              <span data-testid="outside-breakdown">{{
+                formatOutsideWorldBreakdown(item.outside_world_breakdown)
+              }}</span>
+            </v-tooltip>
+            <span v-else class="d-inline-flex align-center ga-1" data-testid="outside-cell">
+              <LimitMark :state="outsideState(item)" :size="16" />
+              {{ item.outside_world_count }} / {{ item.outside_world_limit }}
+            </span>
+            <v-chip
+              v-if="item.outside_world_count > item.outside_world_limit"
+              color="state-warn"
+              variant="flat"
+              size="small"
+              prepend-icon="mdi-alert-circle"
+            >
+              超過
+            </v-chip>
+          </div>
+        </template>
+        <template #[`item.status`]="{ item }">
+          <!-- 違反の無い行は何も出さない（「OK」を毎行出すと、違反の行が埋もれる） -->
+          <v-chip
+            v-if="rosterWarnings(item).length > 0"
+            color="state-warn"
+            variant="flat"
+            size="small"
+            prepend-icon="mdi-alert-circle"
+          >
+            警告あり
+          </v-chip>
+          <span v-else class="status-none text-caption on-surface-variant">—</span>
+        </template>
+
+        <template #expanded-row="{ item }">
+          <tr>
+            <td :colspan="summaryHeaders.length + 1" class="pa-0">
+              <v-sheet class="pa-4 bg-surface-variant">
+                <div class="d-flex align-center justify-space-between mb-2">
+                  <span class="text-subtitle-2 font-weight-bold">
+                    {{ item.team_name }} — 1軍選手一覧
+                  </span>
+                  <v-btn
+                    size="small"
+                    variant="outlined"
+                    prepend-icon="mdi-download"
+                    :href="teamCsvUrl(item.team_id)"
+                  >
+                    CSV出力
+                  </v-btn>
+                </div>
+                <AsyncState
+                  :loading="loadingTeams.has(item.team_id)"
+                  :error="failedTeams.has(item.team_id)"
+                  error-message="1軍選手一覧の取得に失敗しました"
+                  :empty="!teamDetails.has(item.team_id)"
+                  @retry="fetchTeamDetail(item.team_id)"
+                >
                   <v-data-table
-                    v-else
                     :headers="detailHeaders"
                     :items="teamDetails.get(item.team_id) || []"
                     density="compact"
@@ -102,15 +166,20 @@
                   >
                     <template #[`item.squad`]="{ item: player }">
                       <v-chip
-                        :color="player.squad === 'first' ? 'blue' : 'grey'"
+                        :color="player.squad === 'first' ? 'zone-game' : 'state-neutral'"
                         size="small"
-                        variant="tonal"
+                        variant="flat"
+                        :prepend-icon="
+                          player.squad === 'first'
+                            ? 'mdi-numeric-1-box-outline'
+                            : 'mdi-numeric-2-box-outline'
+                        "
                       >
                         {{ player.squad === 'first' ? '1軍' : '2軍' }}
                       </v-chip>
                     </template>
                     <template #[`item.is_outside_world`]="{ item: player }">
-                      <v-icon v-if="player.is_outside_world" color="orange" size="small">
+                      <v-icon v-if="player.is_outside_world" class="on-state-info" size="small">
                         mdi-earth
                       </v-icon>
                     </template>
@@ -120,72 +189,89 @@
                         :status="player.absence_info.absence_type"
                         :label="absenceLabel(player.absence_info.absence_type)"
                       />
-                      <span v-else class="text-caption text-medium-emphasis">—</span>
+                      <span v-else class="text-caption on-surface-variant">—</span>
                     </template>
                     <template #[`item.cooldown_until`]="{ item: player }">
                       <span v-if="player.cooldown_until" class="text-caption">
                         {{ formatDate(player.cooldown_until) }}まで
                       </span>
-                      <span v-else class="text-caption text-medium-emphasis">—</span>
+                      <span v-else class="text-caption on-surface-variant">—</span>
                     </template>
                   </v-data-table>
-                </v-sheet>
-              </td>
-            </tr>
-          </template>
-        </v-data-table>
-      </DataCard>
-    </v-col>
-  </v-row>
+                </AsyncState>
+              </v-sheet>
+            </td>
+          </tr>
+        </template>
+      </v-data-table>
+    </DataCard>
+  </AsyncState>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, onMounted } from 'vue'
+import { ref, computed, watch } from 'vue'
 import axios from 'axios'
+import AsyncState from '@/components/shared/AsyncState.vue'
 import DataCard from '@/components/shared/DataCard.vue'
 import StatusChip from '@/components/shared/StatusChip.vue'
+import TeamNameLink from '@/components/shared/TeamNameLink.vue'
 import type { RosterPlayer } from '@/types/rosterPlayer'
+import type { RosterStatusRecord } from '@/types/commissionerDashboard'
+import { useColumnMinWidth } from '@/composables/useColumnMinWidth'
+import LimitMark from '@/components/shared/LimitMark.vue'
+import {
+  costLimitState,
+  countLimitState,
+  formatOutsideWorldBreakdown,
+  outsideWorldImbalance,
+  outsideWorldLimitState,
+} from '@/components/shared/rosterLimits'
+import { rosterWarnings } from './dashboardLogic'
 
-interface RosterStatusRecord {
-  team_id: number
-  team_name: string
-  team_type: string
-  first_count: number
-  second_count: number
-  first_cost: number
-  first_cost_limit: number | null
-  outside_world_count: number
-  outside_world_limit: number
-  warnings: string[]
-}
+// 1軍登録状況の取得は親（ダッシュボード）が持つ。概況の「要確認」と同じ API なので、2 度取らないよう共用する
+defineProps<{
+  records: RosterStatusRecord[]
+  loading: boolean
+  failed: boolean
+}>()
+const emit = defineEmits<{ retry: []; 'open-season': [team: { id: number; name: string }] }>()
 
-const rosterStatus = ref<RosterStatusRecord[]>([])
-const loading = ref(false)
+// 人数が上限以下で、内訳（投手側・野手側）も規定内なら ok。内訳が無い古い応答は人数だけで判定する
+const outsideState = (item: RosterStatusRecord) =>
+  outsideWorldLimitState(
+    item.outside_world_count,
+    item.outside_world_limit,
+    item.outside_world_breakdown?.balance_ok ?? true,
+  )
+
 const expanded = ref<string[]>([])
 const teamDetails = ref<Map<number, RosterPlayer[]>>(new Map())
 const loadingTeams = ref<Set<number>>(new Set())
+const failedTeams = ref<Set<number>>(new Set())
 
-const summaryHeaders = [
-  { title: 'チーム名', key: 'team_name' },
-  { title: 'タイプ', key: 'team_type', sortable: false },
-  { title: '1軍', key: 'first_count' },
-  { title: '2軍', key: 'second_count' },
-  { title: 'コスト / 上限', key: 'first_cost', sortable: false },
-  { title: '外枠 / 上限', key: 'outside_world_count', sortable: false },
-  { title: '状態', key: 'status', sortable: false },
-]
+const minW = useColumnMinWidth()
+const summaryHeaders = computed(() => [
+  // 横に比べる数値の表なので縦積みにせず、スマホでは横スクロール。チームの列は左に固定する
+  { title: 'チーム名', key: 'team_name', fixed: true, minWidth: minW(130) },
+  { title: 'タイプ', key: 'team_type', sortable: false, minWidth: minW(90) },
+  { title: '1軍', key: 'first_count', minWidth: minW(64) },
+  { title: '2軍', key: 'second_count', minWidth: minW(64) },
+  { title: 'コスト / 上限', key: 'first_cost', sortable: false, minWidth: minW(150) },
+  { title: '外枠 / 上限', key: 'outside_world_count', sortable: false, minWidth: minW(170) },
+  { title: '状態', key: 'status', sortable: false, minWidth: minW(100) },
+])
 
-const detailHeaders = [
-  { title: '背番号', key: 'number' },
-  { title: '選手名', key: 'player_name' },
-  { title: '軍', key: 'squad', sortable: false },
-  { title: '投打', key: 'handedness', sortable: false },
-  { title: 'ポジション', key: 'position', sortable: false },
-  { title: 'コスト', key: 'cost' },
-  { title: '外枠', key: 'is_outside_world', sortable: false },
-  { title: '離脱', key: 'absence', sortable: false },
-  { title: 'CD終了日', key: 'cooldown_until', sortable: false },
-]
+const detailHeaders = computed(() => [
+  { title: '背番号', key: 'number', minWidth: minW(72) },
+  { title: '選手名', key: 'player_name', fixed: true, minWidth: minW(130) },
+  { title: '軍', key: 'squad', sortable: false, minWidth: minW(80) },
+  { title: '投打', key: 'handedness', sortable: false, minWidth: minW(72) },
+  { title: 'ポジション', key: 'position', sortable: false, minWidth: minW(100) },
+  { title: 'コスト', key: 'cost', minWidth: minW(72) },
+  { title: '外枠', key: 'is_outside_world', sortable: false, minWidth: minW(64) },
+  { title: '離脱', key: 'absence', sortable: false, minWidth: minW(100) },
+  { title: 'CD終了日', key: 'cooldown_until', sortable: false, minWidth: minW(110) },
+])
 
 const absenceLabels: Record<string, string> = {
   injury: '負傷',
@@ -205,32 +291,28 @@ const allCsvUrl = computed(() => `${baseURL.value}/commissioner/dashboard/roster
 const teamCsvUrl = (teamId: number) =>
   `${baseURL.value}/commissioner/dashboard/roster_status.csv?team_id=${teamId}`
 
-const fetchRosterStatus = async () => {
-  loading.value = true
-  try {
-    const response = await axios.get<RosterStatusRecord[]>('/commissioner/dashboard/roster_status')
-    rosterStatus.value = response.data
-  } catch (error) {
-    console.error('Failed to fetch roster status:', error)
-  } finally {
-    loading.value = false
-  }
-}
-
 const fetchTeamDetail = async (teamId: number) => {
   if (teamDetails.value.has(teamId) || loadingTeams.value.has(teamId)) return
 
   const newLoadingSet = new Set(loadingTeams.value)
   newLoadingSet.add(teamId)
   loadingTeams.value = newLoadingSet
+  const newFailedSet = new Set(failedTeams.value)
+  newFailedSet.delete(teamId)
+  failedTeams.value = newFailedSet
 
   try {
-    const response = await axios.get<RosterPlayer[]>(`/teams/${teamId}/roster`)
+    // 応答は { roster: [...] }（cmd_1784 で配列から包みに変わった）。古い形（配列）も受ける
+    const response = await axios.get<RosterPlayer[] | { roster: RosterPlayer[] }>(
+      `/teams/${teamId}/roster`,
+    )
+    const players = Array.isArray(response.data) ? response.data : (response.data.roster ?? [])
     const newMap = new Map(teamDetails.value)
-    newMap.set(teamId, response.data)
+    newMap.set(teamId, players)
     teamDetails.value = newMap
   } catch (error) {
     console.error(`Failed to fetch roster for team ${teamId}:`, error)
+    failedTeams.value = new Set(failedTeams.value).add(teamId)
   } finally {
     const newSet = new Set(loadingTeams.value)
     newSet.delete(teamId)
@@ -241,9 +323,5 @@ const fetchTeamDetail = async (teamId: number) => {
 watch(expanded, (newExpanded, oldExpanded) => {
   const added = newExpanded.filter((id) => !oldExpanded.includes(id))
   added.forEach((teamId) => fetchTeamDetail(Number(teamId)))
-})
-
-onMounted(() => {
-  fetchRosterStatus()
 })
 </script>

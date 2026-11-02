@@ -17,7 +17,7 @@ class PitcherGameResult
     end
     return Outcome.new(found: false, scored: false, result: nil, note: :not_found) if date.nil?
 
-    schedules = SeasonSchedule.joins(:season).where(seasons: { team_id: team_id }, date: date).to_a
+    schedules = SeasonSchedule.of_team_on(team_id, date).to_a
     return Outcome.new(found: false, scored: false, result: nil, note: :not_found) if schedules.empty?
     return Outcome.new(found: false, scored: false, result: nil, note: :ambiguous) if schedules.size > 1
 

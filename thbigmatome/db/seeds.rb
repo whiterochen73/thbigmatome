@@ -268,7 +268,8 @@ puts 'Seeding Schedule Details...'
   { schedule_id: 1, date: '2016-09-23', date_type: 'reserve_day', priority: 1 },
   { schedule_id: 1, date: '2016-09-24', date_type: 'game_day', priority: 1 },
   { schedule_id: 1, date: '2016-09-25', date_type: 'game_day', priority: 1 },
-  { schedule_id: 1, date: '2016-09-26', date_type: 'game_day', priority: 1 },
+  # 2016-09-26 は余分だった通常試合日（cmd_1802）。予備日にしてレギュラーの試合日を 143 にそろえる
+  { schedule_id: 1, date: '2016-09-26', date_type: 'reserve_day', priority: 1 },
   { schedule_id: 1, date: '2016-09-27', date_type: 'reserve_day', priority: 11 },
   { schedule_id: 1, date: '2016-09-28', date_type: 'reserve_day', priority: 2 },
   { schedule_id: 1, date: '2016-09-29', date_type: 'reserve_day', priority: 3 },
@@ -314,6 +315,10 @@ puts 'Seeding Schedule Details...'
     priority: detail_attrs[:priority]
   )
 end
+
+# 検算（AMB-11）: ペナント日程表のレギュラー（通常・交流戦）の試合日が 143 か。合わなければここで止める（cmd_1802。作成時から 144 のまま気づかれなかった）
+ScheduleMasterCheck.verify!(Schedule.find_by!(name: 'ペナント日程表'))
+puts "  ペナント日程表: レギュラーの試合日 #{ScheduleMasterCheck::EXPECTED_REGULAR_GAME_DAYS} 日 OK"
 
 # =============================================================================
 # 本番用コミッショナーユーザー (mori, sian, tomoya, ni_lan_cui)

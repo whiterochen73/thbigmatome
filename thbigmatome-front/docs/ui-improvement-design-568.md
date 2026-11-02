@@ -219,7 +219,7 @@ const isOpen = defineModel<boolean>({ default: false })
 ```
 
 **対象ファイル（15件）:**
-- パターンA→defineModel: ManagerDialog, TeamDialog, CostDialog, BattingStyleDialog, PitchingStyleDialog, BattingSkillDialog, PitchingSkillDialog, PlayerTypeDialog, BiorhythmDialog, ScheduleDialog
+- パターンA→defineModel: ManagerDialog, TeamDialog, CostDialog, BattingStyleDialog, PitchingStyleDialog, PlayerTypeDialog, BiorhythmDialog, ScheduleDialog
 - パターンC→defineModel: PlayerDialog, StartingMemberDialog
 
 ### 3.3 persistent属性の統一

@@ -13,7 +13,6 @@ module Api
 
           season = Season.new(
             team: team,
-            name: params[:name],
             current_date: schedule.start_date,
             team_type: team.team_type,
           )

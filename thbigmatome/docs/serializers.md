@@ -9,7 +9,6 @@
 - `app/serializers/competition_serializer.rb`
 - `app/serializers/cost_player_serializer.rb`
 - `app/serializers/cost_serializer.rb`
-- `app/serializers/game_lineup_entry_serializer.rb`
 - `app/serializers/game_serializer.rb`
 - `app/serializers/manager_serializer.rb`
 - `app/serializers/player_absence_serializer.rb`
@@ -146,37 +145,11 @@
 
 ---
 
-### GameLineupEntrySerializer
-
-**ファイル**: `app/serializers/game_lineup_entry_serializer.rb`
-
-**使用箇所**: `GameLineupEntriesController#show`, `#create`, `#update`
-
-**属性**:
-
-| 属性 | 説明 |
-|------|------|
-| `id` | エントリーID |
-| `player_card_id` | 選手カードID |
-| `player_id` | 選手ID（computed） |
-| `player_name` | 選手名（computed） |
-| `role` | 役割（starter/reliever等） |
-| `batting_order` | 打順 |
-| `position` | 守備位置 |
-| `is_dh_pitcher` | DH投手フラグ |
-| `is_reliever` | リリーフフラグ |
-
-**computed属性の計算ロジック**:
-- `player_name`: `object.player_card.player.name` — 関連PlayerCardからPlayer名を取得
-- `player_id`: `object.player_card.player_id` — 関連PlayerCardからPlayer IDを取得
-
----
-
 ### GameSerializer
 
 **ファイル**: `app/serializers/game_serializer.rb`
 
-**使用箇所**: `GamesController#index`, `#show`, `#create`, `#confirm`
+**使用箇所**: `GamesController#index`, `#show`
 
 **属性**:
 
@@ -238,6 +211,8 @@
 | `start_date` | 開始日 |
 | `duration` | 欠場期間 |
 | `duration_unit` | 期間単位 |
+| `phase` | 試合前 / 試合中（`pre_game` / `in_game`） |
+| `effective_start_date` | 離脱が始まる最初の日（`in_game` は `start_date` の翌日） |
 | `player_name` | 選手名（computed） |
 | `player_id` | 選手ID（computed） |
 | `effective_end_date` | 実質終了日（computed、モデル側で計算） |
@@ -489,7 +464,6 @@
 | 属性 | 説明 |
 |------|------|
 | `id` | シーズンID |
-| `name` | シーズン名 |
 | `current_date` | 現在日付 |
 | `start_date` | シーズン開始日（computed） |
 | `end_date` | シーズン終了日（computed） |
@@ -521,10 +495,12 @@
 | `date_type` | 日付種別 (game_day/off_day等) |
 | `announced_starter` | 先発予告（computed） |
 | `game_result` | 試合結果（computed） |
+| `pitcher_appearance_count` | この試合日の自チームの登板記録の件数（computed。`SeasonDetailSerializer` が日付ごとの集計をまとめて入れる） |
 
 **computed属性の計算ロジック**:
 - `announced_starter`: `announced_starter_id` が存在する場合、`object.announced_starter` (PlayerCard) から Player を取得して `{ id, name }` を返す。存在しなければnil
 - `game_result`: `object.game_result_hash` — モデルのメソッドを呼び出す
+- `pitcher_appearance_count`: `object.pitcher_appearance_count` — `pitcher_game_states` の `team_id` と `schedule_date`（文字列の列）が一致する行数。`SeasonDetailSerializer` 経由では `PitcherGameState.where(team_id:).group(:schedule_date).count` の 1 回の集計から日付ごとに入れる。単体で使うと、その試合日の分だけ問い合わせる
 
 ---
 
@@ -667,7 +643,6 @@ ActiveModel::Serializer
 ├── CompetitionSerializer
 ├── CostPlayerSerializer
 ├── CostSerializer
-├── GameLineupEntrySerializer
 ├── GameSerializer
 │   └── has_many :at_bats → AtBatSerializer
 ├── ManagerSerializer
@@ -709,8 +684,7 @@ ActiveModel::Serializer
 | CompetitionSerializer | CompetitionsController#index, #show, #create, #update |
 | CostPlayerSerializer | PlayerSerializer経由（TeamRegistrationPlayersController#index） |
 | CostSerializer | CostsController#index, #create, #update |
-| GameLineupEntrySerializer | GameLineupEntriesController#show, #create, #update |
-| GameSerializer | GamesController#index, #show, #create, #confirm, #import_log |
+| GameSerializer | GamesController#index, #show |
 | PlayerAbsenceSerializer | PlayerAbsencesController#index, #create, #update |
 | PlayerCardDetailSerializer | PlayerCardsController#show, #update |
 | PlayerCardSerializer | PlayerCardsController#index |

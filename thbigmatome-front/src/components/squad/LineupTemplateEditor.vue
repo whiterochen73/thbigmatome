@@ -6,7 +6,7 @@
 
     <v-card-text>
       <!-- パターン切替タブ -->
-      <v-tabs v-model="activePattern" color="primary" density="compact" class="mb-4">
+      <v-tabs v-model="activePattern" color="link" density="compact" class="mb-4">
         <v-tab v-for="p in patterns" :key="p.key" :value="p.key">{{ p.label }}</v-tab>
       </v-tabs>
 
@@ -77,13 +77,14 @@
 
       <!-- 保存・削除ボタン -->
       <div class="d-flex align-center mt-4" style="gap: 8px">
-        <v-btn color="accent" variant="flat" :loading="saving" @click="saveTemplate">
+        <v-btn color="action" variant="flat" :loading="saving" @click="saveTemplate">
           {{ t('lineupTemplate.save') }}
         </v-btn>
         <v-btn
           v-if="currentTemplateId !== null"
-          color="error"
+          color="danger-ink"
           variant="outlined"
+          prepend-icon="mdi-delete-outline"
           :loading="deleting"
           @click="confirmDelete"
         >
@@ -102,7 +103,13 @@
         <v-card-actions>
           <v-spacer />
           <v-btn variant="text" @click="deleteDialog = false">キャンセル</v-btn>
-          <v-btn color="error" variant="elevated" :loading="deleting" @click="deleteTemplate">
+          <v-btn
+            color="danger-ink"
+            variant="outlined"
+            prepend-icon="mdi-delete-outline"
+            :loading="deleting"
+            @click="deleteTemplate"
+          >
             {{ t('lineupTemplate.delete') }}
           </v-btn>
         </v-card-actions>

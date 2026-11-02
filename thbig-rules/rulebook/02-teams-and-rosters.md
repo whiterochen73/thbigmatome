@@ -40,18 +40,39 @@ classification: "always_outside"
 # → チーム種別に関わらず常に外の世界枠
 ```
 
+### 外の世界かどうかは登録したカードのシリーズで決める
+
+上の `series` は、選手のシリーズではなく**登録したカード（選んだカード）のカードセットのシリーズ**を指す。カードセットのシリーズは 2025THBIG＝touhou、ハチナイ＝hachinai、球詠＝tamayomi、PM2026＝original（第1章 1.3）。
+
+- PM2026 のカードはシリーズが original なので、東方のキャラクターでも PM2026 のカードで登録すれば外の世界枠を取る
+- 例: 西行寺幽々子を通常チームに 2025THBIG のカードで登録すれば外の世界枠を取らず、PM2026 のカードで登録すれば外の世界枠を取る
+- カードを選んでいない所属は選手のシリーズで判定する（Dugout の `Team#outside_world_first_squad_memberships` と同じ）
+
+> 欠落補充（2026-11-02、Operator 裁定）: 旧版は判定を選手のシリーズ（`player.series`）で書いており、東方のキャラクターを PM2026 のカードで登録した場合が決まらなかった。
+> 裁定: `context/thbig-bench-rule-adjudications.md`（multi-agent-shogun リポジトリ）AMB-30 節（Operator 裁定 2026-11-02）
+
 ### 外の世界判定の擬似コード
 
 ```python
-def is_outside_world(player, team_type):
-    if player.series == "original":
-        return True  # オリジナルは常に外の世界
-    
+# m = 所属（チームと選手の契約）。m.player_card は登録したカード
+def effective_series(m):
+    # 登録したカードのカードセットのシリーズ。カード未選択なら選手のシリーズ（AMB-30）
+    if m.player_card is not None and m.player_card.card_set.series:
+        return m.player_card.card_set.series
+    return m.player.series
+
+def is_outside_world(m, team_type):
+    series = effective_series(m)
+    if not series:
+        return False  # シリーズ不明は数えない（Dugout と同じ）
+    if series == "original":
+        return True  # オリジナル（PM2026 のカードなど）は常に外の世界
+
     native = NATIVE_SERIES[team_type]
     # native = ["touhou"] for normal
     # native = ["hachinai", "tamayomi"] for hachinai
-    
-    return player.series not in native
+
+    return series not in native
 ```
 
 → `game_rules.yaml`: `lpena.team_types`
@@ -162,6 +183,8 @@ def validate_cost(team, cost_list_id):
 ルール: 1軍に登録できる外の世界選手 ≤ 4人
 ```
 
+外の世界選手かどうかは、選手のシリーズではなく登録したカードのシリーズで決める（2.1「外の世界かどうかは登録したカードのシリーズで決める」。AMB-30）。東方のキャラクターでも PM2026 のカードで登録すれば外の世界選手に数える。
+
 → `game_rules.yaml`: `lpena.team_composition.outside_world` (max: 4)
 
 ### バランスルール
@@ -170,21 +193,80 @@ def validate_cost(team, cost_list_id):
 
 ```
 条件: 外の世界選手が4人のとき
-制約: 投手カード保有者1名以上 AND 野手カード保有者1名以上
+制約: 投手に数える選手1名以上 AND 野手に数える選手1名以上
 ```
 
 → `game_rules.yaml`: `lpena.team_composition.outside_world.balance`
 
-**判定基準**: 選手が保有する`player_cards`の`card_type`で投手/野手を判定。
+**判定基準**: 投手・野手のどちらに数えるかは、契約の種類（契約したコスト区分）で決まる。
+
+| 契約の種類 | 投手に数える | 野手に数える |
+|-----------|:-----------:|:-----------:|
+| 投手専任・救援専任コスト | ○ | × |
+| 野手専任コスト | × | ○ |
+| 二刀流コスト（二刀流契約） | ○ | ○ |
+| それ以外（通常コストなど） | 選んだカードの主な位置が投手なら○ | 選んだカードの主な位置が内野手・外野手・捕手なら○ |
+
+- 専任契約（投手専任・救援専任・野手専任のコスト）は契約した役だけに数える。救援専任は投手としての専任契約なので投手だけに数える
+- 投手・野手のどちらにも数える（都合の良い方として扱う）のは二刀流契約のときだけ。投手カードと野手カードの両方を持つ選手でも、二刀流契約でなければ契約の種類どおりに数える
+- 二刀流契約ができる範囲は、二刀流コストを選べる選手と同じ（投手カードと野手カードの両方を持つ選手と、ハチナイの二刀流の選手。Dugout の `Player#available_cost_types`）。ハチナイのカードを持つ背番号 39 以下の選手は、片方のカードしか持たなくても二刀流契約ができる
+- それ以外の契約（通常コストなど）では、選んだカードの主な位置（投手 / 内野手 / 外野手 / 捕手）で数える。カードの主な位置は、Dugout では守備位置の 1 つ目で、取込データの position に当たる。カードの種類（`card_type`）や、守備位置に P があるかどうかでは決めない
+- 4 人全員が投手だけに数えられる編成と、4 人全員が野手だけに数えられる編成が違反になる
+
+例（2025THBIG・hachinai6.1 のカード）:
+
+- 霧雨魔理沙: 通常契約なら投手（主な位置が投手）。野手専任で契約したら野手。二刀流契約はできない
+- 天弓千亦: 通常契約なら野手（救援専任のカードでも主な位置は内野手）
+- 涼宮ハルヒ: 通常契約で野手（ハチナイ 6.1 のカードだが背番号 46 で 39 以下でなく、カードも 1 枚なので二刀流契約はできない。カードの主な位置は内野手）。実際に問題になったら裁定を確認する
+- ハチナイの二刀流の選手: 契約次第。二刀流契約なら投手・野手のどちらにも数え、専任契約ならその役だけに数える
+
+> 欠落補充（2026-11-02、Operator 裁定）: 旧版は判定を `player_cards` の `card_type` だけで書いており、二刀流と専任契約の扱いが無かった。
+> 改訂（2026-11-02、Operator 決定・暫定）: 二刀流をハチナイの二刀流に限り、それ以外は選んだカードの主な位置で数える形に改めた。
+> 再改訂（2026-11-02、Operator 決定・暫定）: 両方に数えるのを二刀流契約のときだけに改め、数え方を契約の種類で決める形にした（上の改訂の「ハチナイの二刀流は両方」を置き換え）。リーグの正式な裁定を聞けたら改める。
+> 裁定: `context/thbig-bench-rule-adjudications.md`（multi-agent-shogun リポジトリ）AMB-29 節（Operator 裁定 2026-11-02、同日改訂・再改訂・暫定）
 
 ### バリデーション擬似コード
 
 ```python
+# m = 1軍の所属（チームと選手の契約）。selected_cost_type は契約したコスト区分
+# （normal_cost / relief_only_cost / pitcher_only_cost / fielder_only_cost / two_way_cost）、
+# player_card は選んだカード。two_way_cost を選べるのは二刀流契約ができる選手だけ
+# （範囲はコストの検査で決まる。Dugout の Player#available_cost_types）。
+#
+# primary_position(card): 選んだカードの主な位置（"投手" / "内野手" / "外野手" / "捕手"）。
+#   Dugout では守備位置の 1 つ目（取込データの position に当たる）。
+#   card_type や守備位置に P があるかでは判定しない
+
+PITCHER_ONLY_COSTS = ("pitcher_only_cost", "relief_only_cost")  # 投手としての専任契約
+FIELDER_ONLY_COSTS = ("fielder_only_cost",)                      # 野手としての専任契約
+TWO_WAY_COST = "two_way_cost"                                    # 二刀流契約
+FIELDER_POSITIONS = ("内野手", "外野手", "捕手")
+
+# 契約の種類で決める（AMB-29 再改訂）。カードの種類や選手の属性だけで両方に数えることはない
+def counts_as_pitcher(m):
+    if m.selected_cost_type in FIELDER_ONLY_COSTS:
+        return False  # 野手専任契約: 野手だけ
+    if m.selected_cost_type in PITCHER_ONLY_COSTS:
+        return True   # 投手専任・救援専任契約: 投手だけ
+    if m.selected_cost_type == TWO_WAY_COST:
+        return True   # 二刀流契約: 両方
+    # それ以外（通常など）は選んだカードの主な位置で数える
+    return m.player_card is not None and primary_position(m.player_card) == "投手"
+
+def counts_as_fielder(m):
+    if m.selected_cost_type in PITCHER_ONLY_COSTS:
+        return False  # 投手専任・救援専任契約: 投手だけ
+    if m.selected_cost_type in FIELDER_ONLY_COSTS:
+        return True   # 野手専任契約: 野手だけ
+    if m.selected_cost_type == TWO_WAY_COST:
+        return True   # 二刀流契約: 両方
+    # それ以外（通常など）は選んだカードの主な位置で数える
+    return m.player_card is not None and primary_position(m.player_card) in FIELDER_POSITIONS
+
 def validate_outside_world(team):
-    native_series = NATIVE_SERIES[team.team_type]
-    
+    # 外の世界かどうかは登録したカードのシリーズで決める（2.1 の is_outside_world。AMB-30）
     ow_first_squad = [m for m in team.first_squad
-                      if m.player.series not in native_series]
+                      if is_outside_world(m, team.team_type)]
     
     # 人数チェック
     if len(ow_first_squad) > 4:
@@ -192,16 +274,8 @@ def validate_outside_world(team):
     
     # バランスチェック（4人ちょうどの場合のみ）
     if len(ow_first_squad) == 4:
-        has_pitcher = any(
-            pc.card_type == "pitcher" 
-            for m in ow_first_squad 
-            for pc in m.player.player_cards
-        )
-        has_fielder = any(
-            pc.card_type == "batter"
-            for m in ow_first_squad
-            for pc in m.player.player_cards
-        )
+        has_pitcher = any(counts_as_pitcher(m) for m in ow_first_squad)
+        has_fielder = any(counts_as_fielder(m) for m in ow_first_squad)
         if not (has_pitcher and has_fielder):
             return "外の世界4人使用時は投手1名以上・野手1名以上必須"
     
@@ -272,6 +346,6 @@ def validate_outside_world(team):
 
 ## 関連章
 
-- → 第1章: カード種別（外の世界バランスルールの投手/野手判定）
+- → 第1章: カード種別・二刀流（外の世界バランスルールでは、第1章の二刀流選手でも二刀流契約でなければ両方には数えない）
 - → 第3章: クールダウン制度（1軍⇔2軍移動の制約）
 - → 第3章: 大会ルール・特例選手ルール（大会ごとのルール値上書き機構・特例選手指定）

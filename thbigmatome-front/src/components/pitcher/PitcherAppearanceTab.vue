@@ -2,8 +2,8 @@
   <div>
     <!-- 試合結果 -->
     <div class="d-flex align-center mb-3">
-      <span class="text-caption text-grey mr-2">試合結果:</span>
-      <v-chip :color="gameResultColor" size="small">{{ gameResultLabel }}</v-chip>
+      <span class="text-caption on-surface-variant mr-2">試合結果:</span>
+      <v-chip :color="gameResultColor" variant="flat" size="small">{{ gameResultLabel }}</v-chip>
     </div>
 
     <template v-if="loadingPitchers">
@@ -17,7 +17,7 @@
         :key="idx"
         class="pitcher-row pa-2 mb-1 rounded"
         :class="[
-          idx === 0 ? 'bg-blue-lighten-5' : 'bg-grey-lighten-4',
+          idx === 0 ? 'bg-zone-game' : 'bg-surface-variant',
           dragSrcIdx === idx ? 'opacity-50' : '',
         ]"
         style="position: relative"
@@ -33,7 +33,7 @@
           icon
           size="x-small"
           variant="text"
-          color="error"
+          color="danger-ink"
           style="position: absolute; top: 4px; right: 4px; z-index: 1"
           @click="removeRow(idx)"
         >
@@ -47,7 +47,7 @@
             <v-icon
               v-if="idx > 0"
               size="small"
-              color="grey-lighten-1"
+              class="on-surface-variant"
               style="cursor: grab; margin-right: 2px; flex-shrink: 0"
             >
               mdi-drag-vertical
@@ -58,7 +58,7 @@
             />
             <span
               class="text-caption font-weight-bold"
-              :class="idx === 0 ? 'text-blue-darken-2' : 'text-medium-emphasis'"
+              :class="idx === 0 ? 'text-link' : 'text-medium-emphasis'"
               style="min-width: 42px; display: inline-block"
             >
               {{ idx === 0 ? '先発' : `${idx + 1}番手` }}
@@ -81,7 +81,7 @@
               <template #item="{ props, item }">
                 <v-list-item v-bind="props" :disabled="item.disabled">
                   <template #append>
-                    <span class="ml-1 text-caption text-grey">{{ item.preGameInfo }}</span>
+                    <span class="ml-1 text-caption on-surface-variant">{{ item.preGameInfo }}</span>
                   </template>
                 </v-list-item>
               </template>
@@ -173,7 +173,7 @@
                 v-for="opt in getDecisionChipOptions(idx)"
                 :key="String(opt.value)"
                 :color="getChipColor(opt.value, row.decision)"
-                :variant="row.decision === opt.value ? 'elevated' : 'outlined'"
+                :variant="row.decision === opt.value ? 'flat' : 'outlined'"
                 :disabled="opt.disabled"
                 size="small"
                 style="cursor: pointer"
@@ -197,19 +197,56 @@
             />
           </v-col>
 
-          <!-- 試合前状態テキスト -->
-          <v-col cols="auto">
-            <span v-if="getPitcherPreGameInfo(row.pitcher_id)" class="text-caption text-grey">
-              {{ getPitcherPreGameInfo(row.pitcher_id) }}
-            </span>
+          <!-- その日（試合前）の状態。投手状態の一覧は試合前の段にあり、ここは登板した投手の分だけ -->
+          <v-col cols="12" sm="auto">
+            <div
+              class="day-state d-flex align-center flex-wrap ga-2"
+              :data-testid="`day-state-before-${idx}`"
+            >
+              <template v-if="row.pitcher_id">
+                <span class="text-caption text-medium-emphasis">その日の状態</span>
+                <PitcherRoleStateCell
+                  :state="dayRoleState(idx)"
+                  :test-id="`day-state-role-${idx}`"
+                />
+                <span v-if="dayDetail(row.pitcher_id)" class="text-caption on-surface-variant">
+                  {{ dayDetail(row.pitcher_id) }}
+                </span>
+              </template>
+            </div>
           </v-col>
 
-          <!-- 結果区分チップ -->
-          <v-col cols="auto" class="ml-auto">
-            <span class="text-caption text-medium-emphasis mr-1">結果区分:</span>
-            <v-chip size="x-small" :color="resultCategoryColor(computeResultCategory(idx))">
-              {{ resultCategoryLabel(computeResultCategory(idx)) }}
-            </v-chip>
+          <!-- 登板による変化: 先発は結果区分（KO・長イニング敗戦）、リリーフ・オープナーは翌日の累積イニング -->
+          <v-col cols="12" sm="auto" class="ml-sm-auto">
+            <div
+              class="day-state d-flex align-center flex-wrap ga-2"
+              :data-testid="`day-state-after-${idx}`"
+            >
+              <template v-if="row.pitcher_id">
+                <span class="text-caption text-medium-emphasis">登板による変化</span>
+                <v-chip
+                  v-if="showResultChip(idx)"
+                  size="small"
+                  :color="resultCategoryColor(computeResultCategory(idx))"
+                  variant="flat"
+                >
+                  {{ resultCategoryLabel(computeResultCategory(idx)) }}
+                </v-chip>
+                <v-chip
+                  v-if="effectiveRole(idx) !== 'starter'"
+                  size="small"
+                  :color="nextDayCumulative(row) == null ? 'state-neutral' : 'state-info'"
+                  variant="flat"
+                  :data-testid="`next-day-cumulative-${idx}`"
+                >
+                  {{
+                    nextDayCumulative(row) == null
+                      ? '保存後に確定'
+                      : `翌日の累積 ${nextDayCumulative(row)}`
+                  }}
+                </v-chip>
+              </template>
+            </div>
           </v-col>
         </v-row>
       </div>
@@ -233,7 +270,7 @@
       <!-- 保存ボタン -->
       <div class="d-flex justify-end mt-4">
         <v-btn
-          color="primary"
+          color="action"
           variant="elevated"
           :loading="saving"
           :disabled="!canSave"
@@ -243,80 +280,14 @@
           登板記録を保存
         </v-btn>
       </div>
-
-      <!-- 投手状態一覧 -->
-      <v-divider class="my-4" />
-      <div class="d-flex align-center mb-2">
-        <span class="text-subtitle-2 font-weight-bold">投手状態一覧（1軍）</span>
-        <v-btn
-          icon
-          size="x-small"
-          variant="text"
-          class="ml-1"
-          :loading="loadingFatigue"
-          @click="fetchFatigueSummary"
-        >
-          <v-icon>mdi-refresh</v-icon>
-        </v-btn>
-      </div>
-      <v-table density="compact" v-if="fatigueSummary.length > 0">
-        <thead>
-          <tr>
-            <th>投手名</th>
-            <th>区分</th>
-            <th>中日数 / 累積</th>
-            <th>負傷</th>
-            <th>先発なら</th>
-            <th>リリーフなら</th>
-            <th data-testid="opener-column-header" :title="openerHeaderTitle(fatigueSummary)">
-              オープナーなら
-            </th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="row in fatigueSummary" :key="row.player_id">
-            <td>
-              <PlayerNameLink
-                :player-id="row.player_id"
-                :player-name="row.player_name"
-                card-type="pitcher"
-              />
-            </td>
-            <td>{{ lastRoleLabel(row.last_role) }}</td>
-            <td>{{ fatigueDetail(row) }}</td>
-            <td>{{ row.is_injured ? '🏥' : '' }}</td>
-            <td>
-              <PitcherRoleStateCell
-                :state="row.as_starter"
-                :test-id="`as-starter-${row.player_id}`"
-              />
-            </td>
-            <td>
-              <PitcherRoleStateCell
-                :state="row.as_reliever"
-                :test-id="`as-reliever-${row.player_id}`"
-              />
-            </td>
-            <td>
-              <PitcherRoleStateCell
-                :state="row.as_opener"
-                :test-id="`as-opener-${row.player_id}`"
-              />
-            </td>
-          </tr>
-        </tbody>
-      </v-table>
-      <div v-else-if="!loadingFatigue" class="text-caption text-grey">データなし</div>
     </template>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import axios, { type AxiosResponse } from 'axios'
-import PlayerNameLink from '@/components/shared/PlayerNameLink.vue'
 import PitcherRoleStateCell from './PitcherRoleStateCell.vue'
-import { openerHeaderTitle } from './pitcherRoleState'
 import type {
   OpenerCapableSource,
   PitcherRoleOmittedReason,
@@ -336,6 +307,13 @@ const props = defineProps<{
   scheduleId: number
   announcedStarterId?: number | null
   competitionId?: number | null
+}>()
+
+const emit = defineEmits<{
+  // 登板記録を保存した（試合日ページが状態を取り直す）
+  saved: []
+  // 未保存の入力があるかが変わった（試合日ページが離脱ガードと「編集中」の表示に使う）
+  'dirty-change': [dirty: boolean]
 }>()
 
 // ─────────────────────────────────────────
@@ -417,9 +395,21 @@ const errors = ref<string[]>([])
 const warnings = ref<string[]>([])
 const savedMessage = ref('')
 const pitcherRows = ref<PitcherRow[]>([createEmptyRow('starter')])
+// その日（試合前）の投手状態（試合前の段と同じ API）。登板した投手ごとの「その日の状態」に使う
 const fatigueSummary = ref<FatigueSummaryRow[]>([])
-const loadingFatigue = ref(false)
+// 保存済みの登板ごとの、翌日時点の累積イニング（サーバが保存した登板から求めた値。リリーフ・オープナーだけ）
+const savedNextDayCumulative = ref<Record<number, number | null>>({})
 const dragSrcIdx = ref<number | null>(null)
+
+// 未保存の入力の検知: サーバから読み込んだ・保存した時点の行を基準に、今の行との違いを見る
+const baselineRows = ref(JSON.stringify(pitcherRows.value))
+const isDirty = computed(
+  () => !loadingPitchers.value && JSON.stringify(pitcherRows.value) !== baselineRows.value,
+)
+function markClean() {
+  baselineRows.value = JSON.stringify(pitcherRows.value)
+}
+watch(isDirty, (value) => emit('dirty-change', value))
 
 // ─────────────────────────────────────────
 // Computed
@@ -439,10 +429,10 @@ const gameResultLabel = computed(() => {
 
 const gameResultColor = computed(() => {
   const map: Record<string, string> = {
-    win: 'success',
-    lose: 'error',
-    draw: 'grey',
-    no_game: 'grey',
+    win: 'result-win',
+    lose: 'result-loss',
+    draw: 'result-draw',
+    no_game: 'result-nogame',
   }
   return map[props.gameResult] ?? 'default'
 })
@@ -628,7 +618,12 @@ function getDecisionChipOptions(idx: number) {
 
 function getChipColor(value: PitcherDecision, current: PitcherDecision): string {
   if (value !== current) return 'default'
-  const map: Record<string, string> = { W: 'warning', L: 'primary', S: 'success', H: 'info' }
+  const map: Record<string, string> = {
+    W: 'result-win',
+    L: 'result-loss',
+    S: 'state-info',
+    H: 'state-neutral',
+  }
   return value ? (map[value] ?? 'default') : 'default'
 }
 
@@ -649,11 +644,11 @@ function resultCategoryLabel(cat: string | null): string {
 
 function resultCategoryColor(cat: string | null): string {
   const map: Record<string, string> = {
-    ko: 'error',
-    no_game: 'grey',
-    long_loss: 'warning',
-    normal: 'success',
-    pending: 'default',
+    ko: 'state-warn',
+    no_game: 'result-nogame',
+    long_loss: 'state-todo',
+    normal: 'state-done',
+    pending: 'state-neutral',
   }
   return cat ? (map[cat] ?? 'default') : 'default'
 }
@@ -670,15 +665,6 @@ function buildPreGameInfo(state: PreGameState | undefined): string {
   return ''
 }
 
-function lastRoleLabel(role: string | null): string {
-  const map: Record<string, string> = {
-    starter: '先発',
-    reliever: 'リリーフ',
-    opener: 'オープナー',
-  }
-  return role ? (map[role] ?? role) : '未登板'
-}
-
 function fatigueDetail(row: FatigueSummaryRow): string {
   if (row.is_injured) return '—'
   if (row.last_role === 'starter') return row.rest_days != null ? `中${row.rest_days}日` : '—'
@@ -687,13 +673,42 @@ function fatigueDetail(row: FatigueSummaryRow): string {
   return '—'
 }
 
+// 行 idx の投手の「その日の状態」。サーバが返す試合前の状態のうち、その行の役割のもの
+// （第二先発は先発。オープナーは「オープナーなら」、オープナー可でない投手はリリーフ扱い §8.4.2）。載らない投手（2軍など）は null
+function dayRoleState(idx: number): PitcherRoleState | null {
+  const pitcherId = pitcherRows.value[idx]?.pitcher_id
+  const summary = fatigueSummary.value.find((r) => r.player_id === pitcherId)
+  if (!summary) return null
+  const role = effectiveRole(idx)
+  if (role === 'starter') return summary.as_starter ?? null
+  if (role === 'opener') return summary.as_opener ?? summary.as_reliever ?? null
+  return summary.as_reliever ?? null
+}
+
+// 中日数 / 累積。試合前の状態に載らない投手は、投手選択の補助表示と同じ値（pitcher_game_states）で補う
+function dayDetail(pitcherId: number): string {
+  const summary = fatigueSummary.value.find((r) => r.player_id === pitcherId)
+  return summary ? fatigueDetail(summary) : getPitcherPreGameInfo(pitcherId)
+}
+
+// 結果区分（KO・長イニング敗戦）は先発の登板による変化。ノーゲームはリリーフにも出す
+function showResultChip(idx: number): boolean {
+  return effectiveRole(idx) === 'starter' || computeResultCategory(idx) === 'no_game'
+}
+
+// 翌日の累積イニング。保存した内容のままの行だけサーバの値を出す（入力を変えた行・追加した行は、保存し直すまで古い）。
+// 0 は「翌日には全快」という値なので、空扱いにしない
+function nextDayCumulative(row: PitcherRow): number | null {
+  if (isDirty.value || row.pitcher_id === null) return null
+  return savedNextDayCumulative.value[row.pitcher_id] ?? null
+}
+
 // ─────────────────────────────────────────
 // Data fetching
 // ─────────────────────────────────────────
 
 async function fetchFatigueSummary() {
   if (!props.gameDate) return
-  loadingFatigue.value = true
   try {
     const res = await axios.get(`/teams/${props.teamId}/pitcher_game_states/fatigue_summary`, {
       params: { date: props.gameDate },
@@ -701,9 +716,13 @@ async function fetchFatigueSummary() {
     fatigueSummary.value = res.data
   } catch {
     fatigueSummary.value = []
-  } finally {
-    loadingFatigue.value = false
   }
+}
+
+function nextDayCumulativeOf(records: PitcherAppearanceRecord[]): Record<number, number | null> {
+  return Object.fromEntries(
+    records.map((app) => [app.pitcher_id, app.next_day_cumulative_innings ?? null]),
+  )
 }
 
 // 保存済みの登板記録の結果区分だけを取り直す。得点・ノーゲームの保存でサーバが区分を作り直した後に呼ぶ
@@ -716,6 +735,7 @@ async function refreshSavedResultCategories() {
     savedResultCategories.value = Object.fromEntries(
       res.data.map((app) => [app.pitcher_id, app.result_category ?? null]),
     )
+    savedNextDayCumulative.value = nextDayCumulativeOf(res.data)
   } catch {
     // 再取得に失敗しても入力中の内容と今の表示は残す
   }
@@ -796,6 +816,7 @@ async function fetchPitchersAndStates(options: FetchPitchersOptions = {}) {
     savedResultCategories.value = Object.fromEntries(
       savedAppearances.map((app) => [app.pitcher_id, app.result_category ?? null]),
     )
+    savedNextDayCumulative.value = nextDayCumulativeOf(savedAppearances)
     if (savedAppearances.length > 0) {
       // 保存済みデータを復元（投手順序を維持）
       pitcherRows.value = savedAppearances.map((app, idx) => {
@@ -845,6 +866,8 @@ async function fetchPitchersAndStates(options: FetchPitchersOptions = {}) {
     } else {
       pitcherRows.value = [createEmptyRow('starter')]
     }
+    // ここまで来たら画面の行はサーバの内容（または予告先発の初期値）。この時点を未保存の判定の基準にする
+    markClean()
   } finally {
     loadingPitchers.value = false
   }
@@ -893,10 +916,13 @@ async function saveAll() {
     const res = await axios.post('/pitcher_appearances/bulk_save', payload)
     warnings.value = res.data.warnings ?? []
     savedMessage.value = '登板記録を保存しました'
+    // 保存できた内容が今の行。再読み込みが一部失敗しても「未保存」には戻さない
+    markClean()
     await fetchPitchersAndStates({
       preserveRowsOnPartialFailure: true,
       preserveMessages: true,
     })
+    emit('saved')
   } catch (err: unknown) {
     const axiosErr = err as { response?: { data?: { errors?: string[]; pitcher_id?: number } } }
     const data = axiosErr.response?.data
@@ -929,5 +955,8 @@ defineExpose({ refreshSavedResultCategories })
 <style scoped>
 .pitcher-row {
   border: 1px solid rgba(0, 0, 0, 0.12);
+}
+.day-state {
+  min-height: 24px;
 }
 </style>

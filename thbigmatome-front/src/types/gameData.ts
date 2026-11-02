@@ -4,6 +4,8 @@ export interface LineupItem {
   order: number
 }
 
+export type GameVenue = 'ch1' | 'ch2' | 'ch3' | 'ch4' | 'ch5' | 'tlb'
+
 export interface GameData {
   team_id: number
   team_name: string
@@ -12,11 +14,24 @@ export interface GameData {
   game_number: number
   announced_starter_id: number | null
   competition_id?: number | null
+  // ゲーム内の球場（甲子園・神宮など）。開催球場（venue）とは別
   stadium: string
+  // 試合をするリアルの日付（YYYY-MM-DD）・大まかな開始時刻（30 分刻みの HH:MM）・開催球場（IRC のチャンネル）。いずれも任意
+  real_date: string | null
+  real_start_time: string | null
+  venue: GameVenue | null
+  // 試合ログの原文（保存するだけで解析はしない。上限 1MB）
+  game_log: string | null
   home_away: 'home' | 'visitor' | null
   designated_hitter_enabled: boolean | null
   opponent_team_id: number | null
-  opponent_team_name: string
+  // 保存済みの相手の短縮形（無ければ正式名）と予告先発の選手名。決まっていなければ null（GET /game/:id が返す）
+  opponent_team_short_name?: string | null
+  announced_starter_name?: string | null
+  // 相手の正式名（GET /game/:id が返す。選択中チームの切り替えに使う）
+  opponent_team?: string | null
+  // 相手のシーズンの同じ日（相手が自チームになっている日程）の id。無ければ null（GET・PUT /game/:id が返す）
+  opponent_schedule_id?: number | null
   score: number | null
   opponent_score: number | null
   // ノーゲーム（試合が成立しなかった）。投手の休養は KO・ノーゲームの表を使う

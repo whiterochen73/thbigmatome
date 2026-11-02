@@ -16,11 +16,11 @@ module Api
                        "(SELECT MAX(g.real_date) FROM games g " \
                        " WHERE g.home_team_id = teams.id OR g.visitor_team_id = teams.id) AS last_game_real_date",
                        "(SELECT MAX(gr.game_date) FROM game_records gr " \
-                       " WHERE gr.team_id = teams.id) AS last_game_date",
-                       "(SELECT s.current_date FROM seasons s WHERE s.team_id = teams.id LIMIT 1) AS season_current_date"
-                     )
+                       " WHERE gr.team_id = teams.id) AS last_game_date")
                      .order(is_active: :desc, updated_at: :desc)
-        render json: @teams, each_serializer: TeamSerializer
+                     .to_a
+        # 現在日は日程の結果から導く（SeasonCurrentRange）。一覧は全シーズン分を 1 回の問い合わせでまとめて求める
+        render json: @teams, each_serializer: TeamSerializer, season_current_dates: season_current_dates(@teams)
       end
 
       # GET /api/v1/teams/:id
@@ -75,6 +75,13 @@ module Api
       end
 
       private
+
+      # { team_id => 現在日 }。日程が無いシーズンは列の値（Season#current_date の倒し先と同じ）
+      def season_current_dates(teams)
+        seasons = Season.where(team_id: teams.map(&:id)).to_a
+        ranges = SeasonCurrentRange.for_seasons(seasons.map(&:id))
+        seasons.to_h { |season| [ season.team_id, ranges[season.id]&.current_date || season[:current_date] ] }
+      end
 
       def set_team
         @team = Team.includes(:director, :coaches).find(params[:id])

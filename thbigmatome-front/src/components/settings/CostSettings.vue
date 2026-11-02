@@ -1,25 +1,67 @@
 <template>
-  <v-card>
-    <v-card-title>
-      {{ t('settings.cost.title') }}
-      <v-spacer></v-spacer>
-      <v-btn color="accent" variant="flat" @click="openDialog(null)">
-        {{ t('settings.cost.add') }}
-      </v-btn>
-    </v-card-title>
+  <MasterPanel
+    :title="t('settings.cost.title')"
+    icon="mdi-cash-multiple"
+    :count="costs.length"
+    default-open
+  >
+    <template #actions>
+      <MasterAddButton :label="t('settings.cost.add')" @click="openDialog(null)" />
+    </template>
     <!-- eslint-disable vue/valid-v-slot -->
-    <v-data-table :headers="headers" :items="costs" class="elevation-1">
-      <template v-slot:item.actions="{ item }">
-        <v-icon size="small" class="mr-2" @click="openDialog(item)" icon="mdi-pencil"></v-icon>
-        <v-icon
-          size="small"
-          class="mr-2"
-          @click="confirmDuplicate(item)"
-          icon="mdi-content-copy"
-        ></v-icon>
-        <v-icon size="small" @click="deleteItem(item)" icon="mdi-delete"></v-icon>
-      </template>
-    </v-data-table>
+    <AsyncState
+      :loading="loading"
+      :error="fetchFailed"
+      :error-message="t('settings.cost.notifications.fetchFailed')"
+      :empty="costs.length === 0"
+      :empty-message="t('settings.cost.notifications.noData')"
+      @retry="fetchCosts"
+    >
+      <v-data-table :headers="headers" :items="costs" class="ui-table--rows" mobile-breakpoint="sm">
+        <template v-slot:item.actions="{ item }">
+          <!-- 操作が 3 つあるので、スマホ（<600px）では操作メニューにまとめる -->
+          <div class="row-actions row-actions--full">
+            <RowIconButton
+              icon="mdi-pencil"
+              :label="t('settings.rowActions.edit', { name: item.name })"
+              @click="openDialog(item)"
+            />
+            <RowIconButton
+              icon="mdi-content-copy"
+              :label="t('settings.rowActions.duplicate', { name: item.name })"
+              @click="confirmDuplicate(item)"
+            />
+            <RowIconButton
+              icon="mdi-delete-outline"
+              danger
+              :label="t('settings.rowActions.delete', { name: item.name })"
+              @click="deleteItem(item)"
+            />
+          </div>
+          <RowMenu
+            :label="t('settings.rowActions.menu', { name: item.name })"
+            :items="[
+              {
+                icon: 'mdi-pencil',
+                label: t('settings.rowActions.editShort'),
+                onClick: () => openDialog(item),
+              },
+              {
+                icon: 'mdi-content-copy',
+                label: t('settings.rowActions.duplicateShort'),
+                onClick: () => confirmDuplicate(item),
+              },
+              {
+                icon: 'mdi-delete-outline',
+                label: t('settings.rowActions.deleteShort'),
+                danger: true,
+                onClick: () => deleteItem(item),
+              },
+            ]"
+          />
+        </template>
+      </v-data-table>
+    </AsyncState>
 
     <CostDialog
       :model-value="dialogOpen"
@@ -27,7 +69,7 @@
       @update:model-value="dialogOpen = $event"
       @save="saveCost"
     />
-  </v-card>
+  </MasterPanel>
 </template>
 
 <script setup lang="ts">
@@ -35,24 +77,50 @@ import { ref, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import axios from '@/plugins/axios'
 import CostDialog from '@/components/settings/CostDialog.vue'
+import MasterPanel from '@/components/settings/MasterPanel.vue'
+import MasterAddButton from '@/components/settings/MasterAddButton.vue'
+import AsyncState from '@/components/shared/AsyncState.vue'
+import RowIconButton from '@/components/shared/RowIconButton.vue'
+import RowMenu from '@/components/shared/RowMenu.vue'
+import { tableCell } from '@/components/shared/tableCells'
 import type { CostList } from '@/types/costList'
 
 const { t } = useI18n()
 
 const costs = ref<CostList[]>([])
+const loading = ref(true)
+const fetchFailed = ref(false)
 const dialogOpen = ref(false)
 const selectedCost = ref<CostList | null>(null)
 
 const headers = computed(() => [
-  { title: t('settings.cost.headers.name'), key: 'name' },
-  { title: t('settings.cost.headers.start_date'), key: 'start_date' },
-  { title: t('settings.cost.headers.end_date'), key: 'end_date' },
-  { title: t('settings.cost.headers.actions'), key: 'actions', sortable: false },
+  { title: t('settings.cost.headers.name'), key: 'name', cellProps: tableCell.title },
+  {
+    title: t('settings.cost.headers.start_date'),
+    key: 'start_date',
+    cellProps: tableCell.sub1Labeled,
+  },
+  { title: t('settings.cost.headers.end_date'), key: 'end_date', cellProps: tableCell.sub2Labeled },
+  {
+    title: t('settings.cost.headers.actions'),
+    key: 'actions',
+    sortable: false,
+    align: 'end' as const,
+    cellProps: tableCell.act,
+  },
 ])
 
 const fetchCosts = async () => {
-  const response = await axios.get<CostList[]>('/costs')
-  costs.value = response.data
+  loading.value = true
+  fetchFailed.value = false
+  try {
+    const response = await axios.get<CostList[]>('/costs')
+    costs.value = response.data
+  } catch {
+    fetchFailed.value = true
+  } finally {
+    loading.value = false
+  }
 }
 
 const openDialog = (cost: CostList | null) => {

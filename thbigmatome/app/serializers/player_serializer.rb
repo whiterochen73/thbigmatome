@@ -12,7 +12,7 @@ class PlayerSerializer < ActiveModel::Serializer
       "pitcher"
     else
       pc = object.player_cards.first
-      pc&.player_card_defenses&.first&.position&.downcase
+      pc&.primary_position&.downcase
     end
   end
 

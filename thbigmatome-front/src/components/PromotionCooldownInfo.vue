@@ -2,9 +2,9 @@
   <v-row>
     <v-col>
       <v-alert
-        variant="tonal"
-        :color="cooldownPlayers.length === 0 ? 'primary' : 'orange-darken-3'"
-        border-color="warning"
+        variant="flat"
+        :color="cooldownPlayers.length === 0 ? 'state-neutral' : ABSENCE_APPEARANCE.cooldown.color"
+        :border-color="ABSENCE_APPEARANCE.cooldown.color"
         density="compact"
         elevation="2"
       >
@@ -33,6 +33,7 @@
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import type { RosterPlayer } from '@/types/rosterPlayer'
+import { ABSENCE_APPEARANCE } from '@/components/gameDay/gameDayStatus'
 
 const { t } = useI18n()
 

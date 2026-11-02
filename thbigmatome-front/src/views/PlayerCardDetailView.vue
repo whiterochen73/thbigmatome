@@ -1,47 +1,24 @@
 <template>
-  <v-container style="max-width: 1080px">
-    <v-progress-linear
-      v-if="loading"
-      indeterminate
-      color="primary"
-      class="mb-3"
-    ></v-progress-linear>
-
-    <v-alert
-      v-if="errorMessage"
-      type="error"
-      variant="tonal"
-      class="mb-3"
-      closable
-      @click:close="errorMessage = ''"
+  <PageLayout>
+    <AsyncState
+      framed
+      skeleton="article"
+      :loading="loading"
+      :error="fetchFailed"
+      :error-message="errorMessage"
+      :empty="!card"
+      empty-icon="mdi-card-off-outline"
+      empty-message="選手カードが見つかりません"
+      @retry="fetchCard"
     >
-      {{ errorMessage }}
-    </v-alert>
-
-    <!-- 戻るボタン -->
-    <button class="detail-back-btn" @click="router.back()">← 一覧に戻る</button>
-
-    <template v-if="card">
-      <div class="detail-wrap">
-        <!-- カードヘッダー (藍色帯) -->
-        <div class="detail-card-header">
-          <div>
-            <div class="detail-player-name">#{{ card.player?.number }} {{ card.player?.name }}</div>
-            <div class="detail-player-sub">
-              {{ card.card_set?.name }} ／ {{ handednessToJa(card.handedness) }}
-            </div>
-          </div>
-          <span class="type-chip-header" :class="card.card_type">
-            {{ card.card_type === 'pitcher' ? '投手' : '野手' }}
-          </span>
-          <div style="flex: 1"></div>
-          <span class="header-badge">選手カード詳細</span>
-        </div>
-
+      <v-card v-if="card" class="detail-card">
         <div class="detail-body">
           <!-- 基本情報セクションヘッダー -->
           <div class="section-header-row">
             <span class="section-header-title">基本情報</span>
+            <span class="type-chip-header" :class="card.card_type" data-testid="card-type-chip">
+              {{ card.card_type === 'pitcher' ? '投手' : '野手' }}
+            </span>
             <v-btn
               size="x-small"
               variant="outlined"
@@ -55,20 +32,24 @@
           <div class="detail-top">
             <!-- カード画像 -->
             <div class="card-img-wrap">
-              <v-img
+              <!-- v-img は aria-label / title を内側の img へ渡すため、押せる要素は外側の div にする -->
+              <div
                 v-if="card.image_url"
-                :src="card.image_url"
-                width="108"
-                height="150"
-                cover
-                class="rounded card-img-clickable"
+                class="card-img-clickable rounded"
+                role="button"
+                tabindex="0"
+                aria-label="拡大"
+                title="拡大"
                 @click="imageDialog = true"
-              ></v-img>
+                @keydown.enter.prevent="imageDialog = true"
+                @keydown.space.prevent="imageDialog = true"
+              >
+                <v-img :src="card.image_url" width="100%" height="100%" cover></v-img>
+              </div>
               <div v-else class="card-img-placeholder">
-                <v-icon size="36" color="#9a8060">mdi-card-account-details</v-icon>
+                <v-icon size="36" class="on-surface-variant">mdi-card-account-details</v-icon>
                 <span>カード画像</span>
               </div>
-              <div v-if="card.image_url" class="card-img-hint">🔍 クリックで拡大</div>
             </div>
 
             <!-- 基本情報グリッド -->
@@ -152,7 +133,7 @@
                   </tbody>
                 </table>
               </div>
-              <div v-else class="section-body text-grey text-caption pa-2">守備値なし</div>
+              <div v-else class="section-body on-surface-variant text-caption pa-2">守備値なし</div>
             </div>
 
             <!-- 特徴・能力 -->
@@ -201,7 +182,7 @@
                     (!card.trait_list || !card.trait_list.length) &&
                     (!card.ability_list || !card.ability_list.length)
                   "
-                  class="text-grey text-caption"
+                  class="on-surface-variant text-caption"
                 >
                   特徴・能力なし
                 </div>
@@ -295,9 +276,8 @@
           </div>
         </div>
         <!-- /detail-body -->
-      </div>
-      <!-- /detail-wrap -->
-    </template>
+      </v-card>
+    </AsyncState>
 
     <!-- ■ 基本情報編集ダイアログ -->
     <v-dialog v-model="basicEditDialog" max-width="640px" persistent>
@@ -426,7 +406,7 @@
         <v-card-actions>
           <v-spacer></v-spacer>
           <v-btn @click="basicEditDialog = false">キャンセル</v-btn>
-          <v-btn color="accent" variant="flat" :loading="saving" @click="saveBasicInfo">保存</v-btn>
+          <v-btn color="action" variant="flat" :loading="saving" @click="saveBasicInfo">保存</v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
@@ -489,11 +469,11 @@
                   <v-btn
                     icon
                     size="x-small"
-                    color="error"
-                    variant="text"
+                    color="danger-ink"
+                    variant="outlined"
                     @click="removeDefenseRow(idx)"
                   >
-                    <v-icon>mdi-delete</v-icon>
+                    <v-icon>mdi-delete-outline</v-icon>
                   </v-btn>
                 </td>
               </tr>
@@ -509,7 +489,7 @@
         <v-card-actions>
           <v-spacer></v-spacer>
           <v-btn @click="defenseEditDialog = false">キャンセル</v-btn>
-          <v-btn color="accent" variant="flat" :loading="saving" @click="saveDefenses">保存</v-btn>
+          <v-btn color="action" variant="flat" :loading="saving" @click="saveDefenses">保存</v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
@@ -577,8 +557,8 @@
               closable
               @click:close="removeAbility(idx)"
               size="small"
-              color="blue-grey"
-              variant="tonal"
+              color="state-neutral"
+              variant="flat"
             >
               <template v-if="a.condition_name">{{ a.condition_name }}/</template>{{ a.name }}
             </v-chip>
@@ -624,18 +604,21 @@
         <v-card-actions>
           <v-spacer></v-spacer>
           <v-btn @click="traitEditDialog = false">キャンセル</v-btn>
-          <v-btn color="accent" variant="flat" :loading="saving" @click="saveTraits">保存</v-btn>
+          <v-btn color="action" variant="flat" :loading="saving" @click="saveTraits">保存</v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
-  </v-container>
+  </PageLayout>
 </template>
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { useRoute } from 'vue-router'
 import axios from '@/plugins/axios'
 import BattingTable from '@/components/BattingTable.vue'
+import AsyncState from '@/components/shared/AsyncState.vue'
+import PageLayout from '@/components/shared/PageLayout.vue'
+import { useAppBarTitle } from '@/composables/useAppBarTitle'
 
 const HANDEDNESS_MAP: Record<string, string> = {
   right_throw: '右投',
@@ -724,10 +707,22 @@ interface PlayerCardDetail {
 }
 
 const route = useRoute()
-const router = useRouter()
 const card = ref<PlayerCardDetail | null>(null)
-const loading = ref(false)
-const errorMessage = ref('')
+const loading = ref(true)
+const fetchFailed = ref(false)
+const errorMessage = '選手カードの取得に失敗しました'
+
+// ヘッダーバー: タイトル=選手名、サブタイトル=背番号 ・ カードセット、戻り先=選手カード（取得前・失敗時も戻れるよう常に宣言する）
+useAppBarTitle(() => {
+  const number = card.value?.player?.number
+  const cardSet = card.value?.card_set?.name
+  const subtitle = [number ? `#${number}` : '', cardSet ?? ''].filter(Boolean).join(' ・ ')
+  return {
+    title: card.value?.player?.name ?? '選手カード詳細',
+    subtitle: subtitle || null,
+    back: { to: '/player-cards', label: '選手カード' },
+  }
+})
 const saving = ref(false)
 const editError = ref('')
 const imageDialog = ref(false)
@@ -774,13 +769,13 @@ onMounted(() => {
 
 async function fetchCard() {
   loading.value = true
-  errorMessage.value = ''
+  fetchFailed.value = false
   try {
     const id = route.params.id
     const response = await axios.get<PlayerCardDetail>(`/player_cards/${id}`)
     card.value = response.data
   } catch (error) {
-    errorMessage.value = '選手カードの取得に失敗しました'
+    fetchFailed.value = true
     console.error('Error fetching player card:', error)
   } finally {
     loading.value = false
@@ -1002,63 +997,7 @@ function extractErrorMessage(error: unknown): string {
 </script>
 
 <style scoped>
-/* ── 戻るボタン ── */
-.detail-back-btn {
-  background: none;
-  border: 1px solid #bbb;
-  padding: 3px 10px;
-  border-radius: 3px;
-  cursor: pointer;
-  font-size: 0.79em;
-  margin-bottom: 8px;
-  color: #555;
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-}
-
-.detail-back-btn:hover {
-  background: #e8e0d4;
-  border-color: #999;
-}
-
-/* ── 詳細ラッパー ── */
-.detail-wrap {
-  background: white;
-  border: 1px solid #ddd;
-  border-radius: 6px;
-  overflow: hidden;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
-}
-
-/* ── カードヘッダー (藍色帯) ── */
-.detail-card-header {
-  background: #2a5298;
-  color: white;
-  padding: 7px 14px;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  border-top: 3px solid #4a7fd4;
-  box-shadow: 0 3px 6px rgba(0, 0, 0, 0.4);
-}
-
-.detail-player-name {
-  font-size: 1.05em;
-  font-weight: bold;
-}
-
-.detail-player-sub {
-  font-size: 0.76em;
-  opacity: 0.75;
-  margin-top: 1px;
-}
-
-.header-badge {
-  font-size: 0.72em;
-  opacity: 0.6;
-}
-
+/* ── 種別チップ（基本情報の見出し行） ── */
 .type-chip-header {
   padding: 2px 9px;
   border-radius: 10px;
@@ -1068,13 +1007,13 @@ function extractErrorMessage(error: unknown): string {
 }
 
 .type-chip-header.pitcher {
-  background: rgba(219, 234, 254, 0.85);
-  color: #1e40af;
+  background: rgb(var(--v-theme-tag-pitcher));
+  color: rgb(var(--v-theme-on-tag-pitcher));
 }
 
 .type-chip-header.batter {
-  background: rgba(220, 252, 231, 0.85);
-  color: #166534;
+  background: rgb(var(--v-theme-tag-fielder));
+  color: rgb(var(--v-theme-on-tag-fielder));
 }
 
 /* ── デタイルボディ ── */
@@ -1093,8 +1032,8 @@ function extractErrorMessage(error: unknown): string {
 .section-header-title {
   font-size: 0.85em;
   font-weight: bold;
-  color: #5a3e20;
-  background: #ece4d8;
+  color: rgb(var(--v-theme-on-surface-variant));
+  background: rgb(var(--v-theme-surface-variant));
   padding: 3px 10px;
   border-radius: 3px;
 }
@@ -1112,8 +1051,11 @@ function extractErrorMessage(error: unknown): string {
 }
 
 .card-img-clickable {
-  border: 1px solid #b0a090;
-  cursor: pointer;
+  width: 108px;
+  height: 150px;
+  overflow: hidden;
+  border: 1px solid rgb(var(--v-theme-border-strong));
+  cursor: zoom-in;
   transition:
     box-shadow 0.15s ease,
     transform 0.15s ease;
@@ -1124,24 +1066,17 @@ function extractErrorMessage(error: unknown): string {
   transform: scale(1.02);
 }
 
-.card-img-hint {
-  text-align: center;
-  font-size: 0.68em;
-  color: #9a8060;
-  margin-top: 3px;
-}
-
 .card-img-placeholder {
   width: 108px;
   height: 150px;
-  background: linear-gradient(160deg, #e8e0d4 0%, #d0c0a8 100%);
-  border: 2px solid var(--usuiro);
+  background: rgb(var(--v-theme-surface-variant));
+  border: 2px solid rgb(var(--v-theme-border-strong));
   border-radius: 4px;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  color: #9a8060;
+  color: rgb(var(--v-theme-on-surface-variant));
   font-size: 0.73em;
   text-align: center;
   gap: 4px;
@@ -1160,14 +1095,14 @@ function extractErrorMessage(error: unknown): string {
 
 .info-label {
   font-size: 0.68em;
-  color: #999;
+  color: rgb(var(--v-theme-on-surface-variant));
   line-height: 1.2;
 }
 
 .info-val {
   font-size: 0.9em;
   font-weight: bold;
-  color: #222;
+  color: rgb(var(--v-theme-on-surface));
 }
 
 .flag-row {
@@ -1186,27 +1121,27 @@ function extractErrorMessage(error: unknown): string {
 }
 
 .chip-closer {
-  background: #fed7aa;
-  color: #9a3412;
-  border: 1px solid #fdba74;
+  background: rgb(var(--v-theme-state-todo));
+  color: rgb(var(--v-theme-on-state-todo));
+  border: 1px solid rgb(var(--v-theme-border-strong));
 }
 
 .chip-relief {
-  background: #e9d5ff;
-  color: #6b21a8;
-  border: 1px solid #d8b4fe;
+  background: rgb(var(--v-theme-state-info));
+  color: rgb(var(--v-theme-on-state-info));
+  border: 1px solid rgb(var(--v-theme-border-strong));
 }
 
 .chip-switch {
-  background: #ccfbf1;
-  color: #0f766e;
-  border: 1px solid #99f6e4;
+  background: rgb(var(--v-theme-state-done));
+  color: rgb(var(--v-theme-on-state-done));
+  border: 1px solid rgb(var(--v-theme-border-strong));
 }
 
 .chip-dual {
-  background: #ffedd5;
-  color: #c2410c;
-  border: 1px solid #fed7aa;
+  background: rgb(var(--v-theme-state-neutral));
+  color: rgb(var(--v-theme-on-state-neutral));
+  border: 1px solid rgb(var(--v-theme-border-strong));
 }
 
 /* ── 中段: 守備値 + 特徴 ── */
@@ -1217,7 +1152,7 @@ function extractErrorMessage(error: unknown): string {
 }
 
 .section-box {
-  border: 1px solid #e0d8cc;
+  border: 1px solid rgb(var(--v-theme-border-strong));
   border-radius: 4px;
   overflow: hidden;
   flex: 1;
@@ -1228,13 +1163,13 @@ function extractErrorMessage(error: unknown): string {
 }
 
 .section-title-bar {
-  background: #ece4d8;
-  color: #5a3e20;
+  background: rgb(var(--v-theme-surface-variant));
+  color: rgb(var(--v-theme-on-surface-variant));
   padding: 4px 10px;
   font-size: 0.74em;
   font-weight: bold;
   letter-spacing: 0.04em;
-  border-bottom: 1px solid #d4c5a9;
+  border-bottom: 1px solid rgb(var(--v-theme-border-strong));
   display: flex;
   align-items: center;
 }
@@ -1253,10 +1188,10 @@ function extractErrorMessage(error: unknown): string {
 .def-table th {
   padding: 2px 6px;
   text-align: center;
-  color: #999;
+  color: rgb(var(--v-theme-on-surface-variant));
   font-size: 0.82em;
   font-weight: normal;
-  border-bottom: 1px solid #eee;
+  border-bottom: 1px solid rgb(var(--v-theme-border-strong));
   white-space: nowrap;
 }
 
@@ -1267,7 +1202,7 @@ function extractErrorMessage(error: unknown): string {
 .def-table td {
   padding: 2px 6px;
   text-align: center;
-  border-bottom: 1px solid #f4f0ea;
+  border-bottom: 1px solid rgb(var(--v-theme-border-strong));
 }
 
 .def-table td:first-child {
@@ -1287,40 +1222,40 @@ function extractErrorMessage(error: unknown): string {
 }
 
 .trait-chip {
-  background: #f0e8d8;
-  border: 1px solid var(--usuiro);
+  background: rgb(var(--v-theme-surface-variant));
+  border: 1px solid rgb(var(--v-theme-border-strong));
   padding: 2px 7px;
   border-radius: 3px;
   font-size: 0.75em;
-  color: #4a3010;
+  color: rgb(var(--v-theme-on-surface-variant));
   cursor: default;
 }
 
 .ability-chip {
-  background: #ede9f4;
-  border: 1px solid #c5b8d9;
+  background: rgb(var(--v-theme-surface-variant));
+  border: 1px solid rgb(var(--v-theme-border-strong));
   padding: 2px 7px;
   border-radius: 3px;
   font-size: 0.75em;
-  color: #4a2a6a;
+  color: rgb(var(--v-theme-on-surface-variant));
 }
 
 .chip-section-label {
   font-size: 0.67em;
-  color: #aaa;
+  color: rgb(var(--v-theme-on-surface-variant));
   display: block;
   margin: 4px 0 2px;
 }
 
 .condition-text {
-  color: #888;
+  color: rgb(var(--v-theme-on-surface-variant));
 }
 
 .unique-traits-box {
   font-size: 0.76em;
-  color: #6a4a20;
-  background: #faf5ec;
-  border: 1px solid #e0d4bc;
+  color: rgb(var(--v-theme-on-surface-variant));
+  background: rgb(var(--v-theme-surface-variant));
+  border: 1px solid rgb(var(--v-theme-border-strong));
   border-radius: 3px;
   padding: 4px 7px;
 }
@@ -1346,63 +1281,63 @@ function extractErrorMessage(error: unknown): string {
 
 .p-idx {
   font-size: 0.62em;
-  color: #aaa;
+  color: rgb(var(--v-theme-on-surface-variant));
   display: block;
   line-height: 1;
   margin-bottom: 1px;
 }
 
 .p-cell-1 {
-  background: #dbeafe;
-  border-color: #93c5fd;
-  color: #1e40af;
+  background: rgb(var(--v-theme-state-info));
+  border-color: rgb(var(--v-theme-border-strong));
+  color: rgb(var(--v-theme-on-state-info));
 }
 .p-cell-2 {
-  background: #d1fae5;
-  border-color: #6ee7b7;
-  color: #065f46;
+  background: rgb(var(--v-theme-state-done));
+  border-color: rgb(var(--v-theme-border-strong));
+  color: rgb(var(--v-theme-on-state-done));
 }
 .p-cell-3 {
-  background: #fef9c3;
-  border-color: #fde047;
-  color: #713f12;
+  background: rgb(var(--v-theme-state-todo));
+  border-color: rgb(var(--v-theme-border-strong));
+  color: rgb(var(--v-theme-on-state-todo));
 }
 .p-cell-4 {
-  background: #ffe4e6;
-  border-color: #fda4af;
-  color: #9f1239;
+  background: rgb(var(--v-theme-state-warn));
+  border-color: rgb(var(--v-theme-border-strong));
+  color: rgb(var(--v-theme-on-state-warn));
 }
 .p-cell-5 {
-  background: #f3e8ff;
-  border-color: #d8b4fe;
-  color: #6b21a8;
+  background: rgb(var(--v-theme-state-neutral));
+  border-color: rgb(var(--v-theme-border-strong));
+  color: rgb(var(--v-theme-on-state-neutral));
 }
 .p-cell-6 {
-  background: #ffedd5;
-  border-color: #fdba74;
-  color: #9a3412;
+  background: rgb(var(--v-theme-tag-fielder));
+  border-color: rgb(var(--v-theme-border-strong));
+  color: rgb(var(--v-theme-on-tag-fielder));
 }
 .p-cell-wp {
-  background: #fed7aa;
-  border-color: #fb923c;
-  color: #9a3412;
+  background: rgb(var(--v-theme-tag-pitcher));
+  border-color: rgb(var(--v-theme-border-strong));
+  color: rgb(var(--v-theme-on-tag-pitcher));
   font-style: italic;
 }
 
 /* ── 現行コスト強調 ── */
 .cost-row-current {
-  background: #fef9c3;
+  background: rgb(var(--v-theme-state-todo));
   font-weight: bold;
 }
 
 .cost-row-current td {
-  color: #713f12;
+  color: rgb(var(--v-theme-on-state-todo));
 }
 
 .cost-current-badge {
   display: inline-block;
-  background: #fde047;
-  color: #713f12;
+  background: rgb(var(--v-theme-state-todo));
+  color: rgb(var(--v-theme-on-state-todo));
   font-size: 0.65em;
   font-weight: bold;
   padding: 0px 5px;

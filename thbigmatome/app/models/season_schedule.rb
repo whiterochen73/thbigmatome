@@ -8,6 +8,41 @@ class SeasonSchedule < ApplicationRecord
 
   validates :home_away, inclusion: { in: [ "home", "visitor" ] }, allow_blank: true
 
+  # 「試合日とみなす種別」の唯一の定義（cmd_1784 段4。設計書 §4.6）。1軍の最低人数の検査・試合数の換算・現在日の導出・点検・
+  # 画面（GET /teams/:id/season の game_date_types）がすべてこれを使う。プレーオフ日も含む。
+  # ノーゲームは種別ではなく真偽値 no_game で表す（種別 "no_game" は作れない。NO_GAME_DATE_TYPE）。
+  GAME_DATE_TYPES = %w[game_day interleague_game_day playoff_day].freeze
+  # 試合日のうちプレーオフ日（レギュラーの試合数と分けて数える。SeasonGameProgress）
+  PLAYOFF_DATE_TYPE = "playoff_day".freeze
+  # 廃止した種別（ノーゲームは真偽値 no_game に一本化した）。新規には作れない
+  NO_GAME_DATE_TYPE = "no_game".freeze
+
+  validate :date_type_is_not_no_game, if: :will_save_change_to_date_type?
+
+  # 試合日（種別が GAME_DATE_TYPES）。登録・疲労・負傷の計算と 1軍最低人数の検査はノーゲームの日も対象（台帳 D-11）
+  scope :game_days, -> { where(date_type: GAME_DATE_TYPES) }
+  # 試合数に数える日 = 試合日のうちノーゲームでない日。ノーゲームの試合は数えず、振り替えた試合（予備日などを試合日にして入力した日）が
+  # 1 試合として数えられる（Operator 2026-11-01）。試合番号・離脱の「N試合」・残り試合数がこれを使う
+  scope :counted_games, -> { game_days.where(no_game: false) }
+
+  # 開催球場（IRC のチャンネル）。stadium（ゲーム内の球場）とは別の列。
+  VENUES = %w[ch1 ch2 ch3 ch4 ch5 tlb].freeze
+  # 大まかな開始時刻は 30 分刻み（"00:00"〜"23:30"）
+  REAL_START_TIME_FORMAT = /\A([01]\d|2[0-3]):(00|30)\z/
+
+  # 画面の「未選択」は空文字で届くことがある。日付列が空文字を nil にするのと揃え、空文字・空白だけは nil として保存する
+  normalizes :real_start_time, :venue, with: ->(value) { value.presence }
+
+  validates :real_start_time, format: { with: REAL_START_TIME_FORMAT }, allow_nil: true
+  validates :venue, inclusion: { in: VENUES }, allow_nil: true
+
+  # 試合ログの原文（解析はしない。保存するだけ）。上限は 1MB。文字数ではなくバイト数で数える（日本語は 1 文字 3 バイト）。
+  # 空文字は null に正規化する（空白だけのログは内容として残すので presence は使わない）
+  GAME_LOG_MAX_BYTES = 1_048_576
+  normalizes :game_log, with: ->(value) { value.empty? ? nil : value }
+  validate :game_log_within_limit
+  validate :game_log_without_nul
+
   # 得点が保存・変更されたら、その試合の自チーム先発の result_category を作り直す（E2）。
   # 区分は登板記録の保存時にだけ計算されていたため、得点を後から直しても長イニング敗戦・KO が残っていた。
   # 得点が消された（未入力に戻った）時は「負けではない」として作り直す。
@@ -20,9 +55,23 @@ class SeasonSchedule < ApplicationRecord
   # 直近の保存で、投手の判定の作り直しが失敗した時の例外。成功・未実行なら nil。
   attr_reader :pitcher_rebuild_error
 
+  # チームの、ある日の日程の行（チームのシーズンの行。日付で絞る）。登板の紐づけ（PitcherGameState）と勝敗の判定が使う
+  def self.of_team_on(team_id, date)
+    joins(:season).where(seasons: { team_id: team_id }, date: date)
+  end
+
+  # この試合日の自チームの登板記録の件数（pitcher_game_states の行数）。シーズン画面が入力漏れの印に使う。
+  # 一覧を返す側（SeasonDetailSerializer）が日付ごとの件数をまとめて入れる（行ごとの問い合わせを避ける）。
+  # 入っていない時は、この試合日の分だけ問い合わせて求める。
+  attr_writer :pitcher_appearance_count
+
+  def pitcher_appearance_count
+    @pitcher_appearance_count ||= PitcherGameState.on_day(team_id: season.team_id, date: date).count
+  end
+
   def calculated_game_number
     game_number || season.season_schedules
-      .where(date_type: [ "game_day", "interleague_game_day" ])
+      .counted_games
       .where("date < ?", date)
       .count + 1
   end
@@ -47,20 +96,37 @@ class SeasonSchedule < ApplicationRecord
 
   private
 
-  # 作り直しは得点の保存と同じトランザクションの中で走る。落ちた時に得点ごと取り消さないよう、次の 2 点を守る。
-  #   1. セーブポイント（requires_new）の中で走らせる。PostgreSQL は SQL エラーでトランザクション全体が中断状態になり、
-  #      後続の文もすべて失敗するため。失敗したら作り直しの途中の書き込みだけが戻る
-  #   2. 例外は握ってログに残し、pitcher_rebuild_error に持つ（作り直しは後で rake で再実行できる）
+  # 種別の変更でだけ検査する（移行前に種別 no_game のまま残っている行の、ほかの列の保存は止めない）
+  def date_type_is_not_no_game
+    return unless date_type == NO_GAME_DATE_TYPE
+
+    errors.add(:date_type, "に no_game は指定できません。ノーゲームは試合結果の「ノーゲーム」で表します（日付の種類は元の種類のままにします）")
+  end
+
+  # PostgreSQL の text 列は NUL 文字（\u0000）を保存できず、そのまま渡すと 500 になる。
+  # ログは無加工で保存する方針なので NUL を取り除いて通さず、422 で断る（他の制御文字・タブは通す）。
+  def game_log_without_nul
+    return if game_log.nil? || !game_log.include?("\u0000")
+
+    errors.add(:game_log, "に NUL 文字（\\u0000）は含められません。取り除いてから保存してください")
+  end
+
+  def game_log_within_limit
+    return if game_log.nil? || game_log.bytesize <= GAME_LOG_MAX_BYTES
+
+    errors.add(:game_log, "は #{GAME_LOG_MAX_BYTES} バイト（1MB）以下にしてください（現在 #{game_log.bytesize} バイト）")
+  end
+
+  # 作り直しは得点の保存と同じトランザクションの中で走る。落ちた時に得点ごと取り消さないよう、PitcherHistoryRebuild.guarded が
+  # セーブポイントの中で走らせ、例外を握ってログに残す（pitcher_rebuild_error に持つ。作り直しは後で rake で再実行できる）。
+  # 作り直す範囲はその試合日の先発と、その投手のそれ以降の先発。ただし得点未入力の先発は、その試合日の分だけ「負けではない」として
+  # 作り直し、それ以降の得点未入力の先発（まだ得点を入れていない試合）の保存値は動かさない
   def rebuild_pitcher_result_categories
-    self.class.transaction(requires_new: true) do
-      PitcherResultCategoryRebuilder.new(apply: true, unscored: :not_loss)
-                                    .rebuild_for_schedule(self, recompute_no_game: saved_change_to_no_game?)
-    end
-  rescue StandardError => e
-    @pitcher_rebuild_error = e
-    Rails.logger.error(
-      "[PitcherResultCategoryRebuilder] 判定の作り直しに失敗（得点は保存済み） season_schedule_id=#{id} " \
-      "#{e.class}: #{e.message}\n#{Array(e.backtrace).first(10).join("\n")}"
+    outcome = PitcherHistoryRebuild.guarded(
+      team_id: season.team_id, date: date,
+      pitcher_ids: PitcherGameState.on_day(team_id: season.team_id, date: date).where(role: "starter").distinct.pluck(:pitcher_id),
+      unscored: :skip, unscored_not_loss_on: date, recompute_no_game_on: saved_change_to_no_game? ? date : nil
     )
+    @pitcher_rebuild_error = outcome.error
   end
 end

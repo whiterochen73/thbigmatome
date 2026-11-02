@@ -1,61 +1,87 @@
 <!-- eslint-disable vue/multi-word-component-names, vue/valid-v-slot -->
 <template>
-  <v-container fluid>
-    <PageHeader :title="t('playerList.title')">
-      <template #actions>
-        <v-btn color="accent" variant="flat" @click="openDialog">
-          {{ t('playerList.addPlayer') }}
-        </v-btn>
-      </template>
-    </PageHeader>
-    <DataCard title="">
-      <!-- フィルターUI -->
-      <FilterBar>
-        <template #search>
-          <v-text-field
-            v-model="searchText"
-            :label="t('playerList.filters.searchPlaceholder')"
-            prepend-inner-icon="mdi-magnify"
-            clearable
-            hide-details
-          ></v-text-field>
-        </template>
-      </FilterBar>
+  <PageLayout>
+    <template #filters>
+      <v-text-field
+        v-model="searchText"
+        :label="t('playerList.filters.searchPlaceholder')"
+        prepend-inner-icon="mdi-magnify"
+        clearable
+        hide-details
+        class="players-filter players-filter--search"
+        data-testid="players-search"
+      ></v-text-field>
+      <v-select
+        v-model="seriesFilter"
+        :items="seriesOptions"
+        :label="t('playerList.filters.series')"
+        hide-details
+        class="players-filter players-filter--series"
+        data-testid="players-series-filter"
+      ></v-select>
+    </template>
+    <template #actions>
+      <v-btn color="action" variant="flat" prepend-icon="mdi-plus" @click="openDialog()">
+        {{ t('playerList.addPlayer') }}
+      </v-btn>
+    </template>
 
-      <v-data-table
-        :headers="headers"
-        :items="filteredPlayers"
-        :loading="loading"
-        :no-data-text="t('playerList.noData')"
-        :class="displayClasses"
-        item-value="id"
-        class="elevation-1"
-      >
-        <template #item.series="{ item }">
-          <StatusChip
-            v-if="item.series"
-            :status="item.series"
-            :label="seriesLabelMap[item.series] ?? item.series"
-            size="small"
-          />
-          <span v-else class="text-grey">—</span>
-        </template>
-        <template #item.card_count="{ item }">
-          <a href="#" class="card-count-link" @click.prevent="router.push(`/players/${item.id}`)">
-            {{ item.player_cards?.length ?? 0 }}枚
-          </a>
-        </template>
-        <template #item.actions="{ item }">
-          <v-icon size="small" class="me-2" @click="openDialog(item)" icon="mdi-pencil"></v-icon>
-          <v-icon size="small" @click="deletePlayer(item.id!)" icon="mdi-delete"></v-icon>
-        </template>
-      </v-data-table>
-    </DataCard>
+    <AsyncState
+      framed
+      :loading="loading"
+      :error="fetchFailed"
+      :error-message="t('playerList.fetchFailed')"
+      :empty="players.length === 0"
+      empty-icon="mdi-account-off-outline"
+      :empty-message="t('playerList.noData')"
+      @retry="fetchPlayers"
+    >
+      <v-card>
+        <v-data-table
+          :headers="headers"
+          :items="filteredPlayers"
+          :no-data-text="t('playerList.noData')"
+          :class="[displayClasses, 'ui-table', 'ui-table--rows']"
+          item-value="id"
+          mobile-breakpoint="sm"
+        >
+          <template #item.series="{ item }">
+            <StatusChip
+              v-if="item.series"
+              :status="item.series"
+              :label="seriesLabelMap[item.series] ?? item.series"
+              size="small"
+            />
+            <span v-else class="on-surface-variant">—</span>
+          </template>
+          <template #item.card_count="{ item }">
+            <a href="#" class="card-count-link" @click.prevent="router.push(`/players/${item.id}`)">
+              {{ item.player_cards?.length ?? 0 }}枚
+            </a>
+          </template>
+          <template #item.actions="{ item }">
+            <div class="row-actions">
+              <RowIconButton
+                icon="mdi-pencil"
+                :label="t('settings.rowActions.edit', { name: item.name })"
+                @click="openDialog(item)"
+              />
+              <RowIconButton
+                icon="mdi-delete-outline"
+                danger
+                :label="t('settings.rowActions.delete', { name: item.name })"
+                @click="deletePlayer(item.id!)"
+              />
+            </div>
+          </template>
+        </v-data-table>
+      </v-card>
+    </AsyncState>
 
     <PlayerDialog v-model="dialog" :item="editedItem" @save="onSave" />
 
     <ConfirmDialog ref="confirmDialog" />
-  </v-container>
+  </PageLayout>
 </template>
 
 <script setup lang="ts">
@@ -67,10 +93,11 @@ import { useSnackbar } from '@/composables/useSnackbar'
 import PlayerDialog from '@/components/players/PlayerDialog.vue'
 import { useDisplay } from 'vuetify'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
-import DataCard from '@/components/shared/DataCard.vue'
-import FilterBar from '@/components/shared/FilterBar.vue'
-import PageHeader from '@/components/shared/PageHeader.vue'
+import AsyncState from '@/components/shared/AsyncState.vue'
+import PageLayout from '@/components/shared/PageLayout.vue'
+import RowIconButton from '@/components/shared/RowIconButton.vue'
 import StatusChip from '@/components/shared/StatusChip.vue'
+import { tableCell } from '@/components/shared/tableCells'
 import type { PlayerDetail } from '@/types/playerDetail'
 import { usePlayersSearchStore } from '@/stores/playersSearch'
 
@@ -82,6 +109,7 @@ const playersSearchStore = usePlayersSearchStore()
 
 const players = ref<PlayerDetail[]>([])
 const loading = ref(true)
+const fetchFailed = ref(false)
 const dialog = ref(false)
 const confirmDialog = ref<InstanceType<typeof ConfirmDialog> | null>(null)
 const editedItem = ref<PlayerDetail | null>(null)
@@ -98,16 +126,39 @@ const seriesLabelMap: Record<string, string> = {
   original: 'オリジナル',
 }
 
+// 所属作品の絞り込み。'' は絞り込まない（すべて）
+const seriesFilter = ref('')
+const seriesOptions = computed(() => [
+  { title: t('playerList.filters.seriesAll'), value: '' },
+  ...Object.entries(seriesLabelMap).map(([value, title]) => ({ title, value })),
+])
+
 const headers = computed(() => [
-  { title: t('playerList.headers.number'), key: 'number', width: '10%' },
-  { title: t('playerList.headers.name'), key: 'name', width: '40%' },
-  { title: '所属作品', key: 'series', sortable: false, width: '20%' },
-  { title: 'カード数', key: 'card_count', sortable: false, width: '15%' },
-  { title: t('playerList.headers.actions'), key: 'actions', sortable: false, width: '15%' },
+  { title: t('playerList.headers.number'), key: 'number', width: '10%', cellProps: tableCell.lead },
+  { title: t('playerList.headers.name'), key: 'name', width: '40%', cellProps: tableCell.title },
+  { title: '所属作品', key: 'series', sortable: false, width: '20%', cellProps: tableCell.sub1 },
+  {
+    title: 'カード数',
+    key: 'card_count',
+    sortable: false,
+    width: '15%',
+    cellProps: tableCell.sub2,
+  },
+  {
+    title: t('playerList.headers.actions'),
+    key: 'actions',
+    sortable: false,
+    width: '15%',
+    cellProps: tableCell.act,
+  },
 ])
 
 const filteredPlayers = computed(() => {
   let result = players.value
+
+  if (seriesFilter.value) {
+    result = result.filter((player) => player.series === seriesFilter.value)
+  }
 
   if (searchText.value) {
     const search = searchText.value.toLowerCase()
@@ -123,11 +174,13 @@ const filteredPlayers = computed(() => {
 
 const fetchPlayers = async () => {
   loading.value = true
+  fetchFailed.value = false
   try {
     const response = await axios.get<PlayerDetail[]>('/players')
     players.value = response.data
   } catch {
-    showSnackbar(t('playerList.fetchFailed'), 'error')
+    // 取得の失敗はページ内のアラート（AsyncState）で出す。スナックバーは保存・削除の成否だけ
+    fetchFailed.value = true
   } finally {
     loading.value = false
   }
@@ -152,7 +205,7 @@ const deletePlayer = async (id: number) => {
   const result = await confirmDialog.value.open(
     t('playerList.deleteConfirmTitle'),
     t('playerList.deleteConfirmMessage'),
-    { color: 'error' },
+    { destructive: true },
   )
   if (!result) {
     return
@@ -173,13 +226,26 @@ const onSave = () => {
 </script>
 
 <style scoped>
-.card-count-link {
-  color: #5a3e20;
-  text-decoration: none;
-  font-size: 0.88em;
+.players-filter--search {
+  flex: 0 1 260px;
+  min-width: 180px;
+}
+.players-filter--series {
+  flex: 0 1 190px;
+  min-width: 150px;
 }
 
-.card-count-link:hover {
+@media (max-width: 599.98px) {
+  .players-filter--search,
+  .players-filter--series {
+    flex: 1 1 100%;
+  }
+}
+
+.card-count-link {
+  color: rgb(var(--v-theme-link));
   text-decoration: underline;
+  text-underline-offset: 2px;
+  font-size: 0.88em;
 }
 </style>

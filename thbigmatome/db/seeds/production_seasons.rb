@@ -3,7 +3,6 @@
 # team_memberships・season_rostersは空のまま（コミッショナーが選手登録を行う）
 
 season_start_date = "2016-03-25"
-season_name = "現行シーズン"
 
 puts "Seeding Seasons (initial boxes for all teams)..."
 
@@ -19,7 +18,6 @@ Team.find_each do |team|
 
   Season.create!(
     team_id:      team.id,
-    name:         season_name,
     current_date: season_start_date,
     team_type:    team.team_type,
     key_player_id: nil

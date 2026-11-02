@@ -3,6 +3,8 @@ import { mount } from '@vue/test-utils'
 import { createVuetify } from 'vuetify'
 import * as components from 'vuetify/components'
 import * as directives from 'vuetify/directives'
+import { readFileSync } from 'node:fs'
+import { resolve } from 'node:path'
 import FilterBar from '../FilterBar.vue'
 
 const vuetify = createVuetify({ components, directives })
@@ -51,5 +53,30 @@ describe('FilterBar', () => {
     expect(wrapper.text()).toContain('検索欄')
     expect(wrapper.text()).toContain('フィルタ欄')
     expect(wrapper.text()).toContain('トグル欄')
+  })
+
+  // Test Basis: subtask_1791o 申し送り（FilterBar が base.css の独自変数に頼る）/ docs: 色はテーマのトークンから取る
+  it('色と縁はテーマのトークンから取り、base.css の独自変数（--bg-elevated など）に頼らない', () => {
+    const source = readFileSync(
+      resolve(process.cwd(), 'src/components/shared/FilterBar.vue'),
+      'utf8',
+    )
+    const css = source.match(/<style scoped>([\s\S]*)<\/style>/)![1]!
+    expect(css).not.toMatch(/var\(--(bg-elevated|border-light|shadow-card)\)/)
+    expect(css).toMatch(/background:\s*rgb\(var\(--v-theme-surface\)\)/)
+    expect(css).toMatch(
+      /border:\s*1px solid rgba\(var\(--v-border-color\), var\(--v-border-opacity\)\)/,
+    )
+  })
+
+  it('入力欄のラベルは on-surface-variant・不透明（既定の 0.6 は light で 3.57 まで落ちる）', () => {
+    const source = readFileSync(
+      resolve(process.cwd(), 'src/components/shared/FilterBar.vue'),
+      'utf8',
+    )
+    const css = source.match(/<style scoped>([\s\S]*)<\/style>/)![1]!
+    expect(css).toMatch(
+      /\.filter-bar-wrap :deep\(\.v-field \.v-label\.v-field-label\)\s*\{\s*color:\s*rgb\(var\(--v-theme-on-surface-variant\)\);\s*opacity:\s*1/,
+    )
   })
 })

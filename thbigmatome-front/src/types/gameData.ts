@@ -28,6 +28,10 @@ export interface GameData {
   // 保存済みの相手の短縮形（無ければ正式名）と予告先発の選手名。決まっていなければ null（GET /game/:id が返す）
   opponent_team_short_name?: string | null
   announced_starter_name?: string | null
+  // 相手の正式名（GET /game/:id が返す。選択中チームの切り替えに使う）
+  opponent_team?: string | null
+  // 相手のシーズンの同じ日（相手が自チームになっている日程）の id。無ければ null（GET・PUT /game/:id が返す）
+  opponent_schedule_id?: number | null
   score: number | null
   opponent_score: number | null
   // ノーゲーム（試合が成立しなかった）。投手の休養は KO・ノーゲームの表を使う

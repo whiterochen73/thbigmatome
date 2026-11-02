@@ -91,7 +91,13 @@
                 :class="{ 'attention-row--minor': r.warnings.length === 0 }"
                 :data-testid="r.warnings.length > 0 ? 'check-row-violation' : 'check-row-cost'"
               >
-                <div class="attention-row__name">{{ r.team_name }}</div>
+                <div class="attention-row__name">
+                  <TeamNameLink
+                    :team-id="r.team_id"
+                    :name="r.team_name"
+                    @open="emit('open-season', $event)"
+                  />
+                </div>
                 <div class="attention-row__chips">
                   <v-chip
                     v-for="w in r.warnings"
@@ -167,7 +173,13 @@
                 なし
               </div>
               <div v-for="c in costWatchRows" :key="c.team_id" class="attention-row">
-                <div class="attention-row__name">{{ c.team_name }}</div>
+                <div class="attention-row__name">
+                  <TeamNameLink
+                    :team-id="c.team_id"
+                    :name="c.team_name"
+                    @open="emit('open-season', $event)"
+                  />
+                </div>
                 <div class="attention-row__meter">
                   <v-progress-linear
                     :model-value="Math.min((c.total_cost / c.total_cost_limit) * 100, 100)"
@@ -235,7 +247,13 @@
                   2日以内に復帰する人はいません
                 </div>
                 <div v-for="a in soonAbsences" :key="a.id" class="attention-row">
-                  <div class="attention-row__name">{{ a.team_name }}</div>
+                  <div class="attention-row__name">
+                    <TeamNameLink
+                      :team-id="a.team_id"
+                      :name="a.team_name"
+                      @open="emit('open-season', $event)"
+                    />
+                  </div>
                   <div class="attention-row__mid">
                     {{ a.player_name }}
                     <StatusChip
@@ -331,7 +349,12 @@
           >
             <template #[`item.name`]="{ item }">
               <div class="team-name">
-                <b>{{ item.name }}</b>
+                <b
+                  ><TeamNameLink
+                    :team-id="item.id"
+                    :name="item.name"
+                    @open="emit('open-season', $event)"
+                /></b>
                 <span v-if="item.manager" class="text-caption on-surface-variant">
                   {{ item.manager }}
                 </span>
@@ -506,6 +529,7 @@ import LimitMark from '@/components/shared/LimitMark.vue'
 import RowIconButton from '@/components/shared/RowIconButton.vue'
 import { costLimitState } from '@/components/shared/rosterLimits'
 import StatusChip from '@/components/shared/StatusChip.vue'
+import TeamNameLink from '@/components/shared/TeamNameLink.vue'
 import { tableCell } from '@/components/shared/tableCells'
 import { ABSENCE_APPEARANCE } from '@/components/gameDay/gameDayStatus'
 import {
@@ -874,15 +898,22 @@ const headers = [
 .attention-row:first-child {
   border-top: 0;
 }
-/* 合計コスト超過だけのチーム。規定違反より重要度が低いので、名前を太字・リンク色にしない */
+/* 合計コスト超過だけのチーム。規定違反より重要度が低いので、名前を太字にせず、リンクも文字色を落として下線だけにする */
 .attention-row--minor .attention-row__name {
   font-weight: 400;
   color: rgb(var(--v-theme-on-surface-variant));
 }
+.attention-row--minor .attention-row__name .team-name-link {
+  color: rgb(var(--v-theme-on-surface-variant));
+}
+/* 色は本物のリンク（TeamNameLink）だけが持つ。押せない行ラベル（「クールダウンが明ける人」）は普通の文字色。
+   省略表示の overflow:hidden が TeamNameLink のフォーカスの輪（2px・offset 2px = 外へ 4px）を切るので、
+   内側に 4px の余白を取り、同じだけ負の margin で打ち消して配置は変えない */
 .attention-row__name {
   overflow: hidden;
+  margin: -4px;
+  padding: 4px;
   font-weight: 700;
-  color: rgb(var(--v-theme-link));
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -928,7 +959,8 @@ const headers = [
 }
 .team-name b {
   overflow: hidden;
-  color: rgb(var(--v-theme-link));
+  margin: -4px;
+  padding: 4px;
   text-overflow: ellipsis;
 }
 .progress-meter,

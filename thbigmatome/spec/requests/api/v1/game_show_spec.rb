@@ -51,6 +51,76 @@ RSpec.describe "GET /api/v1/game/:id（上の段に出す名前）", type: :requ
     expect(head_of(schedule)).to include("opponent_team_short_name" => "若尊", "announced_starter_name" => nil)
   end
 
+  # Test Basis: cmd_1814 相手名を押して相手の同じ日の試合日ページへ飛ぶ。相手側のその日の日程の id を返す
+  describe "相手側の同じ日の日程（opponent_schedule_id）" do
+    let(:own_team) { team_and_season[0] }
+    let(:opponent) { create(:team, short_name: "命懸") }
+    let(:opponent_season) { create(:season, team: opponent) }
+    let(:own_schedule) do
+      create(:season_schedule, season: season, date: "2026-05-07", opponent_team: opponent)
+    end
+
+    it "相手のシーズンの同じ日で、相手が自チームになっている日程の id を返す" do
+      mirror = create(:season_schedule, season: opponent_season, date: "2026-05-07", opponent_team: own_team)
+
+      expect(head_of(own_schedule)["opponent_schedule_id"]).to eq(mirror.id)
+    end
+
+    it "相手の同じ日に別のチームとの日程もある時は、自チームとの日程を優先する（別のチームとの日程のほうが先に作られていても）" do
+      other_team = create(:team)
+      create(:season_schedule, season: opponent_season, date: "2026-05-07", opponent_team: other_team)
+      mirror = create(:season_schedule, season: opponent_season, date: "2026-05-07", opponent_team: own_team)
+
+      expect(head_of(own_schedule)["opponent_schedule_id"]).to eq(mirror.id)
+    end
+
+    it "相手の同じ日の日程が別のチームとのものだけなら nil（別の試合へは飛ばさない）" do
+      create(:season_schedule, season: opponent_season, date: "2026-05-07", opponent_team: create(:team))
+
+      expect(head_of(own_schedule)["opponent_schedule_id"]).to be_nil
+    end
+
+    it "相手の同じ日の日程の相手が未定なら nil（同じ試合かどうか分からない）" do
+      create(:season_schedule, season: opponent_season, date: "2026-05-07", opponent_team: nil)
+
+      expect(head_of(own_schedule)["opponent_schedule_id"]).to be_nil
+    end
+
+    it "相手のシーズンに同じ日の日程が無ければ nil（別の日の自チームとの日程は選ばない）" do
+      create(:season_schedule, season: opponent_season, date: "2026-05-08", opponent_team: own_team)
+
+      expect(head_of(own_schedule)["opponent_schedule_id"]).to be_nil
+    end
+
+    it "相手にシーズンが無ければ nil" do
+      expect(opponent.season).to be_nil
+      expect(head_of(own_schedule)["opponent_schedule_id"]).to be_nil
+    end
+
+    it "相手が未定なら nil（キーは返す）" do
+      schedule = create(:season_schedule, season: season, date: "2026-05-12")
+
+      expect(head_of(schedule)).to include("opponent_schedule_id" => nil)
+    end
+
+    it "他チームのシーズンの日程は、相手のものでも自チームのものでも選ばれない（第三者のシーズンの同じ日は無関係）" do
+      third_season = create(:season, team: create(:team))
+      create(:season_schedule, season: third_season, date: "2026-05-07", opponent_team: own_team)
+
+      expect(head_of(own_schedule)["opponent_schedule_id"]).to be_nil
+    end
+
+    it "PUT で相手を保存した応答にも入る（保存した直後の画面が飛び先を取り直さずに済む）" do
+      mirror = create(:season_schedule, season: opponent_season, date: "2026-05-07", opponent_team: own_team)
+      schedule = create(:season_schedule, season: season, date: "2026-05-07")
+
+      put "/api/v1/game/#{schedule.id}", params: { opponent_team_id: opponent.id }, as: :json
+
+      expect(response).to have_http_status(:ok)
+      expect(response.parsed_body).to include("opponent_schedule_id" => mirror.id)
+    end
+  end
+
   describe "PUT（保存した直後の画面が同じ名前を取り直さずに使えるよう、同じ 2 つを返す）" do
     it "相手と予告先発を保存した応答に、短縮形と選手名が入る" do
       opponent = create(:team, short_name: "足立")

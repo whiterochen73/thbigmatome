@@ -794,6 +794,12 @@ const fetchSeason = async () => {
     season.value = response.data
     if (season.value) {
       calendarCursor.value = new Date(season.value.current_date)
+      // 他チームの試合日から相手のカレンダーを開く時は、その日の月で開く（?month=YYYY-MM。現在日や下の日付の既定は動かさない）
+      const month = typeof route.query.month === 'string' ? route.query.month : ''
+      const monthMatch = /^(\d{4})-(0[1-9]|1[0-2])$/.exec(month)
+      if (monthMatch) {
+        calendarCursor.value = new Date(Number(monthMatch[1]), Number(monthMatch[2]) - 1, 1)
+      }
       // 過去分の修正の既定の日付は現在日。試合日ページの「シーズン画面で修正する」リンクは ?date= で日付を渡す
       const requested = typeof route.query.date === 'string' ? route.query.date : ''
       asOfDate.value = /^\d{4}-\d{2}-\d{2}$/.test(requested)

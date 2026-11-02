@@ -34,7 +34,11 @@
         no-data-text="データなし"
       >
         <template #[`item.team_name`]="{ item }">
-          <span class="text-link" style="cursor: pointer">{{ item.team_name }}</span>
+          <TeamNameLink
+            :team-id="item.team_id"
+            :name="item.team_name"
+            @open="emit('open-season', $event)"
+          />
         </template>
         <template #[`item.team_type`]="{ item }">
           <v-chip
@@ -210,6 +214,7 @@ import axios from 'axios'
 import AsyncState from '@/components/shared/AsyncState.vue'
 import DataCard from '@/components/shared/DataCard.vue'
 import StatusChip from '@/components/shared/StatusChip.vue'
+import TeamNameLink from '@/components/shared/TeamNameLink.vue'
 import type { RosterPlayer } from '@/types/rosterPlayer'
 import type { RosterStatusRecord } from '@/types/commissionerDashboard'
 import { useColumnMinWidth } from '@/composables/useColumnMinWidth'
@@ -229,7 +234,7 @@ defineProps<{
   loading: boolean
   failed: boolean
 }>()
-const emit = defineEmits<{ retry: [] }>()
+const emit = defineEmits<{ retry: []; 'open-season': [team: { id: number; name: string }] }>()
 
 // 人数が上限以下で、内訳（投手側・野手側）も規定内なら ok。内訳が無い古い応答は人数だけで判定する
 const outsideState = (item: RosterStatusRecord) =>

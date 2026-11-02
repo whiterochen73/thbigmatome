@@ -44,7 +44,15 @@
             v-if="gameDayHead.opponent"
             class="game-day-headline__vs"
             data-testid="head-opponent"
-            ><small>vs</small>{{ gameDayHead.opponent }}</span
+            ><small>vs</small
+            ><TeamNameLink
+              v-if="opponentLink"
+              :team-id="opponentLink.id"
+              :name="opponentLink.name"
+              :to="opponentLink.to"
+              @open="openOpponent"
+              >{{ gameDayHead.opponent }}</TeamNameLink
+            ><template v-else>{{ gameDayHead.opponent }}</template></span
           >
           <span
             v-if="gameDayHead.score"
@@ -457,6 +465,8 @@ import type { GameData } from '@/types/gameData'
 import type { Team } from '@/types/team'
 import TeamMemberSelect from '@/components/shared/TeamMemberSelect.vue'
 import TeamSelect from '@/components/shared/TeamSelect.vue'
+import TeamNameLink from '@/components/shared/TeamNameLink.vue'
+import { useTeamSelectionStore } from '@/stores/teamSelection'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
 import PitcherAppearanceTab from '@/components/pitcher/PitcherAppearanceTab.vue'
 import PitcherStatusTab from '@/components/pitcher/PitcherStatusTab.vue'
@@ -648,7 +658,13 @@ const savedFields = ref<SavedFields>({
   noGame: false,
 })
 // 上の段に出す名前（相手の短縮形・予告先発の選手名）。サーバが保存済みの値から返す
-const savedHeadNames = ref({ opponentShortName: '', starterName: '' })
+// opponentName は選択中チームの切り替えに使う正式名、opponentScheduleId は相手のシーズンの同じ日の試合日ページ（無ければ null）
+const savedHeadNames = ref<{
+  opponentShortName: string
+  opponentName: string
+  opponentScheduleId: number | null
+  starterName: string
+}>({ opponentShortName: '', opponentName: '', opponentScheduleId: null, starterName: '' })
 
 // 読み込み・保存に成功した時点の値を「保存済み」にする
 const takeBaseline = () => {
@@ -860,6 +876,28 @@ const gameDayHead = computed(() =>
     starterName: savedHeadNames.value.starterName,
   }),
 )
+
+// 上の段の相手名の飛び先。相手のシーズンの同じ日の試合日ページ。相手側にその日の日程が無ければ、相手のカレンダーをこの日の月で開く。
+// 相手の飛び先も保存済みの値（上の段と同じ）で決める。選択中チームは正式名で切り替える（無ければ短縮形）
+const opponentLink = computed(() => {
+  const id = savedFields.value.opponentTeamId
+  const shortName = savedHeadNames.value.opponentShortName
+  if (id === null || !shortName) return null
+  const scheduleId = savedHeadNames.value.opponentScheduleId
+  const month = (gameDateKey.value ?? '').slice(0, 7)
+  const to = scheduleId
+    ? `/teams/${id}/season/games/${scheduleId}`
+    : `/teams/${id}/season${month ? `?month=${month}` : ''}`
+  return { id, name: savedHeadNames.value.opponentName || shortName, to }
+})
+
+const openOpponent = (team: { id: number; name: string }) => {
+  const link = opponentLink.value
+  if (!link) return
+  // 他チームの画面へ移るので、上の青い帯のチーム名も切り替える（ダッシュボードの navigateToSeason と同じ作法）
+  useTeamSelectionStore().selectTeam(team.id, team.name)
+  router.push(link.to)
+}
 
 const pitcherSummary = computed(() =>
   appearanceCount.value ? t('gameDay.summary.pitcherCount', { count: appearanceCount.value }) : '',
@@ -1109,6 +1147,8 @@ const fetchGame = async () => {
       takeBaseline()
       savedHeadNames.value = {
         opponentShortName: gameData.value.opponent_team_short_name ?? '',
+        opponentName: gameData.value.opponent_team ?? '',
+        opponentScheduleId: gameData.value.opponent_schedule_id ?? null,
         starterName: gameData.value.announced_starter_name ?? '',
       }
     }
@@ -1356,6 +1396,8 @@ const saveGame = async () => {
       opponentShortName:
         response?.data?.opponent_team_short_name ??
         (savedOpponent ? savedOpponent.short_name || savedOpponent.name : ''),
+      opponentName: savedOpponent?.name ?? '',
+      opponentScheduleId: response?.data?.opponent_schedule_id ?? null,
       starterName:
         response?.data?.announced_starter_name ??
         (savedFields.value.announcedStarterId === previousStarter ? previousStarterName : ''),

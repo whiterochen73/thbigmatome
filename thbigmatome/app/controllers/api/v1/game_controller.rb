@@ -72,12 +72,28 @@ class Api::V1::GameController < Api::V1::BaseController
   private
 
   # 試合日ページの上の段に出す名前。相手は短縮形（無ければ正式名）、予告先発は選手名（背番号なし）。決まっていなければ nil
+  # opponent_schedule_id は、相手名を押した時の飛び先（相手のシーズンの同じ日の試合日ページ）。無ければ nil
   def head_names(season_schedule)
     opponent = season_schedule.opponent_team
     {
       opponent_team_short_name: opponent && (opponent.short_name.presence || opponent.name),
-      announced_starter_name: season_schedule.announced_starter&.player&.name
+      announced_starter_name: season_schedule.announced_starter&.player&.name,
+      opponent_schedule_id: opponent_schedule_id(season_schedule, opponent)
     }
+  end
+
+  # 相手のシーズンの、同じ日の、相手が自チームになっている日程の id（同じ試合の反対側）。
+  # 相手の同じ日が別のチームとの試合・相手未定の日は、同じ試合とは言えないので nil（画面は相手のカレンダーへ飛ばす）。
+  def opponent_schedule_id(season_schedule, opponent)
+    return nil unless opponent
+
+    opponent_season = Season.find_by(team_id: opponent.id)
+    return nil unless opponent_season
+
+    opponent_season.season_schedules
+                   .where(date: season_schedule.date, opponent_team_id: season_schedule.season.team_id)
+                   .order(:id)
+                   .pick(:id)
   end
 
   def game_params

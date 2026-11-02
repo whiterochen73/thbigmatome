@@ -24,6 +24,12 @@ const { mockGet, mockPut, mockPatch, mockPush, routeGuards, routeQuery } = vi.ho
   },
 }))
 
+// 相手名を押して他チームの画面へ移る時の、選択中チームの切り替え（上の青い帯のチーム名）
+const { mockSelectTeam } = vi.hoisted(() => ({ mockSelectTeam: vi.fn() }))
+vi.mock('@/stores/teamSelection', () => ({
+  useTeamSelectionStore: () => ({ selectTeam: mockSelectTeam }),
+}))
+
 // 埋め込む 3 つの部品（シーズンポータルのタブと同じ部品）。中身は別のスペックで検証しているので、ここでは
 // 「いつ描画されるか」「何を渡されるか」を見る差し替え（マウント・アンマウント回数を数える）
 const { embedLog, embedStub } = vi.hoisted(() => {
@@ -2247,7 +2253,10 @@ describe.each(LAYOUTS)('GameResult 試合日ページ: $name', ({ width, kind })
       wrapper.find(`[data-testid="${id}"]`).text().replace(/\s+/g, ' ')
     const settled = {
       opponent_team_id: 2,
+      opponent_team: '命懸ヶ丘高校',
       opponent_team_short_name: '命懸',
+      // 相手のシーズンの同じ日の試合日ページ（無ければ nil）
+      opponent_schedule_id: 555,
       announced_starter_id: 5,
       announced_starter_name: '古明地 さとり',
       home_away: 'home',
@@ -2267,6 +2276,19 @@ describe.each(LAYOUTS)('GameResult 試合日ページ: $name', ({ width, kind })
       expect(text(wrapper, 'head-starter')).toBe('先発 古明地 さとり')
       expect(headOf(wrapper).text()).not.toContain('Game')
       expect(wrapper.find('[data-testid="game-day-head"]').text()).not.toContain('Game 5')
+
+      // Test Basis: cmd_1814 相手名は a 要素で、相手の同じ日の試合日ページへ。押すと選択中チーム（正式名）も相手に切り替わる
+      const link = wrapper.find('[data-testid="head-opponent"] a.team-name-link')
+      expect(link.text()).toBe('命懸')
+      expect(link.attributes('href')).toBe('/teams/2/season/games/555')
+      expect(headOf(wrapper).findAll('a')).toHaveLength(1)
+      await link.trigger('click')
+      expect(mockSelectTeam).toHaveBeenCalledWith(2, '命懸ヶ丘高校')
+      expect(mockPush).toHaveBeenCalledTimes(1)
+      expect(mockPush).toHaveBeenCalledWith('/teams/2/season/games/555')
+      expect(mockSelectTeam.mock.invocationCallOrder[0]).toBeLessThan(
+        mockPush.mock.invocationCallOrder[0],
+      )
     })
 
     it('相手は正式名でなく短縮形で出す', async () => {
@@ -2319,9 +2341,16 @@ describe.each(LAYOUTS)('GameResult 試合日ページ: $name', ({ width, kind })
           announced_starter_name: null,
           home_away: 'visitor',
           designated_hitter_enabled: true,
+          // 相手側にその日の日程が無い: 相手のシーズン画面のカレンダーを、この日（2026-06-10）の月で開く
+          opponent_schedule_id: null,
         },
       })
       expect(text(wrapper, 'head-opponent')).toBe('vs命懸')
+      const calendarLink = wrapper.find('[data-testid="head-opponent"] a')
+      expect(calendarLink.attributes('href')).toBe('/teams/2/season?month=2026-06')
+      await calendarLink.trigger('click')
+      expect(mockSelectTeam).toHaveBeenCalledWith(2, '命懸ヶ丘高校')
+      expect(mockPush).toHaveBeenCalledWith('/teams/2/season?month=2026-06')
       expect(text(wrapper, 'head-home-away')).toBe('ビジター')
       for (const id of ['head-score', 'head-result', 'head-starter']) {
         expect(wrapper.find(`[data-testid="${id}"]`).exists()).toBe(false)
@@ -2343,6 +2372,8 @@ describe.each(LAYOUTS)('GameResult 試合日ページ: $name', ({ width, kind })
       expect(headOf(wrapper).text()).not.toContain('vs')
       expect(headOf(wrapper).text()).not.toContain('未定')
       expect(wrapper.find('[data-testid="head-opponent"]').exists()).toBe(false)
+      // 相手が未定なら押せるものが無い（行ごと出ない）
+      expect(headOf(wrapper).findAll('a')).toHaveLength(0)
     })
 
     it('何も決まっていない日は行ごと出さない', async () => {
@@ -2376,6 +2407,10 @@ describe.each(LAYOUTS)('GameResult 試合日ページ: $name', ({ width, kind })
       expect(text(wrapper, 'head-starter')).toBe('先発 古明地 さとり')
       expect(text(wrapper, 'head-home-away')).toBe('ホーム')
       expect(text(wrapper, 'head-dh')).toBe('DH なし')
+      // 飛び先も保存済みの相手のまま（入力途中の相手 3 には向かない）
+      expect(wrapper.find('[data-testid="head-opponent"] a').attributes('href')).toBe(
+        '/teams/2/season/games/555',
+      )
     })
 
     it('保存すると、保存した値（サーバが返した相手の短縮形・先発の名前）に変わる', async () => {
@@ -2390,11 +2425,29 @@ describe.each(LAYOUTS)('GameResult 試合日ページ: $name', ({ width, kind })
           warnings: [],
           opponent_team_short_name: '若尊',
           announced_starter_name: '射命丸 文',
+          opponent_schedule_id: 777,
         },
       })
       await wrapper.vm.saveGame()
       await flushPromises()
       expect(text(wrapper, 'head-opponent')).toBe('vs若尊')
+      // 保存した相手の飛び先（応答の opponent_schedule_id）に変わる。正式名が分からない時は短縮形で選択中チームを切り替える
+      const saved = wrapper.find('[data-testid="head-opponent"] a')
+      expect(saved.attributes('href')).toBe('/teams/3/season/games/777')
+      await saved.trigger('click')
+      expect(mockSelectTeam).toHaveBeenCalledWith(3, '若尊')
+      expect(mockPush).toHaveBeenCalledWith('/teams/3/season/games/777')
+
+      // 相手を変えて保存し直し、応答に opponent_schedule_id が無い（古いサーバ）: 前の日程 id（777）は使い回さず、相手のカレンダーへ
+      wrapper.vm.gameData.opponent_team_id = 4
+      mockPut.mockResolvedValueOnce({
+        data: { id: 100, warnings: [], opponent_team_short_name: '足立' },
+      })
+      await wrapper.vm.saveGame()
+      await flushPromises()
+      expect(wrapper.find('[data-testid="head-opponent"] a').attributes('href')).toBe(
+        '/teams/4/season?month=2026-06',
+      )
       expect(text(wrapper, 'head-starter')).toBe('先発 射命丸 文')
       expect(text(wrapper, 'head-score')).toBe('1 - 2')
       expect(text(wrapper, 'head-result')).toBe('負')

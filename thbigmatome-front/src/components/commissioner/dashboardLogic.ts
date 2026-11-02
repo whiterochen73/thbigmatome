@@ -24,7 +24,7 @@ export type DashboardResourceKey =
   | 'rosterStatus'
   | 'gameProgress'
 
-/** 「まもなく動く」の線。復帰・クールダウン明けまで残りがこの値以下 */
+/** 「復帰間近」の線。復帰・クールダウン明けまで残りがこの値以下 */
 export const IMMINENT_REMAINING = 2
 
 export type CostLevel = 'normal' | 'near' | 'over'
@@ -50,6 +50,20 @@ export function costBarColor(level: CostLevel): string {
   if (level === 'over') return 'meter-over'
   if (level === 'near') return 'meter-near'
   return 'link'
+}
+
+/**
+ * コストタブの合計コストの棒の横に出す印（文字なし）。通常は無し。読み上げ用の label は aria-label と title に使う。
+ * 色は棒と同じ（costBarColor）。
+ */
+export function costMark(
+  total: number,
+  limit: number | null | undefined,
+): { icon: string; label: string } | null {
+  const level = costLevel(total, limit)
+  if (level === 'over') return { icon: 'mdi-alert-circle', label: '合計コスト超過' }
+  if (level === 'near') return { icon: 'mdi-alert', label: '合計コストが上限に近い' }
+  return null
 }
 
 /** 外の世界枠の内訳の規定違反として足す文言（サーバの warnings には内訳の違反が載らない） */

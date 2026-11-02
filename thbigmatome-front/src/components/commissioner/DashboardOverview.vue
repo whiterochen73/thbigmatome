@@ -54,9 +54,6 @@
           >
             要確認<template v-if="rosterReady"> {{ summary.checkTeams }}</template>
           </v-chip>
-          <span class="attention-group__caption on-surface-variant"
-            >規定を外れている・合計コストが上限を超えている</span
-          >
         </div>
         <div class="attention-group__body">
           <AsyncState
@@ -154,9 +151,8 @@
                   : 'mdi-check-circle'
             "
           >
-            上限に近い<template v-if="costsReady"> {{ summary.costWatchTeams }}</template>
+            チーム上限<template v-if="costsReady"> {{ summary.costWatchTeams }}</template>
           </v-chip>
-          <span class="attention-group__caption on-surface-variant">合計コスト 95% 以上</span>
         </div>
         <div class="attention-group__body">
           <AsyncState
@@ -225,11 +221,10 @@
             size="small"
             prepend-icon="mdi-clock-check-outline"
           >
-            まもなく動く<template v-if="soonReady">
+            復帰間近<template v-if="soonReady">
               {{ summary.absenceSoon + summary.cooldownSoon }}</template
             >
           </v-chip>
-          <span class="attention-group__caption on-surface-variant">2日以内に復帰・明ける</span>
         </div>
         <div class="attention-group__body">
           <div data-testid="attention-soon-absence">

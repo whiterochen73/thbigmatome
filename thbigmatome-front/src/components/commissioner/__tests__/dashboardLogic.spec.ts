@@ -3,6 +3,7 @@ import vuetify from '@/plugins/vuetify'
 import {
   costLevel,
   costBarColor,
+  costMark,
   remainingCount,
   isImminent,
   formatMonthDay,
@@ -52,6 +53,16 @@ describe('costLevel（合計コストの注意の線）', () => {
   })
 })
 
+describe('costMark', () => {
+  it('通常（94.9%）は無し。95%・100% は「上限に近い」の印、100.1% は「超過」の印。上限なしは無し', () => {
+    expect(costMark(189, 200)).toBeNull()
+    expect(costMark(190, 200)).toEqual({ icon: 'mdi-alert', label: '合計コストが上限に近い' })
+    expect(costMark(200, 200)).toEqual({ icon: 'mdi-alert', label: '合計コストが上限に近い' })
+    expect(costMark(201, 200)).toEqual({ icon: 'mdi-alert-circle', label: '合計コスト超過' })
+    expect(costMark(250, null)).toBeNull()
+  })
+})
+
 describe('costBarColor', () => {
   it('通常=link・上限に近い=meter-near・超過=meter-over', () => {
     expect(costBarColor('normal')).toBe('link')
@@ -85,7 +96,7 @@ describe('remainingCount / isImminent', () => {
       } as AbsenceRecord),
     ).toBe(2)
   })
-  it('2 以下が「まもなく動く」。3 は含めない。null は含めない', () => {
+  it('2 以下が「復帰間近」。3 は含めない。null は含めない', () => {
     expect(isImminent(2)).toBe(true)
     expect(isImminent(0)).toBe(true)
     expect(isImminent(3)).toBe(false)

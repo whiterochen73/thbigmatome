@@ -487,6 +487,7 @@ describe.each(LAYOUTS)('GameResult 試合日ページ: $name', ({ width, kind })
       'members',
       'roster',
       'absences',
+      'pitcherStatus',
       'setup',
       'result',
       'pitchers',
@@ -1704,14 +1705,17 @@ describe.each(LAYOUTS)('GameResult 試合日ページ: $name', ({ width, kind })
       await wrapper.vm.updateDateType('travel_day')
       await flushPromises()
       expect(wrapper.find(`[data-testid="${kind}-result"]`).exists()).toBe(false)
+      // 投手状態は試合日の段。試合の無い日には出さない
+      expect(wrapper.find(`[data-testid="${kind}-pitcher-status"]`).exists()).toBe(false)
       expect(wrapper.vm.activeStep).toBe('members')
       serverType('game_day')
       await wrapper.vm.updateDateType('game_day')
       await flushPromises()
       expect(wrapper.find(`[data-testid="${kind}-result"]`).exists()).toBe(true)
+      expect(wrapper.find(`[data-testid="${kind}-pitcher-status"]`).exists()).toBe(true)
     })
 
-    it('D: 登録・離脱の 3 段、試合日の 3 段を順に出す', async () => {
+    it('D: 登録・離脱の 4 段（最後が投手状態）、試合日の 3 段を順に出す', async () => {
       const wrapper = await mountDay()
       const first = wrapper.find('[data-testid="step-group-registration"]')
       const second = wrapper.find('[data-testid="step-group-game"]')
@@ -1722,17 +1726,22 @@ describe.each(LAYOUTS)('GameResult 試合日ページ: $name', ({ width, kind })
           .findAll(kind === 'step' ? '.v-stepper-item' : `[data-testid^="${kind}-"]`)
           .map((e) => e.attributes('data-testid'))
       if (kind === 'step') {
-        expect(ids(first)).toEqual(['step-members', 'step-roster', 'step-absences'])
+        expect(ids(first)).toEqual([
+          'step-members',
+          'step-roster',
+          'step-absences',
+          'step-pitcher-status',
+        ])
         expect(ids(second)).toEqual(['step-setup', 'step-result', 'step-pitchers'])
       } else {
-        expect(ids(first)).toEqual(['section-members', 'section-roster', 'section-absences'])
-        // 投手状態は試合前の段（予告先発・対戦設定）の直後。登板記録の段の中・後には置かない
-        expect(ids(second)).toEqual([
-          'section-setup',
+        // 投手状態は独立した段で、登録・離脱の最後（負傷・出場停止の後）。試合日の段の中には置かない
+        expect(ids(first)).toEqual([
+          'section-members',
+          'section-roster',
+          'section-absences',
           'section-pitcher-status',
-          'section-result',
-          'section-pitchers',
         ])
+        expect(ids(second)).toEqual(['section-setup', 'section-result', 'section-pitchers'])
       }
     })
 
@@ -1760,6 +1769,7 @@ describe.each(LAYOUTS)('GameResult 試合日ページ: $name', ({ width, kind })
           members: 'mdi-account-multiple-plus-outline',
           roster: 'mdi-swap-vertical-bold',
           absences: 'mdi-bandage',
+          'pitcher-status': 'mdi-clipboard-pulse-outline',
           setup: 'mdi-clipboard-list-outline',
           result: 'mdi-scoreboard-outline',
           pitchers: 'mdi-baseball',
@@ -1779,7 +1789,7 @@ describe.each(LAYOUTS)('GameResult 試合日ページ: $name', ({ width, kind })
   // 該当しない幅では describe 自体を登録しない（skip ではなく、そもそも存在しないテスト）
   if (kind === 'section') {
     describe('縦積み', () => {
-      it('段が 登録・離脱（選手登録・契約変更 → 昇降格 → 負傷）→ 試合日（予告先発・対戦設定 → 結果 → 登板記録 → 試合中の負傷）の順に並ぶ', async () => {
+      it('段が 登録・離脱（選手登録・契約変更 → 昇降格 → 負傷 → 投手状態）→ 試合日（予告先発・対戦設定 → 結果 → 登板記録）の順に並ぶ', async () => {
         const wrapper = await mountDay()
         expect(wrapper.find('[data-testid="game-day-stepper"]').exists()).toBe(false)
         const ids = wrapper
@@ -1789,8 +1799,8 @@ describe.each(LAYOUTS)('GameResult 試合日ページ: $name', ({ width, kind })
           'section-members',
           'section-roster',
           'section-absences',
-          'section-setup',
           'section-pitcher-status',
+          'section-setup',
           'section-result',
           'section-pitchers',
         ])
@@ -1846,7 +1856,7 @@ describe.each(LAYOUTS)('GameResult 試合日ページ: $name', ({ width, kind })
           expect(wrapper.vm.openSections.pitcherStatus).toBe(false)
         })
 
-        it('投手状態の段は、既定では閉じている（試合前の段の直後に別の段として並ぶ）', async () => {
+        it('投手状態の段は、既定では閉じている（登録・離脱の最後に独立した段として並ぶ）', async () => {
           const wrapper = await mountDay({ appearances: appearanceRows(1) })
           expect(wrapper.vm.openSections.pitcherStatus).toBe(false)
           expect(wrapper.find('[data-testid="section-pitcher-status"]').exists()).toBe(true)
@@ -1880,7 +1890,7 @@ describe.each(LAYOUTS)('GameResult 試合日ページ: $name', ({ width, kind })
           .filter((p) => p.isVisible())
           .map((p) => p.attributes('data-testid')!.replace('panel-', ''))
 
-      it('登録・離脱と試合日の 6 段が見出しと区切りなしで一列に並ぶ', async () => {
+      it('登録・離脱と試合日の 7 段が見出しと区切りなしで一列に並ぶ', async () => {
         const wrapper = await mountDay()
         expect(wrapper.find('[data-testid="game-day-stack"]').exists()).toBe(false)
         const stepIds = (group: string) =>
@@ -1888,7 +1898,12 @@ describe.each(LAYOUTS)('GameResult 試合日ページ: $name', ({ width, kind })
             .find(`[data-testid="step-group-${group}"]`)
             .findAll('.v-stepper-item')
             .map((e) => e.attributes('data-testid'))
-        expect(stepIds('registration')).toEqual(['step-members', 'step-roster', 'step-absences'])
+        expect(stepIds('registration')).toEqual([
+          'step-members',
+          'step-roster',
+          'step-absences',
+          'step-pitcher-status',
+        ])
         expect(stepIds('game')).toEqual(['step-setup', 'step-result', 'step-pitchers'])
         const header = wrapper.find('.game-day-stepper__header')
         expect(header.text()).not.toContain('登録・離脱')
@@ -1973,30 +1988,51 @@ describe.each(LAYOUTS)('GameResult 試合日ページ: $name', ({ width, kind })
           expect(visiblePanels(wrapper)).toEqual(['pitchers'])
         })
 
-        // Test Basis: subtask_1806a（Operator 2026-11-02）投手状態は試合前の状態なので、試合前の段へ移す
-        it('?tab=pitcher_status は試合前の段（予告先発・対戦設定）を開き、その中の投手状態も開く', async () => {
+        // Test Basis: subtask_1810a（Operator 2026-11-02）投手状態は独立した段にして、登録・離脱の最後に置く
+        it('?tab=pitcher_status は、独立した投手状態の段を開く（予告先発・対戦設定は開かない）', async () => {
           const wrapper = await mountDay({
             appearances: appearanceRows(1),
             query: { tab: 'pitcher_status' },
           })
-          expect(visiblePanels(wrapper)).toEqual(['setup'])
+          expect(visiblePanels(wrapper)).toEqual(['pitcher-status'])
+          expect(wrapper.vm.activeStep).toBe('pitcherStatus')
           expect(wrapper.vm.openSections.pitcherStatus).toBe(true)
-          expect(wrapper.find('[data-testid="panel-setup"] pitcher-status-tab-stub').exists()).toBe(
-            true,
-          )
+          expect(wrapper.vm.openSections.setup).toBe(false)
           expect(
-            wrapper.find('[data-testid="panel-pitchers"] pitcher-status-tab-stub').exists(),
-          ).toBe(false)
+            wrapper.find('[data-testid="panel-pitcher-status"] pitcher-status-tab-stub').exists(),
+          ).toBe(true)
+          expect(wrapper.find('[data-testid="panel-setup"] pitcher-status-tab-stub').exists()).toBe(
+            false,
+          )
         })
 
-        it('投手状態は試合前の段に最初から開いて出る。登板記録の段には出ない', async () => {
+        it('投手状態は専用の段の中だけに出る。予告先発・対戦設定にも登板記録の段にも出ない', async () => {
           const wrapper = await mountDay({ appearances: appearanceRows(1) })
-          const setup = wrapper.find('[data-testid="panel-setup"]')
-          expect(setup.find('[data-testid="section-pitcher-status"]').exists()).toBe(true)
-          expect(setup.find('pitcher-status-tab-stub').exists()).toBe(true)
-          const pitchers = wrapper.find('[data-testid="panel-pitchers"]')
-          expect(pitchers.find('[data-testid="section-pitcher-status"]').exists()).toBe(false)
-          expect(pitchers.find('pitcher-status-tab-stub').exists()).toBe(false)
+          await wrapper.find('[data-testid="step-pitcher-status"]').trigger('click')
+          await flushPromises()
+          const own = wrapper.find('[data-testid="panel-pitcher-status"]')
+          expect(own.find('pitcher-status-tab-stub').exists()).toBe(true)
+          for (const slug of ['setup', 'pitchers']) {
+            const panel = wrapper.find(`[data-testid="panel-${slug}"]`)
+            expect(panel.find('[data-testid="section-pitcher-status"]').exists()).toBe(false)
+            expect(panel.find('pitcher-status-tab-stub').exists()).toBe(false)
+          }
+        })
+
+        it('投手状態の段は入力を求めない（info）。進み具合は 予告先発・対戦設定／結果／登板記録 の 3 つのまま', async () => {
+          const wrapper = await mountDay({ appearances: appearanceRows(1) })
+          expect(wrapper.find('[data-testid="step-pitcher-status"]').attributes('data-state')).toBe(
+            'info',
+          )
+          expect(wrapper.find('[data-testid="step-pitcher-status"] .gd-state-chip').exists()).toBe(
+            false,
+          )
+          expect(wrapper.vm.progressSteps.map((step: { id: string }) => step.id)).toEqual([
+            'setup',
+            'result',
+            'pitchers',
+          ])
+          expect(wrapper.find('[data-testid="game-day-progress-text"]').text()).toBe('3 / 3 済')
         })
 
         it('?tab=overview は、予告先発・対戦設定と結果のうち手の要る方（未入力があれば予告先発・対戦設定、無ければ結果）', async () => {

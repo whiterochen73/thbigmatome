@@ -324,6 +324,20 @@ describe('GameResult 試合日ページ: 登録・離脱の操作範囲', () => 
       expect(body(wrapper, 'result').find('[data-testid="range-note"]').exists()).toBe(false)
     })
 
+    // Test Basis: subtask_1810a（Operator 2026-11-02）投手状態は登録・離脱のグループに置くが、見るだけなので範囲に従わない
+    it.each([
+      { label: '範囲の外', range: { start_date: '2026-06-12', end_date: '2026-06-12' } },
+      { label: '範囲が無い（最終試合日の後）', range: null },
+    ])('投手状態の段は、$label の日でも表示し、案内も出さない', async ({ range }) => {
+      const wrapper = await mountDay({ season: withRange(range) })
+      await openStep(wrapper, 'pitcher-status')
+      const panel = body(wrapper, 'pitcher-status')
+      expect(panel.isVisible()).toBe(true)
+      expect(panel.find('pitcher-status-tab-stub').exists()).toBe(true)
+      expect(panel.find('[data-testid="range-note"]').exists()).toBe(false)
+      expect(panel.find('[data-testid="link-pitcher-status"]').exists()).toBe(false)
+    })
+
     it('別の日へ移ると、その日の日付と範囲で判定し直す', async () => {
       const wrapper = await mountDay({
         season: withRange({ start_date: '2026-06-12', end_date: '2026-06-12' }),
@@ -403,6 +417,37 @@ describe('GameResult 試合日ページ: 登録・離脱の操作範囲', () => 
 
       expect(mockPut).toHaveBeenCalledTimes(1)
       expect(mockGet.mock.calls.filter(([url]) => url === '/teams/1/season')).toHaveLength(1)
+    })
+  })
+
+  // Operator 決定 2026-11-02: 各段の中身の先頭にあった小さな補足（段の説明）を消す。件数・状態は残す
+  describe('段の先頭の補足', () => {
+    const NOTES = ['新規登録・契約変更', '1軍・2軍の入れ替え', '負傷・出場停止の登録・編集']
+
+    it.each([
+      { slug: 'members', note: NOTES[0] },
+      { slug: 'roster', note: NOTES[1] },
+    ])('$slug: 段の説明を出さず、シーズンポータルへのリンクだけを置く', async ({ slug, note }) => {
+      const wrapper = await mountDay()
+      await openStep(wrapper, slug)
+      const panel = wrapper.find(`[data-testid="panel-${slug}"]`)
+      expect(panel.text()).not.toContain(note)
+      expect(panel.find(`[data-testid="link-${slug}"]`).exists()).toBe(true)
+    })
+
+    it('負傷・出場停止: 件数は出し、説明文は出さない', async () => {
+      const wrapper = await mountDay()
+      await openStep(wrapper, 'absences')
+      const panel = wrapper.find('[data-testid="panel-absences"]')
+      expect(panel.text()).toContain('試合前 0 件・試合中 0 件')
+      expect(panel.text()).not.toContain(NOTES[2])
+    })
+
+    it('不要になった文言キーは ja.json に残さない', () => {
+      for (const key of ['members', 'roster', 'absences']) {
+        expect(ja.gameDay.summary).not.toHaveProperty(key)
+      }
+      expect(ja.gameDay.summary).toHaveProperty('absencesByPhase')
     })
   })
 

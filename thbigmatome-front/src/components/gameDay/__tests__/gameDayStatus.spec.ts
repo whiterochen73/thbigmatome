@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import {
+  buildGameDayHead,
   calendarDayMark,
   dateKey,
   detectRecordMismatch,
@@ -456,5 +457,142 @@ describe('isGameType（試合日とみなす種別はサーバから受け取る
 
   it('画面は種別の一覧を持たず、サーバの集合が変われば判定も変わる', () => {
     expect(isGameType('reserve_day', [...serverTypes, 'reserve_day'])).toBe(true)
+  })
+})
+
+// Test Basis: cmd_1812 / context/thbig-dugout-gameday-head-summary-mock.html（案1＋予告先発）。
+// 決まっていないものは出さない（null）。勝敗は保存済みの得点と失点から出す。ノーゲームは得点を出さず枠だけの札
+describe('buildGameDayHead（試合日ページ上の段の 1 行）', () => {
+  const none = {
+    opponentName: null,
+    score: null,
+    opponentScore: null,
+    noGame: false,
+    homeAway: null,
+    designatedHitter: null,
+    starterName: null,
+  } as const
+
+  it('何も決まっていない日は null（行ごと出さない）。空欄・空白だけの文字も決まっていない扱い', () => {
+    expect(buildGameDayHead(none)).toBeNull()
+    expect(
+      buildGameDayHead({
+        ...none,
+        opponentName: '',
+        starterName: '  ',
+        score: '',
+        opponentScore: '',
+      }),
+    ).toBeNull()
+  })
+
+  it('済（勝ち）: 相手・得点・勝・ホーム・DH なしがそろう', () => {
+    expect(
+      buildGameDayHead({
+        ...none,
+        opponentName: '命懸',
+        score: 3,
+        opponentScore: 0,
+        homeAway: 'home',
+        designatedHitter: false,
+        starterName: '古明地 さとり',
+      }),
+    ).toEqual({
+      opponent: '命懸',
+      score: '3 - 0',
+      result: 'win',
+      homeAway: 'home',
+      dh: false,
+      starter: '古明地 さとり',
+    })
+  })
+
+  it('負け・引き分け', () => {
+    expect(buildGameDayHead({ ...none, score: 2, opponentScore: 5 })).toMatchObject({
+      score: '2 - 5',
+      result: 'lose',
+    })
+    expect(buildGameDayHead({ ...none, score: 4, opponentScore: 4 })).toMatchObject({
+      score: '4 - 4',
+      result: 'draw',
+    })
+  })
+
+  it('0 - 0 は得点が入っている（引き分け。0 を未入力と読まない）', () => {
+    expect(buildGameDayHead({ ...none, score: 0, opponentScore: 0 })).toMatchObject({
+      score: '0 - 0',
+      result: 'draw',
+    })
+    expect(buildGameDayHead({ ...none, score: 0, opponentScore: 1 })).toMatchObject({
+      result: 'lose',
+    })
+  })
+
+  it('得点だけ入って失点が空（逆も）: 得点も札も出さない。ほかが無ければ行ごと出さない', () => {
+    expect(buildGameDayHead({ ...none, score: 3, opponentScore: null })).toBeNull()
+    expect(buildGameDayHead({ ...none, score: null, opponentScore: 3 })).toBeNull()
+    expect(
+      buildGameDayHead({ ...none, score: 3, opponentScore: '', opponentName: '若尊' }),
+    ).toEqual({
+      opponent: '若尊',
+      score: null,
+      result: null,
+      homeAway: null,
+      dh: null,
+      starter: null,
+    })
+  })
+
+  it('得点が数として読めない値（NaN・文字）は未入力と同じ', () => {
+    expect(buildGameDayHead({ ...none, score: 'abc', opponentScore: 1 })).toBeNull()
+    expect(buildGameDayHead({ ...none, score: Number.NaN, opponentScore: 1 })).toBeNull()
+  })
+
+  it('ノーゲーム: 札は no_game、得点は（入っていても）出さない', () => {
+    expect(
+      buildGameDayHead({ ...none, noGame: true, opponentName: '小倉', homeAway: 'home' }),
+    ).toEqual({
+      opponent: '小倉',
+      score: null,
+      result: 'no_game',
+      homeAway: 'home',
+      dh: null,
+      starter: null,
+    })
+    expect(buildGameDayHead({ ...none, noGame: true, score: 3, opponentScore: 0 })).toMatchObject({
+      score: null,
+      result: 'no_game',
+    })
+  })
+
+  it('相手が未定で予告先発だけある日: 先発だけの行になる', () => {
+    expect(buildGameDayHead({ ...none, starterName: '古明地 さとり' })).toEqual({
+      opponent: null,
+      score: null,
+      result: null,
+      homeAway: null,
+      dh: null,
+      starter: '古明地 さとり',
+    })
+  })
+
+  it('ビジター・DH あり。DH は false（なし）も決まった値として出す（null だけが未定）', () => {
+    expect(
+      buildGameDayHead({
+        ...none,
+        opponentName: '若尊',
+        homeAway: 'visitor',
+        designatedHitter: true,
+      }),
+    ).toMatchObject({ homeAway: 'visitor', dh: true })
+    expect(buildGameDayHead({ ...none, designatedHitter: false })).toMatchObject({ dh: false })
+  })
+
+  it('ホーム・ビジターに想定外の値が来たら出さない', () => {
+    expect(
+      buildGameDayHead({ ...none, opponentName: '若尊', homeAway: 'neutral' as never }),
+    ).toMatchObject({
+      homeAway: null,
+    })
   })
 })

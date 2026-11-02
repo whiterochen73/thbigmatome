@@ -373,14 +373,14 @@
 
 - **Controller**: `Api::V1::GameController#show`
 - **Path Params**: `:id` (SeasonSchedule ID)
-- **Response**: `{ team_id, team_name, season_id, game_date, game_number, announced_starter_id, stadium, home_away, designated_hitter_enabled, score, opponent_score, no_game, opponent_team_id, opponent_team, winning_pitcher_id, losing_pitcher_id, save_pitcher_id, scoreboard, starting_lineup, opponent_starting_lineup, game_result }`
+- **Response**: `{ team_id, team_name, season_id, game_date, game_number, announced_starter_id, stadium, home_away, designated_hitter_enabled, score, opponent_score, no_game, opponent_team_id, opponent_team, opponent_team_short_name, announced_starter_name, winning_pitcher_id, losing_pitcher_id, save_pitcher_id, scoreboard, starting_lineup, opponent_starting_lineup, game_result }`
 
 ### PATCH/PUT /api/v1/game/:id
 
 - **Controller**: `Api::V1::GameController#update`
 - **Path Params**: `:id` (SeasonSchedule ID)
 - **Body Params**: `announced_starter_id, stadium, home_away, designated_hitter_enabled, score, opponent_score, no_game, opponent_team_id, winning_pitcher_id, losing_pitcher_id, save_pitcher_id, scoreboard: { home: [], away: [] }, starting_lineup: [{ player_id, position, order }], opponent_starting_lineup: [...]`
-- **Response**: SeasonSchedule JSON
+- **Response**: SeasonSchedule JSON（`warnings` と、`opponent_team_short_name`・`announced_starter_name` を加える。GET と同じ意味）
 - **no_game**: ノーゲーム（試合が成立しなかった）。得点では表せないので試合概要に持つ。true の日は登板記録の `result_category` が全員 `no_game` になり、先発の次回の休養は KO・ノーゲームの表（rulebook 08 §8.3.1）で計算される。得点・`no_game` のどちらかが変わった保存で、その日の先発の投手に絞って、その試合日以降の先発の保存値（結果区分・疲労P・連続中4日回数）が作り直される（`PitcherHistoryRebuild`。保存値の作り直しの 1 入口で、中身は `PitcherResultCategoryRebuilder`）。得点が未入力の先発は、その日の分だけ「負けではない」として作り直し、それ以降の未入力の先発の保存値は動かさない。作り直しが失敗しても保存は取り消さず、警告を返す
 
 ---

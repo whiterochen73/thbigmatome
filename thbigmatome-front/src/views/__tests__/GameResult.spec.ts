@@ -802,7 +802,11 @@ describe.each(LAYOUTS)('GameResult 試合日ページ: $name', ({ width, kind })
     expect(body(wrapper, 'pitchers').text()).toContain('登板 3 人')
     // 予告先発・対戦設定は未設定だが、結果が保存済みなので「なし」（急かさない）
     expect(state(wrapper, 'setup')).toBe('none')
-    expect(wrapper.find('[data-testid="game-day-progress-text"]').text()).toBe('3 / 3 済')
+    // 進み具合は 3 つの札（済）だけで、「3 / 3 済」の補足文字は出さない（cmd_1812）
+    const pills = wrapper.findAll('.game-day-progress__pill [data-state]')
+    expect(pills.map((pill) => pill.attributes('data-state'))).toEqual(['none', 'done', 'done'])
+    expect(wrapper.find('[data-testid="game-day-progress-text"]').exists()).toBe(false)
+    expect(wrapper.find('[data-testid="game-day-progress"]').exists()).toBe(false)
   })
 
   it('両方なし・試合日が来ている → 結果・登板記録とも未入力（黄）', async () => {
@@ -2032,7 +2036,7 @@ describe.each(LAYOUTS)('GameResult 試合日ページ: $name', ({ width, kind })
             'result',
             'pitchers',
           ])
-          expect(wrapper.find('[data-testid="game-day-progress-text"]').text()).toBe('3 / 3 済')
+          expect(wrapper.find('[data-testid="game-day-progress-text"]').exists()).toBe(false)
         })
 
         it('?tab=overview は、予告先発・対戦設定と結果のうち手の要る方（未入力があれば予告先発・対戦設定、無ければ結果）', async () => {
@@ -2227,4 +2231,240 @@ describe.each(LAYOUTS)('GameResult 試合日ページ: $name', ({ width, kind })
       })
     })
   }
+
+  // Test Basis: cmd_1812 / context/thbig-dugout-gameday-head-summary-mock.html（案1＋予告先発）。
+  // 値は保存済みのものだけで出す。決まっていないものは出さない。Game 番号・進み具合の補足・段の見出し横の二重表示は出さない
+  describe('上の段の 1 行（案1＋予告先発）', () => {
+    const headOf = (wrapper: Wrapper) => wrapper.find('[data-testid="game-day-headline"]')
+    const text = (wrapper: Wrapper, id: string) =>
+      wrapper.find(`[data-testid="${id}"]`).text().replace(/\s+/g, ' ')
+    const settled = {
+      opponent_team_id: 2,
+      opponent_team_short_name: '命懸',
+      announced_starter_id: 5,
+      announced_starter_name: '古明地 さとり',
+      home_away: 'home',
+      designated_hitter_enabled: false,
+      score: 3,
+      opponent_score: 0,
+    }
+
+    it('済（勝ち）: 相手の短縮形・得点・勝の札・ホーム・DH なし・先発が出る。Game 番号は出ない', async () => {
+      const wrapper = await mountDay({ game: settled })
+      expect(text(wrapper, 'head-opponent')).toBe('vs命懸')
+      expect(text(wrapper, 'head-score')).toBe('3 - 0')
+      expect(text(wrapper, 'head-result')).toBe('勝')
+      expect(wrapper.find('[data-testid="head-result"]').attributes('data-result')).toBe('win')
+      expect(text(wrapper, 'head-home-away')).toBe('ホーム')
+      expect(text(wrapper, 'head-dh')).toBe('DH なし')
+      expect(text(wrapper, 'head-starter')).toBe('先発 古明地 さとり')
+      expect(headOf(wrapper).text()).not.toContain('Game')
+      expect(wrapper.find('[data-testid="game-day-head"]').text()).not.toContain('Game 5')
+    })
+
+    it('相手は正式名でなく短縮形で出す', async () => {
+      const wrapper = await mountDay({ game: { ...settled, opponent_team: '命懸ヶ丘高校' } })
+      expect(headOf(wrapper).text()).toContain('命懸')
+      expect(headOf(wrapper).text()).not.toContain('命懸ヶ丘高校')
+    })
+
+    it.each([
+      [{ score: 2, opponent_score: 5 }, 'lose', '負', '2 - 5'],
+      [{ score: 4, opponent_score: 4 }, 'draw', '分', '4 - 4'],
+      [{ score: 0, opponent_score: 0 }, 'draw', '分', '0 - 0'],
+      [{ score: 0, opponent_score: 1 }, 'lose', '負', '0 - 1'],
+    ])('勝敗の札 %j → %s', async (scores, result, label, score) => {
+      const wrapper = await mountDay({ game: { ...settled, ...scores } })
+      expect(wrapper.find('[data-testid="head-result"]').attributes('data-result')).toBe(result)
+      expect(text(wrapper, 'head-result')).toBe(label)
+      expect(text(wrapper, 'head-score')).toBe(score)
+    })
+
+    it('ノーゲーム: 札は枠だけの「ノーゲーム」。得点が残っていても出さない', async () => {
+      const wrapper = await mountDay({ game: { ...settled, no_game: true } })
+      expect(wrapper.find('[data-testid="head-result"]').attributes('data-result')).toBe('no_game')
+      expect(text(wrapper, 'head-result')).toBe('ノーゲーム')
+      expect(wrapper.find('[data-testid="head-score"]').exists()).toBe(false)
+    })
+
+    it('得点だけ入って失点が空: 得点も札も出さない（相手などは出る）', async () => {
+      const wrapper = await mountDay({ game: { ...settled, score: 3, opponent_score: null } })
+      expect(wrapper.find('[data-testid="head-score"]').exists()).toBe(false)
+      expect(wrapper.find('[data-testid="head-result"]').exists()).toBe(false)
+      expect(text(wrapper, 'head-opponent')).toBe('vs命懸')
+    })
+
+    it('ビジター・DH あり', async () => {
+      const wrapper = await mountDay({
+        game: { ...settled, home_away: 'visitor', designated_hitter_enabled: true },
+      })
+      expect(text(wrapper, 'head-home-away')).toBe('ビジター')
+      expect(text(wrapper, 'head-dh')).toBe('DH あり')
+    })
+
+    it('得点が未入力で相手だけ決まっている日: 相手と印だけ（得点・札・先発は出ない）', async () => {
+      const wrapper = await mountDay({
+        game: {
+          ...settled,
+          score: null,
+          opponent_score: null,
+          announced_starter_id: null,
+          announced_starter_name: null,
+          home_away: 'visitor',
+          designated_hitter_enabled: true,
+        },
+      })
+      expect(text(wrapper, 'head-opponent')).toBe('vs命懸')
+      expect(text(wrapper, 'head-home-away')).toBe('ビジター')
+      for (const id of ['head-score', 'head-result', 'head-starter']) {
+        expect(wrapper.find(`[data-testid="${id}"]`).exists()).toBe(false)
+      }
+    })
+
+    it('相手が未定で予告先発だけある日: 先発だけの行になる（「vs」も「未定」も出ない）', async () => {
+      const wrapper = await mountDay({
+        game: {
+          opponent_team_id: null,
+          opponent_team_short_name: null,
+          announced_starter_id: 5,
+          announced_starter_name: '古明地 さとり',
+          score: null,
+          opponent_score: null,
+        },
+      })
+      expect(text(wrapper, 'head-starter')).toBe('先発 古明地 さとり')
+      expect(headOf(wrapper).text()).not.toContain('vs')
+      expect(headOf(wrapper).text()).not.toContain('未定')
+      expect(wrapper.find('[data-testid="head-opponent"]').exists()).toBe(false)
+    })
+
+    it('何も決まっていない日は行ごと出さない', async () => {
+      const wrapper = await mountDay({ game: { score: null, opponent_score: null } })
+      expect(headOf(wrapper).exists()).toBe(false)
+    })
+
+    it('試合日でない日（移動日）には出さない', async () => {
+      const wrapper = await mountDay({
+        game: settled,
+        season: {
+          ...seasonResponse,
+          season_schedules: [{ id: 100, date: '2026-06-10', date_type: 'travel_day' }],
+        },
+      })
+      expect(headOf(wrapper).exists()).toBe(false)
+    })
+
+    it('保存済みの値で出す: 入力途中の得点・相手・先発・ホーム/ビジター・DH では揺れない', async () => {
+      const wrapper = await mountDay({ game: settled })
+      wrapper.vm.gameData.score = 9
+      wrapper.vm.gameData.opponent_score = 10
+      wrapper.vm.gameData.opponent_team_id = 3
+      wrapper.vm.gameData.opponent_team_name = '若尊'
+      wrapper.vm.gameData.announced_starter_id = 6
+      wrapper.vm.gameData.home_away = 'visitor'
+      wrapper.vm.gameData.designated_hitter_enabled = true
+      await flushPromises()
+      expect(text(wrapper, 'head-score')).toBe('3 - 0')
+      expect(text(wrapper, 'head-result')).toBe('勝')
+      expect(text(wrapper, 'head-opponent')).toBe('vs命懸')
+      expect(text(wrapper, 'head-starter')).toBe('先発 古明地 さとり')
+      expect(text(wrapper, 'head-home-away')).toBe('ホーム')
+      expect(text(wrapper, 'head-dh')).toBe('DH なし')
+    })
+
+    it('保存すると、保存した値（サーバが返した相手の短縮形・先発の名前）に変わる', async () => {
+      const wrapper = await mountDay({ game: settled })
+      wrapper.vm.gameData.score = 1
+      wrapper.vm.gameData.opponent_score = 2
+      wrapper.vm.gameData.opponent_team_id = 3
+      wrapper.vm.gameData.announced_starter_id = 6
+      mockPut.mockResolvedValueOnce({
+        data: {
+          id: 100,
+          warnings: [],
+          opponent_team_short_name: '若尊',
+          announced_starter_name: '射命丸 文',
+        },
+      })
+      await wrapper.vm.saveGame()
+      await flushPromises()
+      expect(text(wrapper, 'head-opponent')).toBe('vs若尊')
+      expect(text(wrapper, 'head-starter')).toBe('先発 射命丸 文')
+      expect(text(wrapper, 'head-score')).toBe('1 - 2')
+      expect(text(wrapper, 'head-result')).toBe('負')
+    })
+
+    it('保存で相手・先発を外すと、その表示も消える（サーバは null を返す）', async () => {
+      const wrapper = await mountDay({ game: settled })
+      wrapper.vm.gameData.opponent_team_id = null
+      wrapper.vm.gameData.announced_starter_id = null
+      mockPut.mockResolvedValueOnce({
+        data: {
+          id: 100,
+          warnings: [],
+          opponent_team_short_name: null,
+          announced_starter_name: null,
+        },
+      })
+      await wrapper.vm.saveGame()
+      await flushPromises()
+      expect(wrapper.find('[data-testid="head-opponent"]').exists()).toBe(false)
+      expect(wrapper.find('[data-testid="head-starter"]').exists()).toBe(false)
+    })
+
+    it('古いサーバ（応答に名前が無い）: 先発を選び直していなければ前の名前を残し、選び直したら出さない', async () => {
+      const kept = await mountDay({ game: settled })
+      mockPut.mockResolvedValueOnce({ data: { id: 100, warnings: [] } })
+      await kept.vm.saveGame()
+      await flushPromises()
+      expect(text(kept, 'head-starter')).toBe('先発 古明地 さとり')
+
+      const changed = await mountDay({ game: settled })
+      changed.vm.gameData.announced_starter_id = 6
+      mockPut.mockResolvedValueOnce({ data: { id: 100, warnings: [] } })
+      await changed.vm.saveGame()
+      await flushPromises()
+      expect(changed.find('[data-testid="head-starter"]').exists()).toBe(false)
+    })
+
+    it('保存に失敗したら、上の段は変えない', async () => {
+      const wrapper = await mountDay({ game: settled })
+      wrapper.vm.gameData.score = 0
+      wrapper.vm.gameData.opponent_score = 7
+      mockPut.mockRejectedValueOnce(new Error('boom'))
+      await wrapper.vm.saveGame()
+      await flushPromises()
+      expect(text(wrapper, 'head-score')).toBe('3 - 0')
+    })
+
+    it('別の日へ移ると（再読み込み）、その日の値に置き換わる', async () => {
+      const wrapper = await mountDay({ game: settled })
+      mockGet.mockImplementation((url: string) => {
+        if (url === '/game/100')
+          return Promise.resolve({
+            data: { ...gameResponse, opponent_team_short_name: null, announced_starter_name: null },
+          })
+        if (url === '/teams') return Promise.resolve({ data: [] })
+        if (url === '/pitcher_appearances' || url === '/player_absences')
+          return Promise.resolve({ data: [] })
+        if (url === '/teams/1/season') return Promise.resolve({ data: seasonResponse })
+        return Promise.reject(new Error(`Unexpected GET ${url}`))
+      })
+      await wrapper.vm.loadAll()
+      await flushPromises()
+      expect(text(wrapper, 'head-score')).toBe('6 - 5')
+      expect(wrapper.find('[data-testid="head-opponent"]').exists()).toBe(false)
+      expect(wrapper.find('[data-testid="head-starter"]').exists()).toBe(false)
+    })
+
+    it('対戦設定の段の見出し横と、試合結果の段の見出し横に、同じ要約（vs・得点）を出さない。登板の件数は残す', async () => {
+      const wrapper = await mountDay({ game: settled, appearances: appearanceRows(3) })
+      // 段の見出し横の文字（GameDaySteps / GameDaySection の summary）は steps から描く
+      const summaryOf = (id: string) =>
+        wrapper.vm.steps.find((step: { id: string }) => step.id === id)?.summary
+      expect(summaryOf('setup')).toBeUndefined()
+      expect(summaryOf('result')).toBeUndefined()
+      expect(body(wrapper, 'pitchers').text()).toContain('登板 3 人')
+    })
+  })
 })

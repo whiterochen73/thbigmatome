@@ -13,7 +13,7 @@
 | Vue Router | 5 |
 | Pinia | 3.x |
 | Vitest | 4.x |
-| Node.js | 20.x |
+| Node.js | 22.x |
 
 ## 主な機能
 
@@ -27,7 +27,7 @@
 
 ### 前提条件
 
-- Node.js 20.x
+- Node.js 22.x
 - Yarn 4（Yarn Berry）。corepack 経由で入れる。`package.json` の `packageManager` が版を固定している
 
 ### Yarn（corepack）について

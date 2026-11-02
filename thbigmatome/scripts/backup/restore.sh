@@ -92,9 +92,11 @@ echo "  ファイル: ${DUMP_FILE}"
 echo "  DB: ${DB_NAME}"
 echo ""
 
-# 戻すダンプが読めることを、何かを壊す前に確かめる
-echo "ダンプの読み取り確認..."
-docker exec -i "${DB_CONTAINER}" pg_restore -l < "${DUMP_FILE}" > /dev/null
+# 戻すダンプが最後まで読めることを、何かを壊す前に確かめる。
+# pg_restore -l は目録（TOC）しか読まず、途中で切れたダンプも通ってしまう。
+# -f /dev/null でデータ部まで全量を読み出し、切れたダンプはここで止める。
+echo "ダンプの読み取り確認（全量）..."
+docker exec -i "${DB_CONTAINER}" pg_restore -f /dev/null < "${DUMP_FILE}"
 
 echo "⚠️  この操作は既存のデータを上書きします。続行しますか？ [yes/no]"
 read -r CONFIRM
@@ -110,7 +112,7 @@ echo "事前バックアップ取得: ${SAFETY_BACKUP}"
 docker exec "${DB_CONTAINER}" \
     pg_dump -U "${DB_USER}" -Fc "${DB_NAME}" \
     < /dev/null > "${SAFETY_BACKUP}"
-docker exec -i "${DB_CONTAINER}" pg_restore -l < "${SAFETY_BACKUP}" > /dev/null
+docker exec -i "${DB_CONTAINER}" pg_restore -f /dev/null < "${SAFETY_BACKUP}"
 
 echo "サービス停止中: ${STOP_SERVICES}"
 # shellcheck disable=SC2086  # 空白区切りの複数サービスとして展開する

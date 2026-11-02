@@ -141,7 +141,7 @@ bash /home/deploy/projects/thbigmatome/scripts/backup/restore.sh \
 ```
 
 スクリプトが自動的に以下を行う:
-1. 戻すダンプが読めることを確認（読めなければ何も触らずに止まる）
+1. 戻すダンプを最後まで読めることを確認（`pg_restore -f /dev/null` で全量を読む。目録だけの `--list` では途中で切れたダンプを見逃す。読めなければ何も触らずに止まる）
 2. リストア前の事前バックアップを取得（`~/backups/thbigmatome/pre_restore_*.dump`。読めることまで確認）
 3. railsコンテナを停止
 4. `public` スキーマを `drop schema public cascade; create schema public;` で作り直す（1 トランザクション）

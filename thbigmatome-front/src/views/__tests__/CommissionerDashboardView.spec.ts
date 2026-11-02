@@ -8,6 +8,7 @@ import { createPinia } from 'pinia'
 import { createI18n } from 'vue-i18n'
 import CommissionerDashboardView from '../commissioner/CommissionerDashboardView.vue'
 import CommissionerDashboard from '@/components/commissioner/CommissionerDashboard.vue'
+import { useTeamSelectionStore } from '@/stores/teamSelection'
 
 vi.mock('axios', () => {
   const mockAxios = {
@@ -1070,6 +1071,93 @@ describe('CommissionerDashboard 概況の取得', () => {
     await flushPromises()
     await wrapper.find('button[aria-label="紅魔館のシーズン"]').trigger('click')
     expect(mockPush).toHaveBeenCalledWith('/teams/5/season')
+    wrapper.unmount()
+  })
+})
+
+// Test Basis: cmd_1814 ダッシュボードのチーム名（概況・一覧表）を押すと、そのチームを選んでシーズン画面（カレンダー）へ遷移する。
+// 一覧表（離脱者・クールダウン・コスト・1軍登録・チーム管理）は行ごとのチーム名、a 要素なのでキーボードでも辿れる
+describe('CommissionerDashboard チーム名のリンク', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+  afterEach(() => {
+    document.body.innerHTML = ''
+  })
+
+  const mountAll = async () => {
+    ;(axios.get as ReturnType<typeof vi.fn>).mockImplementation(
+      apiMock({
+        '/teams': [
+          {
+            id: 5,
+            name: '紅魔館ヶ丘高校',
+            short_name: '紅魔館',
+            is_active: true,
+            has_season: true,
+            team_type: 'normal',
+            season_current_date: '2026-04-17',
+          },
+        ],
+        '/commissioner/dashboard/absences': mockAbsences.slice(1),
+        '/commissioner/dashboard/cooldowns': mockCooldowns.slice(0, 1),
+        '/commissioner/dashboard/costs': mockCosts.slice(0, 1),
+        '/commissioner/dashboard/roster_status': [mockRosterStatus(1, 'チームA', [])],
+      }),
+    )
+    const wrapper = mountPlain()
+    await flushPromises()
+    return wrapper
+  }
+  const activeLinks = (wrapper: ReturnType<typeof mount>) =>
+    wrapper.find('.v-window-item--active').findAll('a.team-name-link')
+
+  it('概況のチームの表: 押すとそのチームを選び（正式名）、そのチームのシーズン画面へ遷移する', async () => {
+    const wrapper = await mountAll()
+    const link = activeLinks(wrapper).find((a) => a.text() === '紅魔館ヶ丘高校')!
+    expect(link.attributes('href')).toBe('/teams/5/season')
+    await link.trigger('click')
+    expect(mockPush).toHaveBeenCalledTimes(1)
+    expect(mockPush).toHaveBeenCalledWith('/teams/5/season')
+    const store = useTeamSelectionStore(pinia)
+    expect([store.selectedTeamId, store.selectedTeamName]).toEqual([5, '紅魔館ヶ丘高校'])
+    wrapper.unmount()
+  })
+
+  it.each([
+    ['absences', 'チームB', 2],
+    ['cooldowns', 'チームA', 1],
+    ['costs', 'チームA', 1],
+    ['rosterStatus', 'チームA', 1],
+    ['teams', '紅魔館ヶ丘高校', 5],
+  ])(
+    '%s の一覧表: チーム名が a 要素で、押すと選択中チームを切り替えて遷移する',
+    async (tab, name, id) => {
+      const wrapper = await mountAll()
+      await showTab(wrapper, tab)
+      const link = activeLinks(wrapper).find((a) => a.text() === name)!
+      expect(link.attributes('href')).toBe(`/teams/${id}/season`)
+      mockPush.mockClear()
+      await link.trigger('click')
+      expect(mockPush).toHaveBeenCalledTimes(1)
+      expect(mockPush).toHaveBeenCalledWith(`/teams/${id}/season`)
+      const store = useTeamSelectionStore(pinia)
+      expect([store.selectedTeamId, store.selectedTeamName]).toEqual([id, name])
+      wrapper.unmount()
+    },
+  )
+
+  it('1軍登録の表: チーム名を押しても行は展開しない（行のほかの場所を押すと展開する）', async () => {
+    const wrapper = await mountAll()
+    await showTab(wrapper, 'rosterStatus')
+    const row = wrapper.find('.v-window-item--active tbody tr')
+    await row.find('a.team-name-link').trigger('click')
+    await flushPromises()
+    expect(wrapper.text()).not.toContain('1軍選手一覧')
+    // 比較: 名前以外の場所を押すと展開する（上の「展開しない」が、展開の仕組みごと壊れていて通っているのではないことの確認）
+    await row.findAll('td')[1].trigger('click')
+    await flushPromises()
+    expect(wrapper.text()).toContain('1軍選手一覧')
     wrapper.unmount()
   })
 })

@@ -538,6 +538,48 @@ describe('DashboardOverview チームの表', () => {
     expect(colorOf('チーム3')).toBe('meter-over')
   })
 
+  // Test Basis: cmd_1814 ダッシュボードのチーム名を押してそのチームのシーズン画面（カレンダー）へ。a 要素なのでキーボードでも辿れる
+  it('注意の欄（要確認・上限に近い・まもなく動く）とチームの表のチーム名は、そのチームのシーズン画面へのリンク', async () => {
+    const w = mountOverview(
+      baseProps({
+        teams: ok([team(1, { name: '紅魔館' }), team(2, { name: '白玉楼' })]),
+        rosterStatus: ok([roster(1, ['外の世界枠が上限を超過しています']), roster(2)]),
+        costs: ok([{ ...cost(2, 195), team_name: '白玉楼' }]),
+        absences: ok([{ ...absence(2, 1), team_name: '白玉楼' }]),
+      }),
+    )
+    const links = (testid: string) =>
+      w.find(`[data-testid="${testid}"]`).findAll('a.team-name-link')
+
+    const violation = links('attention-violation')
+    expect(violation.map((a) => [a.text(), a.attributes('href')])).toEqual([
+      ['チーム1', '/teams/1/season'],
+    ])
+    const costWatch = links('attention-cost')
+    expect(costWatch.map((a) => [a.text(), a.attributes('href')])).toEqual([
+      ['白玉楼', '/teams/2/season'],
+    ])
+    const soon = links('attention-soon-absence')
+    expect(soon.map((a) => [a.text(), a.attributes('href')])).toEqual([
+      ['白玉楼', '/teams/2/season'],
+    ])
+    const table = links('team-table-card')
+    expect(
+      table.map((a) => [a.text(), a.attributes('href')]).sort((x, y) => (x[1]! < y[1]! ? -1 : 1)),
+    ).toEqual([
+      ['紅魔館', '/teams/1/season'],
+      ['白玉楼', '/teams/2/season'],
+    ])
+
+    // 押すと、正式名のチームの id で open-season を出す（選択中チームの切り替えと遷移は親）。表の行からも、注意の欄からも
+    await table.find((a) => a.text() === '白玉楼')!.trigger('click')
+    await violation[0].trigger('click')
+    expect(w.emitted('open-season')).toEqual([
+      [{ id: 2, name: '白玉楼' }],
+      [{ id: 1, name: 'チーム1' }],
+    ])
+  })
+
   it('行の操作は、そのチームのシーズンへ移る名前つきボタン', async () => {
     const w = mountOverview(baseProps({ teams: ok([team(7, { name: '紅魔館' })]) }))
     const btn = w.find('button[aria-label="紅魔館のシーズン"]')

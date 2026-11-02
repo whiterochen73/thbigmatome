@@ -720,6 +720,25 @@ describe('SeasonPortal', () => {
 
       expect(wrapper.find('[data-stub="roster"]').attributes('data-as-of')).toBe('2026-05-09')
     })
+
+    // Test Basis: cmd_1814 相手チームのカレンダーを、試合日の月で開く（?month=YYYY-MM。現在日・?date= とは別）
+    it('?month= の月でカレンダーを開く。現在日と、ロスター等の日付の既定は動かない', async () => {
+      const wrapper = await mountSeasonPortal({ season, query: '?month=2026-07' })
+
+      expect(wrapper.find('.month-label').text()).toBe('2026年7月')
+      expect(wrapper.find('.now-strip__value').text()).toBe('5月9日(土)')
+      await wrapper.find('.month-nav .v-btn').trigger('click')
+      expect(wrapper.find('.month-label').text()).toBe('2026年6月')
+    })
+
+    it('?month= が月の形でない・存在しない月・無い時は、現在日の月で開く。?date= だけでは月を動かさない', async () => {
+      for (const query of ['', '?month=abc', '?month=2026-13', '?month=2026-00', '?month=2026-7']) {
+        const wrapper = await mountSeasonPortal({ season, query })
+        expect(wrapper.find('.month-label').text(), query).toBe('2026年5月')
+      }
+      const withDate = await mountSeasonPortal({ season, query: '?tab=calendar&date=2026-08-03' })
+      expect(withDate.find('.month-label').text()).toBe('2026年5月')
+    })
   })
 
   // Test Basis: thbig-dugout-ui-unification-design.md §2.4 / §2.6 / §3（「いま」帯・主操作は緑 1 つ・土日の赤字をやめる）

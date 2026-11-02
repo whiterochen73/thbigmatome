@@ -100,6 +100,9 @@
               (row: { item: Team }) => (row.item.is_active ? {} : { class: 'on-surface-variant' })
             "
           >
+            <template #[`item.name`]="{ item }">
+              <TeamNameLink :team-id="item.id" :name="item.name" @open="navigateToSeason" />
+            </template>
             <template #[`item.team_type`]="{ item }">
               <v-chip
                 v-if="item.team_type === 'hachinai'"
@@ -229,6 +232,13 @@
             density="compact"
             :row-props="getRowProps"
           >
+            <template v-slot:item.team_name="{ item }">
+              <TeamNameLink
+                :team-id="item.team_id"
+                :name="item.team_name"
+                @open="navigateToSeason"
+              />
+            </template>
             <template v-slot:item.absence_type="{ item }">
               <StatusChip
                 :status="item.absence_type"
@@ -305,6 +315,13 @@
             :items="filteredCooldowns"
             density="compact"
           >
+            <template v-slot:item.team_name="{ item }">
+              <TeamNameLink
+                :team-id="item.team_id"
+                :name="item.team_name"
+                @open="navigateToSeason"
+              />
+            </template>
             <template v-slot:item.demotion_date="{ item }">
               {{ formatDate(item.demotion_date) }}
             </template>
@@ -350,6 +367,13 @@
             :items="costs.data"
             density="compact"
           >
+            <template v-slot:item.team_name="{ item }">
+              <TeamNameLink
+                :team-id="item.team_id"
+                :name="item.team_name"
+                @open="navigateToSeason"
+              />
+            </template>
             <template v-slot:item.team_type="{ item }">
               <v-chip
                 v-if="item.team_type === 'hachinai'"
@@ -433,6 +457,7 @@
         :loading="rosterStatus.loading"
         :failed="rosterStatus.failed"
         @retry="fetchRosterStatus"
+        @open-season="navigateToSeason"
       />
     </v-window-item>
   </v-window>
@@ -451,6 +476,7 @@ import AsyncState from '@/components/shared/AsyncState.vue'
 import DataCard from '@/components/shared/DataCard.vue'
 import RowIconButton from '@/components/shared/RowIconButton.vue'
 import RowMenu from '@/components/shared/RowMenu.vue'
+import TeamNameLink from '@/components/shared/TeamNameLink.vue'
 import { tableCell } from '@/components/shared/tableCells'
 import FilterBar from '@/components/shared/FilterBar.vue'
 import StatusChip from '@/components/shared/StatusChip.vue'

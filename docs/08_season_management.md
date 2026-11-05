@@ -181,7 +181,7 @@ GET /api/v1/teams/:team_id/season
 
 現在日を手で動かす `PATCH /api/v1/teams/:team_id/season` は廃止した（ルートが無い）。現在日は日程の結果から毎回導く（`SeasonCurrentRange`、`Season#current_date` / `Season#current_range`）。
 
-- **今の範囲** = 最後に結果が入った日の翌日〜次の試合日（移動日・予備日などを含む）。レスポンスの `current_range` は `{ start_date, end_date }`。最終試合日の後など範囲が無い時は `null`
+- **今の範囲** = 最後に結果が入った日の翌日〜次の試合日（移動日・予備日などを含む）。レスポンスの `current_range` は `{ start_date, end_date }`。最終試合日に結果が入った後は最終試合日の 1 日（`start_date` = `end_date`）。試合日がひとつも無い日程などで範囲が無い時は `null`
 - **現在日** `current_date` = 範囲の最後の日（次の試合日）。範囲が無い時は最後に結果が入った日
 - 「結果が入った」= 得点（自軍・相手とも）が保存済み、または真偽値 `no_game`。結果を保存すると、範囲は次へ進む
 - 列 `seasons.current_date` は、日程が 1 行も無いシーズンの初期値としてだけ読む

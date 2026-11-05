@@ -204,14 +204,15 @@ export function hasGameDayArrived(
   return game <= current
 }
 
-// 今の範囲（最後に結果が入った試合日の翌日〜次の試合日）。サーバが日程の結果から導く（GET /teams/:id/season の current_range）
+// 今の範囲（最後に結果が入った試合日の翌日〜次の試合日。次の試合日が無ければ最後に結果が入った日の 1 日）。サーバが日程の結果から導く（GET /teams/:id/season の current_range）
 export interface CurrentRange {
   start_date: string
   end_date: string
 }
 
 // 登録・昇降格・負傷・出場停止（試合日ページの登録・離脱の 3 段）を操作できる日か。今の範囲の中の日だけ（両端を含む）。
-// 範囲が無い（最終試合日の後）・分からない時はどの日も操作できない（誤った日付での保存を避ける側に倒す）
+// 範囲が無い（試合日がひとつも無い日程など）・分からない時はどの日も操作できない（誤った日付での保存を避ける側に倒す）。
+// 最終試合日に結果が入った後は、サーバが最終試合日の 1 日を範囲として返すので、その日は操作できる
 export function isInCurrentRange(
   date: string | null | undefined,
   range: CurrentRange | null | undefined,

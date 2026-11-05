@@ -31,7 +31,7 @@ class SeasonDetailSerializer < ActiveModel::Serializer
   end
 
   # 今の範囲（最後に結果が入った日の翌日〜次の試合日）。登録・離脱を操作できるのはこの範囲の日だけ。
-  # 範囲が無い時（最終試合日の後など）は nil
+  # 最終試合日に結果が入った後は最終試合日の 1 日。範囲が無い時（試合日がひとつも無い日程など）は nil
   def current_range
     range&.start_date && range.to_h
   end

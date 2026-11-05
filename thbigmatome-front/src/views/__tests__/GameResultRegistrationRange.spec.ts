@@ -255,13 +255,52 @@ describe('GameResult 試合日ページ: 登録・離脱の操作範囲', () => 
       expect(embedded(wrapper, 'roster').attributes('data-as-of')).toBe('2026-06-10')
     })
 
-    it('範囲が無い（最終試合日の後）時は、どの日も読み取り専用で、その旨を案内する', async () => {
+    // Test Basis: cmd_1836（Operator 2026-11-05「最終試合日にも選手登録、昇降格、離脱の登録ができるように」）。
+    // サーバは最終試合日に結果が入った後、今の範囲を最終試合日の 1 日にして返す（SeasonCurrentRange）
+    describe('最終試合日（結果が入った後の範囲 = 最終試合日の 1 日）', () => {
+      const finalDaySeason = {
+        ...seasonResponse,
+        current_date: '2026-06-10',
+        current_range: { start_date: '2026-06-10', end_date: '2026-06-10' },
+        season_schedules: [
+          { id: 99, date: '2026-06-09', date_type: 'game_day' },
+          { id: 100, date: '2026-06-10', date_type: 'game_day' },
+          { id: 101, date: '2026-06-11', date_type: 'travel_day' },
+        ],
+      }
+
+      it.each(EMBEDS)(
+        '$slug: 最終試合日（結果が入った日）は操作でき、その日の日付で記録する',
+        async ({ slug }) => {
+          const wrapper = await mountDay({
+            game: { score: 3, opponent_score: 1 },
+            season: finalDaySeason,
+          })
+          await openStep(wrapper, slug)
+          expect(embedded(wrapper, slug).attributes('data-readonly')).toBe('false')
+          expect(embedded(wrapper, slug).attributes('data-as-of')).toBe('2026-06-10')
+          expect(wrapper.find('[data-testid="range-note"]').exists()).toBe(false)
+        },
+      )
+
+      it('最終試合日の前の日と後の日は読み取り専用で、「この日は見るだけです」を案内する', async () => {
+        for (const date of ['2026-06-09', '2026-06-11']) {
+          const wrapper = await mountDay({ game: { game_date: date }, season: finalDaySeason })
+          await openStep(wrapper, 'roster')
+          expect(embedded(wrapper, 'roster').attributes('data-readonly')).toBe('true')
+          expect(body(wrapper, 'roster').find('[data-testid="range-note"]').text()).toContain(
+            OUTSIDE,
+          )
+        }
+      })
+    })
+
+    // 範囲そのものが無いのは、試合日がひとつも無い日程など（最終試合日の後ではない）。どの日も見るだけ
+    it('範囲が無い時は、どの日も読み取り専用で、「この日は見るだけです」を案内する', async () => {
       const wrapper = await mountDay({ season: withRange(null) })
       await openStep(wrapper, 'absences')
       expect(embedded(wrapper, 'absences').attributes('data-readonly')).toBe('true')
-      expect(body(wrapper, 'absences').find('[data-testid="range-note"]').text()).toContain(
-        'シーズンが終わったので、見るだけです',
-      )
+      expect(body(wrapper, 'absences').find('[data-testid="range-note"]').text()).toContain(OUTSIDE)
     })
 
     it('範囲の取得中は、読み取り専用のまま案内は出さない（「取れなかった」と誤って案内しない）', async () => {
@@ -327,7 +366,7 @@ describe('GameResult 試合日ページ: 登録・離脱の操作範囲', () => 
     // Test Basis: subtask_1810a（Operator 2026-11-02）投手状態は登録・離脱のグループに置くが、見るだけなので範囲に従わない
     it.each([
       { label: '範囲の外', range: { start_date: '2026-06-12', end_date: '2026-06-12' } },
-      { label: '範囲が無い（最終試合日の後）', range: null },
+      { label: '範囲が無い（試合日の無い日程など）', range: null },
     ])('投手状態の段は、$label の日でも表示し、案内も出さない', async ({ range }) => {
       const wrapper = await mountDay({ season: withRange(range) })
       await openStep(wrapper, 'pitcher-status')

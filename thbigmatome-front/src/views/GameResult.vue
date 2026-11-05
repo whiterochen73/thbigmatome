@@ -704,7 +704,7 @@ interface SeasonScheduleLite {
   date_type: string
 }
 const seasonCurrentDate = ref<string | null>(null)
-// 今の範囲（登録・離脱を操作できる日）。undefined = 取れていない／取得に失敗、null = 範囲なし（最終試合日の後）
+// 今の範囲（登録・離脱を操作できる日。最終試合日に結果が入った後は最終試合日の 1 日）。undefined = 取れていない／取得に失敗、null = 範囲なし（試合日がひとつも無い日程など）
 const currentRange = ref<CurrentRange | null | undefined>(undefined)
 // 範囲の取得が終わったか（取得中に「取れなかった」と案内しないため）
 const currentRangeLoaded = ref(false)
@@ -758,7 +758,6 @@ const registrationOperable = computed(() =>
 const registrationNote = computed(() => {
   if (registrationOperable.value || !currentRangeLoaded.value) return ''
   if (currentRange.value === undefined) return t('gameDay.rangeNote.unknown')
-  if (currentRange.value === null) return t('gameDay.rangeNote.seasonOver')
   return t('gameDay.rangeNote.outside')
 })
 

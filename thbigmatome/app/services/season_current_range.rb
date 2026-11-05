@@ -16,8 +16,9 @@
 #
 # 境界の決め方:
 # - 結果が 1 件も無い（初日〜最初の試合日）: 範囲 = 日程の最初の日 〜 最初の試合日。現在日 = 最初の試合日
-# - 結果の後に試合日が無い（最終試合日の後）: 範囲 = なし（start_date / end_date は nil）。現在日 = 最後に結果が入った日。
-#   最終日より後の日は操作できない
+# - 結果の後に試合日が無い（最終試合日に結果が入った後）: 範囲 = 最後に結果が入った日の 1 日だけ（start_date = end_date = 現在日）。
+#   最終試合の結果を保存した後も、その日付で登録・昇降格・離脱を記録できるようにするため（cmd_1836。Operator 決定 2026-11-05）。
+#   最終試合日より後の日は操作できない
 # - 結果が前後して入っている（後の試合日の結果だけ先に入った等）: 一番後ろの結果の日を基準にする
 # - 雨天中止・延期の日（postponed / no_game_day）は試合日ではないので範囲の中に入る。結果が入らない
 # - 日程が 1 行も無い: 導けない（nil）。呼び出し側が seasons.current_date の列へ倒す
@@ -61,7 +62,9 @@ class SeasonCurrentRange
 
     if last_result
       next_game = game_dates.find { |date| date > last_result }
-      return Window.new(current_date: last_result, last_result_date: last_result) if next_game.nil?
+      if next_game.nil?
+        return Window.new(current_date: last_result, start_date: last_result, end_date: last_result, last_result_date: last_result)
+      end
 
       Window.new(current_date: next_game, start_date: last_result + 1, end_date: next_game, last_result_date: last_result)
     else

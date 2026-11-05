@@ -105,18 +105,40 @@ RSpec.describe SeasonCurrentRange do
       expect(range.to_h).to eq(start_date: d(8), end_date: d(8))
     end
 
-    it "最終試合日に結果が入った後は範囲なし。現在日は最後に結果が入った日" do
+    # Test Basis: cmd_1836（Operator 2026-11-05「最終試合日にも選手登録、昇降格、離脱の登録ができるように」）
+    it "最終試合日に結果が入った後は、範囲が最終試合日の 1 日になる。現在日も最終試合日" do
       result(8)
-      expect(range.to_h).to eq(start_date: nil, end_date: nil)
+      expect(range.to_h).to eq(start_date: d(8), end_date: d(8))
       expect(range.current_date).to eq(d(8))
-      expect(range.covers?(d(8))).to be false
+      expect(range.last_result_date).to eq(d(8))
+      expect(range.covers?(d(8))).to be true
     end
 
-    it "最終試合日の後ろに試合の無い日が続いていても範囲なし" do
+    it "最終試合日の翌日と、最終試合日の前の日は範囲の外" do
       schedule(9, "travel_day")
       result(8)
-      expect(range.start_date).to be_nil
+      expect(range.covers?(d(9))).to be false
+      expect(range.covers?(d(7))).to be false
+    end
+
+    it "最終試合日の後ろに試合の無い日が続いていても、範囲は最終試合日の 1 日だけ" do
+      schedule(9, "travel_day")
+      result(8)
+      expect(range.to_h).to eq(start_date: d(8), end_date: d(8))
       expect(range.current_date).to eq(d(8))
+    end
+
+    it "最終試合がノーゲームでも、範囲は最終試合日の 1 日" do
+      SeasonSchedule.find_by!(season: season, date: d(8)).update!(no_game: true)
+      result(7)
+      expect(range.to_h).to eq(start_date: d(8), end_date: d(8))
+      expect(range.current_date).to eq(d(8))
+    end
+
+    it "最終試合日の結果が入っていなければ、範囲は結果の翌日から最終試合日（従来どおり）" do
+      result(7)
+      expect(range.to_h).to eq(start_date: d(8), end_date: d(8))
+      expect(range.covers?(d(7))).to be false
     end
   end
 

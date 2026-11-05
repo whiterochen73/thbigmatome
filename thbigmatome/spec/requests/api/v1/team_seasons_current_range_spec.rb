@@ -32,13 +32,14 @@ RSpec.describe "現在日の自動化", type: :request do
       expect(json["current_range"]).to eq("start_date" => "2026-05-03", "end_date" => "2026-05-04")
     end
 
-    it "最終試合日の後は current_range が nil で、current_date は最後に結果が入った日" do
+    # Test Basis: cmd_1836（Operator 2026-11-05「最終試合日にも選手登録、昇降格、離脱の登録ができるように」）
+    it "最終試合日に結果が入った後は、current_range が最終試合日の 1 日で、current_date も最終試合日" do
       SeasonSchedule.find_by!(season: season, date: d(4)).update!(score: 5, opponent_score: 5)
 
       get "/api/v1/teams/#{team.id}/season"
 
       json = response.parsed_body
-      expect(json["current_range"]).to be_nil
+      expect(json["current_range"]).to eq("start_date" => "2026-05-04", "end_date" => "2026-05-04")
       expect(json["current_date"]).to eq("2026-05-04")
     end
 
@@ -85,6 +86,14 @@ RSpec.describe "現在日の自動化", type: :request do
       expect(response.parsed_body).to include("key_player_selectable" => false)
     end
 
+    it "最終試合日に結果が入った後も false（今の範囲が最終試合日になっても、キープレイヤーは設定できない）" do
+      SeasonSchedule.find_by!(season: season, date: d(4)).update!(score: 5, opponent_score: 5)
+
+      get "/api/v1/teams/#{team.id}/roster"
+
+      expect(response.parsed_body).to include("key_player_selectable" => false)
+    end
+
     it "結果が 1 件も無い間は true（現在日が初日でなくても）" do
       SeasonSchedule.where(season: season).update_all(score: nil, opponent_score: nil)
 
@@ -108,6 +117,14 @@ RSpec.describe "現在日の自動化", type: :request do
     end
 
     it "結果が入った後は設定できない" do
+      post "/api/v1/teams/#{team.id}/key_player", params: { key_player_id: membership.id }, as: :json
+
+      expect(response).to have_http_status(:bad_request)
+    end
+
+    it "最終試合日に結果が入った後（今の範囲が最終試合日）も設定できない" do
+      SeasonSchedule.find_by!(season: season, date: d(4)).update!(score: 5, opponent_score: 5)
+
       post "/api/v1/teams/#{team.id}/key_player", params: { key_player_id: membership.id }, as: :json
 
       expect(response).to have_http_status(:bad_request)

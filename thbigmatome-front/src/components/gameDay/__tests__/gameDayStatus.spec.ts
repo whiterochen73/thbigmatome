@@ -417,7 +417,7 @@ describe('isInCurrentRange', () => {
     ).toBe(true)
   })
 
-  it('範囲が無い（最終試合日の後）・分からない・日付が無い時は、どの日も操作できない', () => {
+  it('範囲が無い・分からない・日付が無い時は、どの日も操作できない', () => {
     expect(isInCurrentRange('2026-05-08', null)).toBe(false)
     expect(isInCurrentRange('2026-05-08', undefined)).toBe(false)
     expect(isInCurrentRange(null, range)).toBe(false)

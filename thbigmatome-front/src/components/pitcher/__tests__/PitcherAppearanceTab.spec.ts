@@ -1180,6 +1180,30 @@ describe('PitcherAppearanceTab', () => {
       expect(dirtyEvents(wrapper)).toEqual([])
     })
 
+    // cmd_1844: 開いたまま gameDate が変わった時（試合データの取得待ちで前の日の日付が渡っていた場合）の保険
+    const savedReads = () =>
+      vi
+        .mocked(axios.get)
+        .mock.calls.filter((c) => c[0] === '/pitcher_appearances')
+        .map((c) => (c[1] as { params: { schedule_date: string } }).params.schedule_date)
+
+    it('gameDate が変わったら、未保存の入力が無ければ新しい日で読み直す', async () => {
+      const wrapper = await mountWithEvents()
+      await wrapper.setProps({ gameDate: '2026-04-12' })
+      await flushPromises()
+      expect(savedReads()).toEqual(['2026-04-11', '2026-04-12'])
+    })
+
+    it('gameDate が変わっても、未保存の入力がある間は読み直して入力を消さない', async () => {
+      const wrapper = await mountWithEvents()
+      wrapper.vm.pitcherRows[0].innings_int = 6
+      await flushPromises()
+      await wrapper.setProps({ gameDate: '2026-04-12' })
+      await flushPromises()
+      expect(savedReads()).toEqual(['2026-04-11'])
+      expect(wrapper.vm.pitcherRows[0].innings_int).toBe(6)
+    })
+
     it('行を編集すると未保存になり、元の値に戻すと未保存でなくなる', async () => {
       const wrapper = await mountWithEvents()
       wrapper.vm.pitcherRows[0].innings_int = 6

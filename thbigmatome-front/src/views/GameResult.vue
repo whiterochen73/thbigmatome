@@ -1,5 +1,12 @@
 <template>
   <v-container>
+    <!-- 別の試合日へ移った直後、その日の試合データと周辺の取得が終わるまでの読み込み表示 -->
+    <v-progress-linear
+      v-if="pageLoading"
+      indeterminate
+      color="primary"
+      data-testid="game-day-loading"
+    />
     <!-- 日程ヘッダ: 日付・種類・前後の日への移動 -->
     <v-card variant="outlined" class="mt-2 pa-3" data-testid="game-day-head">
       <div class="d-flex flex-wrap align-center ga-4">
@@ -11,7 +18,7 @@
               ref="dateTypeTrigger"
               type="button"
               class="date-type-trigger"
-              :disabled="hasUnsavedChanges || dateTypeSaving"
+              :disabled="hasUnsavedChanges || dateTypeSaving || pageLoading"
               :aria-label="t('gameDay.dateType.change')"
               :title="t('gameDay.dateType.change')"
               data-testid="date-type-trigger"
@@ -322,6 +329,7 @@
             variant="flat"
             prepend-icon="mdi-content-save-outline"
             data-testid="save-setup"
+            :disabled="pageLoading"
             @click="saveGame"
           >
             {{ t('gameDay.save') }}
@@ -407,6 +415,7 @@
             variant="flat"
             prepend-icon="mdi-content-save-outline"
             data-testid="save-result"
+            :disabled="pageLoading"
             @click="saveGame"
           >
             {{ t('gameDay.save') }}
@@ -416,8 +425,8 @@
 
       <template #body-pitchers>
         <PitcherAppearanceTab
-          v-if="gameData.team_id"
-          :key="`pitchers-${scheduleId}`"
+          v-if="gameData.team_id && gameLoaded"
+          :key="`pitchers-${scheduleId}-${gameData.game_date}`"
           ref="pitcherTabRef"
           :team-id="Number(teamId)"
           :game-date="gameData.game_date"
@@ -432,8 +441,8 @@
 
       <template #body-pitcherStatus>
         <PitcherStatusTab
-          v-if="gameData.team_id"
-          :key="`status-${scheduleId}`"
+          v-if="gameData.team_id && gameLoaded"
+          :key="`status-${scheduleId}-${gameData.game_date}`"
           :team-id="Number(teamId)"
           :schedule-date="gameData.game_date"
           :competition-id="gameData.competition_id ?? null"
@@ -825,12 +834,15 @@ const absenceSummary = computed(() => {
 
 const fetchAbsenceState = async () => {
   if (!gameData.value.season_id) return
+  const requestedId = String(scheduleId.value)
   try {
     const response = await axios.get<PlayerAbsence[]>('/player_absences', {
       params: { season_id: gameData.value.season_id },
     })
+    if (requestedId !== String(scheduleId.value)) return
     absences.value = Array.isArray(response.data) ? response.data : null
   } catch (error) {
+    if (requestedId !== String(scheduleId.value)) return
     absences.value = null
     console.error('Failed to fetch player absences:', error)
   }
@@ -1137,10 +1149,23 @@ watch(stepsMode, () => {
 // 取得
 // ─────────────────────────────────────────
 
+// gameData が「今の scheduleId の試合」を読み終えたか。別の試合日へ移った直後は、gameData が前の日のまま
+// 残るため、これが true になるまで日付を受け取る部品（登板記録・投手状態）を描かない
+// （描くと前の日の日付で読み、その画面のまま保存すると新しい日の記録を上書きしてしまう）
+const loadedScheduleId = ref<string | null>(null)
+const gameLoaded = computed(() => loadedScheduleId.value === String(scheduleId.value))
+// loadAll（試合データ＋登板数・シーズン・離脱）の読み込み中。読み込み中は表示を出し、書き込み操作を止める
+const loadingAll = ref(false)
+const pageLoading = computed(() => loadingAll.value || !gameLoaded.value)
+
 const fetchGame = async () => {
+  const requestedId = String(scheduleId.value)
   try {
-    const response = await axios.get(`/game/${scheduleId.value}`)
+    const response = await axios.get(`/game/${requestedId}`)
+    // 応答を待つ間に別の日へ移っていたら、遅れて届いた古い日の応答は捨てる
+    if (requestedId !== String(scheduleId.value)) return
     gameData.value = response.data
+    loadedScheduleId.value = requestedId
     if (gameData.value) {
       gameDate.value = new Date(gameData.value.game_date)
       takeBaseline()
@@ -1158,10 +1183,12 @@ const fetchGame = async () => {
 
 const fetchAppearanceCount = async () => {
   if (!gameData.value.team_id || !gameData.value.game_date) return
+  const requestedId = String(scheduleId.value)
   try {
     const response = await axios.get<PitcherAppearanceRecord[]>('/pitcher_appearances', {
       params: { team_id: gameData.value.team_id, schedule_date: gameData.value.game_date },
     })
+    if (requestedId !== String(scheduleId.value)) return
     const rows = Array.isArray(response?.data) ? response.data : null
     appearanceCount.value = rows ? rows.length : null
     offRosterAppearances.value = (rows ?? [])
@@ -1171,6 +1198,7 @@ const fetchAppearanceCount = async () => {
         status: a.roster_status as string,
       }))
   } catch (error) {
+    if (requestedId !== String(scheduleId.value)) return
     appearanceCount.value = null
     offRosterAppearances.value = []
     console.error('Failed to fetch pitcher appearances:', error)
@@ -1178,8 +1206,10 @@ const fetchAppearanceCount = async () => {
 }
 
 const fetchSeasonInfo = async () => {
+  const requestedId = String(scheduleId.value)
   try {
     const response = await axios.get(`/teams/${teamId.value}/season`)
+    if (requestedId !== String(scheduleId.value)) return
     seasonCurrentDate.value = response?.data?.current_date ?? null
     currentRange.value = response?.data?.current_range ?? null
     gameDateTypes.value = response?.data?.game_date_types ?? []
@@ -1189,6 +1219,7 @@ const fetchSeasonInfo = async () => {
     currentDateType.value =
       seasonSchedules.value.find((s) => String(s.id) === String(scheduleId.value))?.date_type ?? ''
   } catch (error) {
+    if (requestedId !== String(scheduleId.value)) return
     seasonCurrentDate.value = null
     currentRange.value = undefined
     seasonSchedules.value = []
@@ -1197,7 +1228,8 @@ const fetchSeasonInfo = async () => {
     // 画面を開き直す時の初期化は loadAll が行う
     console.error('Failed to fetch season info:', error)
   } finally {
-    currentRangeLoaded.value = true
+    // 別の日へ移っていたら、新しい日の loadAll が立て直すので触らない
+    if (requestedId === String(scheduleId.value)) currentRangeLoaded.value = true
   }
 }
 
@@ -1211,6 +1243,17 @@ const fetchAllTeams = async () => {
 }
 
 const loadAll = async () => {
+  const loadingId = String(scheduleId.value)
+  loadingAll.value = true
+  try {
+    await loadAllInner()
+  } finally {
+    // 速く連続で移った時は、最後の日の読み込みが終わるまで表示を続ける
+    if (loadingId === String(scheduleId.value)) loadingAll.value = false
+  }
+}
+
+const loadAllInner = async () => {
   currentRangeLoaded.value = false
   currentDateType.value = ''
   appearanceCount.value = null
@@ -1340,6 +1383,10 @@ const onDateTypeConfirm = async (nextType: string) => {
 const updateDateType = async (nextType: string) => {
   const previous = currentDateType.value
   if (!previous || nextType === previous || hasUnsavedChanges.value || dateTypeSaving.value) return
+  if (pageLoading.value) return
+  // 変更を始めた時点の日。確認中・送信中に別の日へ移っても、この日の種類を変える
+  const targetTeamId = teamId.value
+  const targetScheduleId = String(scheduleId.value)
   if (!SCHEDULE_DATE_TYPES.some((type) => type === nextType)) return
   if (
     isGameType(previous, gameDateTypes.value) &&
@@ -1351,15 +1398,18 @@ const updateDateType = async (nextType: string) => {
       t('gameDay.dateType.confirmMessage'),
     )
     if (!accepted) return
+    if (targetScheduleId !== String(scheduleId.value)) return
   }
   dateTypeSaving.value = true
   try {
-    await axios.patch(`/teams/${teamId.value}/season/season_schedules/${scheduleId.value}`, {
+    await axios.patch(`/teams/${targetTeamId}/season/season_schedules/${targetScheduleId}`, {
       season_schedule: { date_type: nextType },
     })
-    currentDateType.value = nextType
-    const schedule = seasonSchedules.value.find((s) => String(s.id) === String(scheduleId.value))
+    const schedule = seasonSchedules.value.find((s) => String(s.id) === targetScheduleId)
     if (schedule) schedule.date_type = nextType
+    // 送信中に別の日へ移っていたら、表示中の日の種類・段は触らない（送った日の種類だけ更新済み）
+    if (targetScheduleId !== String(scheduleId.value)) return
+    currentDateType.value = nextType
     if (!isGameDay.value) {
       activeStep.value = 'members'
       openSections.members = true
@@ -1368,7 +1418,7 @@ const updateDateType = async (nextType: string) => {
     await fetchSeasonInfo()
   } catch (error) {
     console.error('Failed to update schedule:', error)
-    currentDateType.value = previous
+    if (targetScheduleId === String(scheduleId.value)) currentDateType.value = previous
     showSnackbar(t('gameDay.dateType.saveFailed'), 'error')
   } finally {
     dateTypeSaving.value = false
@@ -1376,6 +1426,9 @@ const updateDateType = async (nextType: string) => {
 }
 
 const saveGame = async () => {
+  // 今の日の試合データを読み終えるまでは保存しない（前の日の内容を新しい日の /game/:id へ送ってしまう）
+  if (pageLoading.value) return
+  const savingScheduleId = String(scheduleId.value)
   // 上限を超えたログはサーバが 422 で弾き、ほかの項目も保存されない。送る前に画面で知らせて止める
   if (gameLogTooLarge.value) {
     showSnackbar(gameLogTooLargeMessage.value, 'error', 8000)
@@ -1384,7 +1437,12 @@ const saveGame = async () => {
   try {
     const previousStarter = savedFields.value.announcedStarterId
     const previousStarterName = savedHeadNames.value.starterName
-    const response = await axios.put(`/game/${scheduleId.value}`, gameData.value)
+    const response = await axios.put(`/game/${savingScheduleId}`, gameData.value)
+    // 保存中に別の日へ移っていたら、新しい日の画面の基準・名前・範囲を触らない
+    if (savingScheduleId !== String(scheduleId.value)) {
+      showSnackbar(t('gameResult.saveSuccess'))
+      return
+    }
     takeBaseline()
     // 保存した相手・予告先発の名前は、サーバの応答から取る。応答に無い時（古いサーバ）は、相手はチーム一覧から引き、
     // 予告先発は選び直していなければ前の名前を残し、選び直していれば名前が分からないので出さない

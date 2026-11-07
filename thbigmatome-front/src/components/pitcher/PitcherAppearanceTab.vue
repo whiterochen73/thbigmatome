@@ -949,6 +949,17 @@ onMounted(() => {
   fetchFatigueSummary()
 })
 
+// 開いている間に試合日が変わったら、新しい日で読み直す（前の日の行を残したまま新しい日で保存しない）。
+// 未保存の入力がある時は読み直さない（入力は親の未保存ガードが守る）
+watch(
+  () => props.gameDate,
+  () => {
+    if (isDirty.value) return
+    fetchPitchersAndStates()
+    fetchFatigueSummary()
+  },
+)
+
 defineExpose({ refreshSavedResultCategories })
 </script>
 

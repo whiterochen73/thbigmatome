@@ -212,6 +212,8 @@
         <div class="mt-2">
           <GameDayRangeNote :message="registrationNote" :to="membersRoute" />
           <TeamMembers
+            v-if="gameLoaded"
+            :key="`members-${scheduleId}-${gameData.game_date}`"
             :team-id="Number(teamId)"
             game-day-actions
             :as-of-date="gameDateKey"
@@ -224,6 +226,8 @@
         <div class="mt-2">
           <GameDayRangeNote :message="registrationNote" :to="rosterRoute" />
           <SeasonRosterTab
+            v-if="gameLoaded"
+            :key="`roster-${scheduleId}-${gameData.game_date}`"
             :team-id="Number(teamId)"
             game-day-actions
             :as-of-date="gameDateKey"
@@ -236,7 +240,8 @@
         <div class="mt-2">
           <GameDayRangeNote :message="registrationNote" :to="absencesRoute" />
           <SeasonAbsenceTab
-            :key="`absences-${embedKey.absences}`"
+            v-if="gameLoaded"
+            :key="`absences-${scheduleId}-${gameData.game_date}-${embedKey.absences}`"
             :team-id="Number(teamId)"
             game-day-actions
             :as-of-date="gameDateKey"

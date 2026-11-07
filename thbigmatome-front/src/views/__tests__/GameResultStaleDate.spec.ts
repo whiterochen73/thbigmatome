@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { mount, flushPromises } from '@vue/test-utils'
 import { createVuetify } from 'vuetify'
 import * as components from 'vuetify/components'
@@ -39,9 +39,26 @@ vi.mock('vue-router', () => ({
   onBeforeRouteLeave: vi.fn(),
   onBeforeRouteUpdate: vi.fn(),
 }))
-vi.mock('@/views/TeamMembers.vue', () => ({ default: { render: () => null } }))
-vi.mock('@/components/season/SeasonRosterTab.vue', () => ({ default: { render: () => null } }))
-vi.mock('@/components/season/SeasonAbsenceTab.vue', () => ({ default: { render: () => null } }))
+// 埋め込む 3 画面は、描かれた時に受け取った asOfDate を記録する差し替え
+const { embedAsOf, embedStub } = vi.hoisted(() => {
+  const embedAsOf: string[] = []
+  const embedStub = async () => {
+    const { defineComponent } = await import('vue')
+    return {
+      default: defineComponent({
+        props: { asOfDate: { type: String, default: undefined } },
+        setup(props) {
+          embedAsOf.push(String(props.asOfDate))
+          return () => null
+        },
+      }),
+    }
+  }
+  return { embedAsOf, embedStub }
+})
+vi.mock('@/views/TeamMembers.vue', embedStub)
+vi.mock('@/components/season/SeasonRosterTab.vue', embedStub)
+vi.mock('@/components/season/SeasonAbsenceTab.vue', embedStub)
 vi.mock('@/stores/teamSelection', () => ({
   useTeamSelectionStore: () => ({ selectTeam: vi.fn() }),
 }))
@@ -76,10 +93,21 @@ const seasonResponse = {
   ],
 }
 
+const mounted: Array<{ unmount: () => void }> = []
+const track = <T extends { unmount: () => void }>(w: T) => {
+  mounted.push(w)
+  return w
+}
+
 describe('GameResult 別の試合日へ移った直後の登板タブ', () => {
+  // 失敗したテストが mount したまま残ると、route の変更に反応して次のテストの取得を横取りする（順序依存の原因）
+  afterEach(() => {
+    while (mounted.length) mounted.pop()!.unmount()
+  })
   let resolveGame99: (v: unknown) => void
   beforeEach(() => {
     vi.clearAllMocks()
+    embedAsOf.length = 0
     route.params.scheduleId = '100'
     mockGet.mockImplementation((url: string, opts?: { params?: Record<string, string> }) => {
       if (url === '/game/100') return Promise.resolve({ data: game('2016-05-18', 5) })
@@ -121,10 +149,12 @@ describe('GameResult 別の試合日へ移った直後の登板タブ', () => {
   })
 
   it('新しい日の試合データが届くまで、前の日の日付で登板記録を読まない・描かない', async () => {
-    const wrapper = mount(GameResult, {
-      global: { plugins: [vuetify, i18n], stubs: { RouterLink: true } },
-      attachTo: document.body,
-    })
+    const wrapper = track(
+      mount(GameResult, {
+        global: { plugins: [vuetify, i18n], stubs: { RouterLink: true } },
+        attachTo: document.body,
+      }),
+    )
     await flushPromises()
     // 登板記録・投手状態の段を開いて、タブを描かせる
     wrapper.vm.pickStep('pitcherStatus')
@@ -172,10 +202,12 @@ describe('GameResult 別の試合日へ移った直後の登板タブ', () => {
   })
 
   async function mountOn100() {
-    const wrapper = mount(GameResult, {
-      global: { plugins: [vuetify, i18n], stubs: { RouterLink: true } },
-      attachTo: document.body,
-    })
+    const wrapper = track(
+      mount(GameResult, {
+        global: { plugins: [vuetify, i18n], stubs: { RouterLink: true } },
+        attachTo: document.body,
+      }),
+    )
     await flushPromises()
     return wrapper
   }
@@ -253,5 +285,24 @@ describe('GameResult 別の試合日へ移った直後の登板タブ', () => {
     expect(wrapper.find('[data-testid="game-day-loading"]').exists()).toBe(false)
     expect(wrapper.vm.pageLoading).toBe(false)
     wrapper.unmount()
+  })
+
+  it('別の日へ移った直後、登録・離脱の 3 画面は前の日の日付で描かれず、新しい日の日付で作り直される', async () => {
+    const wrapper = await mountOn100()
+    // 3 画面を描かせる
+    wrapper.vm.pickStep('members')
+    wrapper.vm.pickStep('roster')
+    wrapper.vm.pickStep('absences')
+    await flushPromises()
+    expect(embedAsOf.length).toBeGreaterThan(0)
+    expect(new Set(embedAsOf)).toEqual(new Set(['2016-05-18']))
+    embedAsOf.length = 0
+    route.params.scheduleId = '99'
+    await flushPromises()
+    expect(embedAsOf).toEqual([])
+    resolveGame99({ data: game('2016-05-17', 0) })
+    await flushPromises()
+    expect(embedAsOf.length).toBeGreaterThan(0)
+    expect(new Set(embedAsOf)).toEqual(new Set(['2016-05-17']))
   })
 })

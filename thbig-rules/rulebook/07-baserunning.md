@@ -69,6 +69,8 @@
 
 ### 7.2.4 表2: 内野前進守備
 
+> 外野前進（内外野前進を含む）のときも、積極走塁の判定にはこの表を使う。外野前進の利点は走塁表が厳しくなることで、使わなければルールに意味が無くなるため。裁定: `context/thbig-bench-rule-adjudications.md`（multi-agent-shogun リポジトリ）AMB-31 節（Operator 裁定 2026-11-09）
+
 **無死・1死時**
 
 | 走力\T値 | S | A | B | C |
@@ -450,7 +452,7 @@ F8a（センターフライ）からの2塁走者→3塁進塁、またはF9a（
 
 > 出典: `../sources/procedures.md` §8.4。裁定: `context/thbig-bench-rule-adjudications.md`（multi-agent-shogun リポジトリ）D-09 節（Operator 裁定 2026-09-12）
 
-> 走塁表（積極走塁）判定において外野前進守備は「前進守備用走塁表（閾値が厳しい）」を参照する（→7.2.4）。
+> 走塁表（積極走塁）判定において外野前進守備は「前進守備用走塁表（閾値が厳しい）」を参照する（→7.2.4）。外野前進にもこの表（表2）を使うことは AMB-31 で確定した（裁定: `context/thbig-bench-rule-adjudications.md`（multi-agent-shogun リポジトリ）AMB-31 節、Operator 裁定 2026-11-09）。
 
 ---
 

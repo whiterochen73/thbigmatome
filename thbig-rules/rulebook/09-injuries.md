@@ -192,6 +192,8 @@ INJURY_PROTOCOL:
 > 詳細・裁定根拠: `context/thbig-bench-rule-adjudications.md`（multi-agent-shogun リポジトリ）AMB-09 節
 > （Operator裁定 2026-09-12）
 
+> STEP 2 の＊（けが判定発生時）と日数（特徴確認時）は、1 本の並びを進める 2 つのきっかけと読む。並びは特徴確認と、試合中の怪我チェック全般の両方で 1 つ進む。詳細は 11 §11.3 の注記。裁定 AMB-35 Q7（2026-11-12 Operator）。
+
 ---
 
 ## 9.3 試合前負傷チェック

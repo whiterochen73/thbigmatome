@@ -108,6 +108,31 @@ RSpec.describe "import:card_data" do
       expect(pc.irc_macro_name).to eq("reimu")
     end
 
+    it "疲労P「1C」のクローザー（八雲 紫）が is_closer=true で取り込まれ、疲労値は 1 のまま" do
+      yukari_row = [
+        "142", "", "", "18", "投手", "八雲 紫", "2025THBIG", "ok",
+        "right", "right", "true", "pitcher", "1", "1", "1", "1",
+        "4", "false", "", "1", "", "", "true",
+        "", "", "", "", "[]", "[]", "18", "yukari", "yukari_irc"
+      ]
+      write_csv("player_cards.csv", [ player_cards_headers, reimu_row, marisa_row, yukari_row ])
+      Rake::Task["import:card_data"].invoke
+      yukari = PlayerCard.joins(:player).find_by!(players: { name: "八雲 紫" })
+      expect(yukari.is_closer).to be(true)
+      expect(yukari.is_relief_only).to be(false)
+      expect(yukari.relief_stamina).to eq(1)
+      reimu = PlayerCard.joins(:player).find_by!(players: { name: "博麗 霊夢" })
+      expect(reimu.is_closer).to be(false)
+    end
+
+    it "同梱の player_cards.csv では C 付き 4 枚（紫 142・382、隠岐奈 65・336）だけが is_closer=true" do
+      rows = CSV.read(Rails.root.join("db/import/player_cards.csv"), headers: true)
+      closers = rows.select { |r| r["is_closer"] == "true" }
+      expect(closers.map { |r| r["card_seq"].to_i }.sort).to eq([ 65, 142, 336, 382 ])
+      expect(closers.map { |r| r["name"] }.uniq).to match_array([ "摩多羅 隠岐奈", "八雲 紫" ])
+      expect(closers.map { |r| r["relief_stamina"] }.uniq).to eq([ "1" ])
+    end
+
     it "PlayerCardDefenseが紐付け先のPlayerCardに作成される" do
       Rake::Task["import:card_data"].invoke
       pc = PlayerCard.joins(:player).find_by!(players: { name: "博麗 霊夢" })

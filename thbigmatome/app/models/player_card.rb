@@ -24,7 +24,8 @@ class PlayerCard < ApplicationRecord
 
   validates :card_set_id, :player_id, presence: true
   validates :card_type, presence: true, inclusion: { in: %w[pitcher batter] }
-  validates :card_set_id, uniqueness: { scope: [ :player_id, :card_type ] }
+  # DB の一意 index（card_set_id, player_id, card_type, COALESCE(variant, '')）と同じ鍵。variant 違いの同名カードを作れるようにする
+  validates :card_set_id, uniqueness: { scope: [ :player_id, :card_type, :variant ] }
 
   # 投手として使用可能か（能力判定）
   # 判定条件: card_type='pitcher' OR is_pitcher=true OR player_card_defensesに投手(P)ポジションがある

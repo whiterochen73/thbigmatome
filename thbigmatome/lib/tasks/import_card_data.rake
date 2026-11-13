@@ -141,10 +141,20 @@ namespace :import do
       pc = player_card_map[row["card_seq"]]
       next unless pc
 
+      # 条件付きの守備（登板時の捕手など）は condition_name で持つ。語彙に無い名前は黙って通常の行にせず飛ばす
+      condition = nil
+      if row["condition_name"].present?
+        condition = TraitCondition.find_by(name: row["condition_name"])
+        unless condition
+          puts "  WARN: card_seq=#{row['card_seq']} defense condition '#{row['condition_name']}' not found — skipped"
+          next
+        end
+      end
+
       PlayerCardDefense.find_or_create_by!(
         player_card_id: pc.id,
         position:       row["position"],
-        condition_id:   nil
+        condition_id:   condition&.id
       ) do |d|
         d.range_value = row["range_value"].to_i
         d.error_rank  = row["error_rank"]
@@ -200,6 +210,30 @@ namespace :import do
       )
     end
     puts "  PlayerCardExclusiveCatcher.count = #{PlayerCardExclusiveCatcher.count}"
+
+    puts "=== Step 5: player_card_abilities.csv ==="
+    CSV.foreach("#{data_dir}/player_card_abilities.csv", headers: true) do |row|
+      pc = player_card_map[row["card_seq"]]
+      next unless pc
+
+      ability_def = AbilityDefinition.find_by(name: row["ability_definition_name"])
+      unless ability_def
+        puts "  WARN: card_seq=#{row['card_seq']} ability '#{row['ability_definition_name']}' not found in ability_definitions — skipped (seed master_traits first)"
+        next
+      end
+
+      condition = TraitCondition.find_by(name: row["condition_name"].presence)
+
+      PlayerCardAbility.find_or_create_by!(
+        player_card_id:        pc.id,
+        ability_definition_id: ability_def.id,
+        condition_id:          condition&.id,
+        role:                  row["role"].presence
+      ) do |a|
+        a.sort_order = row["sort_order"].to_i
+      end
+    end
+    puts "  PlayerCardAbility.count = #{PlayerCardAbility.count}"
 
     puts "=== Done ==="
     puts "CardSet.count              = #{CardSet.count}"

@@ -244,6 +244,30 @@ RSpec.describe "import:card_data" do
     end
   end
 
+  describe "irc_macro_name の重複防止（既存 DB の行との照合）" do
+    def row_with(seq, name, macro)
+      reimu_row.dup.tap { |r| r[0] = seq; r[3] = macro; r[5] = name; r[30] = macro }
+    end
+
+    it "CSV の中で macro が一意なら、DB に既にある同じ macro の別名カードは本当の重複として取り込まない" do
+      write_csv("player_cards.csv", [ player_cards_headers, row_with("1", "博麗 霊夢", "reimu") ])
+      Rake::Task["import:card_data"].invoke
+      expect(PlayerCard.count).to eq(1)
+
+      write_csv("player_cards.csv", [ player_cards_headers, row_with("2", "霊夢(表記ゆれ)", "reimu") ])
+      Rake::Task["import:card_data"].reenable
+      Rake::Task["import:card_data"].invoke
+      expect(PlayerCard.count).to eq(1)
+      expect(PlayerCard.first.player.name).to eq("博麗 霊夢")
+    end
+
+    it "CSV の中で macro が複数枚に共通する組（PM2026 の背番号共有）は別カードとして両方取り込む" do
+      write_csv("player_cards.csv", [ player_cards_headers, row_with("1", "博麗 霊夢", "9"), row_with("2", "霧雨 魔理沙", "9") ])
+      Rake::Task["import:card_data"].invoke
+      expect(PlayerCard.count).to eq(2)
+    end
+  end
+
   describe "CARD_DATA_DIR環境変数" do
     it "CARD_DATA_DIR引数でCSVディレクトリを指定できる" do
       Rake::Task["import:card_data"].invoke

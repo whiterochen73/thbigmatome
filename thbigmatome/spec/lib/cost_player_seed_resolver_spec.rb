@@ -51,6 +51,16 @@ RSpec.describe CostPlayerSeedResolver do
       expect(by_name.player_card).to eq(pm2026_card)
     end
 
+    it "card_source に対応するカードセットの名前は config/card_set_definitions.yml（CardSet::IMPORT_DEFINITIONS）から引く" do
+      # 定義側の name だけを替えると、card_seq の当て先もその名前のセットへ動く（resolver が別の対応表を持たない）
+      renamed = create(:card_set, name: "PM2027改名", set_type: "pm2027_renamed")
+      renamed_card = create(:player_card, player: player, card_set: renamed, card_type: "pitcher", variant: "エイプリル")
+      defs = CardSet::IMPORT_DEFINITIONS.merge("PM2027" => CardSet::IMPORT_DEFINITIONS.fetch("PM2027").merge(name: "PM2027改名")).freeze
+      stub_const("CardSet::IMPORT_DEFINITIONS", defs)
+
+      expect(described_class.resolve("読む人のための表記", card_seq: "479").player_card).to eq(renamed_card)
+    end
+
     it "取り込んでいないカード・CSV に無い card_seq は選手なし（読み飛ばし）になる" do
       pm2027_card.destroy!
       expect(described_class.resolve("魅魔", card_seq: "479").player).to be_nil

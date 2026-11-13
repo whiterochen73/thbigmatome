@@ -32,5 +32,9 @@ module Thbigmatome
     # Middleware like session, flash, cookies can be added back manually.
     # Skip views, helpers and assets when generating a new resource.
     config.api_only = true
+
+    # 既定ロケールは en のまま（Rails 標準のバリデーション文は英語）。ja.yml にだけある文言（登録の 422・チームの上限・マスタの変更不可など）は、
+    # en で引いて見つからない時に ja へ落とす。default_locale を ja にすると、rails-i18n が無いため標準の文言が Translation missing になる。
+    config.i18n.fallbacks = { en: [ :ja ] }
   end
 end

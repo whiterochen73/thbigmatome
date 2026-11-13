@@ -158,9 +158,9 @@ RSpec.describe "import:card_data（固有特徴の取り込み・実データ）
       ])
     end
 
-    it "「けが(するごと)」の 17 / 25 / 146 は days=null のまま（通常のけが判定。画像と一致しているので触らない）" do
+    it "「けが(するごと)」の 17 / 25 / 146 は days=null のまま（通常のけが判定）で、repeating=true（cmd_1888: 128 と同じ持ち方）" do
       [ 17, 25, 146 ].each do |seq|
-        expect(injury(seq)).to eq([ { "type" => "standard", "days" => nil, "exemptions" => 0, "repeating" => false } ])
+        expect(injury(seq)).to eq([ { "type" => "standard", "days" => nil, "exemptions" => 0, "repeating" => true } ])
       end
     end
   end

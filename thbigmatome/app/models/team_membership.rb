@@ -8,11 +8,35 @@ class TeamMembership < ApplicationRecord
   has_many :player_absences, dependent: :restrict_with_error
 
   attr_accessor :skip_commissioner_validation
+  # 同キャラの検査を呼び出し側（TeamMembershipWriter）が保存後の姿で済ませている時に立てる。同じ保存で放出する同キャラは DB の在籍に残っているため、
+  # 行ごとの検査だと入れ替えを誤って拒む。カードの検査（player_card_registrable）は常に効く
+  attr_accessor :skip_character_validation
 
   validates :squad, inclusion: { in: %w[first second] }
   validates :selected_cost_type, presence: true, inclusion: { in: %w[normal_cost relief_only_cost pitcher_only_cost fielder_only_cost two_way_cost] }
 
   validate :player_not_in_director_sibling_team, on: :create, unless: :skip_commissioner_validation
+  # 登録の制限（cmd_1893/subtask_1893e）。コミッショナーにも適用する（skip_commissioner_validation の対象外。裁定に例外が無い）
+  validate :player_card_registrable, if: -> { new_record? || will_save_change_to_player_card_id? }
+  validate :character_not_duplicated_in_team, on: :create, unless: :skip_character_validation
+
+  # 登録で選べないカードの理由（選べるなら nil）。カードの無い登録（nil）は受ける。
+  # 既存の所属が持つ現行外のカードは、カードを替えない限り検査しない（呼び出し側が「新規・カード変更」の時だけ呼ぶ）
+  def self.card_registration_error(card)
+    return nil if card.nil?
+    return I18n.t("activerecord.errors.models.team_membership.player_card_official_use_prohibited") if card.official_use_prohibited
+    return I18n.t("activerecord.errors.models.team_membership.player_card_not_current", card_set_name: card.card_set&.name) unless card.card_set&.is_current
+
+    nil
+  end
+
+  # 同じキャラクター（Player#character_key）の選手を、同じチームの在籍中の所属から探す（player_id が違うものだけ）
+  def self.same_character_member(team_id, player)
+    return nil if player&.character_key.blank?
+
+    active.where(team_id: team_id).where.not(player_id: player.id)
+          .joins(:player).find_by(players: { character_key: player.character_key })
+  end
 
   # 在籍中（放出されていない）。on_team は変更記録の最新の状態の写し（RosterState#rebuild_cache!）
   scope :active, -> { where(on_team: true) }
@@ -90,6 +114,23 @@ class TeamMembership < ApplicationRecord
   end
 
   private
+
+  def player_card_registrable
+    return if player_card_id.blank?
+
+    message = self.class.card_registration_error(player_card)
+    errors.add(:player_card_id, message) if message
+  end
+
+  def character_not_duplicated_in_team
+    return unless team_id && player
+
+    other = self.class.same_character_member(team_id, player)
+    return unless other
+
+    errors.add(:player_id, I18n.t("activerecord.errors.models.team_membership.same_character_in_team",
+                                  player_name: player.name, other_name: other.player.name))
+  end
 
   # [投手に数える, 野手に数える]（pitcher_role? の規則）
   def balance_roles

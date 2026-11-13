@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_11_13_120000) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_14_100100) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -135,6 +135,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_13_120000) do
 
   create_table "card_sets", force: :cascade do |t|
     t.datetime "created_at", null: false
+    t.boolean "is_current", default: true, null: false
     t.boolean "is_outside_world", default: false, null: false
     t.string "name", null: false
     t.string "series"
@@ -510,12 +511,14 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_13_120000) do
   end
 
   create_table "players", force: :cascade do |t|
+    t.string "character_key"
     t.datetime "created_at", null: false
     t.string "name", null: false
     t.string "number", null: false
     t.string "series"
     t.string "short_name"
     t.datetime "updated_at", null: false
+    t.index [ "character_key" ], name: "index_players_on_character_key"
   end
 
   create_table "schedule_details", force: :cascade do |t|

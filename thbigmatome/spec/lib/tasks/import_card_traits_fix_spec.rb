@@ -44,12 +44,20 @@ RSpec.describe "import:card_data（固有特徴の取り込み・実データ）
   end
 
   # import 済みの DB から card_seq のカードを引く（名前の空白差は import と同じ正規化）
+  # 取込は variant 列と base_player_name で変種を基の Player に付け替える（rake・seeds とも。cmd_1893/subtask_1893e）。基の Player に付いた変種、
+  # 付け替えのない行（base_player_name が空）は印字の名前の Player に付く
   def db_card(seq)
     row = card_row(seq)
-    player = Player.find_by("REPLACE(REPLACE(name, ' ', ''), '　', '') = ?", row["name"].gsub(/[\s　]+/, ""))
-    PlayerCard.find_by(player_id: player&.id,
-                       card_set_id: CardSet.find_by(name: set_names[row["card_source"]])&.id,
-                       card_type: row["card_type"])
+    squash = ->(n) { n.gsub(/[\s　]+/, "") }
+    [ [ row["base_player_name"].presence || row["name"], row["variant"].presence ], [ row["name"], row["variant"].presence ] ].uniq.each do |n, v|
+      player = Player.find_by("REPLACE(REPLACE(name, ' ', ''), '　', '') = ?", squash.(n))
+      next unless player
+
+      card = PlayerCard.find_by(player_id: player.id, card_set_id: CardSet.find_by(name: set_names[row["card_source"]])&.id,
+                                card_type: row["card_type"], variant: v)
+      return card if card
+    end
+    nil
   end
 
   # [特徴名, 条件名, role] を sort_order 順に返す

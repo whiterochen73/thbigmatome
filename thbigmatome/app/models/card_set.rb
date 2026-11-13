@@ -15,7 +15,14 @@ class CardSet < ApplicationRecord
     SERIES_BY_SET_TYPE[set_type] || (ORIGINAL_SERIES if PM_SET_TYPE_PATTERN.match?(set_type.to_s))
   end
 
+  # 取り込みの対応表（card_source => { name:, year:, set_type:, series:, current: }）。rake と seeds の両方がここを読む
+  IMPORT_DEFINITIONS = YAML.load_file(Rails.root.join("config/card_set_definitions.yml"))
+                           .to_h { |source, defn| [ source, defn.symbolize_keys.freeze ] }.freeze
+
   has_many :player_cards, dependent: :destroy
+
+  # 現行カードセット（選手の登録画面で選べるカードのセット）。印は取り込みの対応表で持つ
+  scope :current, -> { where(is_current: true) }
 
   before_validation { self.series = self.class.series_for(set_type) if series.blank? }
 

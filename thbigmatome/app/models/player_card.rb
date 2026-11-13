@@ -22,6 +22,9 @@ class PlayerCard < ApplicationRecord
   accepts_nested_attributes_for :player_card_abilities, allow_destroy: true
   has_many :exclusive_catchers, through: :player_card_exclusive_catchers, source: :catcher_player
 
+  # 登録画面で選べるカード: 現行カードセットで、公式戦で使えるもの（Operator 裁定 2026-11-14）。既存の所属が持つ現行外のカードはこの絞りの対象外（消さない）
+  scope :registrable, -> { joins(:card_set).merge(CardSet.current).where(official_use_prohibited: false) }
+
   validates :card_set_id, :player_id, presence: true
   validates :card_type, presence: true, inclusion: { in: %w[pitcher batter] }
   # DB の一意 index（card_set_id, player_id, card_type, COALESCE(variant, '')）と同じ鍵。variant 違いの同名カードを作れるようにする
@@ -128,5 +131,9 @@ class PlayerCard < ApplicationRecord
 
   def cost_value(cost_list)
     player.cost_value_for_card(self, cost_list)
+  end
+
+  def registrable?
+    !official_use_prohibited && card_set&.is_current == true
   end
 end

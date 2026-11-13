@@ -2,6 +2,23 @@ class Player < ApplicationRecord
   HACHINAI61_SET_TYPE = "hachinai61".freeze
   NAME_SUFFIX_PATTERN = /[[:space:]　]*[（(][^()（）]+[）)]\z/.freeze
 
+  CHARACTER_SUFFIX_PATTERN = /[（(]([^()（）]+)[）)]\z/.freeze
+  DIGITS_ONLY_PATTERN = /\A[0-9０-９]+\z/.freeze
+
+  # 同じキャラクターを束ねる鍵。空白を除いた名前から、末尾の丸括弧の添え字（エイプリル・投手・野手・WBC2 など）を除く。
+  # 数字だけの添え字（Aal (2)・mori (3)）は別人のカードなので除かない（Operator 裁定 2026-11-14）。
+  # 取り込みで基の選手に付け替えられる変種（八雲 紫 (エイプリル) など）は同じ Player になるので、この鍵が効くのは別の Player として残った同キャラ
+  # （冴月 麟 (投手)／(野手)、西行寺 幽々子(楼閣)、八雲 藍 (WBC2)、川崎 稜 (1年)）。
+  def self.character_key_for(name)
+    squeezed = name.to_s.gsub(/[[:space:]　]+/, "")
+    suffix = CHARACTER_SUFFIX_PATTERN.match(squeezed)
+    return squeezed if suffix.nil? || DIGITS_ONLY_PATTERN.match?(suffix[1])
+
+    squeezed[0...suffix.begin(0)]
+  end
+
+  before_validation :assign_character_key, if: -> { character_key.blank? || will_save_change_to_name? }
+
   validates :name, presence: true
 
   has_many :team_memberships, dependent: :destroy
@@ -17,6 +34,18 @@ class Player < ApplicationRecord
 
   # 魔理沙/千亦/天子/飯綱丸: 東方選手で投手・野手両専念コスト対象
   SPECIAL_PITCHER_FIELDER_PLAYER_IDS = [ 3, 20, 29, 33 ].freeze
+
+  # 選手のカードを 1 枚だけ見せる場所（一覧の利き手・ポジション）の既定のカード。現行セットのカードを先に、同じなら id の若い方
+  # （両方のセットのカードを持つ選手は現行セットのほうを見せる。Operator 裁定 2026-11-14）。カードの無い選手は nil
+  def default_card
+    cards_current_first.first
+  end
+
+  # 現行セットのカードを先に、同じなら id 順に並べたカード
+  def cards_current_first
+    loaded = player_cards.loaded? ? player_cards.to_a : player_cards.includes(:card_set).to_a
+    loaded.sort_by { |card| [ card.card_set&.is_current ? 0 : 1, card.id ] }
+  end
 
   def available_cost_types
     types = []
@@ -129,6 +158,10 @@ class Player < ApplicationRecord
   end
 
   private
+
+  def assign_character_key
+    self.character_key = self.class.character_key_for(name)
+  end
 
   # 二刀流の条件（Player 単位）。ハチナイ二刀流とは別に、次のどちらか。
   #   1. PM（オリジナル）以外のカードの中で、投手カードと野手カードの組が成り立つ（年度版・ハチナイ・球詠の従来の規則）

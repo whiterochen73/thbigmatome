@@ -43,6 +43,9 @@ ja:
               cannot_manage_multiple_teams_in_same_league: "は同一リーグ内の複数のチームに兼任することはできません"
         team_membership:
           player_in_sibling_team: "%{player_name}は既に%{team_name}に所属しています"
+          player_card_not_current: "%{card_set_name}は現行のカードセットではないため、このカードは選べません"
+          player_card_official_use_prohibited: "公式戦で使用できないカードは選べません"
+          same_character_in_team: "%{player_name}は同じキャラクターの%{other_name}が既に所属しています"
         biorhythm:
           attributes:
             end_date:

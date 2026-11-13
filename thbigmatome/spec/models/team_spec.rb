@@ -273,6 +273,15 @@ RSpec.describe Team, type: :model do
         expect(normal_team.outside_world_first_squad_memberships.size).to eq(1)
       end
 
+      it "PM2027 のカード（set_type pm2027）を選べば外の世界枠になる（series で見るので set_type の追加が要らない）" do
+        player = create(:player, series: "touhou")
+        pm2027 = create(:card_set, year: 2027, set_type: "pm2027", name: "PM2027")
+        pc = create(:player_card, player: player, card_set: pm2027, card_type: "batter")
+        create(:team_membership, team: normal_team, player: player, player_card: pc, squad: "first")
+        expect(pm2027.series).to eq("original")
+        expect(normal_team.outside_world_first_squad_memberships.size).to eq(1)
+      end
+
       it "player_card未設定の場合はplayer.seriesにフォールバックする" do
         player = create(:player, series: "touhou")
         create(:team_membership, team: normal_team, player: player, squad: "first")

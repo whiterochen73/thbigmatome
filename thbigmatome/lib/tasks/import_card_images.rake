@@ -14,6 +14,7 @@ namespace :import do
       "2025THBIG"   => "2025THBIG",
       "hachinai6.1" => "ハチナイ6.1",
       "PM2026"      => "PM2026",
+      "PM2027"      => "PM2027",
       "tamayomi2"   => "球詠2"
     }.freeze
 

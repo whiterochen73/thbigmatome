@@ -37,6 +37,12 @@ class PlayerCard < ApplicationRecord
       player_card_defenses.any? { |d| d.position&.upcase == "P" }
   end
 
+  # 1 枚で二刀流のカード: 野手カードに投球表がある（P 守備を持つ）。取込 CSV では「天弓 千亦 (草津)」（PM2026 の 375・PM2027 の 519）と「とり」
+  # （324・477）の 4 枚だけ（2026-11-14 実測）。PM のカードの二刀流はこれだけで決まる（Player#pitcher_fielder_pair?）
+  def two_way_card?
+    card_type == "batter" && !is_pitcher && player_card_defenses.any? { |d| d.position&.upcase == "P" }
+  end
+
   # カードの主な位置（画面の primary_position と同じ定義）。守備位置の 1 つ目（id 順）。外の世界枠の投手・野手の数え方（AMB-29 改訂）で使う。
   # 取込 CSV の position（投手/内野手/外野手/捕手）と、投手（P）かどうかが一致することを開発 DB の全カードで確認済み（cmd_1808）。守備が 1 つも無いカードは nil
   def primary_position

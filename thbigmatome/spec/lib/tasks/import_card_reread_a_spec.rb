@@ -34,7 +34,8 @@ RSpec.describe "import:card_data（読み直し照合 A1〜A7・実データ）"
     DatabaseCleaner.clean_with(:truncation)
   end
 
-  def csv_rows(file) = CSV.read(File.join(data_dir, file), headers: true)
+  # この spec は 432 枚（PM2026 まで。cmd_1887・1888）の読み直し核との照合。card_seq 433 以降は PM2027（cmd_1893）で核が無い
+  def csv_rows(file) = CSV.read(File.join(data_dir, file), headers: true).select { |r| r["card_seq"].to_i <= 432 }
   def core = @core ||= JSON.parse(File.read(File.join(data_dir, "reread/card_reread_2026-11-13.json")))
   def card_row(seq) = csv_rows("player_cards.csv").find { |r| r["card_seq"] == seq.to_s }
 
@@ -98,7 +99,7 @@ RSpec.describe "import:card_data（読み直し照合 A1〜A7・実データ）"
       expect(card.card_type).to eq("pitcher")
       expect(card.handedness).to eq("left_throw/left_bat")
       expect(card_row(317)["position"]).to eq("投手")
-      expect(Player.find_by(name: "こりゆの").player_cards.pluck(:card_type)).to eq([ "batter" ])
+      expect(Player.find_by(name: "こりゆの").player_cards.pluck(:card_type).uniq).to eq([ "batter" ])
     end
 
     it "319 植田: 投手 081・右投右打。隣の 320 のヘッダ（takky）が付かず、同じ組の 304（041）と別のカードになる" do
@@ -109,7 +110,7 @@ RSpec.describe "import:card_data（読み直し照合 A1〜A7・実データ）"
       expect(card.id).not_to eq(db_card(304).id)
       expect(card.handedness).to eq("right_throw/right_bat")
       expect(card.starter_stamina).to eq(7)
-      expect(Player.find_by(name: "takky").player_cards.pluck(:card_type)).to eq([ "batter" ])
+      expect(Player.find_by(name: "takky").player_cards.pluck(:card_type).uniq).to eq([ "batter" ])
     end
 
     it "317・319 の irc_macro_name は 番号と同じ（PM2026 は macro = number）" do

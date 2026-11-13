@@ -24,6 +24,7 @@ namespace :import do
       "2025THBIG"   => { name: "2025THBIG",  year: 2025, set_type: "annual" },
       "hachinai6.1" => { name: "ハチナイ6.1", year: 2026, set_type: "hachinai61" },
       "PM2026"      => { name: "PM2026",     year: 2026, set_type: "pm2026" },
+      "PM2027"      => { name: "PM2027",     year: 2027, set_type: "pm2027" },
       "tamayomi2"   => { name: "球詠2",      year: 2026, set_type: "tamayomi2" }
     }.freeze
 
@@ -198,7 +199,8 @@ namespace :import do
       catcher_name = row["catcher_name_raw"].presence
       next unless catcher_name
 
-      catcher_player = Player.find_by(name: catcher_name)
+      catcher_player = Player.find_by(name: catcher_name) ||
+                       Player.find_by("REPLACE(REPLACE(name, ' ', ''), '　', '') = ?", catcher_name.gsub(/[\s\u3000]+/, ""))
       unless catcher_player
         puts "  WARN: catcher '#{catcher_name}' not found in players — skipped (import their card first)"
         next

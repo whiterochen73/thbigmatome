@@ -1,0 +1,1230 @@
+{
+ "305": [
+  {
+   "field": "defense",
+   "pm2026_image": [
+    [
+     "OF",
+     4,
+     "S",
+     "B"
+    ]
+   ],
+   "pm2026_csv": [
+    [
+     "OF",
+     4,
+     "S",
+     "B"
+    ]
+   ],
+   "pm2027": [
+    [
+     "OF",
+     5,
+     "A",
+     "A"
+    ]
+   ]
+  },
+  {
+   "field": "print",
+   "pm2026_image": "PMG2026ver. / 26",
+   "pm2027": "PMG2027ver. / 27"
+  }
+ ],
+ "321": [
+  {
+   "field": "position",
+   "pm2026_image": "内野手",
+   "pm2026_csv": "内野手",
+   "pm2027": "投手"
+  },
+  {
+   "field": "speed",
+   "pm2026_image": 3,
+   "pm2026_csv": 3,
+   "pm2027": 1
+  },
+  {
+   "field": "steal",
+   "pm2026_image": [
+    3,
+    13
+   ],
+   "pm2026_csv": [
+    3,
+    13
+   ],
+   "pm2027": [
+    1,
+    1
+   ]
+  },
+  {
+   "field": "injury",
+   "pm2026_image": 4,
+   "pm2026_csv": 4,
+   "pm2027": 5
+  },
+  {
+   "field": "defense",
+   "pm2026_image": [
+    [
+     "1B",
+     1,
+     "C",
+     null
+    ],
+    [
+     "2B",
+     1,
+     "D",
+     null
+    ],
+    [
+     "3B",
+     1,
+     "A",
+     null
+    ],
+    [
+     "C",
+     1,
+     "D",
+     "-3"
+    ],
+    [
+     "OF",
+     1,
+     "E",
+     "C"
+    ]
+   ],
+   "pm2026_csv": [
+    [
+     "1B",
+     1,
+     "C",
+     null
+    ],
+    [
+     "2B",
+     1,
+     "D",
+     null
+    ],
+    [
+     "3B",
+     1,
+     "A",
+     null
+    ],
+    [
+     "C",
+     1,
+     "D",
+     "-3"
+    ],
+    [
+     "OF",
+     1,
+     "E",
+     "C"
+    ]
+   ],
+   "pm2027": [
+    [
+     "P",
+     4,
+     "A",
+     null
+    ]
+   ]
+  },
+  {
+   "field": "fatigue",
+   "pm2026_image": null,
+   "pm2026_csv": null,
+   "pm2027": {
+    "starter": 7,
+    "relief": null,
+    "relief_only": false,
+    "closer": false
+   }
+  },
+  {
+   "field": "batting r1c1",
+   "pm2026_image": "HR7",
+   "pm2026_csv": "HR7",
+   "pm2027": "2H7"
+  },
+  {
+   "field": "batting r1c2",
+   "pm2026_image": "2H7",
+   "pm2026_csv": "2H7",
+   "pm2027": "H7"
+  },
+  {
+   "field": "batting r1c3",
+   "pm2026_image": "IH5/K",
+   "pm2026_csv": "IH5/K",
+   "pm2027": "P"
+  },
+  {
+   "field": "batting r1c4",
+   "pm2026_image": "G4D",
+   "pm2026_csv": "G4D",
+   "pm2027": "H9"
+  },
+  {
+   "field": "batting r1c5",
+   "pm2026_image": "IH5",
+   "pm2026_csv": "IH5",
+   "pm2027": ""
+  },
+  {
+   "field": "batting r2c1",
+   "pm2026_image": "HR7",
+   "pm2026_csv": "HR7",
+   "pm2027": "2H8"
+  },
+  {
+   "field": "batting r2c2",
+   "pm2026_image": "H7a",
+   "pm2026_csv": "H7a",
+   "pm2027": "H8"
+  },
+  {
+   "field": "batting r2c3",
+   "pm2026_image": "2B",
+   "pm2026_csv": "2B",
+   "pm2027": "1B"
+  },
+  {
+   "field": "batting r2c4",
+   "pm2026_image": "G5D",
+   "pm2026_csv": "G5D",
+   "pm2027": "G1D"
+  },
+  {
+   "field": "batting r2c5",
+   "pm2026_image": "G4a",
+   "pm2026_csv": "G4a",
+   "pm2027": ""
+  },
+  {
+   "field": "batting r3c1",
+   "pm2026_image": "3H8",
+   "pm2026_csv": "3H8",
+   "pm2027": "H7"
+  },
+  {
+   "field": "batting r3c2",
+   "pm2026_image": "H7",
+   "pm2026_csv": "H7",
+   "pm2027": "H9a/G4a"
+  },
+  {
+   "field": "batting r3c4",
+   "pm2026_image": "F7",
+   "pm2026_csv": "F7",
+   "pm2027": "G3D"
+  },
+  {
+   "field": "batting r3c5",
+   "pm2026_image": "G5a",
+   "pm2026_csv": "G5a",
+   "pm2027": ""
+  },
+  {
+   "field": "batting r4c1",
+   "pm2026_image": "2H7",
+   "pm2026_csv": "2H7",
+   "pm2027": "H8a"
+  },
+  {
+   "field": "batting r4c2",
+   "pm2026_image": "H8",
+   "pm2026_csv": "H8",
+   "pm2027": "2B"
+  },
+  {
+   "field": "batting r4c3",
+   "pm2026_image": "SS",
+   "pm2026_csv": "SS",
+   "pm2027": "G1a"
+  },
+  {
+   "field": "batting r4c4",
+   "pm2026_image": "BB",
+   "pm2026_csv": "BB",
+   "pm2027": "G4f"
+  },
+  {
+   "field": "batting r4c5",
+   "pm2026_image": "G6D",
+   "pm2026_csv": "G6D",
+   "pm2027": ""
+  },
+  {
+   "field": "batting r5c1",
+   "pm2026_image": "H7a",
+   "pm2026_csv": "H7a",
+   "pm2027": "H9"
+  },
+  {
+   "field": "batting r5c2",
+   "pm2026_image": "H9",
+   "pm2026_csv": "H9",
+   "pm2027": "LF"
+  },
+  {
+   "field": "batting r5c3",
+   "pm2026_image": "G1D",
+   "pm2026_csv": "G1D",
+   "pm2027": "G3D"
+  },
+  {
+   "field": "batting r5c4",
+   "pm2026_image": "BB",
+   "pm2026_csv": "BB",
+   "pm2027": "G5a"
+  },
+  {
+   "field": "batting r5c5",
+   "pm2026_image": "G6f",
+   "pm2026_csv": "G6f",
+   "pm2027": ""
+  },
+  {
+   "field": "batting r6c1",
+   "pm2026_image": "H7",
+   "pm2026_csv": "H7",
+   "pm2027": "H8/G4D"
+  },
+  {
+   "field": "batting r6c2",
+   "pm2026_image": "IH6",
+   "pm2026_csv": "IH6",
+   "pm2027": "RF"
+  },
+  {
+   "field": "batting r6c3",
+   "pm2026_image": "G3a",
+   "pm2026_csv": "G3a",
+   "pm2027": "G4D"
+  },
+  {
+   "field": "batting r6c4",
+   "pm2026_image": "BB",
+   "pm2026_csv": "BB",
+   "pm2027": "G6D"
+  },
+  {
+   "field": "batting r6c5",
+   "pm2026_image": "F9a",
+   "pm2026_csv": "F9a",
+   "pm2027": ""
+  },
+  {
+   "field": "batting r7c1",
+   "pm2026_image": "H8a",
+   "pm2026_csv": "H8a",
+   "pm2027": "1B"
+  },
+  {
+   "field": "batting r7c2",
+   "pm2026_image": "LF",
+   "pm2026_csv": "LF",
+   "pm2027": "G1D"
+  },
+  {
+   "field": "batting r7c3",
+   "pm2026_image": "G4f",
+   "pm2026_csv": "G4f",
+   "pm2027": "G5a"
+  },
+  {
+   "field": "batting r7c4",
+   "pm2026_image": "BB",
+   "pm2026_csv": "BB",
+   "pm2027": "F7"
+  },
+  {
+   "field": "batting r7c5",
+   "pm2026_image": "PO",
+   "pm2026_csv": "PO",
+   "pm2027": ""
+  },
+  {
+   "field": "batting r8c1",
+   "pm2026_image": "H8",
+   "pm2026_csv": "H8",
+   "pm2027": "SS"
+  },
+  {
+   "field": "batting r8c2",
+   "pm2026_image": "CF",
+   "pm2026_csv": "CF",
+   "pm2027": "G3a"
+  },
+  {
+   "field": "batting r8c3",
+   "pm2026_image": "G4a",
+   "pm2026_csv": "G4a",
+   "pm2027": "G6D"
+  },
+  {
+   "field": "batting r8c4",
+   "pm2026_image": "BB",
+   "pm2026_csv": "BB",
+   "pm2027": "F8a"
+  },
+  {
+   "field": "batting r8c5",
+   "pm2026_image": "PO",
+   "pm2026_csv": "PO",
+   "pm2027": ""
+  },
+  {
+   "field": "batting r9c1",
+   "pm2026_image": "H8",
+   "pm2026_csv": "H8",
+   "pm2027": "G3D"
+  },
+  {
+   "field": "batting r9c2",
+   "pm2026_image": "RF",
+   "pm2026_csv": "RF",
+   "pm2027": "G4f"
+  },
+  {
+   "field": "batting r9c3",
+   "pm2026_image": "G5a",
+   "pm2026_csv": "G5a",
+   "pm2027": "G6f"
+  },
+  {
+   "field": "batting r9c4",
+   "pm2026_image": "BB",
+   "pm2026_csv": "BB",
+   "pm2027": "F9"
+  },
+  {
+   "field": "batting r9c5",
+   "pm2026_image": "PO",
+   "pm2026_csv": "PO",
+   "pm2027": ""
+  },
+  {
+   "field": "batting r10c1",
+   "pm2026_image": "H9a",
+   "pm2026_csv": "H9a",
+   "pm2027": "G3f"
+  },
+  {
+   "field": "batting r10c2",
+   "pm2026_image": "G4D",
+   "pm2026_csv": "G4D",
+   "pm2027": "G5D"
+  },
+  {
+   "field": "batting r10c3",
+   "pm2026_image": "G6D",
+   "pm2026_csv": "G6D",
+   "pm2027": "F7a"
+  },
+  {
+   "field": "batting r10c4",
+   "pm2026_image": "BB",
+   "pm2026_csv": "BB",
+   "pm2027": "PO"
+  },
+  {
+   "field": "batting r10c5",
+   "pm2026_image": "K",
+   "pm2026_csv": "K",
+   "pm2027": ""
+  },
+  {
+   "field": "batting r11c1",
+   "pm2026_image": "H9",
+   "pm2026_csv": "H9",
+   "pm2027": "G4D"
+  },
+  {
+   "field": "batting r11c2",
+   "pm2026_image": "G5f",
+   "pm2026_csv": "G5f",
+   "pm2027": "G6D"
+  },
+  {
+   "field": "batting r11c3",
+   "pm2026_image": "G6f",
+   "pm2026_csv": "G6f",
+   "pm2027": "F8"
+  },
+  {
+   "field": "batting r11c5",
+   "pm2026_image": "K",
+   "pm2026_csv": "K",
+   "pm2027": ""
+  },
+  {
+   "field": "batting r12c1",
+   "pm2026_image": "1B",
+   "pm2026_csv": "1B",
+   "pm2027": "G6a"
+  },
+  {
+   "field": "batting r12c2",
+   "pm2026_image": "G6f",
+   "pm2026_csv": "G6f",
+   "pm2027": "F8a"
+  },
+  {
+   "field": "batting r12c3",
+   "pm2026_image": "F7a",
+   "pm2026_csv": "F7a",
+   "pm2027": "F9a"
+  },
+  {
+   "field": "batting r12c5",
+   "pm2026_image": "K",
+   "pm2026_csv": "K",
+   "pm2027": ""
+  },
+  {
+   "field": "batting r13c1",
+   "pm2026_image": "SS",
+   "pm2026_csv": "SS",
+   "pm2027": "F8"
+  },
+  {
+   "field": "batting r13c2",
+   "pm2026_image": "G6a",
+   "pm2026_csv": "G6a",
+   "pm2027": "F9"
+  },
+  {
+   "field": "batting r13c3",
+   "pm2026_image": "F8",
+   "pm2026_csv": "F8",
+   "pm2027": "PO"
+  },
+  {
+   "field": "batting r13c5",
+   "pm2026_image": "K",
+   "pm2026_csv": "K",
+   "pm2027": ""
+  },
+  {
+   "field": "batting r14c1",
+   "pm2026_image": "G4D",
+   "pm2026_csv": "G4D",
+   "pm2027": "PO"
+  },
+  {
+   "field": "batting r14c2",
+   "pm2026_image": "F7a",
+   "pm2026_csv": "F7a",
+   "pm2027": "PO"
+  },
+  {
+   "field": "batting r14c5",
+   "pm2026_image": "K",
+   "pm2026_csv": "K",
+   "pm2027": ""
+  },
+  {
+   "field": "batting r15c1",
+   "pm2026_image": "G6a",
+   "pm2026_csv": "G6a",
+   "pm2027": "K"
+  },
+  {
+   "field": "batting r15c2",
+   "pm2026_image": "F9",
+   "pm2026_csv": "F9",
+   "pm2027": "K"
+  },
+  {
+   "field": "batting r15c3",
+   "pm2026_image": "PO",
+   "pm2026_csv": "PO",
+   "pm2027": "K"
+  },
+  {
+   "field": "batting r15c4",
+   "pm2026_image": "BB",
+   "pm2026_csv": "BB",
+   "pm2027": "K"
+  },
+  {
+   "field": "batting r15c5",
+   "pm2026_image": "K",
+   "pm2026_csv": "K",
+   "pm2027": ""
+  },
+  {
+   "field": "batting r16c1",
+   "pm2026_image": "F9",
+   "pm2026_csv": "F9",
+   "pm2027": "K"
+  },
+  {
+   "field": "batting r16c2",
+   "pm2026_image": "PO",
+   "pm2026_csv": "PO",
+   "pm2027": "K"
+  },
+  {
+   "field": "batting r16c3",
+   "pm2026_image": "PO",
+   "pm2026_csv": "PO",
+   "pm2027": "K"
+  },
+  {
+   "field": "batting r16c4",
+   "pm2026_image": "BB",
+   "pm2026_csv": "BB",
+   "pm2027": "K"
+  },
+  {
+   "field": "batting r16c5",
+   "pm2026_image": "K",
+   "pm2026_csv": "K",
+   "pm2027": ""
+  },
+  {
+   "field": "batting r17c1",
+   "pm2026_image": "PO",
+   "pm2026_csv": "PO",
+   "pm2027": "K"
+  },
+  {
+   "field": "batting r17c2",
+   "pm2026_image": "PO",
+   "pm2026_csv": "PO",
+   "pm2027": "K"
+  },
+  {
+   "field": "batting r17c3",
+   "pm2026_image": "PO",
+   "pm2026_csv": "PO",
+   "pm2027": "K"
+  },
+  {
+   "field": "batting r17c4",
+   "pm2026_image": "BB",
+   "pm2026_csv": "BB",
+   "pm2027": "K"
+  },
+  {
+   "field": "batting r17c5",
+   "pm2026_image": "K",
+   "pm2026_csv": "K",
+   "pm2027": ""
+  },
+  {
+   "field": "batting r18c1",
+   "pm2026_image": "PO",
+   "pm2026_csv": "PO",
+   "pm2027": "K"
+  },
+  {
+   "field": "batting r18c2",
+   "pm2026_image": "PO",
+   "pm2026_csv": "PO",
+   "pm2027": "K"
+  },
+  {
+   "field": "batting r18c3",
+   "pm2026_image": "PO",
+   "pm2026_csv": "PO",
+   "pm2027": "K"
+  },
+  {
+   "field": "batting r18c4",
+   "pm2026_image": "BB",
+   "pm2026_csv": "BB",
+   "pm2027": "K"
+  },
+  {
+   "field": "batting r18c5",
+   "pm2026_image": "K",
+   "pm2026_csv": "K",
+   "pm2027": ""
+  },
+  {
+   "field": "batting r19c5",
+   "pm2026_image": "K",
+   "pm2026_csv": "K",
+   "pm2027": ""
+  },
+  {
+   "field": "batting r20c5",
+   "pm2026_image": "UP",
+   "pm2026_csv": "UP",
+   "pm2027": ""
+  },
+  {
+   "field": "pitching r1",
+   "pm2026_image": null,
+   "pm2026_csv": null,
+   "pm2027": "1"
+  },
+  {
+   "field": "pitching r2",
+   "pm2026_image": null,
+   "pm2026_csv": null,
+   "pm2027": "1"
+  },
+  {
+   "field": "pitching r3",
+   "pm2026_image": null,
+   "pm2026_csv": null,
+   "pm2027": "1"
+  },
+  {
+   "field": "pitching r4",
+   "pm2026_image": null,
+   "pm2026_csv": null,
+   "pm2027": "2*"
+  },
+  {
+   "field": "pitching r5",
+   "pm2026_image": null,
+   "pm2026_csv": null,
+   "pm2027": "2"
+  },
+  {
+   "field": "pitching r6",
+   "pm2026_image": null,
+   "pm2026_csv": null,
+   "pm2027": "2"
+  },
+  {
+   "field": "pitching r7",
+   "pm2026_image": null,
+   "pm2026_csv": null,
+   "pm2027": "3*"
+  },
+  {
+   "field": "pitching r8",
+   "pm2026_image": null,
+   "pm2026_csv": null,
+   "pm2027": "3*"
+  },
+  {
+   "field": "pitching r9",
+   "pm2026_image": null,
+   "pm2026_csv": null,
+   "pm2027": "3"
+  },
+  {
+   "field": "pitching r10",
+   "pm2026_image": null,
+   "pm2026_csv": null,
+   "pm2027": "3"
+  },
+  {
+   "field": "pitching r11",
+   "pm2026_image": null,
+   "pm2026_csv": null,
+   "pm2027": "3"
+  },
+  {
+   "field": "pitching r12",
+   "pm2026_image": null,
+   "pm2026_csv": null,
+   "pm2027": "3"
+  },
+  {
+   "field": "pitching r13",
+   "pm2026_image": null,
+   "pm2026_csv": null,
+   "pm2027": "4"
+  },
+  {
+   "field": "pitching r14",
+   "pm2026_image": null,
+   "pm2026_csv": null,
+   "pm2027": "4"
+  },
+  {
+   "field": "pitching r15",
+   "pm2026_image": null,
+   "pm2026_csv": null,
+   "pm2027": "4"
+  },
+  {
+   "field": "pitching r16",
+   "pm2026_image": null,
+   "pm2026_csv": null,
+   "pm2027": "5"
+  },
+  {
+   "field": "pitching r17",
+   "pm2026_image": null,
+   "pm2026_csv": null,
+   "pm2027": "5"
+  },
+  {
+   "field": "pitching r18",
+   "pm2026_image": null,
+   "pm2026_csv": null,
+   "pm2027": "5"
+  },
+  {
+   "field": "pitching r19",
+   "pm2026_image": null,
+   "pm2026_csv": null,
+   "pm2027": "5"
+  },
+  {
+   "field": "pitching r20",
+   "pm2026_image": null,
+   "pm2026_csv": null,
+   "pm2027": "5"
+  }
+ ],
+ "330": [
+  {
+   "field": "bunt",
+   "pm2026_image": 7,
+   "pm2026_csv": 7,
+   "pm2027": 4
+  },
+  {
+   "field": "steal",
+   "pm2026_image": [
+    9,
+    13
+   ],
+   "pm2026_csv": [
+    9,
+    13
+   ],
+   "pm2027": [
+    10,
+    13
+   ]
+  },
+  {
+   "field": "injury",
+   "pm2026_image": 6,
+   "pm2026_csv": 6,
+   "pm2027": 5
+  },
+  {
+   "field": "defense",
+   "pm2026_image": [
+    [
+     "SS",
+     4,
+     "A",
+     null
+    ]
+   ],
+   "pm2026_csv": [
+    [
+     "SS",
+     4,
+     "A",
+     null
+    ]
+   ],
+   "pm2027": [
+    [
+     "SS",
+     4,
+     "B",
+     null
+    ]
+   ]
+  },
+  {
+   "field": "batting r1c1",
+   "pm2026_image": "2H9/HR9",
+   "pm2026_csv": "2H9/HR9",
+   "pm2027": "3H9/HR9"
+  },
+  {
+   "field": "batting r1c2",
+   "pm2026_image": "H7",
+   "pm2026_csv": "H7",
+   "pm2027": "2H7"
+  },
+  {
+   "field": "batting r1c3",
+   "pm2026_image": "K/IH6",
+   "pm2026_csv": "K/IH6",
+   "pm2027": "G4D/H8"
+  },
+  {
+   "field": "batting r2c1",
+   "pm2026_image": "3H9",
+   "pm2026_csv": "3H9",
+   "pm2027": "3H7"
+  },
+  {
+   "field": "batting r2c2",
+   "pm2026_image": "H8a",
+   "pm2026_csv": "H8a",
+   "pm2027": "H7"
+  },
+  {
+   "field": "batting r2c4",
+   "pm2026_image": "IH5",
+   "pm2026_csv": "IH5",
+   "pm2027": "IH4"
+  },
+  {
+   "field": "batting r2c5",
+   "pm2026_image": "G3a",
+   "pm2026_csv": "G3a",
+   "pm2027": "G3f"
+  },
+  {
+   "field": "batting r3c1",
+   "pm2026_image": "2H7",
+   "pm2026_csv": "2H7",
+   "pm2027": "2H8"
+  },
+  {
+   "field": "batting r3c2",
+   "pm2026_image": "H8",
+   "pm2026_csv": "H8",
+   "pm2027": "H8a"
+  },
+  {
+   "field": "batting r3c5",
+   "pm2026_image": "G4D",
+   "pm2026_csv": "G4D",
+   "pm2027": "G4a"
+  },
+  {
+   "field": "batting r4c2",
+   "pm2026_image": "H9a",
+   "pm2026_csv": "H9a",
+   "pm2027": "H9"
+  },
+  {
+   "field": "batting r4c4",
+   "pm2026_image": "G3D",
+   "pm2026_csv": "G3D",
+   "pm2027": "G1a"
+  },
+  {
+   "field": "batting r4c5",
+   "pm2026_image": "F8a",
+   "pm2026_csv": "F8a",
+   "pm2027": "G6f"
+  },
+  {
+   "field": "batting r5c2",
+   "pm2026_image": "H9",
+   "pm2026_csv": "H9",
+   "pm2027": "IH1"
+  },
+  {
+   "field": "batting r5c3",
+   "pm2026_image": "G1a",
+   "pm2026_csv": "G1a",
+   "pm2027": "G1f"
+  },
+  {
+   "field": "batting r5c4",
+   "pm2026_image": "G3a",
+   "pm2026_csv": "G3a",
+   "pm2027": "G3D"
+  },
+  {
+   "field": "batting r5c5",
+   "pm2026_image": "PO",
+   "pm2026_csv": "PO",
+   "pm2027": "F8"
+  },
+  {
+   "field": "batting r6c2",
+   "pm2026_image": "LF",
+   "pm2026_csv": "LF",
+   "pm2027": "IH6"
+  },
+  {
+   "field": "batting r6c3",
+   "pm2026_image": "G3f",
+   "pm2026_csv": "G3f",
+   "pm2027": "G1a"
+  },
+  {
+   "field": "batting r6c4",
+   "pm2026_image": "G4D",
+   "pm2026_csv": "G4D",
+   "pm2027": "G3f"
+  },
+  {
+   "field": "batting r7c2",
+   "pm2026_image": "CF",
+   "pm2026_csv": "CF",
+   "pm2027": "LF"
+  },
+  {
+   "field": "batting r7c3",
+   "pm2026_image": "G4D",
+   "pm2026_csv": "G4D",
+   "pm2027": "G3a"
+  },
+  {
+   "field": "batting r7c4",
+   "pm2026_image": "G4f",
+   "pm2026_csv": "G4f",
+   "pm2027": "G4D"
+  },
+  {
+   "field": "batting r8c2",
+   "pm2026_image": "RF",
+   "pm2026_csv": "RF",
+   "pm2027": "CF"
+  },
+  {
+   "field": "batting r8c4",
+   "pm2026_image": "G4a",
+   "pm2026_csv": "G4a",
+   "pm2027": "G4f"
+  },
+  {
+   "field": "batting r9c2",
+   "pm2026_image": "G1D",
+   "pm2026_csv": "G1D",
+   "pm2027": "RF"
+  },
+  {
+   "field": "batting r9c3",
+   "pm2026_image": "G4a",
+   "pm2026_csv": "G4a",
+   "pm2027": "G4f"
+  },
+  {
+   "field": "batting r9c4",
+   "pm2026_image": "G5f",
+   "pm2026_csv": "G5f",
+   "pm2027": "G4a"
+  },
+  {
+   "field": "batting r10c2",
+   "pm2026_image": "G3D",
+   "pm2026_csv": "G3D",
+   "pm2027": "G1f"
+  },
+  {
+   "field": "batting r10c3",
+   "pm2026_image": "G5D",
+   "pm2026_csv": "G5D",
+   "pm2027": "G4a"
+  },
+  {
+   "field": "batting r10c4",
+   "pm2026_image": "G6D",
+   "pm2026_csv": "G6D",
+   "pm2027": "G5f"
+  },
+  {
+   "field": "batting r11c1",
+   "pm2026_image": "1B",
+   "pm2026_csv": "1B",
+   "pm2027": "IH3"
+  },
+  {
+   "field": "batting r11c2",
+   "pm2026_image": "G4D",
+   "pm2026_csv": "G4D",
+   "pm2027": "G3a"
+  },
+  {
+   "field": "batting r11c3",
+   "pm2026_image": "G6D",
+   "pm2026_csv": "G6D",
+   "pm2027": "G5a"
+  },
+  {
+   "field": "batting r11c4",
+   "pm2026_image": "F7a",
+   "pm2026_csv": "F7a",
+   "pm2027": "G6a"
+  },
+  {
+   "field": "batting r12c1",
+   "pm2026_image": "3B",
+   "pm2026_csv": "3B",
+   "pm2027": "IH4"
+  },
+  {
+   "field": "batting r12c2",
+   "pm2026_image": "G4a",
+   "pm2026_csv": "G4a",
+   "pm2027": "G4D"
+  },
+  {
+   "field": "batting r12c3",
+   "pm2026_image": "G6a",
+   "pm2026_csv": "G6a",
+   "pm2027": "G6D"
+  },
+  {
+   "field": "batting r12c4",
+   "pm2026_image": "F7",
+   "pm2026_csv": "F7",
+   "pm2027": "F7a"
+  },
+  {
+   "field": "batting r13c1",
+   "pm2026_image": "G1f",
+   "pm2026_csv": "G1f",
+   "pm2027": "1B"
+  },
+  {
+   "field": "batting r13c2",
+   "pm2026_image": "G5a",
+   "pm2026_csv": "G5a",
+   "pm2027": "G4f"
+  },
+  {
+   "field": "batting r13c3",
+   "pm2026_image": "F7a",
+   "pm2026_csv": "F7a",
+   "pm2027": "G6f"
+  },
+  {
+   "field": "batting r13c4",
+   "pm2026_image": "F8a",
+   "pm2026_csv": "F8a",
+   "pm2027": "F8"
+  },
+  {
+   "field": "batting r14c1",
+   "pm2026_image": "G3D",
+   "pm2026_csv": "G3D",
+   "pm2027": "3B"
+  },
+  {
+   "field": "batting r14c2",
+   "pm2026_image": "G6f",
+   "pm2026_csv": "G6f",
+   "pm2027": "G5f"
+  },
+  {
+   "field": "batting r14c3",
+   "pm2026_image": "F8a",
+   "pm2026_csv": "F8a",
+   "pm2027": "F8"
+  },
+  {
+   "field": "batting r15c1",
+   "pm2026_image": "G4a",
+   "pm2026_csv": "G4a",
+   "pm2027": "G3f"
+  },
+  {
+   "field": "batting r15c2",
+   "pm2026_image": "F7",
+   "pm2026_csv": "F7",
+   "pm2027": "G6D"
+  },
+  {
+   "field": "batting r15c3",
+   "pm2026_image": "F8",
+   "pm2026_csv": "F8",
+   "pm2027": "F9a"
+  },
+  {
+   "field": "batting r15c4",
+   "pm2026_image": "F8a/BB",
+   "pm2026_csv": "F8a/BB",
+   "pm2027": "G6f/BB"
+  },
+  {
+   "field": "batting r16c1",
+   "pm2026_image": "G6f",
+   "pm2026_csv": "G6f",
+   "pm2027": "G4f"
+  },
+  {
+   "field": "batting r16c2",
+   "pm2026_image": "F8a",
+   "pm2026_csv": "F8a",
+   "pm2027": "F7"
+  },
+  {
+   "field": "batting r16c3",
+   "pm2026_image": "F9",
+   "pm2026_csv": "F9",
+   "pm2027": "PO"
+  },
+  {
+   "field": "batting r17c1",
+   "pm2026_image": "F7a",
+   "pm2026_csv": "F7a",
+   "pm2027": "G6a"
+  },
+  {
+   "field": "batting r17c2",
+   "pm2026_image": "F9a",
+   "pm2026_csv": "F9a",
+   "pm2027": "F8a"
+  },
+  {
+   "field": "batting r18c1",
+   "pm2026_image": "PO",
+   "pm2026_csv": "PO",
+   "pm2027": "F9"
+  }
+ ],
+ "341": [
+  {
+   "field": "hands",
+   "pm2026_image": [
+    "left",
+    "left"
+   ],
+   "pm2026_csv": [
+    "left",
+    "left"
+   ],
+   "pm2027": [
+    "right",
+    "left"
+   ]
+  },
+  {
+   "field": "batting r1c2",
+   "pm2026_image": "HR8",
+   "pm2026_csv": "HR8",
+   "pm2027": "HR7"
+  },
+  {
+   "field": "batting r2c2",
+   "pm2026_image": "HR9",
+   "pm2026_csv": "HR9",
+   "pm2027": "HR8"
+  }
+ ],
+ "362": [
+  {
+   "field": "header 生・出",
+   "pm2026_image": "(生)----・2・21 (出)天地人",
+   "pm2027": "(生)2・21 (出)天地人ディエティーズ",
+   "how": "目視。本体の表・数値は同一"
+  }
+ ],
+ "388": [
+  {
+   "field": "header 績・試",
+   "pm2026_image": "(績).240 4本 22点 (試)92(267席)",
+   "pm2027": "(績).241 4本 20点 (試)94(266席)",
+   "how": "目視。表は同一"
+  }
+ ]
+}

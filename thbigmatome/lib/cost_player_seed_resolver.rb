@@ -1,3 +1,12 @@
+require "csv"
+
+# cost_players_seed.csv の 1 行を Player（と PlayerCard）に当てる。
+#
+# 行の指し方は 2 通り。
+#   - player_name 列（従来）: 選手名。「名前（variant）」なら持ち主の Player の variant カード（player_card_id つき）、そうでなければ名前の Player（player_card_id なし）
+#   - card_seq 列（任意。空なら従来どおり）: db/import/player_cards.csv の card_seq。そのカード 1 枚のコスト（常に player_card_id つき）。
+#     年度版・ハチナイなど他のカードと持ち主の Player を共有する PM のカードが、年度版と別の行を持つ時に使う。名前では持ち主のコストと見分けが付かない。
+#     card_seq の行では player_name は読む人のための表記で、当て先は card_seq だけで決まる
 module CostPlayerSeedResolver
   Resolution = Struct.new(:player, :player_card, :variant, keyword_init: true)
 
@@ -9,15 +18,25 @@ module CostPlayerSeedResolver
     two_way_cost
   ].freeze
 
+  # player_cards.csv の card_source → card_sets.name（db/seeds/import_cards.rb の card_set_defs と同じ対応）
+  CARD_SET_NAMES = {
+    "hachinai6.1" => "ハチナイ6.1",
+    "tamayomi2" => "球詠2"
+  }.freeze
+
   VARIANT_ALIASES = {
     "AP" => [ "エイプリル" ],
     "妖精帝國" => [ "妖精" ],
     "幽冥楼閣" => [ "幽冥" ]
   }.freeze
 
+  PLAYER_CARDS_CSV = "db/import/player_cards.csv".freeze
+
   module_function
 
-  def resolve(raw_name)
+  def resolve(raw_name, card_seq: nil)
+    return resolve_card_seq(card_seq) if card_seq.present?
+
     parsed = parse_variant(raw_name)
 
     if parsed
@@ -33,7 +52,7 @@ module CostPlayerSeedResolver
   end
 
   def assign!(cost, row)
-    resolution = resolve(row["player_name"])
+    resolution = resolve(row["player_name"], card_seq: row["card_seq"])
     return unless resolution.player
 
     cp = CostPlayer.find_or_initialize_by(
@@ -51,6 +70,33 @@ module CostPlayerSeedResolver
 
   def clear_cache!
     @players = nil
+    @card_rows = nil
+  end
+
+  # card_seq のカード（取り込み済みの PlayerCard）に当てる。取り込んでいなければ player を nil にして読み飛ばしにする。
+  # カードの引き方は import_cards.rb の find_or_create_by! と同じ（出典のセット・持ち主・種別・variant。持ち主は variant つきなら base_player_name の選手）
+  def resolve_card_seq(card_seq)
+    row = card_rows[card_seq.to_s]
+    return Resolution.new(player: nil, player_card: nil, variant: nil) unless row
+
+    variant = row["variant"].presence
+    owner_name = variant && row["base_player_name"].presence ? row["base_player_name"] : row["name"]
+    owner = find_player_by_name(owner_name)
+    set = CardSet.find_by(name: CARD_SET_NAMES.fetch(row["card_source"], row["card_source"]))
+    return Resolution.new(player: nil, player_card: nil, variant: variant) unless owner && set
+
+    scope = PlayerCard.where(card_set: set, player: owner, card_type: card_type_of(row))
+    scope = variant ? scope.where(variant: variant) : scope.where(variant: [ nil, "" ])
+    card = scope.first
+    Resolution.new(player: card && owner, player_card: card, variant: variant)
+  end
+
+  def card_rows
+    @card_rows ||= CSV.read(Rails.root.join(PLAYER_CARDS_CSV), headers: true, encoding: "UTF-8").to_h { |r| [ r["card_seq"], r ] }
+  end
+
+  def card_type_of(row)
+    row["card_type"].presence || (row["is_pitcher"] == "true" ? "pitcher" : "batter")
   end
 
   def parse_variant(raw_name)

@@ -1103,3 +1103,12 @@ resources :cost_assignments, only: [:index, :create]
 7. ~~**selected_cost_type の整合性バリデーション不足**~~: **解消済み**。`TeamMembership` モデルは `selected_cost_type` に `presence: true` と `inclusion: { in: %w[normal_cost relief_only_cost pitcher_only_cost fielder_only_cost two_way_cost] }` の両方を要求し、無効な値の保存を防止している。
 
 8. **RosterPlayerSerializer の cost 計算エラーリスク**: `Cost.current_cost` が `nil` を返す場合（`end_date` が `null` のコスト表が存在しない場合）、`NoMethodError` が発生する。また、選手に `cost_player` レコードが存在しない場合も同様のエラーが発生する。
+
+## 初期データ（seed）
+
+コストの初期データは `thbigmatome/db/seeds/production_costs.rb` が `thbigmatome/db/import/cost_players_seed.csv` から取り込む（カード取り込み `db/seeds/import_cards.rb` の後に実行する）。一次情報は東方BIG野球 Wiki のコスト一覧で、値が食い違う時は Wiki の数値に合わせる。
+
+- 行の指し方は 2 通り。`player_name` 列は選手名（`名前（variant）` なら持ち主の Player の variant カード＝`player_card_id` つき）、`card_seq` 列は `db/import/player_cards.csv` の `card_seq`（そのカード 1 枚のコスト。常に `player_card_id` つきで、`player_name` は読む人のための表記）。`card_seq` が空の行は従来どおり名前で当てる
+- PM（PM2026・PM2027）のカードは、年度版・ハチナイ・球詠と持ち主の Player を共有することがある。年度版と別の Wiki の行（エイプリル・完走カードなど）を持つ時は `card_seq` の行にする。名前だけで書くと持ち主のコストと区別が付かない
+- PM のカードのコストは、そのカード 1 枚の値を `normal_cost` に書く。持ち主の行が役割別のコスト（中継ぎ・投手専念・野手専念・二刀流）を持つ場合は、引き当ての優先順位で持ち主の値が先に選ばれてしまうため、該当する役割の列にも同じ値を書く（`Player#cost_value_for_card` は役割ごとに「カードの行 → 持ち主の行」の順で探す）
+- 検算は `spec/db/production_costs_wiki_spec.rb`（PM2027 の 144 枚と、同じ内容の PM2026 のカードを Wiki の行と突き合わせる）

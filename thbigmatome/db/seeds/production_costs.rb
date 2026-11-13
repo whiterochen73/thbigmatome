@@ -34,7 +34,7 @@ else
     raw_name = row["player_name"]
     cp = CostPlayerSeedResolver.assign!(cost, row)
     unless cp
-      puts "  WARN: player '#{raw_name}' not found — skipped"
+      puts "  WARN: player '#{raw_name}'#{row["card_seq"].present? ? " (card_seq=#{row["card_seq"]})" : ""} not found — skipped"
       skipped += 1
       next
     end

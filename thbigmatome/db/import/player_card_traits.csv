@@ -54,7 +54,7 @@ card_seq,trait_definition_name,condition_name,role,sort_order
 40,1C5,,,0
 41,1C5,,,0
 42,対左,,,0
-43,1C5,,,0
+43,1C5,代打,,0
 44,DB,,,0
 45,チャンス,,,0
 46,チャンス,,,0
@@ -130,7 +130,7 @@ card_seq,trait_definition_name,condition_name,role,sort_order
 104,チャンス,,,0
 105,DB,,,0
 106,対右,,,0
-107,対右,,,0
+107,対右,代打,,0
 108,1C5,,,0
 109,対右,,,0
 110,対左,,,0
@@ -156,7 +156,7 @@ card_seq,trait_definition_name,condition_name,role,sort_order
 129,DB,,,0
 130,内野安打,,,0
 131,対左,,,0
-132,対左,,,0
+132,対左,代打,,0
 133,対左,,,0
 134,対右,,,0
 135,対右,,,0
@@ -185,8 +185,8 @@ card_seq,trait_definition_name,condition_name,role,sort_order
 156,対左,,,0
 157,対左,,,0
 158,1C5,,,0
-159,対右,,,0
-160,対左,,,0
+159,対右,代打,,0
+160,対左,代打,,0
 161,チャンス,,,0
 162,DB,,,0
 163,チャンス,,,0
@@ -371,7 +371,6 @@ card_seq,trait_definition_name,condition_name,role,sort_order
 331,対左,,,0
 332,1C5,,,0
 333,ホームラン,,,0
-333,ホームラン,,,1
 334,対左,,,0
 335,チャンス,,,0
 336,対左,,,0

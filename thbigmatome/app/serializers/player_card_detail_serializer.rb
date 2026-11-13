@@ -5,7 +5,7 @@ class PlayerCardDetailSerializer < ActiveModel::Serializer
              :is_switch_hitter, :is_dual_wielder,
              :starter_stamina, :relief_stamina,
              :biorhythm_period,
-             :unique_traits, :injury_traits,
+             :unique_traits, :injury_traits, :official_use_prohibited,
              :batting_table, :pitching_table,
              :image_url
 

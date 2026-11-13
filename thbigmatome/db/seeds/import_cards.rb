@@ -41,6 +41,12 @@ CARD_SOURCE_SERIES = {
 player_card_map = {}
 skipped_traits  = []
 
+# 同じカードセット・種別で irc_macro_name（=背番号）が複数のカードに共通する組は、別人のカードが同じ番号を持つだけ（PM2026 の 9・10・00 など）。
+# 下の「別 player に同じ macro」の重複防止はその組には当てはめない（当てはめると正規の別カードが取込から外れる）。
+shared_macro_keys = CSV.read("#{data_dir}/player_cards.csv", headers: true)
+                       .group_by { |r| [ r["card_source"], r["irc_macro_name"].presence, r["card_type"].presence || (r["is_pitcher"] == "true" ? "pitcher" : "batter") ] }
+                       .select { |k, v| k[1] && v.size > 1 }.keys
+
 puts "=== Step 1: player_cards.csv ==="
 CSV.foreach("#{data_dir}/player_cards.csv", headers: true) do |row|
   card_source = row["card_source"]
@@ -100,7 +106,7 @@ CSV.foreach("#{data_dir}/player_cards.csv", headers: true) do |row|
 
   handedness_val = derive_handedness(row["throwing_hand"], row["batting_hand"])
 
-  if row["irc_macro_name"].present?
+  if row["irc_macro_name"].present? && !shared_macro_keys.include?([ card_source, row["irc_macro_name"], card_type ])
     existing_by_macro = PlayerCard.where(card_set_id: card_set.id, irc_macro_name: row["irc_macro_name"], card_type: card_type)
                                   .where.not(player_id: player.id).first
     if existing_by_macro
@@ -130,6 +136,7 @@ CSV.foreach("#{data_dir}/player_cards.csv", headers: true) do |row|
     c.card_label       = row["card_label"].presence
     c.irc_macro_name   = row["irc_macro_name"].presence
     c.irc_display_name = row["irc_display_name"].presence
+    c.official_use_prohibited = row["official_use_prohibited"] == "true"
 
     if (raw = row["injury_traits"].presence)
       begin; c.injury_traits = JSON.parse(raw); rescue JSON::ParserError => e; Rails.logger.warn "JSON parse error: #{e.message}"; end
@@ -146,6 +153,8 @@ CSV.foreach("#{data_dir}/player_cards.csv", headers: true) do |row|
   end
 
   pc.update_column(:handedness, handedness_val) if pc.handedness.blank? && handedness_val.present?
+  # 公式戦で使用できない印は CSV（画像の注記）に従う。既存 DB の行にも反映する
+  pc.update_column(:official_use_prohibited, true) if row["official_use_prohibited"] == "true" && !pc.official_use_prohibited
   player_card_map[row["card_seq"]] = pc
 end
 puts "  PlayerCard.count = #{PlayerCard.count}"

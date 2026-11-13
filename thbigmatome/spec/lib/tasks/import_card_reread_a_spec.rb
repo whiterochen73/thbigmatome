@@ -214,8 +214,13 @@ RSpec.describe "import:card_data（読み直し照合 A1〜A7・実データ）"
   end
 
   describe "触らないもの" do
-    it "331・332・339 は名前が空のまま（取り込まれない）" do
-      [ 331, 332, 339 ].each { |seq| expect(card_row(seq)["name"]).to be_blank }
+    # 旧: 「331・332・339 は名前が空のまま（取り込まれない）」。Operator が全カード取り込みへ方針変更したため（cmd_1891、2026-11-13）、
+    # 名前を入れて取り込む形に変えた。名前・番号・位置の中身は import_card_official_use_spec.rb が確かめる。
+    it "331・332・339 は名前が入って取り込まれる（全カード取り込み方針。旧期待値は空のまま）" do
+      [ 331, 332, 339 ].each do |seq|
+        expect(card_row(seq)["name"]).to be_present
+        expect(db_card(seq)).to be_present
+      end
     end
 
     it "二刀流の打撃表 5 列目の K 埋め（20・240・388・389・402・403・413・419）は現状のまま" do

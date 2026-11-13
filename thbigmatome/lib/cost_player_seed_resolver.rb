@@ -18,12 +18,6 @@ module CostPlayerSeedResolver
     two_way_cost
   ].freeze
 
-  # player_cards.csv の card_source → card_sets.name（db/seeds/import_cards.rb の card_set_defs と同じ対応）
-  CARD_SET_NAMES = {
-    "hachinai6.1" => "ハチナイ6.1",
-    "tamayomi2" => "球詠2"
-  }.freeze
-
   VARIANT_ALIASES = {
     "AP" => [ "エイプリル" ],
     "妖精帝國" => [ "妖精" ],
@@ -82,13 +76,19 @@ module CostPlayerSeedResolver
     variant = row["variant"].presence
     owner_name = variant && row["base_player_name"].presence ? row["base_player_name"] : row["name"]
     owner = find_player_by_name(owner_name)
-    set = CardSet.find_by(name: CARD_SET_NAMES.fetch(row["card_source"], row["card_source"]))
+    set = CardSet.find_by(name: card_set_name_for(row["card_source"]))
     return Resolution.new(player: nil, player_card: nil, variant: variant) unless owner && set
 
     scope = PlayerCard.where(card_set: set, player: owner, card_type: card_type_of(row))
     scope = variant ? scope.where(variant: variant) : scope.where(variant: [ nil, "" ])
     card = scope.first
     Resolution.new(player: card && owner, player_card: card, variant: variant)
+  end
+
+  # player_cards.csv の card_source → card_sets.name。取り込み（rake・seeds）と同じ config/card_set_definitions.yml（CardSet::IMPORT_DEFINITIONS）を読む。
+  # 定義に無い card_source は、その文字列をそのまま名前として引く（従来どおり）
+  def card_set_name_for(card_source)
+    CardSet::IMPORT_DEFINITIONS.dig(card_source, :name) || card_source
   end
 
   def card_rows

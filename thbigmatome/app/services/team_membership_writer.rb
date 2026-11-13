@@ -145,20 +145,21 @@ class TeamMembershipWriter
     twin = Player.where(id: others, character_key: player.character_key).first
     return unless twin
 
-    reject_registration!(:player_id, I18n.t("activerecord.errors.models.team_membership.same_character_in_team",
-                                            player_name: player.name, other_name: twin.name))
+    reject_registration!(I18n.t("activerecord.errors.models.team_membership.same_character_in_team",
+                                        player_name: player.name, other_name: twin.name))
   end
 
   def validate_card!(values)
     return if values[:player_card_id].blank?
 
     message = TeamMembership.card_registration_error(PlayerCard.includes(:card_set).find_by(id: values[:player_card_id]))
-    reject_registration!(:player_card_id, message) if message
+    reject_registration!(message) if message
   end
 
-  def reject_registration!(attribute, message)
+  # 文の中に選手名・カード名が入っているので、属性に紐づけず base に置く（full_messages の頭に英語の属性名が付かない）
+  def reject_registration!(message)
     probe = TeamMembership.new(team: @team)
-    probe.errors.add(attribute, message)
+    probe.errors.add(:base, message)
     raise ActiveRecord::RecordInvalid, probe
   end
 

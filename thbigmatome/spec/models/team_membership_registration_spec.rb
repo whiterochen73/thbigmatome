@@ -29,13 +29,13 @@ RSpec.describe "TeamMembership の登録の制限" do
     it "現行外のセットのカードは新規登録できない" do
       tm = TeamMembership.new(team: team, player: player, player_card: card(player, old_set))
       expect(tm).not_to be_valid
-      expect(tm.errors[:player_card_id]).to be_present
+      expect(tm.errors[:base]).to be_present
     end
 
     it "公式戦使用不可のカードは新規登録できない（現行セットでも）" do
       tm = TeamMembership.new(team: team, player: player, player_card: card(player, current_set, official_use_prohibited: true))
       expect(tm).not_to be_valid
-      expect(tm.errors[:player_card_id]).to be_present
+      expect(tm.errors[:base]).to be_present
     end
 
     it "コミッショナーの経路（skip_commissioner_validation）でも拒む" do
@@ -83,7 +83,7 @@ RSpec.describe "TeamMembership の登録の制限" do
       member(team, "冴月 麟 (投手)")
       tm = new_membership(team, "冴月 麟 (野手)")
       expect(tm).not_to be_valid
-      expect(tm.errors[:player_id]).to be_present
+      expect(tm.errors[:base]).to be_present
     end
 
     it "八雲 紫 の居るチームに 八雲 紫 (エイプリル) は入れられない" do

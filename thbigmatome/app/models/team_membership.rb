@@ -119,7 +119,7 @@ class TeamMembership < ApplicationRecord
     return if player_card_id.blank?
 
     message = self.class.card_registration_error(player_card)
-    errors.add(:player_card_id, message) if message
+    errors.add(:base, message) if message
   end
 
   def character_not_duplicated_in_team
@@ -128,7 +128,7 @@ class TeamMembership < ApplicationRecord
     other = self.class.same_character_member(team_id, player)
     return unless other
 
-    errors.add(:player_id, I18n.t("activerecord.errors.models.team_membership.same_character_in_team",
+    errors.add(:base, I18n.t("activerecord.errors.models.team_membership.same_character_in_team",
                                   player_name: player.name, other_name: other.player.name))
   end
 
@@ -197,7 +197,7 @@ class TeamMembership < ApplicationRecord
                          .where(team_managers: { manager_id: director_id, role: :director })
                          .where.not(id: team.id)
                          .first
-      errors.add(:player_id,
+      errors.add(:base,
         I18n.t("activerecord.errors.models.team_membership.player_in_sibling_team",
                player_name: player&.name,
                team_name: sibling_team&.name))

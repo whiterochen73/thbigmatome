@@ -129,7 +129,7 @@ RSpec.describe TeamMembership, type: :model do
       create(:team_membership, team: team1, player: player)
       membership = build(:team_membership, team: team2, player: player)
       expect(membership).not_to be_valid
-      expect(membership.errors[:player_id]).to be_present
+      expect(membership.errors[:base]).to be_present
     end
 
     it '同一directorの同一チームへの再登録はDB一意制約で弾かれる（排他バリデーション外）' do

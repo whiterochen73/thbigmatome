@@ -6,7 +6,7 @@ class RosterPlayerSerializer < ActiveModel::Serializer
   end
 
   def handedness
-    object.player.player_cards.first&.handedness
+    object.player.default_card&.handedness
   end
 
   def position

@@ -20,7 +20,7 @@ card_seq,trait_definition_name,condition_name,role,sort_order
 14,チャンス,,,0
 15,内野安打,,,0
 16,チャンス,,,0
-17,1C5,,,0
+17,1C5,特例起用,,0
 18,DB,,,0
 19,チャンス,,,0
 20,対左,,batter,0
@@ -29,7 +29,7 @@ card_seq,trait_definition_name,condition_name,role,sort_order
 22,対左,,,0
 23,対左,,,0
 24,対左,,,0
-25,対左,,,0
+25,対左,特例起用,,0
 26,対左,,,0
 27,内野安打,,,0
 28,DB,無走者,,0
@@ -59,7 +59,7 @@ card_seq,trait_definition_name,condition_name,role,sort_order
 45,チャンス,,,0
 46,チャンス,,,0
 47,チャンス,,,0
-48,DB,,,0
+48,DB,特例起用,,0
 49,1C5,,,0
 50,チャンス,,,0
 51,対左,,,0
@@ -79,7 +79,7 @@ card_seq,trait_definition_name,condition_name,role,sort_order
 61,対左,,,0
 62,DB,無走者,,0
 62,WP,有走者,,1
-63,DB,,,0
+63,DB,特例起用,,0
 63,DB,,,1
 64,DB,,,0
 65,対左,,,0
@@ -152,7 +152,7 @@ card_seq,trait_definition_name,condition_name,role,sort_order
 125,対左,,,0
 126,チャンス,,,0
 127,対左,,,0
-128,対左,,,0
+128,対左,特例起用,,0
 129,DB,,,0
 130,内野安打,,,0
 131,対左,,,0
@@ -171,12 +171,12 @@ card_seq,trait_definition_name,condition_name,role,sort_order
 143,ホームラン,,,0
 144,対左,,,0
 145,対右,,,0
-146,対右,,,0
+146,対右,特例起用,,0
 147,対右,,,0
 148,対右,,,0
 149,対左,,,0
 150,チャンス,,,0
-151,対左,,,0
+151,対左,特例起用,,0
 151,対左,,,1
 152,1C5,,,0
 153,内野安打,,,0

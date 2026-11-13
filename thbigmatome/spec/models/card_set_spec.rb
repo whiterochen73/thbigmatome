@@ -64,4 +64,33 @@ RSpec.describe CardSet, type: :model do
       expect(association.options[:dependent]).to eq :destroy
     end
   end
+
+  describe "series の決まり方（PM という系列が版を重ねる）" do
+    it "既存の set_type は従来どおり" do
+      expect(CardSet.series_for("annual")).to eq("touhou")
+      expect(CardSet.series_for("hachinai61")).to eq("hachinai")
+      expect(CardSet.series_for("pm2026")).to eq("original")
+      expect(CardSet.series_for("tamayomi2")).to eq("tamayomi")
+    end
+
+    it "pm + 4 桁の年なら original（PM2027・PM2028 …）。対応表の追加は要らない" do
+      expect(CardSet.series_for("pm2027")).to eq("original")
+      expect(CardSet.series_for("pm2028")).to eq("original")
+    end
+
+    it "知らない set_type は nil" do
+      expect(CardSet.series_for("unknown")).to be_nil
+      expect(CardSet.series_for("pm27")).to be_nil
+    end
+
+    it "series を渡さずに作ると set_type から入る（rake の取込でも series が入る）" do
+      cs = CardSet.create!(year: 2027, name: "PM2027", set_type: "pm2027")
+      expect(cs.series).to eq("original")
+    end
+
+    it "series を明示した場合はそれを使う" do
+      cs = CardSet.create!(year: 2030, name: "x", set_type: "pm2030", series: "touhou")
+      expect(cs.series).to eq("touhou")
+    end
+  end
 end

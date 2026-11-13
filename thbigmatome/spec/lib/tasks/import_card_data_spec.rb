@@ -126,7 +126,7 @@ RSpec.describe "import:card_data" do
     end
 
     it "同梱の player_cards.csv では C 付き 4 枚（紫 142・382、隠岐奈 65・336）だけが is_closer=true" do
-      rows = CSV.read(Rails.root.join("db/import/player_cards.csv"), headers: true)
+      rows = CSV.read(Rails.root.join("db/import/player_cards.csv"), headers: true).reject { |r| r["card_source"] == "PM2027" }
       closers = rows.select { |r| r["is_closer"] == "true" }
       expect(closers.map { |r| r["card_seq"].to_i }.sort).to eq([ 65, 142, 336, 382 ])
       expect(closers.map { |r| r["name"] }.uniq).to match_array([ "摩多羅 隠岐奈", "八雲 紫" ])

@@ -1,5 +1,4 @@
 class Player < ApplicationRecord
-  PM2026_SET_TYPE = "pm2026".freeze
   HACHINAI61_SET_TYPE = "hachinai61".freeze
   NAME_SUFFIX_PATTERN = /[[:space:]　]*[（(][^()（）]+[）)]\z/.freeze
 
@@ -28,6 +27,7 @@ class Player < ApplicationRecord
     loaded_cards = player_cards.loaded? ? player_cards : player_cards.to_a
     pitcher_cards = loaded_cards.select(&:is_pitcher)
     fielder_cards = loaded_cards.reject(&:is_pitcher)
+    pitcher_and_fielder = pitcher_fielder_pair?(pitcher_cards, fielder_cards)
 
     # リリーフ契約: 疲労Pに「R」がついていないリリーフ選手 またはスラッシュ投手(is_dual_wielder=true)
     if pitcher_cards.any? { |c| (!c.is_relief_only && c.relief_stamina.present?) || c.is_dual_wielder }
@@ -35,12 +35,12 @@ class Player < ApplicationRecord
     end
 
     # 二刀流: 投手カードと野手カード両方を持つ、またはハチナイ二刀流（片方カードのみでも可）
-    if (pitcher_cards.any? && fielder_cards.any?) || two_way
+    if pitcher_and_fielder || two_way
       types << "two_way_cost"
     end
 
     # 投手専念/野手専念: 二刀流条件 + 特定東方選手
-    if (pitcher_cards.any? && fielder_cards.any?) || two_way || SPECIAL_PITCHER_FIELDER_PLAYER_IDS.include?(id)
+    if pitcher_and_fielder || two_way || SPECIAL_PITCHER_FIELDER_PLAYER_IDS.include?(id)
       types << "pitcher_only_cost"
       types << "fielder_only_cost"
     end
@@ -63,14 +63,13 @@ class Player < ApplicationRecord
     end
 
     # 二刀流/投手専念/野手専念: 選手全体で投手・野手カード両方を持つ、またはハチナイ二刀流（片方カードのみでも可）
-    has_pitcher = loaded_cards.any?(&:is_pitcher)
-    has_fielder = loaded_cards.any? { |c| !c.is_pitcher }
+    has_pitcher_and_fielder = pitcher_fielder_pair?(loaded_cards.select(&:is_pitcher), loaded_cards.reject(&:is_pitcher))
 
-    if (has_pitcher && has_fielder) || two_way
+    if has_pitcher_and_fielder || two_way
       types << "two_way_cost"
     end
 
-    if (has_pitcher && has_fielder) || two_way || SPECIAL_PITCHER_FIELDER_PLAYER_IDS.include?(id)
+    if has_pitcher_and_fielder || two_way || SPECIAL_PITCHER_FIELDER_PLAYER_IDS.include?(id)
       types << "pitcher_only_cost"
       types << "fielder_only_cost"
     end
@@ -132,6 +131,22 @@ class Player < ApplicationRecord
 
   private
 
+  # 投手カードと野手カードの組が成り立つか（二刀流の条件）。
+  # PM（オリジナル）は版を重ねるたびに全く別のカードに変わることがある（Operator 裁定 2026-11-14。你 藍翠は PM2026 が野手・PM2027 が投手）。
+  # PM の別の版（別のカードセット）同士のカードは、同じ選手の差し替えで、二刀流の組にならない。
+  # PM 以外のセットとの組（2025THBIG の投手と PM の野手など）と、同じ版の中の組は従来どおり。
+  def pitcher_fielder_pair?(pitcher_cards, fielder_cards)
+    pitcher_cards.any? do |p|
+      fielder_cards.any? { |f| !alternate_pm_editions?(p, f) }
+    end
+  end
+
+  def alternate_pm_editions?(card_a, card_b)
+    return false if card_a.card_set_id == card_b.card_set_id
+
+    [ card_a, card_b ].all? { |c| c.card_set&.effective_series == CardSet::ORIGINAL_SERIES }
+  end
+
   def lookup_cost_value(cost_type, cost_list_id, exact_player_card_id: nil)
     exact = lookup_cost_players.find do |cp|
       cp.cost_id == cost_list_id && cp.player_card_id == exact_player_card_id
@@ -153,7 +168,7 @@ class Player < ApplicationRecord
   def fallback_hachinai_player
     return @fallback_hachinai_player if defined?(@fallback_hachinai_player)
     return @fallback_hachinai_player = nil if direct_hachinai_two_way?
-    return @fallback_hachinai_player = nil unless has_pm2026_card?
+    return @fallback_hachinai_player = nil unless has_original_series_card?
 
     normalized_name = normalized_lookup_name
     return @fallback_hachinai_player = nil if normalized_name.blank?
@@ -165,9 +180,10 @@ class Player < ApplicationRecord
             .detect { |candidate| candidate.has_hachinai61_card? }
   end
 
-  def has_pm2026_card?
+  # PM（オリジナル）のカードセット（PM2026・PM2027・…）のカードを持つか。set_type の文字列でなく series（original）で見る
+  def has_original_series_card?
     loaded_cards = player_cards.loaded? ? player_cards : player_cards.includes(:card_set).to_a
-    loaded_cards.any? { |card| card.card_set&.set_type == PM2026_SET_TYPE }
+    loaded_cards.any? { |card| card.card_set&.effective_series == CardSet::ORIGINAL_SERIES }
   end
 
   def normalized_lookup_name

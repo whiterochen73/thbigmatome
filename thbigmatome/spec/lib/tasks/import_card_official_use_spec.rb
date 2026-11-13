@@ -15,7 +15,7 @@ RSpec.describe "import:card_data（公式戦使用不可の印・全 432 枚取�
   YOKOZUNA = { 331 => [ "特例 ちゃん", "25", "横綱" ], 332 => [ "カナック", "77", "横綱" ], 339 => [ "自分 勝手", "15", "大関" ] }.freeze
 
   let(:data_dir) { Rails.root.join("db/import").to_s }
-  let(:set_names) { { "2025THBIG" => "2025THBIG", "hachinai6.1" => "ハチナイ6.1", "PM2026" => "PM2026", "tamayomi2" => "球詠2" } }
+  let(:set_names) { { "2025THBIG" => "2025THBIG", "hachinai6.1" => "ハチナイ6.1", "PM2026" => "PM2026", "PM2027" => "PM2027", "tamayomi2" => "球詠2" } }
 
   before(:all) do
     Rails.application.load_tasks unless Rake::Task.task_defined?("import:card_data")
@@ -36,7 +36,9 @@ RSpec.describe "import:card_data（公式戦使用不可の印・全 432 枚取�
     DatabaseCleaner.clean_with(:truncation)
   end
 
-  def rows = @rows ||= CSV.read(File.join(data_dir, "player_cards.csv"), headers: true)
+  # この spec は 432 枚（PM2026 まで。cmd_1891）の取込を確かめる。PM2027（cmd_1893）の 144 枚は import_pm2027_spec が数える
+  def rows = @rows ||= CSV.read(File.join(data_dir, "player_cards.csv"), headers: true).reject { |r| r["card_source"] == "PM2027" }
+  def legacy_cards = PlayerCard.where.not(card_set_id: CardSet.where(name: "PM2027").select(:id))
   def row_of(seq) = rows.find { |r| r["card_seq"] == seq.to_s }
 
   def db_card(seq)
@@ -53,7 +55,7 @@ RSpec.describe "import:card_data（公式戦使用不可の印・全 432 枚取�
     end
 
     it "432 枚すべてが DB に入る（これまで飛ばされていた 331・332・339 を含む。旧期待値 429）" do
-      expect(PlayerCard.count).to eq(432)
+      expect(legacy_cards.count).to eq(432)
       expect(rows.map { |r| db_card(r["card_seq"]) }.compact.size).to eq(432)
     end
 
@@ -108,17 +110,17 @@ RSpec.describe "import:card_data（公式戦使用不可の印・全 432 枚取�
     end
 
     it "CSV で true なのは指定の 23 枚だけ、ほかの 409 枚は false" do
-      expect(rows.headers).to include("official_use_prohibited")
+      expect(rows.first.headers).to include("official_use_prohibited")
       expect(rows.select { |r| r["official_use_prohibited"] == "true" }.map { |r| r["card_seq"].to_i }.sort).to eq(PROHIBITED_SEQS)
       expect(rows.reject { |r| r["official_use_prohibited"] == "true" }.map { |r| r["official_use_prohibited"] }.uniq).to eq([ "false" ])
     end
 
     it "取り込み後、印は 23 枚の DB 行にだけ付く" do
-      expect(PlayerCard.where(official_use_prohibited: true).count).to eq(23)
+      expect(legacy_cards.where(official_use_prohibited: true).count).to eq(23)
       flagged = PROHIBITED_SEQS.map { |s| db_card(s) }
       expect(flagged.compact.size).to eq(23)
       expect(flagged.map(&:official_use_prohibited)).to all(be(true))
-      expect(PlayerCard.where.not(id: flagged.map(&:id)).where(official_use_prohibited: true)).to be_empty
+      expect(legacy_cards.where.not(id: flagged.map(&:id)).where(official_use_prohibited: true)).to be_empty
     end
 
     it "API のカード詳細にも載る" do

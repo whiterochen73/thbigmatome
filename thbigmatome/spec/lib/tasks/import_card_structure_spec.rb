@@ -42,7 +42,7 @@ RSpec.shared_examples "カードの構造（能力欄・特例起用・登板時
 
   def db_card(seq)
     row = cards_csv.find { |r| r["card_seq"] == seq.to_s }
-    set = CardSet.find_by(name: { "2025THBIG" => "2025THBIG", "hachinai6.1" => "ハチナイ6.1", "PM2026" => "PM2026", "tamayomi2" => "球詠2" }[row["card_source"]])
+    set = CardSet.find_by(name: { "2025THBIG" => "2025THBIG", "hachinai6.1" => "ハチナイ6.1", "PM2026" => "PM2026", "PM2027" => "PM2027", "tamayomi2" => "球詠2" }[row["card_source"]])
     squash = ->(n) { n.gsub(/[\s　]+/, "") }
     # seeds は variant 列を持ち base_player に付け替える。rake は variant を使わず、印字の名前の別 player に作る
     [ [ row["base_player_name"].presence || row["name"], row["variant"].presence ], [ row["name"], nil ] ].uniq.each do |n, v|
@@ -58,10 +58,15 @@ RSpec.shared_examples "カードの構造（能力欄・特例起用・登板時
     card.public_send(relation).includes(:condition).map { |x| x.condition&.name }
   end
 
-  it "432 枚が入る（途中で止まらない）" do
+  # この spec の数え方は cmd_1892 の 432 枚（PM2026 まで）。PM2027（cmd_1893）の分は import_pm2027_spec が数える
+  def legacy_cards = PlayerCard.where.not(card_set_id: CardSet.where(name: "PM2027").select(:id))
+
+  it "432 枚が入る（途中で止まらない）。PM2027 の 144 枚を足して 576 枚" do
     expect(@import_error).to be_nil
-    expect(PlayerCard.count).to eq(432)
-    expect(PlayerCard.where(official_use_prohibited: true).count).to eq(23)
+    expect(legacy_cards.count).to eq(432)
+    expect(PlayerCard.count).to eq(576)
+    expect(legacy_cards.where(official_use_prohibited: true).count).to eq(23)
+    expect(PlayerCard.where(official_use_prohibited: true).count).to eq(41)
   end
 
   describe "能力欄" do
@@ -70,9 +75,9 @@ RSpec.shared_examples "カードの構造（能力欄・特例起用・登板時
     end
 
     it "能力ごとの件数と対象カードが CSV どおり（38 件 + 守備欄の注記 3 件）" do
-      expect(PlayerCardAbility.count).to eq(41)
+      expect(PlayerCardAbility.where(player_card_id: legacy_cards.select(:id)).count).to eq(41)
       (ABILITY_SEQS.merge(DEFENSE_NOTES)).each do |name, seqs|
-        actual = PlayerCardAbility.joins(:ability_definition).where(ability_definitions: { name: name })
+        actual = PlayerCardAbility.where(player_card_id: legacy_cards.select(:id)).joins(:ability_definition).where(ability_definitions: { name: name })
                                   .map { |a| a.player_card_id }.sort
         expect(actual).to eq(seqs.map { |s| db_card(s).id }.sort), name
       end
@@ -163,11 +168,12 @@ end
 
 RSpec.describe "カードの構造（cmd_1892）" do
   describe "CSV の形" do
-    let(:abilities) { CSV.read(File.join(CARD_STRUCTURE_DIR, "player_card_abilities.csv"), headers: true) }
-    let(:defenses) { CSV.read(File.join(CARD_STRUCTURE_DIR, "player_card_defenses.csv"), headers: true) }
+    # card_seq 433 以降は PM2027（cmd_1893）。ここは 432 枚までの形を確かめる
+    let(:abilities) { CSV.read(File.join(CARD_STRUCTURE_DIR, "player_card_abilities.csv"), headers: true).select { |r| r["card_seq"].to_i <= 432 } }
+    let(:defenses) { CSV.read(File.join(CARD_STRUCTURE_DIR, "player_card_defenses.csv"), headers: true).select { |r| r["card_seq"].to_i <= 432 } }
 
     it "player_card_abilities.csv は 41 行（38 件 + 守備欄の注記 3 件）で、列は既存どおり" do
-      expect(abilities.headers).to eq(%w[card_seq ability_definition_name condition_name role sort_order])
+      expect(CSV.read(File.join(CARD_STRUCTURE_DIR, "player_card_abilities.csv"), headers: true).headers).to eq(%w[card_seq ability_definition_name condition_name role sort_order])
       expect(abilities.size).to eq(41)
       expect(abilities.map { |r| r["ability_definition_name"] }.tally).to eq(
         ABILITY_SEQS.transform_values(&:size).merge(DEFENSE_NOTES.transform_values(&:size)).transform_values(&:itself)
@@ -180,7 +186,7 @@ RSpec.describe "カードの構造（cmd_1892）" do
     end
 
     it "player_card_defenses.csv に condition_name 列があり、条件付きの行は 6 + 2 + 1 行" do
-      expect(defenses.headers).to eq(%w[card_seq position range_value error_rank throwing condition_name])
+      expect(CSV.read(File.join(CARD_STRUCTURE_DIR, "player_card_defenses.csv"), headers: true).headers).to eq(%w[card_seq position range_value error_rank throwing condition_name])
       expect(defenses.select { |r| r["condition_name"].present? }.map { |r| [ r["card_seq"].to_i, r["position"], r["condition_name"] ] }).to eq(
         [ [ 40, "C", "専属投手登板時" ], [ 54, "OF", "特例起用" ], [ 76, "C", "専属投手登板時" ], [ 152, "C", "専属投手登板時" ],
           [ 153, "C", "専属投手登板時" ], [ 362, "C", "専属投手登板時" ], [ 362, "OF", "専属投手降板後" ],
@@ -266,11 +272,11 @@ RSpec.describe "カードの構造（cmd_1892）" do
 
     include_examples "カードの構造（能力欄・特例起用・登板時守備）"
 
-    it "2 回流しても 432 枚・印 23 枚・各件数が変わらない（冪等）" do
+    it "2 回流しても 576 枚（432 + PM2027 の 144）・印 41 枚（23 + 18）・各件数が変わらない（冪等）" do
       expect(run_seed).to be_nil
       expect([ PlayerCard.count, PlayerCardAbility.count, PlayerCardDefense.count, PlayerCardTrait.count ]).to eq(@counts_after_first)
-      expect(PlayerCard.count).to eq(432)
-      expect(PlayerCard.where(official_use_prohibited: true).count).to eq(23)
+      expect(PlayerCard.count).to eq(576)
+      expect(PlayerCard.where(official_use_prohibited: true).count).to eq(41)
     end
   end
 end

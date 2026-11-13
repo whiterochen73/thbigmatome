@@ -3,6 +3,11 @@ class PlayerDetailSerializer < ActiveModel::Serializer
 
   has_many :player_cards, serializer: PlayerCardSummarySerializer
 
+  # 両方のセットのカードを持つ選手は現行セットのカードを先に並べる
+  def player_cards
+    object.cards_current_first
+  end
+
   attribute :costs do
     object.cost_players.includes(:cost).map do |cp|
       {

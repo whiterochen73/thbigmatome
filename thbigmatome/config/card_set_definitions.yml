@@ -1,0 +1,37 @@
+# 取り込み（rake import:card_data・db/seeds/import_cards.rb）が使うカードセットの対応表。player_cards.csv の card_source をキーにする。
+# 取り込みの両経路と CardSet はここだけを読む。
+#
+# current: 現行カードセットの印。選手の登録画面で選べるのは現行セットのカードだけ。
+#   PM2028 が出た時は、ここに PM2028 を足し、PM2027 の current を false にして取り込みを回す。
+#   取り込みは既存のカードセットの印も、この値に合わせて更新する。
+# series: 選手の series の補完に使う（外の世界枠の判定。PM はオリジナル選手枠 = original）。
+"2025THBIG":
+  name: "2025THBIG"
+  year: 2025
+  set_type: "annual"
+  series: "touhou"
+  current: true
+"hachinai6.1":
+  name: "ハチナイ6.1"
+  year: 2026
+  set_type: "hachinai61"
+  series: "hachinai"
+  current: true
+"PM2026":
+  name: "PM2026"
+  year: 2026
+  set_type: "pm2026"
+  series: "original"
+  current: false
+"PM2027":
+  name: "PM2027"
+  year: 2027
+  set_type: "pm2027"
+  series: "original"
+  current: true
+"tamayomi2":
+  name: "球詠2"
+  year: 2026
+  set_type: "tamayomi2"
+  series: "tamayomi"
+  current: true

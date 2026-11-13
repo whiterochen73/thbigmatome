@@ -9,6 +9,15 @@ class PlayerCardSerializer < ActiveModel::Serializer
              :batting_table, :pitching_table,
              :variant
 
+  # 登録画面で選べるか（現行カードセットか・公式戦で使えるか）の判断に使う
+  attribute :card_set_current do
+    object.card_set.is_current
+  end
+
+  attribute :official_use_prohibited do
+    object.official_use_prohibited
+  end
+
   attribute :player_name do
     object.player.name
   end

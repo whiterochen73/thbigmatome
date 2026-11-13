@@ -63,12 +63,16 @@ class TeamMembershipWriter
       desired.each_value do |values|
         tm = by_player[values[:player_id]]
         kind = if tm.nil?
+          validate_registration!(values, desired)
           tm = create_membership!(values)
           "join"
         elsif !point.fetch(tm.id).on_team
+          validate_registration!(values, desired)
           validate_rejoin!(tm)
           "join"
         elsif contract_differs?(point.fetch(tm.id), values)
+          # 既存の所属は、カードを替える時だけカードの制限に当てる（現行外のカードを持ったまま、ほかの値を変えるのは通す）
+          validate_card!(values) if point.fetch(tm.id).player_card_id != values[:player_card_id]
           "contract"
         end
         next unless kind
@@ -129,10 +133,40 @@ class TeamMembershipWriter
       entry.display_name != values[:display_name]
   end
 
+  # 新しく登録する（初めて・放出済みからの再登録）選手の制限。登録できるカードは現行のものだけ（カードなしは受ける）、同キャラは保存後の姿
+  # （desired）の中で 1 人だけ。誰にでも適用する（コミッショナーも）。既に同キャラが 2 人入っているチームの既存の所属には触れない
+  def validate_registration!(values, desired)
+    validate_card!(values)
+
+    player = Player.find_by(id: values[:player_id])
+    return if player.nil? || player.character_key.blank?
+
+    others = desired.keys - [ values[:player_id] ]
+    twin = Player.where(id: others, character_key: player.character_key).first
+    return unless twin
+
+    reject_registration!(:player_id, I18n.t("activerecord.errors.models.team_membership.same_character_in_team",
+                                            player_name: player.name, other_name: twin.name))
+  end
+
+  def validate_card!(values)
+    return if values[:player_card_id].blank?
+
+    message = TeamMembership.card_registration_error(PlayerCard.includes(:card_set).find_by(id: values[:player_card_id]))
+    reject_registration!(:player_card_id, message) if message
+  end
+
+  def reject_registration!(attribute, message)
+    probe = TeamMembership.new(team: @team)
+    probe.errors.add(attribute, message)
+    raise ActiveRecord::RecordInvalid, probe
+  end
+
   # 新しい選手を在籍させる。行の値は送られた値（写しは保存の最後に作り直す）。検証（監督の他チームとの重複など）はいまの保存と同じ
   def create_membership!(values)
     tm = @team.all_team_memberships.new(player_id: values[:player_id], squad: "second")
     tm.skip_commissioner_validation = true if @commissioner
+    tm.skip_character_validation = true # 同キャラは validate_registration! が保存後の姿で検査済み
     tm.assign_attributes(values.slice(:selected_cost_type, :excluded_from_team_total, :display_name, :player_card_id))
     tm.save!
     tm

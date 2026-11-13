@@ -790,6 +790,103 @@ describe('TeamMembers.vue', () => {
     expect(wrapper.text()).toContain('PM2026 / 町田')
     expect(wrapper.text()).toContain('PM2026 / UR')
   })
+
+  // 選手を登録する画面で選べるのは、現行カードセットの、公式戦で使えるカードだけ（cmd_1893/subtask_1893e）。
+  // Test Basis: Operator 裁定（2026-11-14）。両方のセットのカードを持つ選手は現行セットのほうを既定で見せる。サーバ側でも拒む（画面だけで止めない）
+  describe('登録できるカードの絞り込み', () => {
+    type Card = {
+      id: number
+      card_type: string
+      card_set_name: string
+      card_set_id: number
+      variant?: string | null
+      card_set_current: boolean
+      official_use_prohibited: boolean
+    }
+    type Vm = {
+      selectedPlayer: unknown
+      selectedCardOptionKey: string | null
+      availablePlayerCards: Card[]
+      cardSetOptions: { option_key: string; card_set_name: string; label: string }[]
+      noRegistrableCard: boolean
+      selectedCostListId: number | null
+    }
+
+    const card = (id: number, over: Partial<Card> = {}): Card => ({
+      id,
+      card_type: 'batter',
+      card_set_name: 'PM2027',
+      card_set_id: 5,
+      variant: null,
+      card_set_current: true,
+      official_use_prohibited: false,
+      ...over,
+    })
+
+    async function mountWithCards(cards: Card[]) {
+      const player = makeTeamPlayer({ id: 77, name: '選手X', short_name: 'X', number: '7', position: 'outfielder' })
+      vi.mocked(axios.get).mockImplementation((url: string) => {
+        if (url === '/player_cards') return Promise.resolve({ data: { player_cards: cards } })
+        if (url.includes('/teams/') && url.endsWith('/team_players')) return Promise.resolve({ data: [] })
+        if (url === '/team_registration_players') return Promise.resolve({ data: [player] })
+        if (url === '/player-types') return Promise.resolve({ data: [] })
+        if (url === '/costs')
+          return Promise.resolve({
+            data: [{ id: 100, name: 'コスト表1', start_date: '2020-01-01', end_date: null }],
+          })
+        return Promise.resolve({ data: {} })
+      })
+      const router = createTestRouter()
+      router.push('/teams/1/members')
+      await router.isReady()
+      const wrapper = mount(TeamMembers, {
+        global: { plugins: [vuetify, i18n, router], stubs: { TeamNavigation: TeamNavigationStub } },
+      })
+      await flushPromises()
+      const vm = wrapper.vm as unknown as Vm
+      vm.selectedPlayer = player
+      await flushPromises()
+      return { wrapper, vm }
+    }
+
+    it('現行外のセットのカードは選択肢に出ない（両方のセットを持つ選手は現行セットだけ・既定でそれが選ばれる）', async () => {
+      const { vm } = await mountWithCards([
+        card(1, { card_set_name: 'PM2026', card_set_id: 4, card_set_current: false }),
+        card(2, { card_set_name: 'PM2027', card_set_id: 5 }),
+      ])
+      expect(vm.cardSetOptions.map((o) => o.card_set_name)).toEqual(['PM2027'])
+      expect(vm.selectedCardOptionKey).toBe('5:')
+      expect(vm.availablePlayerCards.map((c) => c.id)).toEqual([2])
+    })
+
+    it('公式戦で使えないカードは、現行セットのものでも選択肢に出ない', async () => {
+      const { vm } = await mountWithCards([
+        card(1, { variant: 'UR', official_use_prohibited: true }),
+        card(2, { variant: '湘南' }),
+      ])
+      expect(vm.cardSetOptions.map((o) => o.label)).toEqual(['PM2027 / 湘南'])
+    })
+
+    it('選べるカードが 1 枚も無い選手（現行外のカードだけ）は追加ボタンが押せない', async () => {
+      const { wrapper, vm } = await mountWithCards([
+        card(1, { card_set_name: 'PM2026', card_set_id: 4, card_set_current: false }),
+      ])
+      vm.selectedCostListId = 100
+      await flushPromises()
+      expect(vm.noRegistrableCard).toBe(true)
+      const addBtn = wrapper.findAll('.v-btn').find((b) => b.text().includes('追加'))
+      expect(addBtn!.attributes('disabled')).toBeDefined()
+    })
+
+    it('カードが選べる選手は追加ボタンが押せる', async () => {
+      const { wrapper, vm } = await mountWithCards([card(2)])
+      vm.selectedCostListId = 100
+      await flushPromises()
+      expect(vm.noRegistrableCard).toBe(false)
+      const addBtn = wrapper.findAll('.v-btn').find((b) => b.text().includes('追加'))
+      expect(addBtn!.attributes('disabled')).toBeUndefined()
+    })
+  })
 })
 
 // 過去分の修正（cmd_1784 段2b）: 読む GET と保存する POST の両方に、同じ target_date と phase を渡す。

@@ -22,23 +22,9 @@ end
 
 data_dir = ENV["CARD_DATA_DIR"].presence || Rails.root.join("db/import").to_s
 
-card_set_defs = {
-  "2025THBIG"   => { name: "2025THBIG",  year: 2025, set_type: "annual" },
-  "hachinai6.1" => { name: "ハチナイ6.1", year: 2026, set_type: "hachinai61" },
-  "PM2026"      => { name: "PM2026",     year: 2026, set_type: "pm2026" },
-  "PM2027"      => { name: "PM2027",     year: 2027, set_type: "pm2027" },
-  "tamayomi2"   => { name: "球詠2",      year: 2026, set_type: "tamayomi2" }
-}.freeze
-
-# card_source → players.series の対応（外の世界枠判定に使用）
-# PM2026はオリジナル選手枠（東方/ハチナイ/球詠の「外の世界」枠 = series:original）
-CARD_SOURCE_SERIES = {
-  "2025THBIG"   => "touhou",
-  "hachinai6.1" => "hachinai",
-  "tamayomi2"   => "tamayomi",
-  "PM2026"      => "original",
-  "PM2027"      => "original"
-}.freeze
+# card_source → カードセットの定義（名前・年・set_type・series・現行の印）は config/card_set_definitions.yml が正本。rake import:card_data と共通。
+# PM2028 が出た時は、そこに足して PM2027 の current を false にするだけでよい。
+card_set_defs = CardSet::IMPORT_DEFINITIONS
 
 player_card_map = {}
 skipped_traits  = []
@@ -59,10 +45,13 @@ CSV.foreach("#{data_dir}/player_cards.csv", headers: true) do |row|
   end
 
   card_set = CardSet.find_or_create_by!(name: defn[:name]) do |cs|
-    cs.year     = defn[:year]
-    cs.set_type = defn[:set_type]
-    cs.series   = CARD_SOURCE_SERIES[card_source]
+    cs.year       = defn[:year]
+    cs.set_type   = defn[:set_type]
+    cs.series     = defn[:series]
+    cs.is_current = defn[:current]
   end
+  # 現行の印は対応表に合わせる（既存のカードセットにも効く。PM2028 の時に PM2027 を外すため）
+  card_set.update_column(:is_current, defn[:current]) if card_set.is_current != defn[:current]
 
   if row["name"].blank?
     puts "  WARN: card_seq=#{row['card_seq']} has blank name — skipped"
@@ -81,7 +70,7 @@ CSV.foreach("#{data_dir}/player_cards.csv", headers: true) do |row|
            Player.create!(name: player_name, number: row["number"].presence || "?")
 
   # seriesが未設定の場合のみcard_sourceから補完（既存値を上書きしない）
-  derived_series = CARD_SOURCE_SERIES[card_source]
+  derived_series = defn[:series]
   player.update_column(:series, derived_series) if player.series.nil? && derived_series.present?
 
   # バリエーション処理: variant列があればベースプレイヤーに player_id を付け替える

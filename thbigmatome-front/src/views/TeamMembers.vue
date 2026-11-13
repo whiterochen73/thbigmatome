@@ -105,7 +105,7 @@
               :variant="gameDayActions ? 'flat' : 'outlined'"
               :prepend-icon="gameDayActions ? 'mdi-plus' : undefined"
               @click="addPlayer"
-              :disabled="!selectedPlayer || !selectedCostListId"
+              :disabled="!selectedPlayer || !selectedCostListId || noRegistrableCard"
               :loading="fetchingCards"
             >
               {{ t('teamMembers.addPlayer') }}
@@ -408,6 +408,8 @@ interface PlayerCardInfo {
   card_set_name: string
   card_set_id: number
   variant?: string | null
+  card_set_current?: boolean
+  official_use_prohibited?: boolean
 }
 
 interface CardSetOption {
@@ -461,6 +463,11 @@ const playerTypes = ref<PlayerType[]>([])
 const availablePlayerCards = ref<PlayerCardInfo[]>([])
 const selectedCardOptionKey = ref<string | null>(null)
 const fetchingCards = ref(false)
+// 選手が持つカードの総数（登録できないカードを除く前）。1 枚以上あるのに登録できるカードが 0 枚の選手は追加させない
+const playerCardTotal = ref(0)
+const noRegistrableCard = computed(
+  () => playerCardTotal.value > 0 && availablePlayerCards.value.length === 0,
+)
 
 // バリエーション対応コスト検索: variant-specific → base の順にフォールバック
 const findCostPlayer = (
@@ -896,6 +903,10 @@ const updatePlayerCost = (player: TeamPlayer) => {
   player.current_cost = costValue
 }
 
+// 登録画面で選べるカード: 現行カードセットの、公式戦で使えるもの。サーバ側でも同じ規則で拒む
+const isRegistrableCard = (card: PlayerCardInfo) =>
+  card.card_set_current !== false && !card.official_use_prohibited
+
 async function fetchPlayerCards(playerId: number): Promise<PlayerCardInfo[]> {
   try {
     const res = await axios.get<{ player_cards: PlayerCardInfo[] }>('/player_cards', {
@@ -910,10 +921,13 @@ async function fetchPlayerCards(playerId: number): Promise<PlayerCardInfo[]> {
 watch(selectedPlayer, async (newPlayer) => {
   selectedCardOptionKey.value = null
   availablePlayerCards.value = []
+  playerCardTotal.value = 0
   if (!newPlayer) return
   fetchingCards.value = true
   try {
-    availablePlayerCards.value = await fetchPlayerCards(newPlayer.id)
+    const cards = await fetchPlayerCards(newPlayer.id)
+    playerCardTotal.value = cards.length
+    availablePlayerCards.value = cards.filter(isRegistrableCard)
     if (cardSetOptions.value.length > 0) {
       const normalOption = cardSetOptions.value.find((opt) => opt.card_set_name.includes('通常'))
       selectedCardOptionKey.value = normalOption?.option_key ?? cardSetOptions.value[0].option_key
@@ -990,6 +1004,7 @@ const doAddPlayer = () => {
   selectedPlayer.value = null
   selectedCardOptionKey.value = null
   availablePlayerCards.value = []
+  playerCardTotal.value = 0
 
   // Check limits and show warnings
   if (includedTeamPlayers.value.length > MAX_PLAYERS) {

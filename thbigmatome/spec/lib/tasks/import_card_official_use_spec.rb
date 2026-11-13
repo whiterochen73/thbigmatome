@@ -41,11 +41,20 @@ RSpec.describe "import:card_data（公式戦使用不可の印・全 432 枚取�
   def legacy_cards = PlayerCard.where.not(card_set_id: CardSet.where(name: "PM2027").select(:id))
   def row_of(seq) = rows.find { |r| r["card_seq"] == seq.to_s }
 
+  # 取込は variant 列と base_player_name で変種を基の Player に付け替える（rake・seeds とも。cmd_1893/subtask_1893e）。基の Player に付いた変種、
+  # 付け替えのない行（base_player_name が空）は印字の名前の Player に付く
   def db_card(seq)
     row = row_of(seq)
-    player = Player.find_by("REPLACE(REPLACE(name, ' ', ''), '　', '') = ?", row["name"].gsub(/[\s　]+/, ""))
-    PlayerCard.find_by(player_id: player&.id, card_set_id: CardSet.find_by(name: set_names[row["card_source"]])&.id,
-                       card_type: row["card_type"])
+    squash = ->(n) { n.gsub(/[\s　]+/, "") }
+    [ [ row["base_player_name"].presence || row["name"], row["variant"].presence ], [ row["name"], row["variant"].presence ] ].uniq.each do |n, v|
+      player = Player.find_by("REPLACE(REPLACE(name, ' ', ''), '　', '') = ?", squash.(n))
+      next unless player
+
+      card = PlayerCard.find_by(player_id: player.id, card_set_id: CardSet.find_by(name: set_names[row["card_source"]])&.id,
+                                card_type: row["card_type"], variant: v)
+      return card if card
+    end
+    nil
   end
 
   describe "全カード取り込み" do

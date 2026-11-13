@@ -20,13 +20,9 @@ namespace :import do
     end
     data_dir = ENV["CARD_DATA_DIR"] || "/home/morinaga/projects/thbig-irc-parser/data/import"
 
-    card_set_defs = {
-      "2025THBIG"   => { name: "2025THBIG",  year: 2025, set_type: "annual" },
-      "hachinai6.1" => { name: "ハチナイ6.1", year: 2026, set_type: "hachinai61" },
-      "PM2026"      => { name: "PM2026",     year: 2026, set_type: "pm2026" },
-      "PM2027"      => { name: "PM2027",     year: 2027, set_type: "pm2027" },
-      "tamayomi2"   => { name: "球詠2",      year: 2026, set_type: "tamayomi2" }
-    }.freeze
+    # card_source → カードセットの定義（名前・年・set_type・series・現行の印）は config/card_set_definitions.yml が正本。seeds と共通。
+    # PM2028 が出た時は、そこに足して PM2027 の current を false にするだけでよい。
+    card_set_defs = CardSet::IMPORT_DEFINITIONS
 
     # card_seq => PlayerCard (for association building)
     player_card_map = {}
@@ -49,9 +45,13 @@ namespace :import do
 
       # CardSet
       card_set = CardSet.find_or_create_by!(name: defn[:name]) do |cs|
-        cs.year     = defn[:year]
-        cs.set_type = defn[:set_type]
+        cs.year       = defn[:year]
+        cs.set_type   = defn[:set_type]
+        cs.series     = defn[:series]
+        cs.is_current = defn[:current]
       end
+      # 現行の印は対応表に合わせる（既存のカードセットにも効く。PM2028 の時に PM2027 を外すため）
+      card_set.update_column(:is_current, defn[:current]) if card_set.is_current != defn[:current]
 
       # Required fields check (name + stats required for Player and PlayerCard)
       if row["name"].blank?
@@ -70,6 +70,23 @@ namespace :import do
       normalized_name = player_name.gsub(/[\s\u3000]+/, '')
       player = Player.find_by("REPLACE(REPLACE(name, ' ', ''), '　', '') = ?", normalized_name) ||
                Player.create!(name: player_name, number: row["number"].presence || "?")
+
+      # series が未設定の場合のみ card_source から補完（既存値を上書きしない。seeds と同じ）
+      player.update_column(:series, defn[:series]) if player.series.nil? && defn[:series].present?
+
+      # バリエーション処理（seeds と同じ）: variant 列と base_player_name があれば、持ち主を基の Player に付け替える。
+      # base_player_name が空の変種（冴月 麟 (投手)／(野手) など）は付け替えず、行の名前の Player のまま（同キャラは Player#character_key で束ねる）
+      variant_val = row["variant"].presence
+      base_player_name = row["base_player_name"].presence
+      if variant_val.present? && base_player_name.present?
+        normalized_base = base_player_name.gsub(/[\s\u3000]+/, "")
+        base_player = Player.find_by("REPLACE(REPLACE(name, ' ', ''), '　', '') = ?", normalized_base)
+        if base_player
+          player = base_player
+        else
+          puts "  WARN: base_player_name='#{base_player_name}' not found for #{player_name}, using variant player"
+        end
+      end
 
       # Derive card_type from is_pitcher (CSV) or card_type column if available
       card_type = if row["card_type"].present?
@@ -95,7 +112,10 @@ namespace :import do
       end
 
       # PlayerCard (upsert: 同一card_set+player+card_typeは更新、新規は作成)
-      pc = PlayerCard.find_or_create_by!(card_set_id: card_set.id, player_id: player.id, card_type: card_type) do |c|
+      find_key = { card_set_id: card_set.id, player_id: player.id, card_type: card_type }
+      find_key[:variant] = variant_val if variant_val.present?
+      pc = PlayerCard.find_or_create_by!(**find_key) do |c|
+        c.variant       = variant_val
         c.is_pitcher    = row["is_pitcher"] == "true"
         c.handedness    = handedness_val
         c.is_relief_only = row["is_relief_only"] == "true"

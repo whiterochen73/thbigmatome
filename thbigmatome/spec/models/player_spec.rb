@@ -122,13 +122,26 @@ RSpec.describe Player, type: :model do
     end
   end
 
-  describe 'PM（オリジナル）の版違いで、投手カードと野手カードに分かれる選手（二刀流ではない）' do
-    # Operator 裁定（2026-11-14）: 「PM は全く別のカードに変更されることがある」。PM2026 は野手・PM2027 は投手の 你 藍翠 は二刀流ではない
+
+  describe 'PM（オリジナル）のカードは他のカードと組にしない（二刀流はカード 1 枚で決まる）' do
+    # Operator 裁定（2026-11-14）: PM のカード（エイプリル・完走カード・版違いを含む）は、年度版のカードとも PM の別のカードとも別のカード。
+    # 二刀流になるのは、そのカード 1 枚が二刀流カード（野手カードに投球表がある。P 守備を持つ）の時だけ。
     let(:pm2026) { create(:card_set, year: 2026, set_type: "pm2026", name: "PM2026") }
     let(:pm2027) { create(:card_set, year: 2027, set_type: "pm2027", name: "PM2027") }
     let(:annual) { create(:card_set, year: 2025, set_type: "annual", name: "2025THBIG") }
+    let(:two_way_types) { %w[two_way_cost pitcher_only_cost fielder_only_cost] }
 
-    it 'PM2026 の野手カードと PM2027 の投手カードを持っても、二刀流のコスト種別を出さない' do
+    # 魔理沙・千亦・天子・飯綱丸の Player id（3・20・29・33）は DB の連番で偶然当たることがある。カードだけで決まることを見るため空にする
+    before { stub_const("Player::SPECIAL_PITCHER_FIELDER_PLAYER_IDS", []) }
+
+    def two_way_batter_card(player, card_set, variant: nil)
+      card = create(:player_card, player: player, card_set: card_set, card_type: "batter", is_pitcher: false, variant: variant)
+      card.player_card_defenses.create!(position: "P", range_value: 0, error_rank: "E")
+      card.player_card_defenses.create!(position: "SS", range_value: 3, error_rank: "C")
+      card
+    end
+
+    it 'PM2026 の野手カードと PM2027 の投手カードを持っても、二刀流のコスト種別を出さない（你 藍翠）' do
       player = create(:player, name: "你 藍翠", number: "088", series: "original")
       create(:player_card, player: player, card_set: pm2026, card_type: "batter", is_pitcher: false)
       pitcher = create(:player_card, player: player, card_set: pm2027, card_type: "pitcher", is_pitcher: true)
@@ -137,26 +150,74 @@ RSpec.describe Player, type: :model do
       expect(player.available_cost_types_for_card(pitcher)).to eq([ "normal_cost" ])
     end
 
-    it '逆（PM2026 が投手・PM2027 が野手）でも同じ' do
-      player = create(:player, name: "版違い", number: "1", series: "original")
-      create(:player_card, player: player, card_set: pm2026, card_type: "pitcher", is_pitcher: true)
-      create(:player_card, player: player, card_set: pm2027, card_type: "batter", is_pitcher: false)
-      expect(Player.find(player.id).available_cost_types).not_to include("two_way_cost")
-    end
-
-    it '同じ版（同じカードセット）の中に投手と野手の両方があれば、従来どおり二刀流' do
+    it '同じ PM の版の中でも、別のカード（variant 違い）の投手と野手は組にしない' do
       player = create(:player, name: "同じ版", number: "2", series: "original")
       create(:player_card, player: player, card_set: pm2027, card_type: "pitcher", is_pitcher: true, variant: "a")
       create(:player_card, player: player, card_set: pm2027, card_type: "batter", is_pitcher: false, variant: "b")
-      expect(Player.find(player.id).available_cost_types).to include("two_way_cost", "pitcher_only_cost", "fielder_only_cost")
+      expect(Player.find(player.id).available_cost_types).to eq([ "normal_cost" ])
     end
 
-    it 'PM 以外のセット（2025THBIG）の投手カードと PM の野手カードは、従来どおり二刀流（東風谷 早苗・天弓 千亦 と同じ）' do
-      player = create(:player, name: "他系列", number: "3", series: "touhou")
-      create(:player_card, player: player, card_set: annual, card_type: "pitcher", is_pitcher: true)
+    it '年度版（2025THBIG）の投手カードと PM の野手カード（エイプリル）は組にしない（東風谷 早苗・依神 女苑）' do
+      player = create(:player, name: "東風谷 早苗", number: "37", series: "touhou")
+      pitcher = create(:player_card, player: player, card_set: annual, card_type: "pitcher", is_pitcher: true)
       create(:player_card, player: player, card_set: pm2026, card_type: "batter", is_pitcher: false, variant: "エイプリル")
       create(:player_card, player: player, card_set: pm2027, card_type: "batter", is_pitcher: false, variant: "エイプリル")
-      expect(Player.find(player.id).available_cost_types).to include("two_way_cost")
+      player = Player.find(player.id)
+      expect(player.available_cost_types).not_to include("two_way_cost", "pitcher_only_cost", "fielder_only_cost")
+      expect(player.available_cost_types_for_card(pitcher)).not_to include("two_way_cost")
+    end
+
+    it '年度版の野手カードと PM の投手カードは組にしない（鈴仙・鬼人 正邪）' do
+      player = create(:player, name: "鈴仙", number: "33", series: "touhou")
+      create(:player_card, player: player, card_set: annual, card_type: "batter", is_pitcher: false)
+      pm_pitcher = create(:player_card, player: player, card_set: pm2026, card_type: "pitcher", is_pitcher: true)
+      create(:player_card, player: player, card_set: pm2027, card_type: "pitcher", is_pitcher: true)
+      player = Player.find(player.id)
+      expect(player.available_cost_types).not_to include("two_way_cost")
+      expect(player.available_cost_types_for_card(pm_pitcher)).not_to include("two_way_cost")
+    end
+
+    it '八雲 紫: 年度版の投手と、PM2027 のエイプリル（野手）・飯能（投手）を持っても二刀流にならない' do
+      player = create(:player, name: "八雲 紫", number: "18", series: "touhou")
+      create(:player_card, player: player, card_set: annual, card_type: "pitcher", is_pitcher: true)
+      create(:player_card, player: player, card_set: pm2026, card_type: "pitcher", is_pitcher: true)
+      ap = create(:player_card, player: player, card_set: pm2027, card_type: "batter", is_pitcher: false, variant: "エイプリル")
+      create(:player_card, player: player, card_set: pm2027, card_type: "pitcher", is_pitcher: true, variant: "飯能")
+      player = Player.find(player.id)
+      expect(player.available_cost_types).not_to include("two_way_cost", "pitcher_only_cost", "fielder_only_cost")
+      expect(player.available_cost_types_for_card(ap)).not_to include("two_way_cost")
+    end
+
+    it '野手カードに投球表がある PM のカード 1 枚は二刀流カード（天弓 千亦（草津）。年度版の投手カードとは別）' do
+      player = create(:player, name: "天弓 千亦", number: "129", series: "touhou")
+      annual_pitcher = create(:player_card, player: player, card_set: annual, card_type: "pitcher", is_pitcher: true)
+      kusatsu26 = two_way_batter_card(player, pm2026, variant: "草津")
+      kusatsu27 = two_way_batter_card(player, pm2027, variant: "草津")
+      player = Player.find(player.id)
+      expect(player.available_cost_types).to include(*two_way_types)
+      expect(player.available_cost_types_for_card(kusatsu26)).to include(*two_way_types)
+      expect(player.available_cost_types_for_card(kusatsu27)).to include(*two_way_types)
+      # 二刀流なのは草津のカード自身。同じ Player の年度版の投手カードに二刀流は移らない
+      expect(player.available_cost_types_for_card(annual_pitcher)).not_to include("two_way_cost")
+    end
+
+    it '二刀流カードだけを持つ Player（rake 経路の「天弓 千亦 (草津)」・「とり」）も二刀流' do
+      player = create(:player, name: "天弓 千亦 (草津)", number: "129", series: "original")
+      two_way_batter_card(player, pm2027, variant: nil)
+      expect(Player.find(player.id).available_cost_types).to include(*two_way_types)
+    end
+
+    it 'P 守備のない PM の野手カードは二刀流カードではない' do
+      player = create(:player, name: "ただの野手", number: "5", series: "original")
+      create(:player_card, player: player, card_set: pm2027, card_type: "batter", is_pitcher: false)
+      expect(Player.find(player.id).available_cost_types).to eq([ "normal_cost" ])
+    end
+
+    it '年度版の同じ選手が投手カードと野手カードを持つ組は、従来どおり二刀流' do
+      player = create(:player, name: "年度版二刀流", number: "7", series: "touhou")
+      create(:player_card, player: player, card_set: annual, card_type: "pitcher", is_pitcher: true)
+      create(:player_card, player: player, card_set: annual, card_type: "batter", is_pitcher: false)
+      expect(Player.find(player.id).available_cost_types).to include(*two_way_types)
     end
 
     it '冴月 麟 は投手と野手が別の Player（名前に（投手）（野手））で、二刀流ではない' do

@@ -26,8 +26,7 @@ class Player < ApplicationRecord
 
     loaded_cards = player_cards.loaded? ? player_cards : player_cards.to_a
     pitcher_cards = loaded_cards.select(&:is_pitcher)
-    fielder_cards = loaded_cards.reject(&:is_pitcher)
-    pitcher_and_fielder = pitcher_fielder_pair?(pitcher_cards, fielder_cards)
+    pitcher_and_fielder = pitcher_fielder_pair?(loaded_cards)
 
     # リリーフ契約: 疲労Pに「R」がついていないリリーフ選手 またはスラッシュ投手(is_dual_wielder=true)
     if pitcher_cards.any? { |c| (!c.is_relief_only && c.relief_stamina.present?) || c.is_dual_wielder }
@@ -63,7 +62,7 @@ class Player < ApplicationRecord
     end
 
     # 二刀流/投手専念/野手専念: 選手全体で投手・野手カード両方を持つ、またはハチナイ二刀流（片方カードのみでも可）
-    has_pitcher_and_fielder = pitcher_fielder_pair?(loaded_cards.select(&:is_pitcher), loaded_cards.reject(&:is_pitcher))
+    has_pitcher_and_fielder = pitcher_fielder_pair_for_card?(card, loaded_cards)
 
     if has_pitcher_and_fielder || two_way
       types << "two_way_cost"
@@ -131,20 +130,27 @@ class Player < ApplicationRecord
 
   private
 
-  # 投手カードと野手カードの組が成り立つか（二刀流の条件）。
-  # PM（オリジナル）は版を重ねるたびに全く別のカードに変わることがある（Operator 裁定 2026-11-14。你 藍翠は PM2026 が野手・PM2027 が投手）。
-  # PM の別の版（別のカードセット）同士のカードは、同じ選手の差し替えで、二刀流の組にならない。
-  # PM 以外のセットとの組（2025THBIG の投手と PM の野手など）と、同じ版の中の組は従来どおり。
-  def pitcher_fielder_pair?(pitcher_cards, fielder_cards)
-    pitcher_cards.any? do |p|
-      fielder_cards.any? { |f| !alternate_pm_editions?(p, f) }
-    end
+  # 二刀流の条件（Player 単位）。ハチナイ二刀流とは別に、次のどちらか。
+  #   1. PM（オリジナル）以外のカードの中で、投手カードと野手カードの組が成り立つ（年度版・ハチナイ・球詠の従来の規則）
+  #   2. PM のカード 1 枚が二刀流カード（PlayerCard#two_way_card?。野手カードに投球表がある）
+  # PM のカードは他のどのカードとも組にしない（Operator 裁定 2026-11-14）。PM はチームごとの起用法で作られ、版を重ねるたびに全く別のカードに
+  # 変わるうえ、エイプリル・完走カードも年度版とは別のカードのため。你 藍翠（PM2026 野手・PM2027 投手）・八雲 紫（年度版の投手と PM2027 エイプリルの野手）は二刀流ではない。
+  def pitcher_fielder_pair?(cards)
+    non_pm = cards.reject { |c| original_series_card?(c) }
+    non_pm.any?(&:is_pitcher) && non_pm.any? { |c| !c.is_pitcher } ||
+      cards.any? { |c| original_series_card?(c) && c.two_way_card? }
   end
 
-  def alternate_pm_editions?(card_a, card_b)
-    return false if card_a.card_set_id == card_b.card_set_id
+  # 1 枚のカードが二刀流のコスト種別を取れるか（カード単位）。PM のカードは自分自身だけで決まり、PM 以外のカードは PM 以外のカードの組で決まる
+  def pitcher_fielder_pair_for_card?(card, cards)
+    return card.two_way_card? if original_series_card?(card)
 
-    [ card_a, card_b ].all? { |c| c.card_set&.effective_series == CardSet::ORIGINAL_SERIES }
+    non_pm = cards.reject { |c| original_series_card?(c) }
+    non_pm.any?(&:is_pitcher) && non_pm.any? { |c| !c.is_pitcher }
+  end
+
+  def original_series_card?(card)
+    card.card_set&.effective_series == CardSet::ORIGINAL_SERIES
   end
 
   def lookup_cost_value(cost_type, cost_list_id, exact_player_card_id: nil)

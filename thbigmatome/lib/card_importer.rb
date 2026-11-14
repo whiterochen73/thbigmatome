@@ -249,13 +249,16 @@ class CardImporter
     @created_players = 0
 
     say "=== Step 1: player_cards.csv ==="
-    card_map = {}
+    card_map = {}    # 子の行を同期する対象（macro 照合の旧行は中身を更新しないので入れない）
+    matched_ids = [] # orphan 判定から外すカード（macro 照合の旧行も含む）
     rows.each do |row|
       pc, tier = claimed[row.object_id]
       result = pc ? apply_match(row, pc, tier, refs) : create_card(row)
-      card_map[row.seq.to_s] = result if result
+      next unless result
+      matched_ids << result.id
+      card_map[row.seq.to_s] = result unless tier == :macro
     end
-    unclaimed = PlayerCard.where(card_set_id: rows.map { |r| r.card_set.id }.uniq).where.not(id: card_map.values.map(&:id)).to_a
+    unclaimed = PlayerCard.where(card_set_id: rows.map { |r| r.card_set.id }.uniq).where.not(id: matched_ids).to_a
     unclaimed.each do |pc|
       @report << { "kind" => "orphan_card", "card_seq" => pc.card_seq, "player_card_id" => pc.id, "card_set" => pc.card_set.name,
                    "player" => pc.player.name, "card_type" => pc.card_type, "variant" => pc.variant, "tier" => nil,
@@ -278,7 +281,7 @@ class CardImporter
   def reference_counts
     {
       memberships: TeamMembership.group(:player_card_id).count,
-      other: [ CompetitionRoster, GameLineupEntry, CostPlayer ].each_with_object(Hash.new(0)) do |m, h|
+      other: [ CompetitionRoster, GameLineupEntry, CostPlayer, TeamMembershipChange ].each_with_object(Hash.new(0)) do |m, h|
         m.where.not(player_card_id: nil).group(:player_card_id).count.each { |k, v| h[k] += v }
       end
     }
@@ -468,7 +471,15 @@ class CardImporter
           complete = false
           next
         end
-        condition = TraitCondition.find_by(name: row["condition_name"].presence)
+        condition = nil
+        if row["condition_name"].present?
+          condition = TraitCondition.find_by(name: row["condition_name"])
+          unless condition
+            say "  WARN: card_seq=#{row['card_seq']} trait '#{row['trait_definition_name']}' condition '#{row['condition_name']}' not found in trait_conditions — skipped (seed master_traits first)"
+            complete = false
+            next
+          end
+        end
         desired << [ [ trait_def.id, condition&.id, row["role"].presence ],
                      { trait_definition_id: trait_def.id, condition_id: condition&.id, role: row["role"].presence, sort_order: row["sort_order"].to_i } ]
       end
@@ -521,7 +532,15 @@ class CardImporter
           complete = false
           next
         end
-        condition = TraitCondition.find_by(name: row["condition_name"].presence)
+        condition = nil
+        if row["condition_name"].present?
+          condition = TraitCondition.find_by(name: row["condition_name"])
+          unless condition
+            say "  WARN: card_seq=#{row['card_seq']} ability '#{row['ability_definition_name']}' condition '#{row['condition_name']}' not found in trait_conditions — skipped (seed master_traits first)"
+            complete = false
+            next
+          end
+        end
         desired << [ [ ability.id, condition&.id, row["role"].presence ],
                      { ability_definition_id: ability.id, condition_id: condition&.id, role: row["role"].presence, sort_order: row["sort_order"].to_i } ]
       end

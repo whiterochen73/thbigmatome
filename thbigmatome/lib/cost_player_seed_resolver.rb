@@ -65,38 +65,22 @@ module CostPlayerSeedResolver
   def clear_cache!
     @players = nil
     @card_rows = nil
+    PlayerCardLocator.clear_cache!
   end
 
   # card_seq のカード（取り込み済みの PlayerCard）に当てる。取り込んでいなければ player を nil にして読み飛ばしにする。
-  # カードの引き方は import_cards.rb の find_or_create_by! と同じ（出典のセット・持ち主・種別・variant。持ち主は variant つきなら base_player_name の選手）
+  # カードの引き方は取り込みと同じで、PlayerCardLocator（画像の取り込みと共有）が持つ
   def resolve_card_seq(card_seq)
     row = card_rows[card_seq.to_s]
     return Resolution.new(player: nil, player_card: nil, variant: nil) unless row
 
+    result = PlayerCardLocator.locate(row)
     variant = row["variant"].presence
-    owner_name = variant && row["base_player_name"].presence ? row["base_player_name"] : row["name"]
-    owner = find_player_by_name(owner_name)
-    set = CardSet.find_by(name: card_set_name_for(row["card_source"]))
-    return Resolution.new(player: nil, player_card: nil, variant: variant) unless owner && set
-
-    scope = PlayerCard.where(card_set: set, player: owner, card_type: card_type_of(row))
-    scope = variant ? scope.where(variant: variant) : scope.where(variant: [ nil, "" ])
-    card = scope.first
-    Resolution.new(player: card && owner, player_card: card, variant: variant)
-  end
-
-  # player_cards.csv の card_source → card_sets.name。取り込み（rake・seeds）と同じ config/card_set_definitions.yml（CardSet::IMPORT_DEFINITIONS）を読む。
-  # 定義に無い card_source は、その文字列をそのまま名前として引く（従来どおり）
-  def card_set_name_for(card_source)
-    CardSet::IMPORT_DEFINITIONS.dig(card_source, :name) || card_source
+    Resolution.new(player: result.card && result.owner, player_card: result.card, variant: variant)
   end
 
   def card_rows
     @card_rows ||= CSV.read(Rails.root.join(PLAYER_CARDS_CSV), headers: true, encoding: "UTF-8").to_h { |r| [ r["card_seq"], r ] }
-  end
-
-  def card_type_of(row)
-    row["card_type"].presence || (row["is_pitcher"] == "true" ? "pitcher" : "batter")
   end
 
   def parse_variant(raw_name)
@@ -117,7 +101,9 @@ module CostPlayerSeedResolver
 
   def find_variant_card(player, variant)
     variants = variant_candidates(variant)
-    player.player_cards.detect do |card|
+    # 同じ variant が PM の版をまたいで複数ある時（PM2026 と PM2027 の 楼閣 など）は id の小さい方（先に取り込まれた版）に固定する。
+    # 並びを DB 任せにしない。PM2027 の同 variant には card_seq つきの行で当てる（cost_players_seed.csv）
+    player.player_cards.sort_by(&:id).detect do |card|
       normalized_card_variant = normalize_variant(card.variant)
       variants.include?(normalized_card_variant)
     end

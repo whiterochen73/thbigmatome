@@ -74,11 +74,11 @@ RSpec.describe "現行カードセットの印と同キャラ（取り込み）"
       expect(member_into(team, aal2)).to be_valid
     end
 
-    it "別 Player のまま残る同キャラ（鍵が同じ）は、規則どおりの 4 組だけ（冴月 麟・西行寺 幽々子・八雲 藍・川崎 稜）" do
+    it "別 Player のまま残る同キャラ（鍵が同じ）は、規則どおりの 2 組だけ（冴月 麟・川崎 稜）。西行寺 幽々子（楼閣）・八雲 藍（WBC2）は基の Player の variant（cmd_1898）" do
       groups = Player.all.group_by(&:character_key).select { |_, v| v.map(&:id).size > 1 }
-      # 添え字つきの名前で importer が先に作った、カードを持たない Player は数えない
+      # カードを持たない Player は数えない（取り込みはもう作らないが、本番の既存分に残る）
       groups = groups.transform_values { |v| v.select { |pl| pl.player_cards.exists? } }.select { |_, v| v.size > 1 }
-      expect(groups.keys).to match_array(%w[冴月麟 西行寺幽々子 八雲藍 川崎稜])
+      expect(groups.keys).to match_array(%w[冴月麟 川崎稜])
     end
 
     it "同じ取り込みをもう一度回しても、現行の印・Player・カードの数は変わらず、印の食い違いは対応表に合わせて直る" do

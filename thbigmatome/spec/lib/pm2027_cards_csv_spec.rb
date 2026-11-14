@@ -14,8 +14,9 @@ require "digest"
 RSpec.describe "PM2027 の CSV 行" do
   PM27_IMPORT_DIR = Rails.root.join("db/import")
   PM2026_SEQS = (280..414).freeze
-  # 取り込み前（origin/main a25f515）の PM2026 の 135 行と子表（265・149・7・3 行）の指紋。1 行でも変えると変わる
-  PM2026_DIGEST = "8ed40797f1e9095364a82523297ee49094992b024389b2f6a12aa6735ec94892".freeze
+  # PM2026 の 135 行と子表（265・149・7・3 行）の指紋。1 行でも変えると変わる。
+  # cmd_1898 で 365 西行寺 幽々子(楼閣)・368 八雲 藍 (WBC2) の base_player_name・variant を埋めた（Operator 裁定 2026-11-14: 本番の形＝基の Player の variant）。それ以前の指紋は 8ed40797…
+  PM2026_DIGEST = "a0d4f8eb375a5a29a342cffea605f99258e2d469155f9849d1aaf7b3fc3edc35".freeze
 
   def table(name) = CSV.read(PM27_IMPORT_DIR.join("#{name}.csv"), headers: true, encoding: "UTF-8")
   def pm2027_json(name) = JSON.parse(File.read(PM27_IMPORT_DIR.join("pm2027/#{name}")))
@@ -43,7 +44,7 @@ RSpec.describe "PM2027 の CSV 行" do
     end
   end
 
-  it "PM2026 の 135 行と子表の行は 1 つも変わっていない" do
+  it "PM2026 の 135 行と子表の行は、cmd_1898 の 2 行（365・368 の持ち主と variant）以外変わっていない" do
     files = %w[player_cards player_card_defenses player_card_traits player_card_abilities player_card_exclusive_catchers]
     parts = files.map { |f| table(f).select { |r| PM2026_SEQS.cover?(r["card_seq"].to_i) }.map { |r| JSON.generate(r.to_h.to_a) } }
     expect(parts.map(&:size)).to eq([ 135, 265, 149, 7, 3 ])

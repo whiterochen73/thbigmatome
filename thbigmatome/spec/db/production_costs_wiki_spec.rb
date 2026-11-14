@@ -152,7 +152,8 @@ RSpec.describe "コストの初期データ（production_costs.rb）と Wiki の
 
     it "2025年12月の行で選手に当たらず読み飛ばされるのは、カードの無い選手の行だけ（PM のカードの行は 0 件）" do
       skipped = current_rows.reject { |r| CostPlayerSeedResolver.assign!(current_cost, r) }.map { |r| r["player_name"] }
-      expect(skipped).to match_array(%w[二ツ岩　マミゾウ 駒草　山如 Einzbern 銀河 ナガタ 中二 下神　空 ベルン 川口　芳乃])
+      # 二ッ岩 マミゾウ・駒草 山如(太夫) は、seed の名前を DB の Player 名に合わせて当たるようにした（cmd_1898）
+      expect(skipped).to match_array(%w[Einzbern 銀河 ナガタ 中二 下神　空 ベルン 川口　芳乃])
     end
   end
 

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_11_14_100100) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_14_120000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -462,6 +462,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_14_100100) do
     t.string "biorhythm_period"
     t.integer "bunt"
     t.string "card_label"
+    t.integer "card_seq"
     t.bigint "card_set_id", null: false
     t.string "card_type", null: false
     t.bigint "catcher_pitching_style_id"
@@ -494,6 +495,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_14_100100) do
     t.string "variant"
     t.index "card_set_id, player_id, card_type, COALESCE(variant, ''::character varying)", name: "index_player_cards_on_card_set_player_card_type_variant", unique: true
     t.index [ "batting_style_id" ], name: "index_player_cards_on_batting_style_id"
+    t.index [ "card_seq" ], name: "index_player_cards_on_card_seq", unique: true, where: "(card_seq IS NOT NULL)"
     t.index [ "card_set_id" ], name: "index_player_cards_on_card_set_id"
     t.index [ "catcher_pitching_style_id" ], name: "index_player_cards_on_catcher_pitching_style_id"
     t.index [ "pinch_pitching_style_id" ], name: "index_player_cards_on_pinch_pitching_style_id"

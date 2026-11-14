@@ -238,15 +238,18 @@ module PitcherRestStatus
   #   cumulative_innings（対象日時点の累積・減衰後）/ relief_cumulative_after_last（直近リリーフ登板直後の累積）/
   #   consecutive_short_rest_count（直近の登板に保存された連続中4日の回数）/ is_injured / slash /
   #   opener_capable（「オープナー可」アビリティの有無。PlayerCard#opener_capable?）
+  #   short_rest_capable（【中4日可】の有無。PlayerCard#short_rest_capable?。true なら連続中4日の負傷チェックを免除）
   # 戻り値: { as_starter: { status:, notes: [] }, as_reliever: { status:, notes: [] }, as_opener: { status:, notes: [] } | nil }
   def role_states(last_role:, rest_days:, raw_rest_days:, reset:, last_result_category:, cumulative_innings:,
-                  relief_cumulative_after_last:, consecutive_short_rest_count:, is_injured:, slash:, opener_capable:)
+                  relief_cumulative_after_last:, consecutive_short_rest_count:, is_injured:, slash:, opener_capable:, short_rest_capable: false)
     return both_states("injured", opener_capable) if is_injured
     # 中10日リセットは前回の役割・中日数に依らず最優先（AMB-04 追補 2）。累積は 0、疲労P はカード値
     return both_states("full", opener_capable) if last_role.nil? || reset || rest_days.nil?
 
     if last_role == "starter"
-      as_starter = calculate_projected_status("starter", rest_days, last_result_category, 0, false, consecutive_short_rest_count)
+      # 【中4日可】は連続中4日の負傷チェック（条件 2）を受けない。保存されたカウントは記録として残し、判定でだけ 0 とみなす
+      effective_count = short_rest_capable ? 0 : consecutive_short_rest_count
+      as_starter = calculate_projected_status("starter", rest_days, last_result_category, 0, false, effective_count)
       as_reliever = reliever_status_after_starter(last_result_category, rest_days, slash)
       reliever_notes = []
     else

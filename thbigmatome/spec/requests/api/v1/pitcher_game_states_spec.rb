@@ -486,10 +486,10 @@ RSpec.describe "Api::V1::PitcherGameStatesController", type: :request do
         # スラッシュでない通常の選手（先発疲労P 無し・リリーフ疲労P あり）。先発も出る（既定 3）
         let!(:plain_player) { make_pitcher(starter_stamina: nil, relief_stamina: 3)[0] }
 
-        def make_pitcher(starter_stamina: 7, relief_stamina: nil, is_relief_only: false, cost_type: "normal_cost", opener: false, ability_name: nil)
+        def make_pitcher(starter_stamina: 7, relief_stamina: nil, is_relief_only: false, cost_type: "normal_cost", opener: false, ability_name: nil, unique_traits: nil)
           player = create(:player, :pitcher)
           card = create(:player_card, player: player, card_set: card_set, card_type: "pitcher", is_pitcher: true,
-                                      starter_stamina: starter_stamina, relief_stamina: relief_stamina, is_relief_only: is_relief_only)
+                                      starter_stamina: starter_stamina, relief_stamina: relief_stamina, is_relief_only: is_relief_only, unique_traits: unique_traits)
           tm = create(:team_membership, :first_squad, team: team, player: player, player_card: card, selected_cost_type: cost_type)
           create(:season_roster, team_membership: tm, squad: "first", registered_on: "2026-01-01")
           # 「オープナー可」アビリティ（ability_definitions.name。rulebook 08 §8.4.1）。ability_name で別名のアビリティも作れる
@@ -525,6 +525,58 @@ RSpec.describe "Api::V1::PitcherGameStatesController", type: :request do
           expect(e["as_starter_omitted_reason"]).to be_nil
           expect(e["as_reliever_omitted_reason"]).to be_nil
           expect(e["projected_status"]).to eq("injury_check")
+        end
+
+        # Test Basis: Operator 裁定 2026-11-14（【中4日可】は連続中4日の負傷チェックを受けない）/ §8.5.1 条件 2
+        describe "【中4日可】: 連続中4日の免除（条件 2 だけ）" do
+          let!(:capable) { make_pitcher(starter_stamina: 7, unique_traits: "【中4日可】")[0] }
+          let!(:ordinary) { make_pitcher(starter_stamina: 7)[0] }
+
+          # 3/1 先発（直前の先発との間隔が中4日以下だった = 保存カウント 1）→ 中4日で先発
+          def status_after_short_rest_chain(player, rest, category: "normal")
+            appear(player, "2026-03-01", role: "starter", category: category, consecutive: 1)
+            entry_for(player, target_after(rest))["as_starter"]["status"]
+          end
+
+          it "先発→中4日→先発→中4日→先発の 3 回目: 通常カードは injury_check、中4日可は ならない" do
+            expect(status_after_short_rest_chain(ordinary, 4)).to eq("injury_check")
+            expect(status_after_short_rest_chain(capable, 4)).to eq("reduced_3")
+          end
+
+          it "中4日可でも連続カウントの保存値は変えない（登板記録側は従来どおり数える）" do
+            appear(capable, "2026-03-01", role: "starter", consecutive: 1)
+            expect(PitcherGameState.where(pitcher_id: capable.id).pluck(:consecutive_short_rest_count)).to eq([ 1 ])
+            entry_for(capable, target_after(4))
+            expect(PitcherGameState.where(pitcher_id: capable.id).pluck(:consecutive_short_rest_count)).to eq([ 1 ])
+          end
+
+          it "中3日の先発そのものは条件 1 で injury_check のまま" do
+            expect(status_after_short_rest_chain(capable, 3)).to eq("injury_check")
+          end
+
+          it "中4日の疲労P は変わらない（連続なしの通常カードと同じ reduced_3）" do
+            appear(capable, "2026-03-01", role: "starter", consecutive: 0)
+            appear(ordinary, "2026-03-01", role: "starter", consecutive: 0)
+            expect(entry_for(capable, target_after(4))["as_starter"]["status"]).to eq("reduced_3")
+            expect(entry_for(ordinary, target_after(4))["as_starter"]["status"]).to eq("reduced_3")
+          end
+
+          it "KO の中4日: 通常は injury_check、中4日可は full（条件 2 だけ免除）" do
+            expect(status_after_short_rest_chain(ordinary, 4, category: "ko")).to eq("injury_check")
+            expect(status_after_short_rest_chain(capable, 4, category: "ko")).to eq("full")
+          end
+
+          it "長イニング敗戦の中4日: 通常は injury_check、中4日可は reduced_4" do
+            expect(status_after_short_rest_chain(ordinary, 4, category: "long_loss")).to eq("injury_check")
+            expect(status_after_short_rest_chain(capable, 4, category: "long_loss")).to eq("reduced_4")
+          end
+
+          it "projected_status（前回と同じ役割で続ける場合）も免除される" do
+            appear(capable, "2026-03-01", role: "starter", consecutive: 1)
+            get_fatigue_summary(date: target_after(4))
+            e = response.parsed_body.find { |x| x["player_id"] == capable.id }
+            expect(e["projected_status"]).to eq("reduced_3")
+          end
         end
 
         describe "先発なら: 前回が先発（§8.3.1 の既存表）" do

@@ -11,13 +11,14 @@ require "rails_helper"
 RSpec.describe PitcherRestStatus, ".role_states" do
   # 既定: 前回先発・通常・中4日・連続なし・スラッシュでない・リセットなし
   def states(last_role: "starter", rest_days: 4, raw_rest_days: nil, reset: false, category: "normal",
-             cumulative: 0, relief_cumulative: nil, consecutive: 0, injured: false, slash: false, opener_capable: true)
+             cumulative: 0, relief_cumulative: nil, consecutive: 0, injured: false, slash: false, opener_capable: true,
+             short_rest_capable: false)
     described_class.role_states(
       last_role: last_role, rest_days: rest_days, raw_rest_days: raw_rest_days || rest_days, reset: reset,
       last_result_category: category, cumulative_innings: cumulative,
       relief_cumulative_after_last: relief_cumulative || cumulative,
       consecutive_short_rest_count: consecutive, is_injured: injured, slash: slash,
-      opener_capable: opener_capable
+      opener_capable: opener_capable, short_rest_capable: short_rest_capable
     )
   end
 
@@ -53,6 +54,49 @@ RSpec.describe PitcherRestStatus, ".role_states" do
           end
         end
       end
+    end
+  end
+
+  # Test Basis: Operator 裁定 2026-11-14「中4日可は中4日で先発できるって意味。連続中4日のペナルティを受けない」/ §8.5.1 条件 2
+  describe "先発なら: 【中4日可】は連続中4日の負傷チェック（条件 2）だけ免除" do
+    %w[normal ko no_game long_loss].each do |category|
+      it "#{category} 中4日 連続1: 通常は injury_check、中4日可は連続 0 と同じ" do
+        expect(starter(category: category, rest_days: 4, consecutive: 1)).to eq("injury_check")
+        expect(starter(category: category, rest_days: 4, consecutive: 1, short_rest_capable: true))
+          .to eq(starter(category: category, rest_days: 4, consecutive: 0))
+        expect(starter(category: category, rest_days: 4, consecutive: 1, short_rest_capable: true)).not_to eq("injury_check")
+      end
+
+      it "#{category} 中4日 連続0: 中4日可でも疲労P は変わらない（§8.3.1）" do
+        expect(starter(category: category, rest_days: 4, consecutive: 0, short_rest_capable: true))
+          .to eq(starter(category: category, rest_days: 4, consecutive: 0))
+      end
+    end
+
+    it "中4日の疲労P は通常 reduced_3・長イニング敗戦 reduced_4・KO full のまま" do
+      expect(starter(category: "normal", rest_days: 4, short_rest_capable: true, consecutive: 3)).to eq("reduced_3")
+      expect(starter(category: "long_loss", rest_days: 4, short_rest_capable: true, consecutive: 3)).to eq("reduced_4")
+      expect(starter(category: "ko", rest_days: 4, short_rest_capable: true, consecutive: 3)).to eq("full")
+    end
+
+    it "中3日: 通常・長イニング敗戦は条件 1 で injury_check のまま（免除しない）" do
+      %w[normal long_loss].each do |category|
+        expect(starter(category: category, rest_days: 3, consecutive: 1, short_rest_capable: true)).to eq("injury_check")
+        expect(starter(category: category, rest_days: 3, consecutive: 0, short_rest_capable: true)).to eq("injury_check")
+      end
+    end
+
+    it "KO・NG 中3日: 連続 1 でも条件 2 は出ず reduced_3（通常カードは injury_check）" do
+      %w[ko no_game].each do |category|
+        expect(starter(category: category, rest_days: 3, consecutive: 1)).to eq("injury_check")
+        expect(starter(category: category, rest_days: 3, consecutive: 1, short_rest_capable: true)).to eq("reduced_3")
+      end
+    end
+
+    it "中5日以上・前回リリーフは影響を受けない" do
+      expect(starter(rest_days: 5, consecutive: 2, short_rest_capable: true)).to eq(starter(rest_days: 5, consecutive: 2))
+      expect(starter(last_role: "reliever", rest_days: 3, cumulative: 3, short_rest_capable: true))
+        .to eq(starter(last_role: "reliever", rest_days: 3, cumulative: 3))
     end
   end
 

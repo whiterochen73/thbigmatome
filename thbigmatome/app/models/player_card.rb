@@ -63,6 +63,14 @@ class PlayerCard < ApplicationRecord
     starter_stamina.present? && relief_stamina.present? && !is_relief_only
   end
 
+  # 【中4日可】: 中4日で先発できる固有特徴。連続中4日のペナルティ（rulebook 08 §8.5.1 条件 2）を受けない（Operator 2026-11-14）。
+  # 免除するのは条件 2 だけ。中4日の疲労P（§8.3.1）と中3日の負傷チェック（条件 1）は変わらない。
+  SHORT_REST_CAPABLE_TRAIT = "【中4日可】".freeze
+
+  def short_rest_capable?
+    unique_traits.to_s.include?(SHORT_REST_CAPABLE_TRAIT)
+  end
+
   # リリーフで投げられるカードか。画面の「リリーフなら」を出す条件と同じ（リリーフ向けの疲労P を持つ、またはリリーフ専門）
   def relief_capable?
     is_relief_only || relief_stamina.present?

@@ -128,7 +128,8 @@ module Api
             relief_cumulative_after_last: relief_cumulative_after_last,
             consecutive_short_rest_count: consecutive_short_rest_count,
             is_injured: is_injured, slash: card&.slash_pitcher? || false,
-            opener_capable: card&.opener_capable?(opener_definitions_present) || false
+            opener_capable: card&.opener_capable?(opener_definitions_present) || false,
+            short_rest_capable: card&.short_rest_capable? || false
           )
           # 既存の projected_status は「前回と同じ役割で続ける場合」の状態
           projected = last_role.nil? || last_role == "starter" ? states[:as_starter][:status] : states[:as_reliever][:status]

@@ -78,6 +78,23 @@ describe('CostAssignment', () => {
     expect(wrapper.text()).toContain('保存')
   })
 
+  // cmd_1902: variant が無く帯のチーム名だけの完走カードも、カード別の行には版の印が出る
+  it('カード別の行には version_label（無ければ variant）の印が出て、既定の行には出ない', async () => {
+    mockApi(() =>
+      Promise.resolve({
+        data: [
+          { ...assignments[0], player_card_id: null, variant: null, version_label: null },
+          { ...assignments[0], player_card_id: 11, variant: null, version_label: '永山' },
+          { ...assignments[0], player_card_id: 12, variant: '飯能', version_label: '飯能' },
+          { ...assignments[0], player_card_id: 13, variant: 'エイプリル' },
+        ],
+      }),
+    )
+    const wrapper = await mountView()
+    const chips = wrapper.findAll('tbody tr').map((r) => r.findAll('.v-chip').map((c) => c.text()))
+    expect(chips).toEqual([[], ['永山'], ['飯能'], ['エイプリル']])
+  })
+
   it('選手の取得に失敗した時はページ内のアラートを出し（スナックバーでなく）、再読み込みで取り直す', async () => {
     let fail = true
     mockApi(() => {

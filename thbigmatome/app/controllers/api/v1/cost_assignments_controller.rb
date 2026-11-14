@@ -13,8 +13,11 @@ module Api
           # Base entry (player_card_id=nil)
           rows << build_row(player, nil, base_cp)
 
-          # Variant entries: cards with non-nil variant (自動判定, ハードコード不要)
-          variant_cards = player.player_cards.select { |pc| pc.variant.present? }
+          # Variant entries: cards with non-nil variant (自動判定, ハードコード不要)。
+          # variant が無くても、帯のチーム名（team_label）の完走カードなどでこの改定にカード別の行が既にあるものは出す（行が見えず直せなかった）
+          variant_cards = player.player_cards.select do |pc|
+            pc.variant.present? || player.cost_players.any? { |cp| cp.cost_id == @cost_id && cp.player_card_id == pc.id }
+          end
           variant_cards.each do |card|
             variant_cp = player.cost_players.find { |cp| cp.cost_id == @cost_id && cp.player_card_id == card.id }
             rows << build_row(player, card, variant_cp)
@@ -62,6 +65,7 @@ module Api
           available_cost_types: available_cost_types,
           player_card_id: card&.id,
           variant: card&.variant,
+          version_label: card&.version_label,
           card_label: card&.card_label,
           normal_cost: cost_player&.normal_cost,
           relief_only_cost: cost_player&.relief_only_cost,

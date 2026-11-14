@@ -206,7 +206,7 @@
               <table class="def-table">
                 <thead>
                   <tr>
-                    <th style="text-align: left">カードセット</th>
+                    <th style="text-align: left">改定</th>
                     <th>通常</th>
                     <th>投専</th>
                     <th>野専</th>

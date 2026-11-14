@@ -38,13 +38,13 @@
             <template #[`item.name`]="{ item }">
               <span>{{ item.name }}</span>
               <v-chip
-                v-if="item.variant"
+                v-if="item.version_label ?? item.variant"
                 size="x-small"
                 color="state-neutral"
                 variant="flat"
                 class="ml-1"
               >
-                {{ item.variant }}
+                {{ item.version_label ?? item.variant }}
               </v-chip>
             </template>
             <template #[`item.player_types`]="{ item }">
@@ -106,7 +106,7 @@ const headers = computed(() => [
 ])
 
 const rowProps = (item: { item: CostPlayer }) => {
-  return item.item.variant ? { class: 'bg-surface-variant' } : {}
+  return item.item.player_card_id ? { class: 'bg-surface-variant' } : {}
 }
 
 const rules = {

@@ -11,6 +11,7 @@ export interface CostPlayer {
   available_cost_types?: string[]
   player_card_id?: number | null
   variant?: string | null
+  version_label?: string | null
   card_label?: string | null
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   [key: string]: any

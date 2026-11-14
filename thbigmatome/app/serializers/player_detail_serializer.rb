@@ -8,16 +8,8 @@ class PlayerDetailSerializer < ActiveModel::Serializer
     object.cards_current_first
   end
 
+  # 新しい改定が上・各改定の中は選手の既定が先でカードごとの行が続く（Player#cost_rows）
   attribute :costs do
-    object.cost_players.includes(:cost).map do |cp|
-      {
-        cost_name: cp.cost.name,
-        normal_cost: cp.normal_cost,
-        pitcher_only_cost: cp.pitcher_only_cost,
-        fielder_only_cost: cp.fielder_only_cost,
-        relief_only_cost: cp.relief_only_cost,
-        two_way_cost: cp.two_way_cost
-      }
-    end
+    object.cost_rows
   end
 end

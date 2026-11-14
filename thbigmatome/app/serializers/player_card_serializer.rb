@@ -39,15 +39,10 @@ class PlayerCardSerializer < ActiveModel::Serializer
   end
 
   attribute :cost do
-    cp = object.player.cost_players.max_by(&:cost_id)
-    cp&.normal_cost
+    object.listed_cost
   end
 
   attribute :image_url do
-    next nil unless object.card_image.attached?
-    host = ENV.fetch("APP_HOST", "localhost:3000")
-    Rails.application.routes.url_helpers.rails_blob_url(
-      object.card_image, host: host, protocol: Rails.env.production? ? "https" : "http"
-    )
+    object.card_image_url
   end
 end

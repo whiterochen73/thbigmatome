@@ -51,40 +51,14 @@
             </span>
           </div>
 
-          <!-- コストセクション -->
-          <div class="section-header-row mt-2">
-            <span class="section-header-title">コスト</span>
-          </div>
-          <div v-if="player.costs && player.costs.length > 0" class="section-box mb-4">
+          <div
+            v-if="player.player_cards && player.player_cards.length > 0"
+            class="section-box mb-4"
+          >
             <table class="card-table">
               <thead>
                 <tr>
-                  <th>カードセット</th>
-                  <th>通常</th>
-                  <th>投手専</th>
-                  <th>野手専</th>
-                  <th>リリーフ専</th>
-                  <th>二刀流</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr v-for="(c, idx) in player.costs" :key="idx">
-                  <td>{{ c.cost_name }}</td>
-                  <td>{{ c.normal_cost ?? '—' }}</td>
-                  <td>{{ c.pitcher_only_cost ?? '—' }}</td>
-                  <td>{{ c.fielder_only_cost ?? '—' }}</td>
-                  <td>{{ c.relief_only_cost ?? '—' }}</td>
-                  <td>{{ c.two_way_cost ?? '—' }}</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-          <div v-else class="on-surface-variant text-caption pa-2 mb-4">コストなし</div>
-
-          <div v-if="player.player_cards && player.player_cards.length > 0" class="section-box">
-            <table class="card-table">
-              <thead>
-                <tr>
+                  <th class="thumb-col"></th>
                   <th>カードセット</th>
                   <th>タイプ</th>
                   <th>投打</th>
@@ -101,7 +75,13 @@
                   class="card-row"
                   @click="router.push(`/player-cards/${pc.id}`)"
                 >
-                  <td>{{ pc.card_set?.name ?? '—' }}</td>
+                  <td class="thumb-col">
+                    <div class="thumb-box">
+                      <v-img v-if="pc.image_url" :src="pc.image_url" width="28" height="40" cover />
+                      <template v-else>No<br />IMG</template>
+                    </div>
+                  </td>
+                  <td>{{ cardSetText(pc) }}</td>
                   <td>
                     <span class="type-chip" :class="pc.card_type">
                       {{ pc.card_type === 'pitcher' ? '投手' : '野手' }}
@@ -121,6 +101,42 @@
             </table>
           </div>
           <div v-else class="on-surface-variant text-caption pa-2">選手カードなし</div>
+
+          <!-- コストセクション -->
+          <div class="section-header-row mt-2">
+            <span class="section-header-title">コスト</span>
+          </div>
+          <div v-if="player.costs && player.costs.length > 0" class="section-box mb-4">
+            <table class="card-table">
+              <thead>
+                <tr>
+                  <th>改定</th>
+                  <th>カード</th>
+                  <th>通常</th>
+                  <th>投手専</th>
+                  <th>野手専</th>
+                  <th>リリーフ専</th>
+                  <th>二刀流</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr
+                  v-for="(c, idx) in player.costs"
+                  :key="idx"
+                  :class="{ 'cost-row-current': c.is_current }"
+                >
+                  <td>{{ c.cost_name }}</td>
+                  <td>{{ costTargetText(c) }}</td>
+                  <td>{{ c.normal_cost ?? '—' }}</td>
+                  <td>{{ c.pitcher_only_cost ?? '—' }}</td>
+                  <td>{{ c.fielder_only_cost ?? '—' }}</td>
+                  <td>{{ c.relief_only_cost ?? '—' }}</td>
+                  <td>{{ c.two_way_cost ?? '—' }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <div v-else class="on-surface-variant text-caption pa-2 mb-4">コストなし</div>
         </div>
         <!-- /detail-body -->
       </v-card>
@@ -139,7 +155,8 @@ import PlayerDialog from '@/components/players/PlayerDialog.vue'
 import AsyncState from '@/components/shared/AsyncState.vue'
 import PageLayout from '@/components/shared/PageLayout.vue'
 import { useAppBarTitle } from '@/composables/useAppBarTitle'
-import type { PlayerDetail } from '@/types/playerDetail'
+import { cardVersionText } from '@/lib/cardVersion'
+import type { CostSummary, PlayerCardSummary, PlayerDetail } from '@/types/playerDetail'
 
 const SERIES_LABEL_MAP: Record<string, string> = {
   touhou: '東方Project',
@@ -167,6 +184,18 @@ function handednessToJa(val: string | null | undefined): string {
     .split('/')
     .map((part) => HANDEDNESS_MAP[part] ?? part)
     .join('/')
+}
+
+// 「PM2027 / 飯能」。版の印が無ければセット名だけ
+function cardSetText(pc: PlayerCardSummary): string {
+  const name = pc.card_set?.name ?? pc.card_set_name
+  return name ? cardVersionText(name, pc) : '—'
+}
+
+// コスト表の行がどのカードの値か。カードの行はそのカードのセット・版、選手の既定の行は「選手の既定」
+function costTargetText(c: CostSummary): string {
+  if (!c.player_card_id) return '選手の既定'
+  return c.card_set_name ? cardVersionText(c.card_set_name, c) : '—'
 }
 
 const route = useRoute()
@@ -291,6 +320,29 @@ function onSave() {
 
 .card-row {
   cursor: pointer;
+}
+
+.thumb-col {
+  width: 44px;
+}
+
+.thumb-box {
+  width: 28px;
+  height: 40px;
+  background: rgb(var(--v-theme-surface-variant));
+  border-radius: 2px;
+  border: 1px solid rgb(var(--v-theme-border-strong));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.6em;
+  color: rgb(var(--v-theme-on-surface-variant));
+  text-align: center;
+  line-height: 1.2;
+}
+
+.cost-row-current td {
+  font-weight: bold;
 }
 
 .card-row:hover td {

@@ -65,30 +65,15 @@ class PlayerCardDetailSerializer < ActiveModel::Serializer
   end
 
   attribute :cost do
-    cp = object.player.cost_players.max_by(&:cost_id)
-    cp&.normal_cost
+    object.listed_cost
   end
 
+  # このカードに効く行（改定ごとに、このカードの行があればそれ、無ければ選手の既定）。他のカードの行は出さない
   attribute :costs do
-    object.player.cost_players.includes(:cost).map do |cp|
-      {
-        cost_name: cp.cost.name,
-        is_current: cp.cost.end_date.nil?,
-        normal_cost: cp.normal_cost,
-        pitcher_only_cost: cp.pitcher_only_cost,
-        fielder_only_cost: cp.fielder_only_cost,
-        relief_only_cost: cp.relief_only_cost,
-        two_way_cost: cp.two_way_cost
-      }
-    end
+    object.player.cost_rows_for_card(object).map { |row| row.slice(:cost_name, :is_current, :player_card_id, :normal_cost, :pitcher_only_cost, :fielder_only_cost, :relief_only_cost, :two_way_cost) }
   end
 
   def image_url
-    return nil unless object.card_image.attached?
-
-    host = ENV.fetch("APP_HOST", "localhost:3000")
-    Rails.application.routes.url_helpers.rails_blob_url(
-      object.card_image, host: host, protocol: Rails.env.production? ? "https" : "http"
-    )
+    object.card_image_url
   end
 end

@@ -47,6 +47,26 @@ class Player < ApplicationRecord
     loaded.sort_by { |card| [ card.card_set&.is_current ? 0 : 1, card.id ] }
   end
 
+  # 選手詳細・カード詳細のコスト表の行。新しい改定が上、各改定の中は「選手の既定」（player_card_id なし）が先でカードごとの行が続く
+  # （カードの並びは cards_current_first）。カードの行にはそのカードのセット名・版の印が付く。
+  # カードに結びつかない行（player_card_id が別の選手のカードなど）は card 項目を null にして残す（既定扱いにしない）
+  def cost_rows
+    cards = cards_current_first
+    card_order = cards.each_with_index.to_h { |card, i| [ card.id, i ] }
+    cards_by_id = cards.index_by(&:id)
+    rows = cost_players.loaded? ? cost_players.to_a : cost_players.includes(:cost).to_a
+    rows.sort_by { |cp| [ -cp.cost.start_date.jd, cp.player_card_id.nil? ? 0 : 1, card_order.fetch(cp.player_card_id, cards.size), cp.id ] }
+        .map { |cp| cost_row_for(cp, cards_by_id[cp.player_card_id]) }
+  end
+
+  # 1 枚のカードに効くコストの行。改定ごとに、そのカードの行があればそれ、無ければ選手の既定の行
+  def cost_rows_for_card(card)
+    cost_rows
+      .select { |row| row[:player_card_id].nil? || row[:player_card_id] == card.id }
+      .group_by { |row| row[:cost_id] }
+      .map { |_cost_id, rows| rows.find { |row| row[:player_card_id] == card.id } || rows.first }
+  end
+
   def available_cost_types
     types = []
     two_way = hachinai_two_way?
@@ -158,6 +178,22 @@ class Player < ApplicationRecord
   end
 
   private
+
+  def cost_row_for(cost_player, card)
+    {
+      cost_id: cost_player.cost_id,
+      cost_name: cost_player.cost.name,
+      is_current: cost_player.cost.end_date.nil?,
+      player_card_id: cost_player.player_card_id,
+      card_set_name: card&.card_set&.name,
+      version_label: card&.version_label,
+      normal_cost: cost_player.normal_cost,
+      pitcher_only_cost: cost_player.pitcher_only_cost,
+      fielder_only_cost: cost_player.fielder_only_cost,
+      relief_only_cost: cost_player.relief_only_cost,
+      two_way_cost: cost_player.two_way_cost
+    }
+  end
 
   def assign_character_key
     self.character_key = self.class.character_key_for(name)

@@ -42,6 +42,28 @@ class PlayerCard < ApplicationRecord
   # 判定条件: card_type='pitcher' OR is_pitcher=true OR player_card_defensesに投手(P)ポジションがある
   # player_card_defensesが正典（P守備があれば確実に投手能力あり）。is_pitcherはフォールバック。
   # ※ selected_cost_type='fielder_only_cost'（野手専念）の場合は呼び出し側で除外すること
+  # 一覧・詳細の「コスト」欄に出す通常コスト。最新の改定のうち、このカードの行があればそれ、無ければ選手の既定の行。
+  # 他のカードの行は使わない（以前は選手のどれかの行を拾い、版違いのカードが同じコストに見えた）
+  def listed_cost
+    rows = player.cost_players.to_a
+    latest = rows.map(&:cost_id).max
+    return nil unless latest
+
+    scoped = rows.select { |cp| cp.cost_id == latest }
+    scoped.find { |cp| cp.player_card_id == id }&.normal_cost ||
+      scoped.find { |cp| cp.player_card_id.nil? }&.normal_cost
+  end
+
+  # 画像の URL（添付が無ければ nil）。一覧・詳細・選手詳細のカード一覧が同じ形で返す
+  def card_image_url
+    return nil unless card_image.attached?
+
+    host = ENV.fetch("APP_HOST", "localhost:3000")
+    Rails.application.routes.url_helpers.rails_blob_url(
+      card_image, host: host, protocol: Rails.env.production? ? "https" : "http"
+    )
+  end
+
   def can_pitch?
     card_type == "pitcher" ||
       is_pitcher ||

@@ -32,6 +32,12 @@ class PlayerCard < ApplicationRecord
   # CSV の通し番号（取り込みの鍵。既存の旧行は取り込みの最初の 1 回が埋める）
   validates :card_seq, uniqueness: true, allow_nil: true
 
+  # 同じ選手の別のカードを見分ける印。variant（エイプリル・UR・チーム名など）があればそれ、無ければ帯のチーム名・印（team_label）。
+  # 帯が GLADIATS（オリジナルの通常カード）のものはどちらも持たず nil
+  def version_label
+    variant.presence || team_label.presence
+  end
+
   # 投手として使用可能か（能力判定）
   # 判定条件: card_type='pitcher' OR is_pitcher=true OR player_card_defensesに投手(P)ポジションがある
   # player_card_defensesが正典（P守備があれば確実に投手能力あり）。is_pitcherはフォールバック。

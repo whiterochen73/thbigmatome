@@ -96,6 +96,60 @@ describe('PlayerCardsView', () => {
     })
   })
 
+  // cmd_1901: カードセット列に、同じ選手の別のカードを見分ける印（variant が無ければ帯のチーム名）を付ける。画像はその行の左に出る
+  it('カードセット列に印が付き、画像があれば行の左に出る', async () => {
+    vi.mocked(axios.get).mockImplementation((url: string) => {
+      if (url === '/card_sets') return Promise.resolve({ data: mockCardSetsResponse })
+      if (url === '/player_cards') {
+        const base = {
+          card_set_id: 5,
+          player_id: 1,
+          card_type: 'pitcher',
+          player_name: '八雲 紫',
+          player_number: '18',
+          card_set_name: 'PM2027',
+          speed: 3,
+          steal_start: 1,
+          steal_end: 1,
+          injury_rate: 1,
+        }
+        return Promise.resolve({
+          data: {
+            player_cards: [
+              {
+                ...base,
+                id: 1,
+                variant: '飯能',
+                version_label: '飯能',
+                image_url: 'https://example.test/hanno.png',
+              },
+              { ...base, id: 2, variant: null, version_label: '永山', image_url: null },
+              { ...base, id: 3, variant: null, version_label: null, image_url: null },
+            ],
+            meta: { total: 3, page: 1, per_page: 50 },
+          },
+        })
+      }
+      return Promise.resolve({ data: [] })
+    })
+    const wrapper = mount(PlayerCardsView, {
+      attachTo: document.body,
+      global: { plugins: [i18n, vuetify, createTestRouter(), createPinia()] },
+    })
+    await flushPromises()
+    const rows = wrapper.findAll('tbody tr')
+    expect(rows).toHaveLength(3)
+    expect(rows[0].text()).toContain('PM2027 / 飯能')
+    expect(rows[1].text()).toContain('PM2027 / 永山')
+    expect(rows[2].text()).toContain('PM2027')
+    expect(rows[2].text()).not.toContain('PM2027 /')
+    expect(rows[0].findComponent({ name: 'VImg' }).props('src')).toBe(
+      'https://example.test/hanno.png',
+    )
+    expect(rows[1].findComponent({ name: 'VImg' }).exists()).toBe(false)
+    wrapper.unmount()
+  })
+
   // Test Basis: subtask_1791r 追加指示（ManagerList と同型。Vuetify 4 に server-items-length は無く、総数が手元の行数になる）
   describe('サーバページング（総数 > 1 ページの行数）', () => {
     const manyCards = Array.from({ length: 50 }, (_, i) => ({

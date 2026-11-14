@@ -44,7 +44,8 @@ class TeamPlayerSerializer < PlayerSerializer
       card_type: pc.card_type,
       card_set_name: pc.card_set.name,
       card_set_id: pc.card_set_id,
-      variant: pc.variant
+      variant: pc.variant,
+      version_label: pc.version_label
     }
   end
 end

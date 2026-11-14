@@ -28,4 +28,10 @@ RSpec.describe TeamPlayerSerializer, type: :serializer do
   it "includes variant in player_card_info" do
     expect(serialized["player_card_info"]).to include("variant" => "湘南")
   end
+
+  it "includes version_label in player_card_info（variant が無ければ帯の team_label）" do
+    expect(serialized["player_card_info"]).to include("version_label" => "湘南")
+    variant_card.update!(variant: nil, team_label: "永山")
+    expect(JSON.parse(described_class.new(player, team: team, cost_list_id: cost.id).to_json)["player_card_info"]).to include("version_label" => "永山")
+  end
 end

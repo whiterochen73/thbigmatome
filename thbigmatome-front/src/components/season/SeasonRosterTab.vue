@@ -253,6 +253,7 @@
                           <PlayerNameLink
                             :player-id="item.player_id"
                             :player-name="item.player_name"
+                            :player-card-id="item.player_card_id ?? undefined"
                             :cost-type="item.selected_cost_type"
                           />
                           <v-icon v-if="isKeyPlayer(item)" color="link" size="x-small"
@@ -515,6 +516,7 @@
                         <PlayerNameLink
                           :player-id="item.player_id"
                           :player-name="item.player_name"
+                          :player-card-id="item.player_card_id ?? undefined"
                           :cost-type="item.selected_cost_type"
                         />
                         <v-chip

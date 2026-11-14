@@ -42,6 +42,7 @@ module Api
           {
             team_membership_id: tm.id,
             player_id: tm.player.id,
+            player_card_id: pc&.id,
             number: tm.player.number,
             player_name: tm.player.short_name.presence || tm.player.name,
             handedness: pc&.handedness,

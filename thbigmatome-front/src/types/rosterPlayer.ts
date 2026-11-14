@@ -11,6 +11,7 @@ export interface AbsenceInfo {
 export interface RosterPlayer {
   team_membership_id: number
   player_id: number
+  player_card_id?: number | null
   number: string
   player_name: string
   squad: 'first' | 'second'

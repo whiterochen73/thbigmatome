@@ -94,11 +94,17 @@ scp -r /path/to/card_images/ deploy@<VPS_IP>:/home/deploy/card_images/
 docker compose -f docker-compose.prod.yml --env-file .env.production \
   exec -T rails bundle exec rake import:card_image_targets < /dev/null
 
-# インポート実行（VPSで実行）
+# 画像を rails コンテナの中へ入れる（docker-compose.prod.yml は VPS のディレクトリを mount しないので、rake の CARD_IMAGE_DIR は VPS のパスでは読めない）
+docker cp /home/deploy/card_images/. "$(docker compose -f docker-compose.prod.yml --env-file .env.production ps -q rails)":/tmp/card_images
+
+# インポート実行（VPSで実行。CARD_IMAGE_DIR はコンテナの中のパス）
 docker compose -f docker-compose.prod.yml --env-file .env.production \
-  exec -e CARD_IMAGE_DIR=/home/deploy/card_images \
+  exec -e CARD_IMAGE_DIR=/tmp/card_images \
   rails bundle exec rake import:card_images
 ```
+
+全セットを付けたあとは、セットごとの画像つきカード数が CSV の行数と一致すること（2025THBIG 162・ハチナイ6.1 117・PM2026 135・PM2027 144・球詠2 18）、画像の URL を実際に GET して 200 の image/png が返ることを確かめる（cmd_1901）。
+画像の URL（`/rails/active_storage/.../p3_c2.png`）は `.png` で終わるため、`thbigmatome-front/nginx.prod.conf` の `location ^~ /rails/active_storage/` が無いと静的ファイル用の regex に当たって Rails に届かず 404 になる。
 
 `CARD_CSV_PATH` の既定は `db/import/player_cards.csv`（`import:card_data`・`db/seeds/import_cards.rb` と同じ CSV）。別の CSV を使う時だけ `-e CARD_CSV_PATH=...` を付ける。
 画像ファイルは card_source ごとに card_seq が連番である前提で CSV の card_seq と結ぶので、CSV は取り込みに使ったものと同じ版にする。

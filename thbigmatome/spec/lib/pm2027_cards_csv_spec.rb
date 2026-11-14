@@ -46,9 +46,31 @@ RSpec.describe "PM2027 の CSV 行" do
 
   it "PM2026 の 135 行と子表の行は、cmd_1898 の 2 行（365・368 の持ち主と variant）以外変わっていない" do
     files = %w[player_cards player_card_defenses player_card_traits player_card_abilities player_card_exclusive_catchers]
-    parts = files.map { |f| table(f).select { |r| PM2026_SEQS.cover?(r["card_seq"].to_i) }.map { |r| JSON.generate(r.to_h.to_a) } }
+    parts = files.map { |f| table(f).select { |r| PM2026_SEQS.cover?(r["card_seq"].to_i) }.map { |r| JSON.generate(r.to_h.except("team_label").to_a) } }
     expect(parts.map(&:size)).to eq([ 135, 265, 149, 7, 3 ])
     expect(Digest::SHA256.hexdigest(parts.flatten.join("\n"))).to eq(PM2026_DIGEST)
+  end
+
+  # cmd_1901: カード上部の帯のチーム名・印を team_label に持つ。variant が空で帯が GLADIATS 以外の行だけ。出どころは PDF の文字層
+  #   （PM2027.pdf・PM2026.pdf の各カードの帯。位置は card_seq = 先頭 + (ページ-1)*9 + (行*3+列)）
+  TEAM_LABELS = {
+    331 => "戦犯番付", 332 => "戦犯番付", 333 => "戦犯番付", 338 => "ハチナイ", 339 => "戦犯番付",
+    340 => "東方PROJECT", 341 => "東方PROJECT", 343 => "東方PROJECT", 345 => "東方PROJECT", 350 => "東方PROJECT",
+    353 => "東方PROJECT", 358 => "東方PROJECT", 392 => "北堀江",
+    478 => "東方PROJECT", 480 => "東方PROJECT", 485 => "東方PROJECT", 488 => "東方PROJECT", 493 => "東方PROJECT",
+    503 => "北堀江", 539 => "永山", 556 => "東方PROJECT", 557 => "東方PROJECT", 559 => "戦犯番付", 560 => "戦犯番付", 561 => "戦犯番付"
+  }.freeze
+
+  it "team_label は variant が空で帯が GLADIATS 以外の 25 行にだけ入っている（variant は鍵なので触っていない）" do
+    expect(cards.headers).to include("team_label")
+    labelled = cards.select { |r| r["team_label"].present? }
+    expect(labelled.to_h { |r| [ r["card_seq"].to_i, r["team_label"] ] }).to eq(TEAM_LABELS)
+    expect(labelled.map { |r| r["variant"].to_s }.uniq).to eq([ "" ]) # variant のある行には入れない（表示は variant が先）
+  end
+
+  it "帯が GLADIATS の通常カードと UR・エイプリルなど variant つきの行には team_label が無い（例: 563 花山 栄美・567 小鳥遊 柚・571 草刈 ルナ）" do
+    by_seq = cards.to_h { |r| [ r["card_seq"].to_i, r ] }
+    [ 433, 555, 558, 563, 567, 571, 562, 479, 513, 526 ].each { |seq| expect(by_seq[seq]["team_label"]).to be_blank, "card_seq=#{seq}" }
   end
 
   it "全行が出典 PM2027・parse_status ok で、投打・走力・けがなど取込が要る値が空でない" do

@@ -94,8 +94,20 @@
                   v-for="opt in cardSetOptions"
                   :key="opt.option_key"
                   :value="opt.option_key"
-                  :label="opt.label"
-                />
+                  class="card-option"
+                >
+                  <template #label>
+                    <v-img
+                      v-if="optionImageUrl(opt)"
+                      :src="optionImageUrl(opt)!"
+                      class="card-option__thumb"
+                      width="60"
+                      height="82"
+                      cover
+                    />
+                    <span class="card-option__label">{{ opt.label }}</span>
+                  </template>
+                </v-radio>
               </v-radio-group>
             </div>
           </div>
@@ -268,6 +280,7 @@
                 <PlayerNameLink
                   :player-id="item.id"
                   :player-name="item.name"
+                  :player-card-id="item.player_card_id ?? undefined"
                   :cost-type="item.selected_cost_type"
                 />
               </template>
@@ -310,7 +323,9 @@
               </template>
               <template #item.player_card_info="{ item }">
                 <div v-if="item.player_card_info" class="d-flex align-center ga-1">
-                  <span class="text-caption">{{ item.player_card_info.card_set_name }}</span>
+                  <span class="text-caption">{{
+                    cardVersionText(item.player_card_info.card_set_name, item.player_card_info)
+                  }}</span>
                   <v-chip size="x-small" variant="flat" color="state-neutral">
                     {{ item.player_card_info.card_type }}
                   </v-chip>
@@ -394,6 +409,7 @@ import PlayerNameLink from '@/components/shared/PlayerNameLink.vue'
 import ViolationList from '@/components/season/ViolationList.vue'
 import type { RosterViolation } from '@/types/rosterViolation'
 import { useColumnMinWidth } from '@/composables/useColumnMinWidth'
+import { cardVersionText } from '@/lib/cardVersion'
 
 type CostType =
   | 'normal_cost'
@@ -408,6 +424,8 @@ interface PlayerCardInfo {
   card_set_name: string
   card_set_id: number
   variant?: string | null
+  version_label?: string | null
+  image_url?: string | null
   card_set_current?: boolean
   official_use_prohibited?: boolean
 }
@@ -500,7 +518,7 @@ const cardSetOptions = computed<CardSetOption[]>(() => {
         card_set_id: card.card_set_id,
         card_set_name: card.card_set_name,
         variant,
-        label: variant ? `${card.card_set_name} / ${variant}` : card.card_set_name,
+        label: cardVersionText(card.card_set_name, card),
         pitcher_card_id: card.card_type === 'pitcher' ? card.id : null,
         batter_card_id: card.card_type === 'batter' ? card.id : null,
         any_card_id: card.id,
@@ -518,6 +536,12 @@ const resolveCardIdFromCardSet = (
     return option.pitcher_card_id ?? option.batter_card_id ?? option.any_card_id
   }
   return option.batter_card_id ?? option.pitcher_card_id ?? option.any_card_id
+}
+
+// 選択肢のカードの画像。登録される側（選手の守備位置で決まるカード）の画像を出す。画像が無ければ null（何も出さない）
+const optionImageUrl = (option: CardSetOption): string | null => {
+  const cardId = resolveCardIdFromCardSet(option, selectedPlayer.value?.position)
+  return availablePlayerCards.value.find((c) => c.id === cardId)?.image_url ?? null
 }
 
 const teamId = computed(() => props.teamId ?? Number(route.params.teamId))
@@ -1134,6 +1158,22 @@ onMounted(async () => {
   align-items: flex-start;
   gap: 12px;
 }
+.card-option {
+  margin-right: 16px;
+}
+
+.card-option :deep(.v-label) {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  opacity: 1;
+}
+
+.card-option__thumb {
+  flex: none;
+  border-radius: 2px;
+}
+
 .team-members__add-select {
   flex: 1 1 320px;
   min-width: 0;

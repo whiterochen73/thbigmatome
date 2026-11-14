@@ -102,6 +102,7 @@
                       <PlayerNameLink
                         :player-id="item.player_id"
                         :player-name="item.player_name"
+                        :player-card-id="item.player_card_id"
                         :cost-type="item.selected_cost_type"
                         :show-both="item.selected_cost_type === 'two_way_cost'"
                       />
@@ -148,6 +149,7 @@
                       <PlayerNameLink
                         :player-id="item.player_id"
                         :player-name="item.player_name"
+                        :player-card-id="item.player_card_id"
                         :cost-type="item.selected_cost_type"
                         :show-both="item.selected_cost_type === 'two_way_cost'"
                       />

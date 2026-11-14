@@ -128,6 +128,21 @@ describe('PlayerCardDetailView', () => {
     expect(appBarTitle.value).toBeNull()
   })
 
+  // cmd_1901: 同じ選手の別のカードを見分ける印（variant が無ければ帯のチーム名）をサブタイトルに出す
+  it.each([
+    [{ variant: 'エイプリル', version_label: 'エイプリル' }, '#1 ・ ハチナイ2024 / エイプリル'],
+    [{ variant: null, version_label: '永山' }, '#1 ・ ハチナイ2024 / 永山'],
+    [{ variant: null, version_label: null }, '#1 ・ ハチナイ2024'],
+  ])('サブタイトルにカードの印を付ける（%j）', async (label, subtitle) => {
+    vi.mocked(axios.get).mockResolvedValue({ data: { ...mockCard, ...label } })
+    const router = createTestRouter()
+    await router.isReady()
+    const wrapper = mount(PlayerCardDetailView, { global: { plugins: [vuetify, i18n, router] } })
+    await flushPromises()
+    expect(appBarTitle.value?.subtitle).toBe(subtitle)
+    wrapper.unmount()
+  })
+
   it('本文に画面独自の帯・戻るボタン・h1 を持たない（タイトルはバーだけ）', async () => {
     const router = createTestRouter()
     await router.isReady()

@@ -102,6 +102,9 @@
               {{ item.card_type === 'pitcher' ? '投手' : '野手' }}
             </v-chip>
           </template>
+          <template v-slot:[`item.card_set_name`]="{ item }">
+            {{ cardVersionText(item.card_set_name, item) }}
+          </template>
         </v-data-table-server>
       </v-card>
 
@@ -136,6 +139,7 @@ import AsyncState from '@/components/shared/AsyncState.vue'
 import PageLayout from '@/components/shared/PageLayout.vue'
 import { tableCell } from '@/components/shared/tableCells'
 import { usePlayerCardsSearchStore } from '@/stores/playerCardsSearch'
+import { cardVersionText } from '@/lib/cardVersion'
 
 interface CardSet {
   id: number
@@ -151,6 +155,8 @@ interface PlayerCard {
   player_name: string
   player_number: string
   card_set_name: string
+  variant?: string | null
+  version_label?: string | null
   speed: number
   steal_start: number
   steal_end: number

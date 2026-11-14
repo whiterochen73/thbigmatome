@@ -161,6 +161,9 @@ class RosterWriter
   def apply_later_point_check!(checker, before, after, from_point, warnings, after_target_only:)
     found = checker.new_violations(before, after, from_point)
     found = found.reject { |v| v.kind != "cooldown" && v.date == from_point[0] && v.phase == from_point[1] } if after_target_only
+    # 時限選手の期間の終わりを過ぎても 1軍に残る違反は、コミッショナーでなくても止めず警告にする（終わる前に抹消すれば解消する）
+    found, deferred = RosterConstraintChecker.split_deferred(found, from_point[0], from_point[1])
+    deferred.each { |v| warnings << warning_for(v, dated: true).merge(type: "time_limited_deferred") }
     return if found.empty?
 
     if @commissioner

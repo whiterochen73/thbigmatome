@@ -221,12 +221,23 @@ class Api::V1::PitcherAppearancesController < Api::V1::BaseController
   # 1軍でない投手の登板は止めずに警告にする（設計書 §7 判断 5）。試合日ページの要確認の帯は index の roster_status から出す
   def roster_warnings(team_id, date, pitcher_ids)
     off = roster_statuses_for(team_id, date, pitcher_ids).select { |_, status| PitcherRosterStatus.off_roster?(status) }
-    return [] if off.empty?
+    time_limited = time_limited_warnings(team_id, date, pitcher_ids)
+    return time_limited if off.empty?
 
     names = Player.where(id: off.keys).pluck(:id, :name).to_h
     off.map do |pitcher_id, status|
       PitcherRosterStatus.warning_message(pitcher_name: names[pitcher_id] || "投手ID #{pitcher_id}", date: date.to_s, status: status)
-    end
+    end + time_limited
+  end
+
+  # 時限選手の期間外の登板も止めずに警告にする（cmd_1896。1軍でない投手の登板と同じ扱い）
+  def time_limited_warnings(team_id, date, pitcher_ids)
+    team = Team.find_by(id: team_id)
+    return [] if team.nil? || pitcher_ids.empty?
+
+    TimeLimitedPlayerCheck.warnings(team: team, date: Date.iso8601(date.to_s), player_ids: pitcher_ids)
+  rescue ArgumentError
+    []
   end
 
   # 登板を入れた・消した投手の、それ以降の登板の保存値（結果区分・疲労P・連続中4日回数）を作り直す（PitcherHistoryRebuild。設計書 §4.5）。

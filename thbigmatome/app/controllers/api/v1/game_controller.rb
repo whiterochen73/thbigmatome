@@ -61,6 +61,7 @@ class Api::V1::GameController < Api::V1::BaseController
       if season_schedule.pitcher_rebuild_error
         warnings << "得点は保存しましたが、投手の判定の作り直しに失敗しました。後で作り直しが必要です（登板記録の区分が古いままです）"
       end
+      warnings.concat(time_limited_lineup_warnings(season_schedule)) if update_params.key?(:starting_lineup)
       render json: season_schedule.as_json.merge("warnings" => warnings).merge(head_names(season_schedule).stringify_keys), status: :ok
     else
       render json: { errors: season_schedule.errors.full_messages }, status: :unprocessable_content
@@ -70,6 +71,15 @@ class Api::V1::GameController < Api::V1::BaseController
   end
 
   private
+
+  # 先発メンバーに期間外の時限選手がいれば警告にする（cmd_1896。止めずに保存する。1軍でない投手の登板の警告と同じ扱い）
+  def time_limited_lineup_warnings(season_schedule)
+    lineup = season_schedule.starting_lineup
+    return [] unless lineup.is_a?(Array)
+
+    player_ids = lineup.filter_map { |row| row.is_a?(Hash) ? row["player_id"] || row[:player_id] : nil }.map(&:to_i).select(&:positive?)
+    TimeLimitedPlayerCheck.warnings(team: season_schedule.season.team, date: season_schedule.date, player_ids: player_ids)
+  end
 
   # 試合日ページの上の段に出す名前。相手は短縮形（無ければ正式名）、予告先発は選手名（背番号なし）。決まっていなければ nil
   # opponent_schedule_id は、相手名を押した時の飛び先（相手のシーズンの同じ日の試合日ページ）。無ければ nil

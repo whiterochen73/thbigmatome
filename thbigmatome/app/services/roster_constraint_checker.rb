@@ -8,6 +8,7 @@
 #   first_squad_cost     1軍の合計コストが、人数別の上限（config/cost_limits.yml）以下
 #   outside_world_limit  1軍の外の世界枠は 4 人まで
 #   outside_world_balance  外の世界枠が 4 人なら投手・野手の両方を含む
+#   time_limited_player  時限選手（カードの特徴欄に日付の範囲。PlayerCard#availability_period）は期間内だけ 1軍に登録できる（cmd_1896）
 #   cooldown             降格から 10 日は再登録できない（同日の昇降格は免除）
 #   team_total_cost      チーム全体（コスト除外の選手を除く、在籍中の全員）の合計コストが 200 以下。team_total_cost_list を渡した時だけ検査する
 #                        （チーム編成の保存。昇降格の保存では見ない）
@@ -16,6 +17,8 @@
 # コスト表は過去の値を復元できないので、どの時点も「今のコスト表」で数える（設計書 §5.2・§8）。
 class RosterConstraintChecker
   FIRST_SQUAD_MAX = 29
+  # 後の時点で見つかっても保存を止めず警告にする種類（期間の終わりは先の日付で、終わる前に抹消すれば解消するため）
+  DEFERRED_KINDS = %w[time_limited_player].freeze
   PHASE_LABELS = { "pre_game" => "試合前", "in_game" => "試合中", "post_game" => "試合後" }.freeze
 
   # severity: 規定をどれだけ外れているか（人数の超過、コストの超過、不足日数など）。0 より大きければ違反
@@ -78,7 +81,23 @@ class RosterConstraintChecker
       violations << violation(date, phase, "outside_world_balance", I18n.t("activerecord.errors.models.team.outside_world.balance_required"), 1)
     end
 
+    first.each do |tm|
+      card = tm.player_card
+      next if card.nil? || card.available_on?(date, anchor: @season_start)
+
+      violations << violation(date, phase, "time_limited_player",
+        I18n.t("activerecord.errors.models.player_card.time_limited.out_of_period", name: tm.player.name, period: card.availability_period_label),
+        1, player_id: tm.player_id)
+    end
+
     violations
+  end
+
+  # 見つかった違反を、保存を止めるもの（書いた時点そのものの違反と、後の時点の通常の違反）と、警告にとどめるもの
+  # （後の時点の時限選手の違反。選手ごとに最初の日だけ）に分ける。[blocking, deferred]
+  def self.split_deferred(found, date, phase)
+    deferred, blocking = found.partition { |v| DEFERRED_KINDS.include?(v.kind) && !(v.date == date && v.phase == phase) }
+    [ blocking, deferred.group_by(&:player_id).values.map(&:first) ]
   end
 
   # チーム全体の合計コストの超過（時点つき）。team_total_cost_list が無ければ空
@@ -99,7 +118,7 @@ class RosterConstraintChecker
 
   # from_point 以降（含む）の全時点の違反。時点は state の記録のある時点と、日程の試合日（試合前）
   def violations_from(state, from_point, extra_points: [])
-    points = candidate_points(from_point, [ state.record_points, extra_points ].flatten(1))
+    points = candidate_points(from_point, [ state.record_points, extra_points, time_limited_end_points(state) ].flatten(1))
     violations = points.flat_map { |date, phase| point_violations(state, date, phase) }
     violations + cooldown_violations(state).select { |v| (v.date <=> from_point[0]) >= 0 }
   end
@@ -125,6 +144,15 @@ class RosterConstraintChecker
 
   def violation(date, phase, kind, message, severity, player_id: nil)
     Violation.new(date: date, phase: phase, kind: kind, message: message, severity: severity, player_id: player_id)
+  end
+
+  # 時限選手の期間の終わりの翌日（試合日でなくても、終わりを過ぎて 1軍に残る最初の日として検査する）。記録に載っているカードの分だけ
+  def time_limited_end_points(state)
+    state.memberships.filter_map(&:player_card).uniq.filter_map do |card|
+      to = card.availability_period&.dig(:to) or next
+      end_date = card.resolve_period_date(to, @season_start || Date.current)
+      [ end_date + 1, "pre_game" ]
+    end
   end
 
   def candidate_points(from_point, record_points)

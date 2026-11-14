@@ -71,6 +71,52 @@ class PlayerCard < ApplicationRecord
     unique_traits.to_s.include?(SHORT_REST_CAPABLE_TRAIT)
   end
 
+  # 時限選手（カードの特徴欄に日付の範囲が書かれたカード。cmd_1896）。「M/D~」= その日からシーズン終わりまで、
+  # 「~M/D」= シーズン初めからその日まで（両端を含む）。全角の「〜」「～」も受ける。バイオリズム（biorhythm_*）は別物で読まない。
+  # 返す値: 範囲が無ければ nil、あれば { from: [月, 日] または nil, to: [月, 日] または nil }
+  TIME_LIMITED_PATTERN = %r{(?:(\d{1,2})[ \t]*/[ \t]*(\d{1,2}))?[ \t]*[~〜～][ \t]*(?:(\d{1,2})[ \t]*/[ \t]*(\d{1,2}))?}
+
+  def availability_period
+    unique_traits.to_s.scan(TIME_LIMITED_PATTERN).each do |fm, fd, tm, td|
+      next if fm.nil? && tm.nil?
+
+      from = fm && Date.valid_date?(2000, fm.to_i, fd.to_i) ? [ fm.to_i, fd.to_i ] : nil
+      to = tm && Date.valid_date?(2000, tm.to_i, td.to_i) ? [ tm.to_i, td.to_i ] : nil
+      return { from: from, to: to } if from || to
+    end
+    nil
+  end
+
+  def time_limited?
+    availability_period.present?
+  end
+
+  # date の日に起用（1軍登録）できるか。時限でなければ常に true。
+  # 年はシーズンの年で解決する: anchor（シーズン初日。無ければ date）以後で最初に来るその月日。年をまたぐシーズンでは翌年の月日になる。
+  def available_on?(date, anchor: nil)
+    period = availability_period
+    return true if period.nil?
+
+    anchor ||= date
+    from = period[:from] && resolve_period_date(period[:from], anchor)
+    to = period[:to] && resolve_period_date(period[:to], anchor)
+    return false if from && date < from
+    return false if to && date > to
+
+    true
+  end
+
+  # 期間の文言用（例「4/22 から」「9/24 まで」「4/22〜9/24」）
+  def availability_period_label
+    period = availability_period or return nil
+    f = period[:from] && "#{period[:from][0]}/#{period[:from][1]}"
+    t = period[:to] && "#{period[:to][0]}/#{period[:to][1]}"
+    if f && t then "#{f}〜#{t}"
+    elsif f then "#{f} から"
+    else "#{t} まで"
+    end
+  end
+
   # リリーフで投げられるカードか。画面の「リリーフなら」を出す条件と同じ（リリーフ向けの疲労P を持つ、またはリリーフ専門）
   def relief_capable?
     is_relief_only || relief_stamina.present?
@@ -143,5 +189,13 @@ class PlayerCard < ApplicationRecord
 
   def registrable?
     !official_use_prohibited && card_set&.is_current == true
+  end
+
+  # 期間の月日（[月, 日]）を anchor 以後で最初のその日付にする
+  def resolve_period_date(month_day, anchor)
+    # 2/29 の年が非閏年なら 3/1 に倒す
+    year = anchor.year
+    date = Date.valid_date?(year, *month_day) ? Date.new(year, *month_day) : Date.new(year, 3, 1)
+    date < anchor ? date.next_year : date
   end
 end

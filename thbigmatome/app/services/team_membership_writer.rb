@@ -235,6 +235,8 @@ class TeamMembershipWriter
       first_total = found.find { |v| v.kind == "team_total_cost" }
       found = found.reject { |v| v.kind == "team_total_cost" && !v.equal?(first_total) }
     end
+    found, deferred = RosterConstraintChecker.split_deferred(found, date, phase)
+    deferred.each { |v| warnings << RosterConstraintChecker.dated_message(v) }
     return if found.empty?
 
     if @commissioner

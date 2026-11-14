@@ -10,6 +10,10 @@ ja:
           outside_world:
             limit_exceeded: "外の世界枠の選手が上限（%{limit}人）を超えています（現在%{count}人）。"
             balance_required: "外の世界枠が4人の場合、投手と野手を最低1人ずつ含める必要があります。"
+        player_card:
+          time_limited:
+            out_of_period: "%{name}は %{period} の時限選手のため、この日は1軍に登録できません。"
+            out_of_period_record: "%{name}は %{period} の時限選手のため、%{date} の起用は期間外です。記録は保存しました。"
         player_biorhythm:
           attributes:
             biorhythm_id:

@@ -46,13 +46,10 @@ RSpec.describe "PM2027 の取り込み" do
       expect(lines).to eq([ "WARN: catcher 'レティ' not found in players — skipped (import their card first)" ])
     end
 
-    it "Player の数は、名前（空白を除く）の種類の数と一致する（PM2027 で増えるのは PM2026 までに居ない名前の分だけ）" do
-      earlier = rows.select { |r| r["card_source"] != "PM2027" && r["name"].present? }.map { |r| norm(r["name"]) }.uniq
-      all = rows.select { |r| r["name"].present? }.map { |r| norm(r["name"]) }.uniq
-      # 追加 15 枚の持ち主はすべて既存の選手。増える 7 は、添え字つきの名前のカードのために importer が variant の付け替えより先に作る Player
-      # （既存の挙動。PM2026 の添え字つきカードも同じ）。名前の表記ずれではない
-      expect(all.size - earlier.size).to eq(7)
-      expect(Player.count).to eq(all.size)
+    it "Player の数は、カードの持ち主の名前（variant つきは基の選手。空白を除く）の種類の数と一致し、カードを持たない Player は 1 人も作らない（cmd_1898）" do
+      owners = rows.select { |r| r["name"].present? }.map { |r| norm(r["variant"].present? && r["base_player_name"].present? ? r["base_player_name"] : r["name"]) }.uniq
+      expect(Player.count).to eq(owners.size)
+      expect(Player.left_joins(:player_cards).where(player_cards: { id: nil }).count).to eq(0)
     end
 
     it "PM2027 のカードはすべて series original のセットに入り、持ち主の選手は series で original のカードを持つと判定される" do

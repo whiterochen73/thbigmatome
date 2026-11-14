@@ -87,27 +87,54 @@ docker compose -f docker-compose.prod.yml --env-file .env.production \
 選手カード画像をActive Storageにインポートします。
 
 ```bash
-# 画像とCSVをVPSに転送（ローカルから実行）
+# 画像をVPSに転送（ローカルから実行）。CSV は転送しない（既定の db/import/player_cards.csv＝取り込みと同じ CSV を rails の image から読む）
 scp -r /path/to/card_images/ deploy@<VPS_IP>:/home/deploy/card_images/
+
+# まず当て先の点検（画像ファイルは使わない。全行がカードに当たるか・取り違えの疑いを数える）
+docker compose -f docker-compose.prod.yml --env-file .env.production \
+  exec -T rails bundle exec rake import:card_image_targets < /dev/null
 
 # インポート実行（VPSで実行）
 docker compose -f docker-compose.prod.yml --env-file .env.production \
   exec -e CARD_IMAGE_DIR=/home/deploy/card_images \
-       -e CARD_CSV_PATH=/home/deploy/card_images/player_cards.csv \
   rails bundle exec rake import:card_images
 ```
+
+`CARD_CSV_PATH` の既定は `db/import/player_cards.csv`（`import:card_data`・`db/seeds/import_cards.rb` と同じ CSV）。別の CSV を使う時だけ `-e CARD_CSV_PATH=...` を付ける。
+画像ファイルは card_source ごとに card_seq が連番である前提で CSV の card_seq と結ぶので、CSV は取り込みに使ったものと同じ版にする。
+カードへの当て方は取り込みと同じ（添え字つきの名前の行は、カードが付いた基の Player に variant で当てる）。取り込みが作らなかったカードの行（card_seq 405 など）は SKIP と数えるだけで、別のカードには付けない。
 
 rakeタスクはべき等です。再実行しても既存画像はスキップされます。
 
 VPS上の画像配置:
 ```
 /home/deploy/card_images/
-├── player_cards.csv
 ├── 2025THBIG/trimmed/*.png
 ├── hachinai6.1/trimmed/*.png
 ├── PM2026/trimmed/*.png
+├── PM2027/trimmed/*.png
 └── tamayomi2/trimmed/*.png
 ```
+
+### 2-4. PM の在籍カードの付け替え（PM2026 → PM2027）
+
+在籍中の所属のカードを、現行外の PM2026 から PM2027 の同じ Player・同じ種別・同じ variant のカードへ替える。カード・コスト seed の取り込みの後に流す。
+
+```bash
+# dry-run（既定。DB は変わらない）。OUT に明細 CSV
+docker compose -f docker-compose.prod.yml --env-file .env.production \
+  exec -T -e OUT=/tmp/swap_plan.csv rails bundle exec rake cards:swap_to_current < /dev/null
+
+# 実行（戻し用 CSV が必須）。絞る時は TEAM_IDS=1,2 / MEMBERSHIP_IDS=10,11
+docker compose -f docker-compose.prod.yml --env-file .env.production \
+  exec -T -e APPLY=1 -e OUT=/tmp/swap_plan.csv -e REVERT_OUT=/tmp/swap_revert.csv rails bundle exec rake cards:swap_to_current < /dev/null
+
+# 戻す（dry-run が既定、APPLY=1 で実行）
+docker compose -f docker-compose.prod.yml --env-file .env.production \
+  exec -T -e REVERT_CSV=/tmp/swap_revert.csv -e APPLY=1 rails bundle exec rake cards:revert_card_swap < /dev/null
+```
+
+付け替えは画面の保存と同じ経路（TeamMembershipWriter）で、各チームのシーズンの現在日に contract の変更記録を足す。検査で止まった所属は理由つきで一覧に出して飛ばす。`/tmp/swap_*.csv` はコンテナの中なので、実行後に `docker compose cp` で取り出す。
 
 ---
 

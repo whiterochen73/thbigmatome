@@ -3,10 +3,11 @@ require "csv"
 namespace :import do
   desc "Attach trimmed card images to PlayerCard via Active Storage (idempotent)"
   task card_images: :environment do
+    PlayerCardLocator.clear_cache!
     base_dir   = ENV.fetch("CARD_IMAGE_DIR",
                            "/mnt/c/tools/multi-agent-shogun/projects/thbig/context/thbig-irc-cards/split/")
-    csv_path   = ENV.fetch("CARD_CSV_PATH",
-                           "/home/morinaga/projects/thbig-irc-parser/data/import/player_cards.csv")
+    # 既定は取り込みと同じ db/import/player_cards.csv（card_seq の並び・variant・base_player_name が取り込みと一致する）
+    csv_path   = ENV.fetch("CARD_CSV_PATH", Rails.root.join("db/import/player_cards.csv").to_s)
     cards_per_page = 9
 
     # Directory name -> CardSet.name in DB
@@ -18,14 +19,14 @@ namespace :import do
       "tamayomi2"   => "球詠2"
     }.freeze
 
-    # Load CSV: card_seq (int) => { name:, card_source: }
+    # Load CSV: card_seq (int) => CSV の行（カードの当て先は PlayerCardLocator が取り込みと同じ引き方で決める）
     seq_map   = {}
     base_seqs = {}  # card_source -> minimum card_seq in CSV
 
     CSV.foreach(csv_path, headers: true) do |row|
       seq = row["card_seq"].to_i
       src = row["card_source"]
-      seq_map[seq] = { name: row["name"], card_source: src, card_type: row["card_type"] }
+      seq_map[seq] = row
       base_seqs[src] = [base_seqs.fetch(src, seq), seq].min
     end
     puts "Loaded #{seq_map.size} rows from CSV"
@@ -76,18 +77,11 @@ namespace :import do
           next
         end
 
-        player_name = entry[:name]
-        player = Player.find_by(name: player_name)
-        unless player
-          puts "  SKIP: player '#{player_name}' not in DB (card_seq=#{card_seq})"
-          total_skipped += 1
-          next
-        end
-
-        card_type = entry[:card_type]
-        pc = PlayerCard.find_by(card_set: card_set, player: player, card_type: card_type)
+        player_name = entry["name"]
+        located = PlayerCardLocator.locate(entry)
+        pc = located.card
         unless pc
-          puts "  SKIP: PlayerCard not found: '#{player_name}' / #{card_set_name} / #{card_type} (card_seq=#{card_seq})"
+          puts "  SKIP: PlayerCard not found (#{located.reason}): '#{player_name}' / #{card_set_name} / #{entry['card_type']} (card_seq=#{card_seq})"
           total_skipped += 1
           next
         end
@@ -118,5 +112,24 @@ namespace :import do
     puts "Skipped:    #{total_skipped} (already attached or not in DB)"
     puts "Not found:  #{total_not_found} (no CSV entry for card_seq)"
     puts "Total PlayerCard with image: #{PlayerCard.joins(:card_image_attachment).count}"
+  end
+
+  desc "Match every player_cards.csv row to a PlayerCard the way the card images would (no image files needed; reads DB only). CARD_CSV_PATH, OUT=<csv> for details"
+  task card_image_targets: :environment do
+    PlayerCardLocator.clear_cache!
+    csv_path = ENV.fetch("CARD_CSV_PATH", Rails.root.join("db/import/player_cards.csv").to_s)
+    result = PlayerCardLocator.audit(CSV.read(csv_path, headers: true))
+    puts "rows=#{result[:total]} matched=#{result[:found]} missing=#{result[:missing].size} mismatched=#{result[:mismatched].size} collisions=#{result[:collisions].size}"
+    result[:missing].each { |m| puts "MISSING card_seq=#{m[:card_seq]} #{m[:card_source]} #{m[:name]} (#{m[:reason]})" }
+    result[:mismatched].each { |m| puts "MISMATCH card_seq=#{m[:card_seq]} #{m[:card_source]} #{m[:name]} card_id=#{m[:card_id]} fields=#{m[:fields].join('/')}" }
+    result[:collisions].each { |c| puts "COLLISION card_id=#{c[:card_id]} card_seqs=#{c[:card_seqs].join(',')}" }
+    if ENV["OUT"].present?
+      CSV.open(ENV["OUT"], "w") do |csv|
+        csv << %w[kind card_seq card_source name card_id detail]
+        result[:missing].each { |m| csv << [ "missing", m[:card_seq], m[:card_source], m[:name], nil, m[:reason] ] }
+        result[:mismatched].each { |m| csv << [ "mismatched", m[:card_seq], m[:card_source], m[:name], m[:card_id], m[:fields].join("/") ] }
+        result[:collisions].each { |c| csv << [ "collision", c[:card_seqs].join(","), nil, nil, c[:card_id], nil ] }
+      end
+    end
   end
 end

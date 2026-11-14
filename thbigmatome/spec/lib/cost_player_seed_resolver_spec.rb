@@ -108,4 +108,51 @@ RSpec.describe CostPlayerSeedResolver do
       expect(cost_player.normal_cost).to eq(8)
     end
   end
+
+  describe "card_seq 行の当て先（variant の無い行）" do
+    # card_seq 405 = db/import/player_cards.csv の PM2026「小鳥遊 柚」（variant 空）。本番では PM2026 に variant「UR」の既存カードしか無く
+    # （取り込みは variant の無い行で variant を鍵にせず、そのカードを行のカードとして使う）、行のカードは作られていない。
+    # UR のカードにコストを付けると取り違えになるので、読み飛ばしにする
+    it "variant つきのカードしか無い時は当てない（UR のカードに寄せない）" do
+      player = create(:player, name: "小鳥遊 柚")
+      set = create(:card_set, name: "PM2026", set_type: "pm2026")
+      create(:player_card, player: player, card_set: set, card_type: "batter", variant: "UR")
+
+      resolution = described_class.resolve("小鳥遊 柚 PM2026", card_seq: "405")
+
+      expect([ resolution.player, resolution.player_card ]).to eq([ nil, nil ])
+    end
+
+    it "variant の無いカードがあればそれに当てる" do
+      player = create(:player, name: "小鳥遊 柚")
+      set = create(:card_set, name: "PM2026", set_type: "pm2026")
+      plain = create(:player_card, player: player, card_set: set, card_type: "batter", variant: nil)
+      create(:player_card, player: player, card_set: set, card_type: "batter", variant: "UR")
+
+      expect(described_class.resolve("小鳥遊 柚 PM2026", card_seq: "405").player_card).to eq(plain)
+    end
+  end
+
+  describe "db/import/cost_players_seed.csv の名前の書き方（cmd_1898 subtask_1898b）" do
+    let(:rows) { CSV.read(Rails.root.join("db/import/cost_players_seed.csv"), headers: true) }
+
+    it "「名前＋数字」（badferd2・智夜2 など）は DB の Player の書式「名前 (数字)」で書かれている" do
+      bare_digit = rows.map { |r| r["player_name"] }.select { |n| n.to_s.match?(/[^\s\d(][2-9]\z/) && n.to_s.match?(/\A[^\s]+\z/) }
+
+      expect(bare_digit).to be_empty
+    end
+
+    it "全角空白の「駒草　山如」「二ツ岩」は DB の Player 名（駒草 山如(太夫)・二ッ岩 マミゾウ）で書かれている" do
+      names = rows.map { |r| r["player_name"] }
+
+      expect(names).to include("駒草 山如(太夫)", "二ッ岩 マミゾウ")
+      expect(names).not_to include("駒草　山如", "二ツ岩　マミゾウ")
+    end
+
+    it "同じ cost_name の中で、同じ名前の行が 2 つある時は card_seq で区別されている（黙って上書きしない）" do
+      keyed = rows.group_by { |r| [ r["cost_name"], r["player_name"], r["card_seq"].to_s ] }
+
+      expect(keyed.select { |_k, v| v.size > 1 }).to be_empty
+    end
+  end
 end

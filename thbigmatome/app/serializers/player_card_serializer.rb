@@ -7,7 +7,7 @@ class PlayerCardSerializer < ActiveModel::Serializer
              :pitching_style_id, :pinch_pitching_style_id, :catcher_pitching_style_id, :pitching_style_description,
              :special_defense_c, :special_throwing_c,
              :batting_table, :pitching_table,
-             :variant
+             :variant, :team_label
 
   # 登録画面で選べるか（現行カードセットか・公式戦で使えるか）の判断に使う
   attribute :card_set_current do
@@ -16,6 +16,10 @@ class PlayerCardSerializer < ActiveModel::Serializer
 
   attribute :official_use_prohibited do
     object.official_use_prohibited
+  end
+
+  attribute :version_label do
+    object.version_label
   end
 
   attribute :player_name do

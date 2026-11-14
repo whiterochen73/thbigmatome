@@ -18,7 +18,7 @@ class CardImporter
   ALIASES_PATH = "config/card_import_aliases.yml".freeze
   JSON_COLUMNS = %w[injury_traits biorhythm_date_ranges batting_table pitching_table].freeze
   SCALAR_INT = %w[speed bunt steal_start steal_end injury_rate starter_stamina relief_stamina].freeze
-  SCALAR_STR = %w[unique_traits biorhythm_period card_label irc_macro_name irc_display_name].freeze
+  SCALAR_STR = %w[unique_traits biorhythm_period card_label irc_macro_name irc_display_name team_label].freeze
   SCALAR_BOOL = %w[is_pitcher is_relief_only is_closer official_use_prohibited].freeze
   REPORT_HEADERS = %w[kind card_seq player_card_id card_set player card_type variant tier memberships changes detail].freeze
 

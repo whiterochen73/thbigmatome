@@ -702,6 +702,61 @@ describe('TeamMembers.vue', () => {
     expect(wrapper.text()).toContain('第1弾')
   })
 
+  // cmd_1901: 登録済みの選手の「カードver.」列にも、同じ選手の別のカードを見分ける印（variant が無ければ帯のチーム名）を出す
+  it('カードver.列にセット名と印（variant・帯のチーム名）を出し、印の無い通常カードはセット名だけ', async () => {
+    const players = [
+      makeTeamPlayer({
+        id: 1,
+        name: '選手A',
+        player_card_id: 10,
+        player_card_info: {
+          id: 10,
+          card_type: 'pitcher',
+          card_set_name: 'PM2027',
+          card_set_id: 5,
+          variant: '飯能',
+          version_label: '飯能',
+        },
+      }),
+      makeTeamPlayer({
+        id: 2,
+        name: '選手B',
+        player_card_id: 11,
+        player_card_info: {
+          id: 11,
+          card_type: 'batter',
+          card_set_name: 'PM2027',
+          card_set_id: 5,
+          variant: null,
+          version_label: '永山',
+        },
+      }),
+      makeTeamPlayer({
+        id: 3,
+        name: '選手C',
+        player_card_id: 12,
+        player_card_info: {
+          id: 12,
+          card_type: 'batter',
+          card_set_name: 'PM2027',
+          card_set_id: 5,
+          variant: null,
+          version_label: null,
+        },
+      }),
+    ]
+    const wrapper = await mountTeamMembers(players)
+    const cells = wrapper
+      .findAll('td')
+      .map((td) => td.text())
+      .filter((t) => t.startsWith('PM2027'))
+    expect(cells).toEqual([
+      expect.stringContaining('PM2027 / 飯能'),
+      expect.stringContaining('PM2027 / 永山'),
+      expect.stringMatching(/^PM2027\s*(pitcher|batter)?$/),
+    ])
+  })
+
   it('player_card_infoがないメンバーは「—」を表示する', async () => {
     const players = [makeTeamPlayer({ id: 1, name: '選手A', player_card_id: null })]
     const wrapper = await mountTeamMembers(players)
@@ -800,6 +855,8 @@ describe('TeamMembers.vue', () => {
       card_set_name: string
       card_set_id: number
       variant?: string | null
+      version_label?: string | null
+      image_url?: string | null
       card_set_current: boolean
       official_use_prohibited: boolean
     }
@@ -824,10 +881,17 @@ describe('TeamMembers.vue', () => {
     })
 
     async function mountWithCards(cards: Card[]) {
-      const player = makeTeamPlayer({ id: 77, name: '選手X', short_name: 'X', number: '7', position: 'outfielder' })
+      const player = makeTeamPlayer({
+        id: 77,
+        name: '選手X',
+        short_name: 'X',
+        number: '7',
+        position: 'outfielder',
+      })
       vi.mocked(axios.get).mockImplementation((url: string) => {
         if (url === '/player_cards') return Promise.resolve({ data: { player_cards: cards } })
-        if (url.includes('/teams/') && url.endsWith('/team_players')) return Promise.resolve({ data: [] })
+        if (url.includes('/teams/') && url.endsWith('/team_players'))
+          return Promise.resolve({ data: [] })
         if (url === '/team_registration_players') return Promise.resolve({ data: [player] })
         if (url === '/player-types') return Promise.resolve({ data: [] })
         if (url === '/costs')
@@ -865,6 +929,107 @@ describe('TeamMembers.vue', () => {
         card(2, { variant: '湘南' }),
       ])
       expect(vm.cardSetOptions.map((o) => o.label)).toEqual(['PM2027 / 湘南'])
+    })
+
+    // 完走カードの区別（cmd_1901）。Test Basis: Operator 指示（2026-11-14）「完走カードはチーム名で区別できるように。同じキャラで複数枚、AP と被ることもある」
+    describe('バリエーション選択の表示（帯のチーム名・画像）', () => {
+      const yukari = [
+        card(1, {
+          card_type: 'pitcher',
+          variant: 'エイプリル',
+          version_label: 'エイプリル',
+          image_url: 'https://example.test/ap.png',
+        }),
+        card(2, {
+          card_type: 'pitcher',
+          variant: '飯能',
+          version_label: '飯能',
+          image_url: 'https://example.test/hanno.png',
+        }),
+        card(3, {
+          card_type: 'pitcher',
+          variant: '筑紫野',
+          version_label: '筑紫野',
+          image_url: 'https://example.test/tsukushino.png',
+        }),
+      ]
+
+      it('同じ選手に PM のカードが複数あっても、選択肢は印ごとに別で、ラベルで見分けられる（エイプリル・飯能・筑紫野）', async () => {
+        const { vm } = await mountWithCards(yukari)
+        expect(vm.cardSetOptions.map((o) => o.label)).toEqual([
+          'PM2027 / エイプリル',
+          'PM2027 / 飯能',
+          'PM2027 / 筑紫野',
+        ])
+        expect(new Set(vm.cardSetOptions.map((o) => o.option_key)).size).toBe(3)
+      })
+
+      it('variant が空で帯のチーム名だけある完走カードは、帯のチーム名で出る（version_label）', async () => {
+        const { vm } = await mountWithCards([
+          card(1, { variant: null, version_label: '永山' }),
+          card(2, { variant: 'エイプリル', version_label: 'エイプリル', card_type: 'pitcher' }),
+        ])
+        expect(vm.cardSetOptions.map((o) => o.label)).toEqual([
+          'PM2027 / 永山',
+          'PM2027 / エイプリル',
+        ])
+      })
+
+      it('帯が GLADIATS の通常カード（印なし）はセット名だけ', async () => {
+        const { vm } = await mountWithCards([
+          card(1, { variant: null, version_label: null }),
+          card(2, { variant: '飯能', version_label: '飯能', card_type: 'pitcher' }),
+        ])
+        expect(vm.cardSetOptions.map((o) => o.label)).toEqual(['PM2027', 'PM2027 / 飯能'])
+      })
+
+      it('選択肢にカードの画像が出る。画像の無いカードには何も出さない（代わりの枠や文言も出さない）', async () => {
+        const { wrapper } = await mountWithCards([
+          yukari[0],
+          { ...yukari[1], image_url: null },
+          yukari[2],
+        ])
+        const thumbs = wrapper.findAll('.card-option__thumb')
+        expect(thumbs).toHaveLength(2)
+        const options = wrapper.findAll('.card-option')
+        expect(options).toHaveLength(3)
+        expect(options[1].find('.card-option__thumb').exists()).toBe(false)
+        expect(options[1].text()).toContain('PM2027 / 飯能')
+        expect(options[0].findComponent({ name: 'VImg' }).props('src')).toBe(
+          'https://example.test/ap.png',
+        )
+        expect(options[2].findComponent({ name: 'VImg' }).props('src')).toBe(
+          'https://example.test/tsukushino.png',
+        )
+      })
+
+      it('投手と野手の両方があるセットは、選手の守備位置の側のカードの画像を出す', async () => {
+        const { wrapper } = await mountWithCards([
+          card(1, {
+            card_type: 'batter',
+            variant: '飯能',
+            version_label: '飯能',
+            image_url: 'https://example.test/batter.png',
+          }),
+          card(2, {
+            card_type: 'pitcher',
+            variant: '飯能',
+            version_label: '飯能',
+            image_url: 'https://example.test/pitcher.png',
+          }),
+          card(3, {
+            card_type: 'batter',
+            variant: 'エイプリル',
+            version_label: 'エイプリル',
+            image_url: 'https://example.test/ap.png',
+          }),
+        ])
+        // mountWithCards の選手は outfielder → 野手のカード
+        const first = wrapper.findAll('.card-option')[0]
+        expect(first.findComponent({ name: 'VImg' }).props('src')).toBe(
+          'https://example.test/batter.png',
+        )
+      })
     })
 
     it('選べるカードが 1 枚も無い選手（現行外のカードだけ）は追加ボタンが押せない', async () => {

@@ -70,6 +70,8 @@ const props = defineProps<{
   playerName: string
   imageUrl?: string
   cardId?: number
+  // 登録されているカードそのもの（分かる時だけ）。無いと、その選手のカードから選ぶ（pickCard）
+  playerCardId?: number
   cardType?: 'pitcher' | 'batter'
   showBoth?: boolean
   costType?:
@@ -98,6 +100,21 @@ const fetchDoneBoth = ref(false)
 // Module-level caches shared across all instances
 const cache = new Map<string, { cardId: number | null; imageUrl: string | null }>()
 const cacheBoth = new Map<number, CardInfo[]>()
+
+interface ListedCard {
+  id: number
+  image_url: string | null
+  card_set_current?: boolean
+  official_use_prohibited?: boolean
+  version_label?: string | null
+}
+
+// 同じ選手に複数のカード（旧セット・エイプリル・チーム名の完走カードなど）があるので、先頭の 1 枚を使わない。
+// 現行セットの公式戦で使える通常カード（印なし）→ 現行セットの別の版 → それ以外、の順
+function pickCard(cards: ListedCard[]): ListedCard | null {
+  const usable = cards.filter((c) => c.card_set_current !== false && !c.official_use_prohibited)
+  return usable.find((c) => !c.version_label) ?? usable[0] ?? cards[0] ?? null
+}
 
 const resolvedCardType = computed(() => {
   if (props.cardType) return props.cardType
@@ -135,21 +152,21 @@ async function fetchBothCards() {
   try {
     const [pitcherRes, batterRes] = await Promise.all([
       axios.get('/player_cards', {
-        params: { player_id: props.playerId, card_type: 'pitcher', per_page: 1 },
+        params: { player_id: props.playerId, card_type: 'pitcher', per_page: 100 },
       }),
       axios.get('/player_cards', {
-        params: { player_id: props.playerId, card_type: 'batter', per_page: 1 },
+        params: { player_id: props.playerId, card_type: 'batter', per_page: 100 },
       }),
     ])
     const result: CardInfo[] = []
-    const pitcherCard = pitcherRes.data.player_cards?.[0] ?? null
+    const pitcherCard = pickCard(pitcherRes.data.player_cards ?? [])
     if (pitcherCard)
       result.push({
         label: '投手',
         imageUrl: pitcherCard.image_url ?? null,
         cardId: pitcherCard.id ?? null,
       })
-    const batterCard = batterRes.data.player_cards?.[0] ?? null
+    const batterCard = pickCard(batterRes.data.player_cards ?? [])
     if (batterCard)
       result.push({
         label: '野手',
@@ -174,7 +191,9 @@ async function fetchCardData() {
   if (fetchDone.value) return
 
   const cardTypeToUse = resolvedCardType.value
-  const cacheKey = `${props.playerId}_${cardTypeToUse ?? 'any'}`
+  const cacheKey = props.playerCardId
+    ? `card_${props.playerCardId}`
+    : `${props.playerId}_${cardTypeToUse ?? 'any'}`
   const cached = cache.get(cacheKey)
   if (cached) {
     resolvedImageUrl.value = cached.imageUrl
@@ -185,20 +204,26 @@ async function fetchCardData() {
 
   loadingCard.value = true
   try {
-    const params: Record<string, unknown> = { player_id: props.playerId, per_page: 1 }
-    if (cardTypeToUse) params.card_type = cardTypeToUse
-    const res = await axios.get('/player_cards', { params })
-    let cards: Array<{ id: number; image_url: string | null }> = res.data.player_cards ?? []
+    let card: { id: number; image_url: string | null } | null = null
+    if (props.playerCardId) {
+      // 登録されているカードそのもの
+      const res = await axios.get(`/player_cards/${props.playerCardId}`)
+      card = res.data ?? null
+    } else {
+      const params: Record<string, unknown> = { player_id: props.playerId, per_page: 100 }
+      if (cardTypeToUse) params.card_type = cardTypeToUse
+      const res = await axios.get('/player_cards', { params })
+      let cards: ListedCard[] = res.data.player_cards ?? []
 
-    // Fallback: card_type指定で結果0件の場合、card_type無しで再取得
-    if (cards.length === 0 && cardTypeToUse) {
-      const fallbackRes = await axios.get('/player_cards', {
-        params: { player_id: props.playerId, per_page: 1 },
-      })
-      cards = fallbackRes.data.player_cards ?? []
+      // Fallback: card_type指定で結果0件の場合、card_type無しで再取得
+      if (cards.length === 0 && cardTypeToUse) {
+        const fallbackRes = await axios.get('/player_cards', {
+          params: { player_id: props.playerId, per_page: 100 },
+        })
+        cards = fallbackRes.data.player_cards ?? []
+      }
+      card = pickCard(cards)
     }
-
-    const card = cards[0] ?? null
     const result = { cardId: card?.id ?? null, imageUrl: card?.image_url ?? null }
     cache.set(cacheKey, result)
     resolvedImageUrl.value = result.imageUrl

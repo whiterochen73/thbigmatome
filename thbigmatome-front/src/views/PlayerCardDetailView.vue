@@ -619,6 +619,7 @@ import BattingTable from '@/components/BattingTable.vue'
 import AsyncState from '@/components/shared/AsyncState.vue'
 import PageLayout from '@/components/shared/PageLayout.vue'
 import { useAppBarTitle } from '@/composables/useAppBarTitle'
+import { cardVersionText } from '@/lib/cardVersion'
 
 const HANDEDNESS_MAP: Record<string, string> = {
   right_throw: '右投',
@@ -695,6 +696,8 @@ interface PlayerCardDetail {
   unique_traits: string | null
   injury_traits: Record<string, unknown> | null
   image_url: string | null
+  variant?: string | null
+  version_label?: string | null
   player: { id: number; name: string; number: string } | null
   card_set: { id: number; name: string } | null
   defenses: DefenseItem[]
@@ -715,7 +718,8 @@ const errorMessage = '選手カードの取得に失敗しました'
 // ヘッダーバー: タイトル=選手名、サブタイトル=背番号 ・ カードセット、戻り先=選手カード（取得前・失敗時も戻れるよう常に宣言する）
 useAppBarTitle(() => {
   const number = card.value?.player?.number
-  const cardSet = card.value?.card_set?.name
+  const cardSetName = card.value?.card_set?.name
+  const cardSet = cardSetName ? cardVersionText(cardSetName, card.value) : undefined
   const subtitle = [number ? `#${number}` : '', cardSet ?? ''].filter(Boolean).join(' ・ ')
   return {
     title: card.value?.player?.name ?? '選手カード詳細',

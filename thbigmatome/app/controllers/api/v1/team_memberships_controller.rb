@@ -26,7 +26,7 @@ module Api
               number: player.number,
               player_id: player.id,
               player_card_id: member.player_card_id,
-              player_card_info: pc ? { id: pc.id, card_type: pc.card_type, card_set_name: pc.card_set.name, card_set_id: pc.card_set_id } : nil
+              player_card_info: pc ? { id: pc.id, card_type: pc.card_type, card_set_name: pc.card_set.name, card_set_id: pc.card_set_id, version_label: pc.version_label } : nil
             }
           end
 

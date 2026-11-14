@@ -13,6 +13,23 @@ RSpec.describe PlayerCardSerializer, type: :serializer do
     expect(serialized["variant"]).to eq("湘南")
   end
 
+  describe "version_label / team_label（cmd_1901）" do
+    it "variant があれば version_label は variant（team_label は別に返す）" do
+      player_card.update!(team_label: "東方PROJECT")
+      expect(serialized).to include("version_label" => "湘南", "team_label" => "東方PROJECT")
+    end
+
+    it "variant が無ければ version_label は帯の team_label" do
+      player_card.update!(variant: nil, team_label: "永山")
+      expect(serialized).to include("version_label" => "永山", "team_label" => "永山", "variant" => nil)
+    end
+
+    it "どちらも無ければ version_label は nil" do
+      player_card.update!(variant: nil, team_label: nil)
+      expect(serialized["version_label"]).to be_nil
+    end
+  end
+
   describe "#image_url" do
     context "when card_image is not attached" do
       it "returns nil" do

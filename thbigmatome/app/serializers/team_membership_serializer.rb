@@ -11,7 +11,8 @@ class TeamMembershipSerializer < ActiveModel::Serializer
       id: pc.id,
       card_type: pc.card_type,
       card_set_name: pc.card_set.name,
-      card_set_id: pc.card_set_id
+      card_set_id: pc.card_set_id,
+      version_label: pc.version_label
     }
   end
 end

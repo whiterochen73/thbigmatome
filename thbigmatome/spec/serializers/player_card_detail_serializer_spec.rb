@@ -8,6 +8,14 @@ RSpec.describe PlayerCardDetailSerializer, type: :serializer do
     JSON.parse(serializer.to_json)
   end
 
+  describe "version_label / team_label（cmd_1901）" do
+    let(:player_card) { create(:player_card, player: player, variant: nil, team_label: "北堀江") }
+
+    it "variant が無ければ帯の team_label を version_label に出す" do
+      expect(serialized).to include("version_label" => "北堀江", "team_label" => "北堀江", "variant" => nil)
+    end
+  end
+
   context "when handedness is set on player_card" do
     let(:player_card) { create(:player_card, player: player, handedness: "right_throw/right_bat") }
 

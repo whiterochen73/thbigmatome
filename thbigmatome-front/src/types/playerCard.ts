@@ -17,6 +17,8 @@ export interface PlayerCard {
   player_name: string
   player_number: string
   card_set_name: string
+  variant?: string | null
+  version_label?: string | null
   speed: number
   steal_start: number
   steal_end: number

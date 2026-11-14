@@ -16,7 +16,7 @@ RSpec.describe CardImporter do
     card_seq player_id card_set_id number position name card_source parse_status throwing_hand batting_hand is_pitcher card_type
     speed bunt steal_start steal_end injury_rate is_relief_only starter_stamina relief_stamina batting_style_id pitching_style_id is_closer
     unique_traits injury_traits biorhythm_period biorhythm_date_ranges batting_table pitching_table card_label irc_macro_name irc_display_name
-    variant base_player_name official_use_prohibited
+    variant base_player_name official_use_prohibited team_label
   ].freeze
   TABLE = [ [ "H8", "1B", "2B", "G6D" ] ].freeze
 
@@ -422,6 +422,28 @@ RSpec.describe CardImporter do
         expect(Player.where(id: [ by_id.id, by_name.id ]).count).to eq(2)
         expect(Player.where(id: empty.id)).not_to exist
       end
+    end
+  end
+
+  describe "team_label（帯のチーム名・印。cmd_1901）" do
+    it "新規のカードに入る。CSV に列が無い・空の行は nil のまま" do
+      write_all([ card_row(seq: 539, name: "風見 幽香", team_label: "永山", macro: "14"),
+                  card_row(seq: 555, name: "ガブリチュウ", macro: "15", table: [ [ "K", "K", "K", "K" ] ]) ])
+      run_import
+      expect(PlayerCard.find_by(card_seq: 539).team_label).to eq("永山")
+      expect(PlayerCard.find_by(card_seq: 555).team_label).to be_nil
+    end
+
+    it "既存のカードに後から入る。在籍の付き先・カードの id・variant は変わらず、2 回目は 0 件" do
+      yuka = create(:player, name: "風見 幽香")
+      old = legacy(yuka, macro: "14")
+      mem = member(old)
+      write_all([ card_row(seq: 539, name: "風見 幽香", team_label: "永山", macro: "14") ])
+      expect { run_import }.not_to change(PlayerCard, :count)
+      expect(old.reload).to have_attributes(team_label: "永山", variant: nil, card_seq: 539)
+      expect(mem.reload.player_card_id).to eq(old.id)
+      _importer, out = run_import
+      expect(out).to include("matched_changed = 0")
     end
   end
 end

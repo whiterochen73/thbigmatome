@@ -7,7 +7,11 @@ class PlayerCardDetailSerializer < ActiveModel::Serializer
              :biorhythm_period,
              :unique_traits, :injury_traits, :official_use_prohibited,
              :batting_table, :pitching_table,
-             :image_url
+             :image_url, :variant, :team_label
+
+  attribute :version_label do
+    object.version_label
+  end
 
   attribute :handedness do
     object.handedness

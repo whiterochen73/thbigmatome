@@ -222,6 +222,74 @@ RSpec.describe CardImporter do
     end
   end
 
+  describe "条件名が引けない行（cmd_1899）" do
+    let!(:trait) { TraitDefinition.find_or_create_by!(name: "対右") { |t| t.description = "t" } }
+    let!(:ability) { AbilityDefinition.find_or_create_by!(name: "能力A") }
+    let!(:cond) { TraitCondition.find_or_create_by!(name: "旧条件") }
+    let(:player) { create(:player, name: "条件の人") }
+
+    it "特徴: 条件名が引けない行は WARN を出し、条件なしの行として足さず、その種別の旧行（条件つき）を消さない" do
+      old = legacy(player)
+      t_old = old.player_card_traits.create!(trait_definition: trait, condition: cond, sort_order: 0)
+      write_all([ card_row(seq: 80, name: "条件の人") ],
+                traits: [ { "card_seq" => "80", "trait_definition_name" => "対右", "condition_name" => "未登録条件", "sort_order" => "0" } ])
+      importer, out = run_import
+      expect(out).to match(/WARN:.*未登録条件/)
+      expect(old.player_card_traits.reload.map { |t| [ t.id, t.condition_id ] }).to eq([ [ t_old.id, cond.id ] ])
+      expect(importer.report.map { |r| r["kind"] }).not_to include("child_removed", "child_added")
+    end
+
+    it "能力: 条件名が引けない行は WARN を出し、その種別の旧行を消さない" do
+      old = legacy(player)
+      a_old = old.player_card_abilities.create!(ability_definition: ability, condition: cond, sort_order: 0)
+      write_all([ card_row(seq: 81, name: "条件の人") ],
+                abilities: [ { "card_seq" => "81", "ability_definition_name" => "能力A", "condition_name" => "未登録条件", "sort_order" => "0" } ])
+      importer, out = run_import
+      expect(out).to match(/WARN:.*未登録条件/)
+      expect(old.player_card_abilities.reload.map { |t| [ t.id, t.condition_id ] }).to eq([ [ a_old.id, cond.id ] ])
+      expect(importer.report.map { |r| r["kind"] }).not_to include("child_removed", "child_added")
+    end
+
+    it "条件名が空の行は従来どおり条件なしの行になる（WARN なし）" do
+      old = legacy(player)
+      write_all([ card_row(seq: 82, name: "条件の人") ],
+                traits: [ { "card_seq" => "82", "trait_definition_name" => "対右", "sort_order" => "0" } ])
+      _, out = run_import
+      expect(out).not_to include("WARN")
+      expect(old.player_card_traits.reload.pluck(:trait_definition_id, :condition_id)).to eq([ [ trait.id, nil ] ])
+    end
+  end
+
+  describe "参照数に team_membership_changes を含める（cmd_1899）" do
+    it "変更履歴だけが参照するカードは、持ち主・種別が CSV と違う時に conflict で更新せず飛ばす" do
+      ibuki = create(:player, name: "履歴だけの人")
+      old = legacy(ibuki, type: "batter", macro: "T8", card_seq: 500)
+      create(:team_membership_change, player_card: old)
+      expect(TeamMembership.where(player_card_id: old.id)).to be_empty
+      write_all([ card_row(seq: 500, name: "履歴だけの人", type: "pitcher", macro: "T8") ])
+      importer, = run_import
+      expect(old.reload.card_type).to eq("batter")
+      expect(importer.report.map { |r| r["kind"] }).to include("conflict")
+    end
+  end
+
+  describe "macro 照合の行は子の行も触らない（cmd_1899）" do
+    it "別名の旧行に結び付いても、その旧行の守備・特徴は CSV の別 Player の行で書き換わらない" do
+      trait = TraitDefinition.find_or_create_by!(name: "対右") { |t| t.description = "t" }
+      owner = create(:player, name: "旧行の持ち主")
+      old = legacy(owner, macro: "9", table: [ [ "K", "K", "K", "K" ] ])
+      d = old.player_card_defenses.create!(position: "SS", range_value: 3, error_rank: "C")
+      t = old.player_card_traits.create!(trait_definition: trait, sort_order: 0)
+      write_all([ card_row(seq: 600, name: "別名の人", macro: "9") ],
+                defenses: [ { "card_seq" => "600", "position" => "2B", "range_value" => "2", "error_rank" => "A" } ])
+      importer, = run_import
+      expect(importer.report.find { |r| r["kind"] == "matched" && r["tier"] == :macro }).to be_present
+      expect(old.player_card_defenses.reload.pluck(:id, :position, :range_value)).to eq([ [ d.id, "SS", 3 ] ])
+      expect(old.player_card_traits.reload.pluck(:id)).to eq([ t.id ])
+      expect(importer.report.map { |r| r["kind"] }).not_to include("orphan_card") # 旧行は照合済みなので orphan に数えない
+    end
+  end
+
   describe "カードなし Player を作らない" do
     it "variant つきの行は基の Player に付け、「名前 (variant)」の Player を先に作らない" do
       create(:player, name: "八雲 紫")
@@ -317,6 +385,42 @@ RSpec.describe CardImporter do
         run_task(true)
         expect(Player.where(id: empty.id)).not_to exist
         expect(Player.where(id: [ with_card.id, mem_player.id ]).count).to eq(2)
+      end
+
+      it "JSON の保存形ごとに、そこにだけ出る Player を消さない: *_ids の配列・入れ子の配列・全体が配列（cmd_1899 再レビュー）" do
+        relief, starter_bench, nested, top_array, off, gone = %w[リリーフ 先発ベンチ 入れ子 全体配列 オフ 出ない人].map { |n| create(:player, name: "JSON #{n}") }
+        team = create(:team)
+        GameLineup.create!(team: team, lineup_data: {
+          "dh_enabled" => true, "starting_lineup" => [ { "batting_order" => 1, "player_id" => 900_001, "position" => "RF" } ],
+          "bench_players" => [ { "player_id" => nested.id, "position" => "C" } ], "off_players" => [ { "player_id" => off.id } ],
+          "relief_pitcher_ids" => [ relief.id ], "starter_bench_pitcher_ids" => [ starter_bench.id ]
+        })
+        sched = create(:season_schedule)
+        sched.update_columns(opponent_starting_lineup: [ { "batting_order" => 1, "player_id" => top_array.id, "position" => "SS" } ])
+        run_task(true)
+        expect(Player.where(id: [ relief.id, starter_bench.id, nested.id, off.id, top_array.id ]).count).to eq(5)
+        expect(Player.where(id: gone.id)).not_to exist
+      end
+
+      it "player 系でないキーの整数（batting_order・dh_enabled 以外の数値）では Player を消さない側に倒さない（取りすぎを限定する）" do
+        other = create(:player, name: "順番と同じ id の人")
+        team = create(:team)
+        GameLineup.create!(team: team, lineup_data: { "starting_lineup" => [ { "batting_order" => other.id, "player_id" => 900_001, "position" => "RF" } ] })
+        run_task(true)
+        expect(Player.where(id: other.id)).not_to exist
+      end
+
+      it "JSON の中にだけ出てくる Player（id でも名前でも）は消さない（cmd_1899）" do
+        by_id = create(:player, name: "JSON id の人")
+        by_name = create(:player, name: "JSON 名前の人")
+        empty = create(:player, name: "どこにも出ない人")
+        sched = create(:season_schedule)
+        sched.update_columns(starting_lineup: [ { "player_id" => by_id.id, "position" => "SS", "order" => 1 } ],
+                             scoreboard: { "pitcher" => "JSON 名前の人" })
+        out = run_task(true)
+        expect(out).to include("JSON の中に出てくる Player: 2 人")
+        expect(Player.where(id: [ by_id.id, by_name.id ]).count).to eq(2)
+        expect(Player.where(id: empty.id)).not_to exist
       end
     end
   end

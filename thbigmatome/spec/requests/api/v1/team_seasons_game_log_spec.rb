@@ -21,6 +21,8 @@ RSpec.describe "GET /api/v1/teams/:team_id/season と game_log", type: :request 
     expect(response).to have_http_status(:ok)
     loads = sqls.select { |q| q.start_with?("SELECT") && q.include?('FROM "season_schedules"') && !q.match?(/MIN\(|MAX\(|COUNT\(/) }
     expect(loads).not_to be_empty
+    # 現在日の導出（SeasonCurrentRange、cmd_1975）は、ログが空かどうかだけを SQL の真偽値で引く。本文は読み込まない
+    loads = loads.reject { |q| q.include?("game_log <> ''") }
     expect(loads.grep(/game_log|"season_schedules"\.\*/)).to be_empty
 
     json = response.parsed_body

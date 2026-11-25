@@ -19,7 +19,7 @@ module Api
                        " WHERE gr.team_id = teams.id) AS last_game_date")
                      .order(is_active: :desc, updated_at: :desc)
                      .to_a
-        # 現在日は日程の結果から導く（SeasonCurrentRange）。一覧は全シーズン分を 1 回の問い合わせでまとめて求める
+        # 現在日は日程の結果から導く（SeasonCurrentRange）。一覧は全シーズン分をまとめて求める（日程 1 回。空のプレーオフの日があれば登板記録 1 回を足す）
         render json: @teams, each_serializer: TeamSerializer, season_current_dates: season_current_dates(@teams)
       end
 
